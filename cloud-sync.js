@@ -20,6 +20,11 @@
       return this.session?.user || null;
     }
 
+    async getAccessToken() {
+      await this.refreshIfNeeded();
+      return this.session?.access_token || "";
+    }
+
     async signUp(email, password) {
       const session = await this.authRequest("/auth/v1/signup", { email, password });
       if (!session.access_token) {

@@ -142,6 +142,7 @@ function bindForms() {
       id: createId(),
       name: form.get("name").trim(),
       url: form.get("url").trim(),
+      image: form.get("image").trim(),
       category: form.get("category"),
       price: form.get("price").trim(),
       hook: form.get("hook").trim(),
@@ -175,6 +176,7 @@ function bindForms() {
 function bindActions() {
   profileText.addEventListener("input", saveState);
   bindInstallButton();
+  bindProductImporter();
 
   document.querySelector("#copyProfile").addEventListener("click", () => copyText(profileText.value));
   document.querySelector("#resetProfile").addEventListener("click", () => {
@@ -242,6 +244,91 @@ function bindActions() {
 
   document.querySelector("#exportBtn").addEventListener("click", exportData);
   document.querySelector("#importInput").addEventListener("change", importData);
+}
+
+function bindProductImporter() {
+  const importUrl = document.querySelector("#productImportUrl");
+  const importBtn = document.querySelector("#importProductBtn");
+  if (!importUrl || !importBtn) return;
+
+  const importProduct = async () => {
+    const url = importUrl.value.trim();
+    if (!url) {
+      showProductImportStatus("楽天ROOMまたは楽天アフィリエイトのURLを入力してください", true);
+      importUrl.focus();
+      return;
+    }
+
+    if (!cloudSync.configured) {
+      showProductImportStatus("クラウド接続が未設定です", true);
+      return;
+    }
+
+    if (!cloudSync.signedIn) {
+      showProductImportStatus("先に画面上部の「同期」からログインしてください", true);
+      return;
+    }
+
+    const originalLabel = importBtn.textContent;
+    importBtn.disabled = true;
+    importBtn.textContent = "取得中...";
+    showProductImportStatus("楽天の商品情報を確認しています");
+
+    try {
+      const product = await fetchRakutenProduct(url);
+      fillProductForm(product, url);
+      showProductImportStatus("商品情報を入力しました。内容を確認して「追加」を押してください");
+    } catch (error) {
+      showProductImportStatus(error.message || "商品情報を取得できませんでした", true);
+    } finally {
+      importBtn.disabled = false;
+      importBtn.textContent = originalLabel;
+    }
+  };
+
+  importBtn.addEventListener("click", importProduct);
+  importUrl.addEventListener("paste", () => window.setTimeout(importProduct, 0));
+  importUrl.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      importProduct();
+    }
+  });
+}
+
+async function fetchRakutenProduct(url) {
+  const token = await cloudSync.getAccessToken();
+  const response = await fetch(`${cloudSync.url}/functions/v1/rakuten-product-import`, {
+    method: "POST",
+    headers: {
+      apikey: cloudSync.key,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || "楽天の商品情報を取得できませんでした");
+  return body;
+}
+
+function fillProductForm(product, originalUrl) {
+  const form = document.querySelector("#productForm");
+  form.elements.name.value = product.name || "";
+  form.elements.url.value = originalUrl;
+  form.elements.image.value = product.image || "";
+  form.elements.price.value = product.price || "";
+  form.elements.hook.value = product.hook || "";
+  const categoryOption = [...form.elements.category.options].find((option) => option.value === product.category);
+  if (categoryOption) form.elements.category.value = product.category;
+}
+
+function showProductImportStatus(message, isError = false) {
+  const status = document.querySelector("#productImportStatus");
+  status.textContent = message;
+  status.className = `import-status${isError ? " error" : ""}`;
+  status.hidden = false;
 }
 
 function bindInstallButton() {
@@ -528,6 +615,7 @@ function renderProducts() {
     const card = document.createElement("article");
     card.className = "product-card";
     card.innerHTML = `
+      ${product.image ? `<img class="product-image" src="${escapeHtml(product.image)}" alt="" loading="lazy">` : ""}
       <div>
         <h4>${escapeHtml(product.name)}</h4>
         <p class="muted">${escapeHtml(product.hook || "推しポイント未設定")}</p>

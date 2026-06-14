@@ -1,0 +1,2 @@
+[functions.rakuten-product-import]
+verify_jwt = true

@@ -69,6 +69,22 @@ window.HANAKO_CLOUD_CONFIG = {
 
 Supabaseでメール確認を有効にしている場合、初回登録後に確認メールを開いてからログインしてください。ブラウザには公開用キーだけを設定し、`service_role` keyは絶対に置かないでください。
 
+## 楽天URLから商品を自動登録する
+
+商品パイプラインのURL欄へ楽天ROOMまたは楽天アフィリエイトURLを貼ると、商品名、価格、カテゴリ、画像、推しポイント候補を自動入力します。アフィリエイトURLは成果計測を維持するため、登録リンクとしてそのまま保存します。
+
+この機能はSupabase Edge Functionを1回だけ公開する必要があります。
+
+1. Supabase Dashboardで対象プロジェクトを開く
+2. 左メニューの `Edge Functions` を開く
+3. `Deploy a new function` を押す
+4. 関数名を `rakuten-product-import` にする
+5. [supabase/functions/rakuten-product-import/index.ts](supabase/functions/rakuten-product-import/index.ts) の全文を貼り付ける
+6. JWT verificationを有効にした状態でDeployする
+7. 更新した `index.html`、`app.js`、`styles.css`、`cloud-sync.js`、`sw.js` をGitHubへアップロードする
+
+商品自動取得は同期アカウントでログインしている時だけ利用できます。楽天側のページ構成によって取得できない場合は、ROOM内の商品から楽天市場の商品ページを開き、そのURLで再試行してください。
+
 ## 運用メモ
 
 - 投稿文には `PR`、`広告`、`アフィリエイトを含みます` などの表記を入れてください。
