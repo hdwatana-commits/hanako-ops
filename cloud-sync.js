@@ -23,10 +23,10 @@
     async signUp(email, password) {
       const session = await this.authRequest("/auth/v1/signup", { email, password });
       if (!session.access_token) {
-        throw new Error("確認メールを開いた後、ログインしてください");
+        return { user: session.user, confirmationRequired: true };
       }
       this.setSession(session);
-      return session.user;
+      return { user: session.user, confirmationRequired: false };
     }
 
     async signIn(email, password) {

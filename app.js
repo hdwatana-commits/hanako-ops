@@ -326,6 +326,7 @@ function bindCloudSync() {
   if (!syncBtn || !syncModal) return;
 
   const openModal = () => {
+    clearSyncMessage();
     renderCloudAccountUi();
     syncModal.hidden = false;
     document.body.style.overflow = "hidden";
@@ -348,6 +349,7 @@ function bindCloudSync() {
       await reconcileCloudData();
       loginForm.reset();
       renderCloudAccountUi();
+      showSyncMessage("ログインして同期しました");
       showToast("ログインして同期しました");
     });
   });
@@ -356,9 +358,14 @@ function bindCloudSync() {
     if (!loginForm.reportValidity()) return;
     const form = new FormData(loginForm);
     await runCloudAction(async () => {
-      await cloudSync.signUp(String(form.get("email")).trim(), String(form.get("password")));
+      const result = await cloudSync.signUp(String(form.get("email")).trim(), String(form.get("password")));
+      if (result.confirmationRequired) {
+        showSyncMessage("登録できました。Supabaseから届く確認メールを開き、その後この画面で「ログインして同期」を押してください。");
+        return;
+      }
       await cloudSync.save(cloneState());
       renderCloudAccountUi();
+      showSyncMessage("同期アカウントを作成しました");
       showToast("同期アカウントを作成しました");
     });
   });
@@ -415,13 +422,30 @@ function renderCloudAccountUi() {
 
 async function runCloudAction(action) {
   try {
+    clearSyncMessage();
     setSyncStatus("busy");
     await action();
-    setSyncStatus("online");
+    setSyncStatus(cloudSync.signedIn ? "online" : "off");
   } catch (error) {
     setSyncStatus("error");
+    showSyncMessage(error.message || "同期に失敗しました", true);
     showToast(error.message || "同期に失敗しました");
   }
+}
+
+function showSyncMessage(message, isError = false) {
+  const element = document.querySelector("#syncMessage");
+  if (!element) return;
+  element.textContent = message;
+  element.className = `sync-message${isError ? " error" : ""}`;
+  element.hidden = false;
+}
+
+function clearSyncMessage() {
+  const element = document.querySelector("#syncMessage");
+  if (!element) return;
+  element.hidden = true;
+  element.textContent = "";
 }
 
 function scheduleCloudSave() {
