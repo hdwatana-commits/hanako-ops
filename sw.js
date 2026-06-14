@@ -1,10 +1,9 @@
-const CACHE_NAME = "hanako-room-ops-v3";
+const CACHE_NAME = "hanako-room-ops-v4";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
-  "./config.js",
   "./cloud-sync.js",
   "./manifest.webmanifest",
   "./icons/icon.svg",
@@ -30,6 +29,11 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  if (new URL(event.request.url).pathname.endsWith("/config.js")) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
