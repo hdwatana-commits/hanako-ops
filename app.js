@@ -57,6 +57,7 @@ const views = {
   products: "商品パイプライン",
   generator: "投稿メーカー",
   calendar: "投稿カレンダー",
+  connections: "SNS連携",
   analytics: "成果メモ",
 };
 
@@ -206,6 +207,8 @@ function bindActions() {
   });
 
   document.querySelector("#copyPost").addEventListener("click", () => copyText(postOutput.value));
+  document.querySelector("#publishPost").addEventListener("click", publishGeneratedPost);
+  document.querySelector("#refreshConnections").addEventListener("click", refreshSocialConnections);
 
   document.querySelector("#saveDraft").addEventListener("click", () => {
     if (!postOutput.value.trim()) return showToast("投稿を生成してください");
@@ -329,6 +332,92 @@ function showProductImportStatus(message, isError = false) {
   status.textContent = message;
   status.className = `import-status${isError ? " error" : ""}`;
   status.hidden = false;
+}
+
+async function refreshSocialConnections() {
+  const message = document.querySelector("#connectionMessage");
+  if (!cloudSync.signedIn) {
+    message.textContent = "先に画面上部の「同期」からログインしてください。";
+    return;
+  }
+
+  message.textContent = "接続状況を確認しています...";
+  try {
+    const result = await callSocialApi({ action: "status" });
+    updateConnectionCard("X", result.connections?.x);
+    updateConnectionCard("Instagram", result.connections?.instagram);
+    updateConnectionCard("Threads", result.connections?.threads);
+    message.textContent = "Supabase Secretsの設定状況を確認しました。";
+  } catch (error) {
+    message.textContent = error.message || "接続状況を確認できませんでした。";
+  }
+}
+
+function updateConnectionCard(platform, connected) {
+  const card = document.querySelector(`[data-connection="${platform}"]`);
+  const stateLabel = card?.querySelector(".connection-state");
+  if (!stateLabel) return;
+  stateLabel.textContent = connected ? "接続済み" : "未接続";
+  stateLabel.classList.toggle("connected", Boolean(connected));
+}
+
+async function publishGeneratedPost() {
+  const text = postOutput.value.trim();
+  if (!text) return showToast("先に投稿を生成してください");
+  if (!cloudSync.signedIn) return showToast("先に同期ログインしてください");
+
+  const product = state.products.find((item) => item.id === selectedProduct.value) || null;
+  if (activePlatform === "Instagram" && !product?.image) {
+    return showToast("Instagram投稿には商品画像が必要です");
+  }
+
+  const approved = window.confirm(`${activePlatform}へこの内容を投稿します。よろしいですか？`);
+  if (!approved) return;
+
+  const button = document.querySelector("#publishPost");
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "投稿中...";
+  try {
+    const result = await callSocialApi({
+      action: "publish",
+      platform: activePlatform,
+      text,
+      imageUrl: product?.image || "",
+    });
+    showToast(`${activePlatform}へ投稿しました`);
+    state.metrics.unshift({
+      id: createId(),
+      date: new Date().toISOString().slice(0, 10),
+      platform: activePlatform,
+      post: `API投稿 ${result.id || ""}`.trim(),
+      clicks: 0,
+      sales: 0,
+    });
+    saveState();
+    renderMetrics();
+  } catch (error) {
+    showToast(error.message || "投稿できませんでした");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+async function callSocialApi(payload) {
+  const token = await cloudSync.getAccessToken();
+  const response = await fetch(`${cloudSync.url}/functions/v1/social-publish`, {
+    method: "POST",
+    headers: {
+      apikey: cloudSync.key,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || "SNS連携でエラーが発生しました");
+  return body;
 }
 
 function bindInstallButton() {

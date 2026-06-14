@@ -90,3 +90,40 @@ Supabaseでメール確認を有効にしている場合、初回登録後に確
 - 投稿文には `PR`、`広告`、`アフィリエイトを含みます` などの表記を入れてください。
 - 無差別フォロー、無差別いいね、自動リプ大量送信、同一文面の連投は避けてください。
 - 商品画像や公式素材は、利用条件を確認してから使ってください。
+
+## X・Instagram・Threadsへ投稿する
+
+SNSのアクセストークンはGitHubやブラウザへ置かず、Supabase Edge Function Secretsで管理します。
+
+### Edge Functionを公開
+
+1. Supabaseの `Edge Functions` → `Deploy a new function` → `Via Editor`
+2. 関数名を `social-publish`
+3. [supabase/functions/social-publish/index.ts](supabase/functions/social-publish/index.ts) の全文を貼る
+4. `Verify JWT with legacy secret`をONにしてDeploy
+5. `index.html`、`app.js`、`styles.css`、`sw.js`をGitHubへアップロード
+
+### Supabase Secrets
+
+SupabaseのEdge Functions設定に、利用するSNSの値を登録します。
+
+```text
+X_ACCESS_TOKEN
+INSTAGRAM_ACCESS_TOKEN
+INSTAGRAM_USER_ID
+THREADS_ACCESS_TOKEN
+THREADS_USER_ID
+META_GRAPH_VERSION
+```
+
+`META_GRAPH_VERSION`にはMeta Developer Dashboardで利用中のGraph APIバージョンを入力します。利用しないSNSの値は不要です。
+
+### 必要な権限
+
+- X: ユーザー認証の書き込み可能トークン。少なくとも投稿作成権限が必要
+- Instagram: プロアカウントとコンテンツ公開権限。画像は外部から取得できる公開URLが必要
+- Threads: `threads_basic`と`threads_content_publish`を許可したユーザートークン
+
+設定後、アプリの `SNS連携` → `接続を確認` で状態を確認できます。投稿メーカーで内容を作り、`SNSへ投稿`を押すと確認後に公開します。
+
+この構成はハナコ本人の1アカウント運用向けです。第三者にもログイン接続を提供する場合は、各SNSのOAuthフロー、トークン更新、アプリ審査を別途実装してください。

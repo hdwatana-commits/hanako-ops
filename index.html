@@ -31,6 +31,7 @@
           <button class="nav-tab" data-view="products">商品パイプライン</button>
           <button class="nav-tab" data-view="generator">投稿メーカー</button>
           <button class="nav-tab" data-view="calendar">投稿カレンダー</button>
+          <button class="nav-tab" data-view="connections">SNS連携</button>
           <button class="nav-tab" data-view="analytics">成果メモ</button>
         </nav>
 
@@ -189,6 +190,7 @@
               <div class="button-row">
                 <button id="saveDraft">下書き保存</button>
                 <button id="scheduleTomorrow">明日に入れる</button>
+                <button class="primary" id="publishPost">SNSへ投稿</button>
               </div>
             </article>
 
@@ -208,6 +210,36 @@
               <button id="clearCalendar">完了済みを整理</button>
             </div>
             <div class="calendar-list" id="calendarList"></div>
+          </div>
+        </section>
+
+        <section class="view" id="connections">
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Supabase Secretsで安全に管理</p>
+                <h3>SNSアカウント接続</h3>
+              </div>
+              <button id="refreshConnections">接続を確認</button>
+            </div>
+            <p class="connection-message" id="connectionMessage">同期ログイン後に接続状況を確認できます。</p>
+            <div class="connection-grid" id="connectionGrid">
+              <article class="connection-card" data-connection="X">
+                <div class="connection-icon x-icon">X</div>
+                <div><strong>X</strong><p>比較・ランキング・速報投稿</p></div>
+                <span class="connection-state">未確認</span>
+              </article>
+              <article class="connection-card" data-connection="Instagram">
+                <div class="connection-icon instagram-icon">IG</div>
+                <div><strong>Instagram</strong><p>画像付きフィード投稿</p></div>
+                <span class="connection-state">未確認</span>
+              </article>
+              <article class="connection-card" data-connection="Threads">
+                <div class="connection-icon threads-icon">@</div>
+                <div><strong>Threads</strong><p>短文・共感投稿</p></div>
+                <span class="connection-state">未確認</span>
+              </article>
+            </div>
           </div>
         </section>
 

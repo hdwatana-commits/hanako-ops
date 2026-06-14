@@ -393,6 +393,67 @@ textarea {
   margin-top: 16px;
 }
 
+.connection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.connection-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.connection-card p,
+.connection-message {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.connection-message {
+  margin: 0 0 14px;
+}
+
+.connection-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 900;
+}
+
+.x-icon,
+.threads-icon {
+  background: #111;
+}
+
+.instagram-icon {
+  background: #c13584;
+}
+
+.connection-state {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #edf1f6;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.connection-state.connected {
+  background: #e3f0eb;
+  color: var(--green);
+}
+
 .product-card {
   display: grid;
   gap: 10px;
@@ -691,7 +752,8 @@ textarea {
 
   .two-column,
   .three-column,
-  .product-grid {
+  .product-grid,
+  .connection-grid {
     grid-template-columns: 1fr;
   }
 

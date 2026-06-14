@@ -1,2 +1,5 @@
 [functions.rakuten-product-import]
 verify_jwt = true
+
+[functions.social-publish]
+verify_jwt = true
