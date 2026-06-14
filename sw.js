@@ -1,14 +1,15 @@
-const CACHE_NAME = "hanako-room-ops-v7";
+const CACHE_NAME = "hanako-room-ops-v18";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./cloud-sync.js",
+  "./room-review-generator.js",
   "./manifest.webmanifest",
-  "./icons/icon.svg",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
+  "./icons/hanako-avatar.jpg",
 ];
 
 self.addEventListener("install", (event) => {

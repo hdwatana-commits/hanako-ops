@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "ROOM Repost Helper",
+  "version": "0.1.0",
+  "description": "Helps repost your own Rakuten ROOM items.",
+  "permissions": ["tabs", "clipboardRead"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["main-world.js"],
+      "matches": ["https://room.rakuten.co.jp/*", "https://*.room.rakuten.co.jp/*"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://room.rakuten.co.jp/*",
+        "https://*.room.rakuten.co.jp/*",
+        "https://item.rakuten.co.jp/*",
+        "https://*.item.rakuten.co.jp/*",
+        "https://brandavenue.rakuten.co.jp/*",
+        "https://*.brandavenue.rakuten.co.jp/*",
+        "https://fashion.rakuten.co.jp/*",
+        "https://*.fashion.rakuten.co.jp/*",
+        "https://search.rakuten.co.jp/*",
+        "https://*.search.rakuten.co.jp/*",
+        "https://books.rakuten.co.jp/*",
+        "https://*.books.rakuten.co.jp/*"
+      ],
+      "js": ["review-generator.js", "content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://room.rakuten.co.jp/*",
+        "https://*.room.rakuten.co.jp/*"
+      ],
+      "js": ["main-world.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
+}

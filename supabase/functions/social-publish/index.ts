@@ -13,7 +13,7 @@ Deno.serve(async (request) => {
     if (body.action === "status") {
       return json({
         connections: {
-          x: Boolean(secret("X_ACCESS_TOKEN")),
+          x: Boolean(secret("X_API_KEY") && secret("X_API_SECRET") && secret("X_ACCESS_TOKEN") && secret("X_ACCESS_TOKEN_SECRET")),
           instagram: Boolean(secret("INSTAGRAM_ACCESS_TOKEN") && secret("INSTAGRAM_USER_ID")),
           threads: Boolean(secret("THREADS_ACCESS_TOKEN") && secret("THREADS_USER_ID")),
         },
@@ -36,14 +36,49 @@ Deno.serve(async (request) => {
 });
 
 async function publishX(text: string) {
-  const token = required("X_ACCESS_TOKEN");
+  const apiKey = required("X_API_KEY");
+  const apiSecret = required("X_API_SECRET");
+  const accessToken = required("X_ACCESS_TOKEN");
+  const accessTokenSecret = required("X_ACCESS_TOKEN_SECRET");
+  const url = "https://api.x.com/2/tweets";
+  const oauth = {
+    oauth_consumer_key: apiKey,
+    oauth_nonce: crypto.randomUUID().replaceAll("-", ""),
+    oauth_signature_method: "HMAC-SHA1",
+    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+    oauth_token: accessToken,
+    oauth_version: "1.0",
+  };
+  const parameterString = Object.entries(oauth)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${percent(key)}=${percent(value)}`)
+    .join("&");
+  const signatureBase = `POST&${percent(url)}&${percent(parameterString)}`;
+  const signingKey = `${percent(apiSecret)}&${percent(accessTokenSecret)}`;
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(signingKey),
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"],
+  );
+  const signatureBytes = await crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(signatureBase));
+  const signature = btoa(String.fromCharCode(...new Uint8Array(signatureBytes)));
+  const authorization = `OAuth ${Object.entries({ ...oauth, oauth_signature: signature })
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${percent(key)}="${percent(value)}"`)
+    .join(", ")}`;
   const response = await fetch("https://api.x.com/2/tweets", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: { Authorization: authorization, "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
   });
   const result = await readApi(response, "X");
   return { id: result.data?.id, platform: "X" };
+}
+
+function percent(value: string) {
+  return encodeURIComponent(value).replace(/[!'()*]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
 }
 
 async function publishInstagram(caption: string, imageUrl: string) {

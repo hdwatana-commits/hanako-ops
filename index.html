@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Hanako Room Ops</title>
-    <meta name="theme-color" content="#d84b7d">
+    <meta name="theme-color" content="#fff8f8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Hanako Ops">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="icon" href="icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="styles.css">
     <script src="config.js"></script>
@@ -19,20 +19,21 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <span class="brand-mark">H</span>
+          <img class="brand-avatar" src="icons/hanako-avatar.jpg" alt="ハナコ">
           <div>
-            <p class="eyebrow">Rakuten ROOM Growth Desk</p>
+            <p class="eyebrow">おしゃれ研究家</p>
             <h1>Hanako Ops</h1>
           </div>
         </div>
 
         <nav class="nav-tabs" aria-label="ワークスペース">
-          <button class="nav-tab active" data-view="brief">プロフィール</button>
-          <button class="nav-tab" data-view="products">商品パイプライン</button>
-          <button class="nav-tab" data-view="generator">投稿メーカー</button>
-          <button class="nav-tab" data-view="calendar">投稿カレンダー</button>
-          <button class="nav-tab" data-view="connections">SNS連携</button>
-          <button class="nav-tab" data-view="analytics">成果メモ</button>
+          <button class="nav-tab active" data-view="brief"><span class="nav-icon">⌂</span><span>ホーム</span></button>
+          <button class="nav-tab" data-view="products"><span class="nav-icon">◇</span><span>商品</span></button>
+          <button class="nav-tab" data-view="room"><span class="nav-icon">R</span><span>ROOM投稿</span></button>
+          <button class="nav-tab" data-view="generator"><span class="nav-icon">✦</span><span>投稿メーカー</span></button>
+          <button class="nav-tab" data-view="calendar"><span class="nav-icon">▦</span><span>カレンダー</span></button>
+          <button class="nav-tab" data-view="connections"><span class="nav-icon">↗</span><span>SNS連携</span></button>
+          <button class="nav-tab" data-view="analytics"><span class="nav-icon">⌁</span><span>成果</span></button>
         </nav>
 
         <div class="side-panel">
@@ -46,12 +47,15 @@
 
       <main class="workspace">
         <header class="topbar">
-          <div>
+          <div class="topbar-title">
+            <img src="icons/hanako-avatar.jpg" alt="" class="topbar-avatar">
+            <div>
             <p class="eyebrow">おしゃれ研究家ハナコ</p>
-            <h2 id="viewTitle">プロフィール</h2>
+            <h2 id="viewTitle">今日の運用</h2>
+            </div>
           </div>
           <div class="top-actions">
-            <button class="sync-button" id="syncBtn"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">同期</span></button>
+            <button class="sync-button" id="syncBtn" title="クラウド同期"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">同期</span></button>
             <button class="install-button" id="installBtn" hidden>iPhoneに追加</button>
             <button class="icon-button" id="exportBtn" title="データを書き出し">⇩</button>
             <label class="icon-button file-button" title="データを読み込み">
@@ -62,6 +66,48 @@
         </header>
 
         <section class="view active" id="brief">
+          <div class="home-welcome">
+            <div class="home-welcome-copy">
+              <span class="home-kicker" id="homeDate">今日の運用</span>
+              <h3>ハナコさん、今日は何を紹介する？</h3>
+              <p>商品を登録したら、ROOMとSNSの投稿文をすぐに作れます。</p>
+            </div>
+            <img src="icons/hanako-avatar.jpg" alt="おしゃれ研究家ハナコ" class="home-avatar">
+          </div>
+
+          <div class="home-stats" aria-label="運用状況">
+            <button class="home-stat" type="button" data-open-view="products">
+              <span>登録商品</span><strong id="homeProductCount">0</strong><small>商品を見る</small>
+            </button>
+            <button class="home-stat" type="button" data-open-view="room">
+              <span>ROOM投稿待ち</span><strong id="homeRoomQueueCount">0</strong><small>投稿を進める</small>
+            </button>
+            <button class="home-stat" type="button" data-open-view="calendar">
+              <span>予約・予定</span><strong id="homeCalendarCount">0</strong><small>予定を見る</small>
+            </button>
+          </div>
+
+          <div class="home-section-heading">
+            <div><span class="home-kicker">QUICK START</span><h3>よく使うメニュー</h3></div>
+            <span>迷ったら左から順番に</span>
+          </div>
+          <div class="quick-actions">
+            <button class="quick-action quick-product" type="button" data-open-view="products">
+              <span class="quick-step">01</span><span class="quick-icon">＋</span>
+              <strong>商品を登録</strong><small>楽天のURLを貼るだけ</small><span class="quick-arrow">›</span>
+            </button>
+            <button class="quick-action quick-room" type="button" data-open-view="room">
+              <span class="quick-step">02</span><span class="quick-icon">R</span>
+              <strong>ROOM投稿を作る</strong><small>レビューを自動生成</small><span class="quick-arrow">›</span>
+            </button>
+            <button class="quick-action quick-sns" type="button" data-open-view="generator">
+              <span class="quick-step">03</span><span class="quick-icon">✦</span>
+              <strong>SNS投稿を作る</strong><small>X・Instagram・Threads</small><span class="quick-arrow">›</span>
+            </button>
+          </div>
+
+          <details class="profile-settings">
+            <summary><span>プロフィールと運用ルール</span><small>必要なときだけ編集</small></summary>
           <div class="two-column">
             <article class="panel">
               <div class="panel-heading">
@@ -120,6 +166,7 @@
               </div>
             </article>
           </div>
+          </details>
         </section>
 
         <section class="view" id="products">
@@ -130,8 +177,8 @@
             </div>
             <div class="product-importer">
               <div>
-                <label class="field-label" for="productImportUrl">楽天ROOM / 楽天アフィリエイトURL</label>
-                <input id="productImportUrl" type="url" inputmode="url" placeholder="URLを貼り付けてください">
+                <label class="field-label" for="productImportUrl">楽天ROOM / 楽天市場 / 楽天トラベルのアフィリエイトURL</label>
+                <input id="productImportUrl" type="url" inputmode="url" placeholder="商品または宿泊施設のURLを貼り付けてください">
               </div>
               <button class="primary" id="importProductBtn" type="button">URLから自動取得</button>
             </div>
@@ -140,13 +187,17 @@
               <input name="name" placeholder="商品名 例: 高見えフリルブラウス" required>
               <input name="url" placeholder="登録するURL">
               <input name="image" type="hidden">
+              <input name="details" type="hidden">
               <select name="category">
                 <option>トップス</option>
+                <option>アウター</option>
                 <option>ワンピース</option>
                 <option>スカート</option>
+                <option>パンツ</option>
                 <option>バッグ</option>
                 <option>シューズ</option>
                 <option>アクセサリー</option>
+                <option>ホテル・旅行</option>
               </select>
               <input name="price" placeholder="価格帯 例: 3,000円台">
               <input name="hook" placeholder="推しポイント 例: 甘めだけど通勤にも使える">
@@ -178,12 +229,167 @@
                 <option>週末デート服</option>
                 <option>セール速報</option>
               </select>
-              <button class="primary wide" id="generatePost">投稿を作る</button>
+              <label class="field-label">届けたい相手</label>
+              <select id="audienceSelect">
+                <option value="university">きれいめ好きの女子大生</option>
+                <option value="office">20代の通勤・オフィス服</option>
+                <option value="date">デート服を探している人</option>
+                <option value="budget">高見え・予算重視の人</option>
+                <option value="wave">骨格ウェーブを意識する人</option>
+              </select>
+              <div class="travel-settings" id="travelSettings" hidden>
+                <p class="eyebrow">旅行向け設定</p>
+                <div class="generator-pair">
+                  <div>
+                    <label class="field-label">誰と行く？</label>
+                    <select id="travelCompanionSelect">
+                      <option value="girls">女子旅</option>
+                      <option value="solo">ひとり旅</option>
+                      <option value="couple">カップル・記念日</option>
+                      <option value="family">家族旅行</option>
+                      <option value="oshi">推し活・ライブ遠征</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label">一番大切なこと</label>
+                    <select id="travelPrioritySelect">
+                      <option value="access">アクセス・駅近</option>
+                      <option value="room">客室・眺望</option>
+                      <option value="food">食事・朝食</option>
+                      <option value="spa">温泉・大浴場</option>
+                      <option value="cost">料金・コスパ</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="travel-facts" id="travelFacts">URLから取得した宿情報がここに表示されます。</div>
+              </div>
+              <div class="fashion-settings" id="fashionSettings">
+                <p class="eyebrow">ファッション向け設定</p>
+                <label class="field-label">着ていく場面</label>
+                <select id="fashionOccasionSelect">
+                  <option value="campus">大学・通学</option>
+                  <option value="office">通勤・きちんとした日</option>
+                  <option value="date">デート・カフェ</option>
+                  <option value="oshi">推し活・イベント</option>
+                  <option value="weekend">休日・近所のお出かけ</option>
+                </select>
+                <div class="generator-pair">
+                  <div>
+                    <label class="field-label">一番重視すること</label>
+                    <select id="fashionPrioritySelect">
+                      <option value="versatility">着回しやすさ</option>
+                      <option value="premium">高見え</option>
+                      <option value="balance">体型バランス</option>
+                      <option value="material">素材・着心地</option>
+                      <option value="cost">価格・コスパ</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label">気になるポイント</label>
+                    <select id="fashionConcernSelect">
+                      <option value="upper">顔・上半身</option>
+                      <option value="waist">腰・ウエスト</option>
+                      <option value="length">丈・身長バランス</option>
+                      <option value="comfort">動きやすさ・締め付け</option>
+                      <option value="weather">透け・汗・気温</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="fashion-facts" id="fashionFacts">URLから取得した商品情報がここに表示されます。</div>
+              </div>
+              <label class="field-label">投稿の目的</label>
+              <select id="goalSelect">
+                <option value="save">保存してもらう</option>
+                <option value="room">楽天ROOMを見てもらう</option>
+                <option value="reply">共感・返信を増やす</option>
+                <option value="follow">フォローにつなげる</option>
+              </select>
+              <label class="field-label">成果の最適化</label>
+              <select id="optimizationSelect">
+                <option value="balanced">バランスよく伸ばす</option>
+                <option value="reach">閲覧・新規リーチ</option>
+                <option value="save">保存・シェア</option>
+                <option value="click">ROOMクリック</option>
+                <option value="sale">売上</option>
+              </select>
+              <div class="learning-hint" id="learningHint">成果を記録すると、伸びた投稿型を自動で優先します。</div>
+              <label class="field-label">寄り添う悩み・気持ち</label>
+              <select id="emotionSelect">
+                <option value="auto">商品と読者から自動選択</option>
+                <option value="morning">朝、服が決まらない</option>
+                <option value="overdress">頑張りすぎて見えたくない</option>
+                <option value="body">体型やバランスが気になる</option>
+                <option value="budget">可愛いけれど予算も大事</option>
+                <option value="weather">気温・雨・汗にも対応したい</option>
+                <option value="repeat">いつも同じコーデになる</option>
+                <option value="confidence">自信を持って出かけたい</option>
+              </select>
+              <label class="field-label">冒頭のつかみ</label>
+              <select id="hookSelect">
+                <option value="auto">内容に合わせて自動</option>
+                <option value="scene">一瞬で浮かぶ情景</option>
+                <option value="confession">素直な本音・告白</option>
+                <option value="question">思わず答えたくなる質問</option>
+                <option value="contrarian">少し意外な気づき</option>
+                <option value="specific">数字・具体性</option>
+                <option value="whisper">そっと話しかける</option>
+              </select>
+              <label class="field-label">商品との関係</label>
+              <select id="ownershipSelect">
+                <option value="considering">購入・予約を検討中</option>
+                <option value="ordered">注文・予約済み</option>
+                <option value="tried">試着・現地確認済み</option>
+                <option value="owned">購入・宿泊済み</option>
+                <option value="favorite">何度も使う愛用品・再訪したい宿</option>
+              </select>
+              <label class="field-label">反応を生む構成</label>
+              <select id="viralPatternSelect">
+                <option value="auto">内容に合わせて自動</option>
+                <option value="microstory">小さな実話・情景</option>
+                <option value="beforeafter">選ぶ前と後の変化</option>
+                <option value="mistake">失敗から学んだこと</option>
+                <option value="comparison">迷う2択・比較</option>
+                <option value="ranking">目的別3候補ランキング</option>
+                <option value="checklist">保存用チェックリスト</option>
+                <option value="costperwear">1回あたりで考える</option>
+                <option value="unpopular">やさしい逆張り</option>
+                <option value="commentreply">コメントへの回答風</option>
+              </select>
+              <div class="generator-pair">
+                <div>
+                  <label class="field-label">季節</label>
+                  <select id="seasonSelect">
+                    <option value="auto">今の季節</option>
+                    <option value="spring">春</option>
+                    <option value="summer">夏</option>
+                    <option value="autumn">秋</option>
+                    <option value="winter">冬</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label">文体</label>
+                  <select id="toneSelect">
+                    <option value="polite">丁寧で親しみやすい</option>
+                    <option value="natural">自然体・友達感</option>
+                    <option value="expert">研究家らしく具体的</option>
+                  </select>
+                </div>
+              </div>
+              <label class="field-label">今回だけ入れたい情報</label>
+              <textarea id="postBrief" class="brief-input" placeholder="例: 雨の日の通学、白スニーカー合わせ、6月のセール"></textarea>
+              <div class="button-row generator-actions">
+                <button class="primary" id="generatePost">投稿を作る</button>
+                <button id="generateVariation">別案を作る</button>
+                <button id="generateThree">3案を比較</button>
+              </div>
             </article>
 
             <article class="panel output-panel">
               <div class="panel-heading">
-                <h3>生成結果</h3>
+                <div>
+                  <p class="eyebrow" id="outputMeta">媒体に最適化して生成</p>
+                  <h3>完成稿</h3>
+                </div>
                 <button id="copyPost">コピー</button>
               </div>
               <textarea id="postOutput" class="post-output" spellcheck="false"></textarea>
@@ -196,11 +402,71 @@
 
             <article class="panel">
               <div class="panel-heading">
-                <h3>表現チェック</h3>
+                <div>
+                  <p class="eyebrow">投稿前レビュー</p>
+                  <h3>完成度</h3>
+                </div>
+                <strong class="quality-score" id="qualityScore">--</strong>
               </div>
               <ul class="checklist" id="checklist"></ul>
             </article>
           </div>
+        </section>
+
+        <section class="view" id="room">
+          <div class="room-workspace">
+            <article class="panel room-composer">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">既存ROOMエンジン統合</p>
+                  <h3>ROOM投稿を作る</h3>
+                </div>
+                <span class="status-pill">改行保持</span>
+              </div>
+              <label class="field-label" for="roomProductSelect">投稿する商品</label>
+              <select id="roomProductSelect"></select>
+              <div class="room-product-preview" id="roomProductPreview"></div>
+              <label class="field-label" for="roomPostOutput">ROOM投稿文</label>
+              <textarea id="roomPostOutput" class="room-post-output" spellcheck="false" placeholder="商品を選び「ROOM文を作る」を押してください"></textarea>
+              <div class="room-character-row">
+                <span id="roomCharacterCount">0文字</span>
+                <span>空行もROOM用に保持してコピーします</span>
+              </div>
+              <div class="button-row room-actions">
+                <button class="primary" id="generateRoomPost">ROOM文を作る</button>
+                <button id="copyRoomPost">コピー</button>
+                <button id="copyOpenRoomProduct">コピーして商品を開く</button>
+                <button id="addRoomQueue">投稿待ちに追加</button>
+              </div>
+            </article>
+
+            <article class="panel room-guide">
+              <div class="panel-heading">
+                <h3>投稿の流れ</h3>
+              </div>
+              <ol class="room-steps">
+                <li><span>1</span><div><strong>ROOM文を生成</strong><p>商品情報から既存のROOM専用エンジンで作成します。</p></div></li>
+                <li><span>2</span><div><strong>コピーして商品を開く</strong><p>PCは同梱拡張、iPhoneはコピー＆ペーストで使えます。</p></div></li>
+                <li><span>3</span><div><strong>内容を確認して投稿</strong><p>価格・在庫・表現を確認し、ROOM側で公開します。</p></div></li>
+              </ol>
+              <div class="room-extension-note">
+                <strong>PC用ROOMヘルパー</strong>
+                <p>このアプリに同梱したChrome拡張を使うと、ROOM画面への貼り付けが簡単になります。</p>
+                <button id="downloadRoomExtension">PC用拡張をダウンロード</button>
+              </div>
+            </article>
+          </div>
+
+          <article class="panel room-queue-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">投稿漏れを防ぐ</p>
+                <h3>ROOM投稿待ち</h3>
+              </div>
+              <span class="status-pill" id="roomQueueCount">0件</span>
+            </div>
+            <div class="room-queue" id="roomQueue"></div>
+          </article>
         </section>
 
         <section class="view" id="calendar">
@@ -251,8 +517,27 @@
               </div>
               <form id="metricForm" class="metric-form">
                 <input name="date" type="date" required>
-                <input name="platform" placeholder="媒体 例: Instagram">
+                <select name="platform">
+                  <option>Instagram</option>
+                  <option>Threads</option>
+                  <option>X</option>
+                </select>
                 <input name="post" placeholder="投稿テーマ">
+                <select name="pattern">
+                  <option value="">投稿型を選択</option>
+                  <option value="microstory">小さな実話</option>
+                  <option value="beforeafter">変化</option>
+                  <option value="mistake">失敗からの学び</option>
+                  <option value="comparison">比較</option>
+                  <option value="ranking">ランキング</option>
+                  <option value="checklist">保存用チェック</option>
+                  <option value="costperwear">コスパ</option>
+                  <option value="unpopular">やさしい逆張り</option>
+                  <option value="commentreply">コメント回答</option>
+                </select>
+                <input name="views" type="number" min="0" placeholder="表示数">
+                <input name="saves" type="number" min="0" placeholder="保存・シェア">
+                <input name="replies" type="number" min="0" placeholder="返信">
                 <input name="clicks" type="number" min="0" placeholder="ROOMクリック">
                 <input name="sales" type="number" min="0" placeholder="売上件数">
                 <button class="primary" type="submit">記録</button>
@@ -332,6 +617,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="room-review-generator.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
