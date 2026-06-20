@@ -305,6 +305,8 @@ function bindActions() {
 function bindProductImporter() {
   const importUrl = document.querySelector("#productImportUrl");
   const importBtn = document.querySelector("#importProductBtn");
+  const searchQuery = document.querySelector("#productSearchQuery");
+  const searchBtn = document.querySelector("#searchProductBtn");
   if (!importUrl || !importBtn) return;
 
   const importProduct = async () => {
@@ -352,6 +354,52 @@ function bindProductImporter() {
       importProduct();
     }
   });
+
+  const searchProducts = async () => {
+    const query = searchQuery?.value.trim();
+    if (!query) {
+      showProductImportStatus("検索したい商品名を入力してください", true);
+      searchQuery?.focus();
+      return;
+    }
+
+    if (!cloudSync.configured) {
+      showProductImportStatus("クラウド接続が未設定です", true);
+      return;
+    }
+
+    if (!cloudSync.signedIn) {
+      showProductImportStatus("先に画面上部の「同期」からログインしてください", true);
+      return;
+    }
+
+    const originalLabel = searchBtn.textContent;
+    searchBtn.disabled = true;
+    searchBtn.textContent = "検索中...";
+    showProductImportStatus("楽天市場から候補を探しています");
+
+    try {
+      const results = await fetchRakutenProductSearch(query);
+      renderProductSearchResults(results);
+      showProductImportStatus(results.length
+        ? "候補を表示しました。登録したい商品を選んでください"
+        : "候補が見つかりませんでした。キーワードを少し変えてください", !results.length);
+    } catch (error) {
+      showProductImportStatus(error.message || "商品検索に失敗しました", true);
+      renderProductSearchResults([]);
+    } finally {
+      searchBtn.disabled = false;
+      searchBtn.textContent = originalLabel;
+    }
+  };
+
+  searchBtn?.addEventListener("click", searchProducts);
+  searchQuery?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      searchProducts();
+    }
+  });
 }
 
 async function fetchRakutenProduct(url) {
@@ -371,16 +419,60 @@ async function fetchRakutenProduct(url) {
   return body;
 }
 
+async function fetchRakutenProductSearch(query) {
+  const token = await cloudSync.getAccessToken();
+  const response = await fetch(`${cloudSync.url}/functions/v1/rakuten-product-import`, {
+    method: "POST",
+    headers: {
+      apikey: cloudSync.key,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || "楽天の商品検索に失敗しました");
+  return Array.isArray(body.results) ? body.results : [];
+}
+
 function fillProductForm(product, originalUrl) {
   const form = document.querySelector("#productForm");
   form.elements.name.value = product.name || "";
-  form.elements.url.value = originalUrl;
+  form.elements.url.value = originalUrl || product.sourceUrl || product.url || "";
   form.elements.image.value = product.image || "";
   form.elements.details.value = JSON.stringify(product.details || {});
   form.elements.price.value = product.price || "";
   form.elements.hook.value = product.hook || "";
   const categoryOption = [...form.elements.category.options].find((option) => option.value === product.category);
   if (categoryOption) form.elements.category.value = product.category;
+}
+
+function renderProductSearchResults(results) {
+  const container = document.querySelector("#productSearchResults");
+  if (!container) return;
+  container.innerHTML = "";
+  container.hidden = !results.length;
+  results.forEach((product) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "product-search-result";
+    card.innerHTML = `
+      ${product.image ? `<img src="${escapeHtml(product.image)}" alt="">` : `<span class="product-search-placeholder">品</span>`}
+      <span>
+        <strong>${escapeHtml(product.name || "商品名未取得")}</strong>
+        <small>${escapeHtml([product.price, product.shopName || product.details?.brand, product.category].filter(Boolean).join(" / "))}</small>
+      </span>
+      <em>選ぶ</em>
+    `;
+    card.addEventListener("click", () => {
+      fillProductForm(product, product.sourceUrl || product.url || "");
+      container.hidden = true;
+      showProductImportStatus("商品情報を入力しました。内容を確認して「追加」を押してください");
+      document.querySelector("#productForm").scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    container.appendChild(card);
+  });
 }
 
 function showProductImportStatus(message, isError = false) {
@@ -747,6 +839,7 @@ function applyCloudState(payload) {
   renderAngleOptions();
   renderCalendar();
   renderMetrics();
+  renderHome();
   suppressCloudSave = false;
 }
 

@@ -27,13 +27,13 @@
         </div>
 
         <nav class="nav-tabs" aria-label="ワークスペース">
-          <button class="nav-tab active" data-view="brief"><span class="nav-icon">⌂</span><span>ホーム</span></button>
-          <button class="nav-tab" data-view="products"><span class="nav-icon">◇</span><span>商品</span></button>
+          <button class="nav-tab active" data-view="brief"><span class="nav-icon">家</span><span>ホーム</span></button>
+          <button class="nav-tab" data-view="products"><span class="nav-icon">品</span><span>商品</span></button>
           <button class="nav-tab" data-view="room"><span class="nav-icon">R</span><span>ROOM投稿</span></button>
-          <button class="nav-tab" data-view="generator"><span class="nav-icon">✦</span><span>投稿メーカー</span></button>
-          <button class="nav-tab" data-view="calendar"><span class="nav-icon">▦</span><span>カレンダー</span></button>
-          <button class="nav-tab" data-view="connections"><span class="nav-icon">↗</span><span>SNS連携</span></button>
-          <button class="nav-tab" data-view="analytics"><span class="nav-icon">⌁</span><span>成果</span></button>
+          <button class="nav-tab" data-view="generator"><span class="nav-icon">文</span><span>投稿メーカー</span></button>
+          <button class="nav-tab" data-view="calendar"><span class="nav-icon">予</span><span>カレンダー</span></button>
+          <button class="nav-tab" data-view="connections"><span class="nav-icon">連</span><span>SNS連携</span></button>
+          <button class="nav-tab" data-view="analytics"><span class="nav-icon">績</span><span>成果</span></button>
         </nav>
 
         <div class="side-panel">
@@ -182,7 +182,15 @@
               </div>
               <button class="primary" id="importProductBtn" type="button">URLから自動取得</button>
             </div>
+            <div class="product-search-box">
+              <div>
+                <label class="field-label" for="productSearchQuery">商品名で検索</label>
+                <input id="productSearchQuery" type="search" inputmode="search" placeholder="例: 高見え ブラウス フリル">
+              </div>
+              <button class="primary" id="searchProductBtn" type="button">検索する</button>
+            </div>
             <p class="import-status" id="productImportStatus" hidden></p>
+            <div class="product-search-results" id="productSearchResults" hidden></div>
             <form id="productForm" class="product-form">
               <input name="name" placeholder="商品名 例: 高見えフリルブラウス" required>
               <input name="url" placeholder="登録するURL">

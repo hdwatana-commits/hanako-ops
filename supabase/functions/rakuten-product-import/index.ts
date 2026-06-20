@@ -14,7 +14,9 @@ Deno.serve(async (request) => {
   try {
     const body = await request.json();
     const originalUrl = String(body?.url || "").trim();
-    if (!originalUrl) return json({ error: "URLを入力してください" }, 400);
+    const query = String(body?.query || "").trim();
+    if (query) return json({ results: await searchRakutenProducts(query) });
+    if (!originalUrl) return json({ error: "URLまたは検索キーワードを入力してください" }, 400);
 
     const { html, finalUrl } = await fetchRakutenPage(originalUrl);
     const isTravel = isRakutenTravelUrl(finalUrl) || isRakutenTravelUrl(originalUrl) || /楽天トラベル|travel\.rakuten\.co\.jp/i.test(html);
@@ -88,6 +90,148 @@ function assertAllowedUrl(url: URL) {
   const host = url.hostname.toLowerCase();
   const allowed = host === "rakuten.co.jp" || host.endsWith(".rakuten.co.jp") || host === "r10.to" || host.endsWith(".r10.to");
   if (!allowed) throw new Error("楽天ROOM、楽天市場、楽天トラベル、楽天アフィリエイトのURLだけ利用できます");
+}
+
+async function searchRakutenProducts(query: string) {
+  const keyword = cleanTitle(query).slice(0, 80);
+  if (!keyword) throw new Error("検索キーワードを入力してください");
+
+  const fromApi = await searchRakutenApi(keyword);
+  if (fromApi.length) return fromApi;
+
+  const url = `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(keyword)}/?s=2`;
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+      "Accept-Language": "ja-JP,ja;q=0.9",
+      Accept: "text/html,application/xhtml+xml",
+    },
+  });
+  if (!response.ok) throw new Error(`楽天検索を開けませんでした (${response.status})`);
+  const html = await response.text();
+  return extractSearchResults(html, keyword);
+}
+
+async function searchRakutenApi(keyword: string) {
+  const applicationId = Deno.env.get("RAKUTEN_APP_ID") || Deno.env.get("RAKUTEN_APPLICATION_ID") || "";
+  if (!applicationId) return [];
+
+  const apiUrl = new URL("https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706");
+  apiUrl.searchParams.set("applicationId", applicationId);
+  apiUrl.searchParams.set("keyword", keyword);
+  apiUrl.searchParams.set("hits", "12");
+  apiUrl.searchParams.set("sort", "-reviewAverage");
+  apiUrl.searchParams.set("imageFlag", "1");
+
+  const response = await fetch(apiUrl);
+  if (!response.ok) return [];
+  const body = await response.json().catch(() => ({}));
+  const items = Array.isArray(body?.Items) ? body.Items : [];
+  return items.map((entry: Record<string, any>) => normalizeSearchItem(entry?.Item || entry)).filter(Boolean).slice(0, 12);
+}
+
+function normalizeSearchItem(item: Record<string, any>) {
+  const name = cleanTitle(String(item?.itemName || item?.name || ""));
+  const sourceUrl = String(item?.affiliateUrl || item?.itemUrl || item?.url || "");
+  if (!name || !sourceUrl) return null;
+  const image = Array.isArray(item?.mediumImageUrls)
+    ? String(item.mediumImageUrls[0]?.imageUrl || "").replace("?_ex=128x128", "")
+    : normalizeImage(item?.image);
+  const category = classifyCategory([name, item?.genreName, item?.caption].filter(Boolean).join(" "));
+  const price = formatPrice(item?.itemPrice || item?.price);
+  return {
+    name,
+    price,
+    category,
+    image,
+    hook: createHook(category, name),
+    kind: "product",
+    shopName: String(item?.shopName || ""),
+    details: {
+      brand: String(item?.shopName || ""),
+      rating: String(item?.reviewAverage || ""),
+      reviewCount: String(item?.reviewCount || ""),
+    },
+    sourceUrl,
+  };
+}
+
+function extractSearchResults(html: string, keyword: string) {
+  const results = new Map<string, Record<string, any>>();
+  for (const node of findJsonLdSearchItems(html)) {
+    const normalized = normalizeSearchItem({
+      name: node.name,
+      itemUrl: node.url,
+      image: node.image,
+      price: node.offers?.price || node.lowPrice,
+      shopName: node.brand?.name || "",
+      caption: node.description || "",
+    });
+    if (normalized) results.set(normalized.sourceUrl, normalized);
+  }
+
+  const itemLinks = [...html.matchAll(/<a[^>]+href=["']([^"']*item\.rakuten\.co\.jp[^"']+)["'][^>]*>([\s\S]{0,1800}?)<\/a>/gi)];
+  for (const match of itemLinks) {
+    const url = decodeHtml(match[1]).split("?")[0];
+    if (results.has(url)) continue;
+    const block = match[0];
+    const name = cleanTitle(
+      getAttr(block, "title")
+      || block.match(/alt=["']([^"']{8,})["']/i)?.[1]
+      || block.replace(/<[^>]+>/g, " "),
+    );
+    if (!name || name.length < 4 || !keyword.split(/\s+/).some((word) => name.includes(word))) continue;
+    const image = getAttr(block, "src") || getAttr(block, "data-src");
+    const category = classifyCategory(name);
+    results.set(url, {
+      name,
+      price: "",
+      category,
+      image,
+      hook: createHook(category, name),
+      kind: "product",
+      shopName: "",
+      details: {},
+      sourceUrl: url,
+    });
+    if (results.size >= 12) break;
+  }
+
+  return [...results.values()].slice(0, 12);
+}
+
+function findJsonLdSearchItems(html: string) {
+  const items: Record<string, any>[] = [];
+  const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const match of scripts) {
+    try {
+      const root = JSON.parse(decodeHtml(match[1].trim()));
+      collectSearchItems(root, items);
+    } catch {
+      // 検索結果ページ内の壊れたJSON-LDは無視する。
+    }
+  }
+  return items;
+}
+
+function collectSearchItems(value: unknown, items: Record<string, any>[]) {
+  if (!value || typeof value !== "object") return;
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectSearchItems(item, items));
+    return;
+  }
+  const node = value as Record<string, any>;
+  const types = Array.isArray(node["@type"]) ? node["@type"] : [node["@type"]];
+  const normalizedTypes = types.map((type) => String(type || "").toLowerCase());
+  if (normalizedTypes.includes("product") && node.name && node.url) items.push(node);
+  if (Array.isArray(node.itemListElement)) node.itemListElement.forEach((item) => collectSearchItems(item.item || item, items));
+  Object.values(node).forEach((child) => {
+    if (items.length < 20 && child && typeof child === "object") collectSearchItems(child, items);
+  });
+}
+
+function getAttr(html: string, attr: string) {
+  return decodeHtml(html.match(new RegExp(`${attr}=["']([^"']+)["']`, "i"))?.[1] || "");
 }
 
 function isRakutenTravelUrl(value: string) {
