@@ -1,4 +1,4 @@
-const CACHE_NAME = "hanako-room-ops-v18";
+const CACHE_NAME = "hanako-room-ops-v21";
 const APP_SHELL = [
   "./",
   "./index.html",

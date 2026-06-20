@@ -111,6 +111,26 @@ Supabaseでメール確認を有効にしている場合、初回登録後に確
 
 誤商品・誤文面の公開を防ぐため、ROOM側の最終投稿操作は自動化せず、利用者が確認して行う設計です。
 
+## コーデ作成・AI着用イメージ
+
+左メニューの `コーデ` では、登録済み商品を組み合わせてROOM用レビュー文、投稿用コーデ画像ボード、自分の写真を元にしたAI着用イメージを作れます。
+
+1. 自分の全身写真を選ぶ
+2. 雰囲気とシーンを選ぶ
+3. ワンピース、トップス、ボトムス、バッグ、シューズ、アクセを選ぶ
+4. `コーデ文と画像ボードを作る` でROOM文と画像ボードを生成
+5. `AI着用イメージ生成` で着用イメージ画像を生成
+
+AI着用イメージを使う場合は、Supabase Edge Functionを1回だけ追加してください。
+
+1. Supabaseの `Edge Functions` → `Deploy a new function` → `Via Editor`
+2. 関数名を `outfit-image`
+3. [supabase/functions/outfit-image/index.ts](supabase/functions/outfit-image/index.ts) の全文を貼る
+4. Supabase Secretsに `OPENAI_API_KEY` を登録
+5. Deployする
+
+本人の写真だけを使い、投稿では「着用イメージ」「コーデ案」として扱ってください。実物のサイズ感、色味、素材感、完全な再現性は保証せず、商品ページ確認へ誘導する設計です。
+
 ## X・Instagram・Threadsへ投稿する
 
 SNSのアクセストークンはGitHubやブラウザへ置かず、Supabase Edge Function Secretsで管理します。

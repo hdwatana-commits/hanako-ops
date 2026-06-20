@@ -66,6 +66,7 @@ const views = {
   products: "商品パイプライン",
   generator: "投稿メーカー",
   room: "ROOM投稿",
+  coordinate: "コーデ作成",
   calendar: "投稿カレンダー",
   connections: "SNS連携",
   analytics: "成果メモ",
@@ -82,8 +83,12 @@ const metricSummary = document.querySelector("#metricSummary");
 const roomProductSelect = document.querySelector("#roomProductSelect");
 const roomPostOutput = document.querySelector("#roomPostOutput");
 const roomQueue = document.querySelector("#roomQueue");
+const coordinateOutput = document.querySelector("#coordinateOutput");
+const coordBoard = document.querySelector("#coordBoard");
 const toast = document.querySelector("#toast");
 let deferredInstallPrompt = null;
+let coordinatePhotoDataUrl = "";
+let coordinateBoardDataUrl = "";
 
 initialize();
 
@@ -99,6 +104,7 @@ function initialize() {
   renderProducts();
   renderProductOptions();
   renderRoomProductOptions();
+  renderCoordinateOptions();
   renderRoomQueue();
   renderCalendar();
   renderMetrics();
@@ -198,6 +204,7 @@ function bindForms() {
     renderProducts();
     renderProductOptions();
     renderRoomProductOptions();
+    renderCoordinateOptions();
     renderAngleOptions();
     showToast("商品を追加しました");
   });
@@ -260,6 +267,7 @@ function bindActions() {
   document.querySelector("#publishPost").addEventListener("click", publishGeneratedPost);
   document.querySelector("#refreshConnections").addEventListener("click", refreshSocialConnections);
   bindRoomActions();
+  bindCoordinateActions();
 
   document.querySelector("#saveDraft").addEventListener("click", () => {
     if (!postOutput.value.trim()) return showToast("投稿を生成してください");
@@ -835,6 +843,7 @@ function applyCloudState(payload) {
   renderProducts();
   renderProductOptions();
   renderRoomProductOptions();
+  renderCoordinateOptions();
   renderRoomQueue();
   renderAngleOptions();
   renderCalendar();
@@ -944,6 +953,7 @@ function renderProducts() {
       renderProducts();
       renderProductOptions();
       renderRoomProductOptions();
+      renderCoordinateOptions();
       renderAngleOptions();
     });
   });
@@ -1075,6 +1085,301 @@ function renderProductOptions() {
     selectedProduct.appendChild(option);
   });
   document.querySelector("#todayFocus").textContent = state.products[0]?.name || "商品を追加";
+}
+
+function bindCoordinateActions() {
+  if (!coordinateOutput || !coordBoard) return;
+  document.querySelector("#coordPhoto")?.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    coordinatePhotoDataUrl = file ? await readFileAsDataUrl(file) : "";
+    showToast(coordinatePhotoDataUrl ? "写真を読み込みました" : "写真を解除しました");
+    if (coordinateOutput.value.trim()) drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
+  });
+  document.querySelector("#generateCoordinate")?.addEventListener("click", generateCoordinate);
+  document.querySelector("#generateOutfitImage")?.addEventListener("click", generateOutfitImage);
+  document.querySelector("#copyCoordinateText")?.addEventListener("click", () => copyText(coordinateOutput.value));
+  document.querySelector("#downloadCoordinateBoard")?.addEventListener("click", downloadCoordinateBoard);
+}
+
+function renderCoordinateOptions() {
+  const configs = [
+    ["#coordOnepiece", ["ワンピース"]],
+    ["#coordTop", ["トップス", "アウター"]],
+    ["#coordBottom", ["スカート", "パンツ"]],
+    ["#coordBag", ["バッグ"]],
+    ["#coordShoes", ["シューズ"]],
+    ["#coordAccessory", ["アクセサリー"]],
+  ];
+  configs.forEach(([selector, categories]) => {
+    const select = document.querySelector(selector);
+    if (!select) return;
+    const previous = select.value;
+    select.innerHTML = `<option value="">使わない</option>`;
+    state.products
+      .filter((product) => categories.includes(product.category))
+      .forEach((product) => {
+        const option = document.createElement("option");
+        option.value = product.id;
+        option.textContent = `${product.name} / ${product.price || "価格未設定"}`;
+        select.appendChild(option);
+      });
+    if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+  });
+}
+
+function getSelectedCoordinate() {
+  const byId = (selector) => state.products.find((product) => product.id === document.querySelector(selector)?.value) || null;
+  const onepiece = byId("#coordOnepiece");
+  const pieces = [
+    onepiece,
+    onepiece ? null : byId("#coordTop"),
+    onepiece ? null : byId("#coordBottom"),
+    byId("#coordBag"),
+    byId("#coordShoes"),
+    byId("#coordAccessory"),
+  ].filter(Boolean);
+  return {
+    style: document.querySelector("#coordStyle")?.value || "大人ガーリー",
+    occasion: document.querySelector("#coordOccasion")?.value || "友達とカフェ",
+    products: pieces,
+  };
+}
+
+async function generateCoordinate() {
+  const coordinate = getSelectedCoordinate();
+  if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
+  const text = buildCoordinateText(coordinate);
+  coordinateOutput.value = text;
+  document.querySelector("#coordStatus").textContent = "画像ボード作成済み";
+  await drawCoordinateBoard(coordinate, text);
+  showToast("コーデ文と画像ボードを作りました");
+}
+
+function buildCoordinateText(coordinate) {
+  const names = coordinate.products.map((product) => product.name);
+  const categories = coordinate.products.map((product) => product.category).join("・");
+  const totalHint = coordinate.products.map((product) => product.price).filter(Boolean).slice(0, 3).join(" / ");
+  const main = coordinate.products[0];
+  const points = coordinate.products.map((product) => `・${product.category}: ${product.hook || createCoordinateHook(product)}`).join("\n");
+  return `【PR】${coordinate.style}でまとめる${coordinate.occasion}コーデ\n\n${names.join(" × ")}を合わせた着用イメージです。\n${main?.category || "主役アイテム"}を中心に、甘さは残しつつ大人っぽく見えるように色と小物をそろえました。\n\n${points}\n\n${totalHint ? `価格メモ: ${totalHint}\n` : ""}楽天ROOMに載せているアイテムで組んだコーデ案です。\n実物のサイズ感や色味は商品ページで確認してください。\n\n#楽天ROOM #大人ガーリー #甘めきれいめ #高見えコーデ #${categories.replaceAll("・", " #")}`;
+}
+
+function createCoordinateHook(product) {
+  const hooks = {
+    トップス: "顔まわりを華やかに見せやすい主役アイテム",
+    アウター: "羽織るだけで全体の印象を整えやすい",
+    ワンピース: "一枚でコーデの雰囲気が決まりやすい",
+    スカート: "甘めに寄せつつ大人っぽいラインを作りやすい",
+    パンツ: "甘めトップスをすっきり見せやすい",
+    バッグ: "淡色コーデに可愛さを足しやすい",
+    シューズ: "足元をきれいめにまとめやすい",
+    アクセサリー: "さりげなく華やかさを足しやすい",
+  };
+  return hooks[product.category] || "コーデの雰囲気を整えやすい";
+}
+
+async function drawCoordinateBoard(coordinate, text) {
+  const canvas = coordBoard;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#fff8f9";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#f8dce4";
+  ctx.fillRect(0, 0, canvas.width, 250);
+  ctx.fillStyle = "#2f292c";
+  ctx.font = "700 56px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, `${coordinate.style} ${coordinate.occasion}`, 70, 95, 660, 64, 2);
+  ctx.font = "28px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillStyle = "#795c50";
+  ctx.fillText("Hanako coordinate board", 72, 206);
+
+  if (coordinatePhotoDataUrl) {
+    const image = await loadImage(coordinatePhotoDataUrl).catch(() => null);
+    if (image) drawCoverImage(ctx, image, 760, 54, 230, 230, 18);
+  } else {
+    drawPlaceholder(ctx, "PHOTO", 760, 54, 230, 230);
+  }
+
+  const products = coordinate.products.slice(0, 6);
+  for (let index = 0; index < products.length; index += 1) {
+    const product = products[index];
+    const col = index % 2;
+    const row = Math.floor(index / 2);
+    const x = 70 + col * 485;
+    const y = 330 + row * 285;
+    drawProductCard(ctx, product, x, y);
+  }
+
+  ctx.fillStyle = "#2f292c";
+  ctx.font = "700 30px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("ROOM caption", 72, 1220);
+  ctx.font = "24px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillStyle = "#6c555e";
+  wrapCanvasText(ctx, text.replace(/\n+/g, " "), 72, 1260, 930, 34, 2);
+  coordinateBoardDataUrl = canvas.toDataURL("image/png");
+}
+
+async function drawProductCard(ctx, product, x, y) {
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, x, y, 440, 240, 18);
+  ctx.fill();
+  ctx.strokeStyle = "#eadde1";
+  ctx.stroke();
+  if (product.image) {
+    const image = await loadImage(product.image).catch(() => null);
+    if (image) drawCoverImage(ctx, image, x + 18, y + 18, 150, 150, 12);
+    else drawPlaceholder(ctx, product.category, x + 18, y + 18, 150, 150);
+  } else {
+    drawPlaceholder(ctx, product.category, x + 18, y + 18, 150, 150);
+  }
+  ctx.fillStyle = "#2f292c";
+  ctx.font = "700 25px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, product.name, x + 188, y + 45, 220, 32, 2);
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "700 21px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(product.price || product.category, x + 188, y + 130);
+  ctx.fillStyle = "#796e73";
+  ctx.font = "20px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, product.hook || createCoordinateHook(product), x + 18, y + 196, 390, 28, 1);
+}
+
+async function generateOutfitImage() {
+  const coordinate = getSelectedCoordinate();
+  if (!coordinatePhotoDataUrl) return showToast("先に自分の全身写真を選んでください");
+  if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
+  if (!cloudSync.configured || !cloudSync.signedIn) return showToast("先にクラウド同期へログインしてください");
+
+  const button = document.querySelector("#generateOutfitImage");
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "生成中...";
+  document.querySelector("#coordStatus").textContent = "AI生成中";
+  try {
+    const token = await cloudSync.getAccessToken();
+    const response = await fetch(`${cloudSync.url}/functions/v1/outfit-image`, {
+      method: "POST",
+      headers: {
+        apikey: cloudSync.key,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        photo: coordinatePhotoDataUrl,
+        prompt: buildOutfitImagePrompt(coordinate),
+        productImages: coordinate.products.map((product) => product.image).filter(Boolean).slice(0, 4),
+      }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || "着用イメージを生成できませんでした");
+    const result = document.querySelector("#coordAiResult");
+    result.hidden = false;
+    result.innerHTML = `<img src="data:image/png;base64,${body.image}" alt="AI着用イメージ"><a class="primary" download="hanako-outfit-image.png" href="data:image/png;base64,${body.image}">AI画像を保存</a>`;
+    document.querySelector("#coordStatus").textContent = "AI画像生成済み";
+  } catch (error) {
+    showToast(error.message || "AI画像生成に失敗しました");
+    document.querySelector("#coordStatus").textContent = "生成エラー";
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
+function buildOutfitImagePrompt(coordinate) {
+  const items = coordinate.products.map((product) => `${product.category}: ${product.name} ${product.hook || ""}`).join("\n");
+  return `Create a tasteful fashion try-on concept image based on the uploaded full-body photo of the same person. Keep the person's identity, face, pose, and body shape respectful and natural. Change only the outfit styling to match these fashion items and mood. This is a styling concept, not an exact product guarantee.\nMood: ${coordinate.style}\nOccasion: ${coordinate.occasion}\nItems:\n${items}\nJapanese adult-girly, clean feminine styling, natural lighting, modest pose, realistic fabric, no exaggerated body changes, no logos added.`;
+}
+
+function downloadCoordinateBoard() {
+  if (!coordinateBoardDataUrl) return showToast("先に画像ボードを作ってください");
+  const link = document.createElement("a");
+  link.href = coordinateBoardDataUrl;
+  link.download = `hanako-coordinate-${new Date().toISOString().slice(0, 10)}.png`;
+  link.click();
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", async () => {
+      const dataUrl = String(reader.result || "");
+      if (!file.type.startsWith("image/")) return resolve(dataUrl);
+      try {
+        const image = await loadImage(dataUrl);
+        const maxSide = 1400;
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(image.width * scale);
+        canvas.height = Math.round(image.height * scale);
+        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.88));
+      } catch {
+        resolve(dataUrl);
+      }
+    });
+    reader.addEventListener("error", reject);
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+function drawCoverImage(ctx, image, x, y, width, height, radius) {
+  ctx.save();
+  roundRect(ctx, x, y, width, height, radius);
+  ctx.clip();
+  const scale = Math.max(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+  ctx.restore();
+}
+
+function drawPlaceholder(ctx, label, x, y, width, height) {
+  ctx.fillStyle = "#fff0f4";
+  roundRect(ctx, x, y, width, height, 14);
+  ctx.fill();
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "700 22px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(label, x + width / 2, y + height / 2 + 8);
+  ctx.textAlign = "left";
+}
+
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) {
+  const chars = String(text || "").split("");
+  let line = "";
+  let lines = 0;
+  for (const char of chars) {
+    const test = line + char;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line, x, y + lines * lineHeight);
+      line = char;
+      lines += 1;
+      if (lines >= maxLines) return;
+    } else {
+      line = test;
+    }
+  }
+  if (line && lines < maxLines) ctx.fillText(line, x, y + lines * lineHeight);
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + width, y, x + width, y + height, radius);
+  ctx.arcTo(x + width, y + height, x, y + height, radius);
+  ctx.arcTo(x, y + height, x, y, radius);
+  ctx.arcTo(x, y, x + width, y, radius);
+  ctx.closePath();
 }
 
 function bindRoomActions() {

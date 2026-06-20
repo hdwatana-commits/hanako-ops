@@ -898,6 +898,92 @@ textarea {
   margin-top: 0;
 }
 
+.product-search-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.product-search-box .field-label {
+  margin-top: 0;
+}
+
+.product-search-results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.product-search-result {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 78px;
+  padding: 9px;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.product-search-result:hover {
+  border-color: #e7a9bf;
+  background: #fff8fa;
+}
+
+.product-search-result img,
+.product-search-placeholder {
+  width: 58px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--rose-soft);
+}
+
+.product-search-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--rose-dark);
+  font-weight: 900;
+}
+
+.product-search-result strong,
+.product-search-result small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-search-result strong {
+  display: -webkit-box;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.product-search-result small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.product-search-result em {
+  color: var(--rose-dark);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .import-status {
   margin: 0 0 14px;
   padding: 10px 12px;
@@ -1374,6 +1460,11 @@ textarea {
   }
 
   .product-importer {
+    grid-template-columns: 1fr;
+  }
+
+  .product-search-box,
+  .product-search-results {
     grid-template-columns: 1fr;
   }
 }
@@ -2259,6 +2350,300 @@ textarea:focus {
   .phone-steps,
   .generator-pair {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Final Hanako polish: keep these at the end so the refreshed theme wins. */
+:root {
+  --bg: #fff8f9;
+  --ink: #2f292c;
+  --muted: #796e73;
+  --line: #eadde1;
+  --panel: #ffffff;
+  --rose: #df6f96;
+  --rose-dark: #a43d64;
+  --rose-soft: #fff0f4;
+  --green: #4f776a;
+  --green-soft: #eef6f2;
+  --shadow: 0 10px 30px rgba(81, 54, 65, 0.08);
+}
+
+body {
+  background: var(--bg);
+}
+
+.sidebar {
+  background: #f9edf0;
+  border-right-color: #eadde1;
+}
+
+.brand h1,
+.topbar h2,
+.home-welcome h3 {
+  font-family: Georgia, "Yu Mincho", serif;
+  letter-spacing: 0;
+}
+
+.nav-tab.active {
+  color: #fff;
+  background: #2f292c;
+  box-shadow: 0 7px 18px rgba(47, 41, 44, 0.16);
+}
+
+.nav-tab.active .nav-icon {
+  color: #ffd6e2;
+}
+
+.topbar {
+  background: rgba(255, 248, 249, 0.94);
+  border-bottom-color: #f0e5e8;
+}
+
+.primary {
+  color: #fff;
+  background: #2f292c;
+  border-color: #2f292c;
+}
+
+.primary:hover {
+  background: #4a3d42;
+  border-color: #4a3d42;
+}
+
+.panel,
+.home-stats,
+.quick-action,
+.home-welcome {
+  border-radius: 8px;
+}
+
+.home-welcome {
+  background: #f8dce4;
+  border-color: #ebcbd5;
+}
+
+@media (max-width: 1120px) {
+  .sidebar {
+    background: rgba(255, 255, 255, 0.97);
+    border-top-color: #eadde1;
+  }
+
+  .nav-tab.active {
+    color: var(--rose-dark);
+    background: var(--rose-soft);
+    box-shadow: none;
+  }
+
+  .nav-tab.active .nav-icon {
+    color: var(--rose-dark);
+  }
+}
+
+/* Readable cute typography and clearer bottom navigation. */
+.home-welcome,
+.home-stats,
+.quick-actions,
+.home-section-heading,
+.profile-settings {
+  font-family: "Yu Gothic UI", "Hiragino Maru Gothic ProN", "Meiryo", sans-serif;
+}
+
+.home-welcome h3,
+.home-section-heading h3,
+.home-stat strong,
+.quick-action strong {
+  font-family: "Yu Gothic UI", "Hiragino Maru Gothic ProN", "Meiryo", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.home-welcome h3 {
+  font-size: 32px;
+  line-height: 1.45;
+}
+
+.home-welcome p,
+.quick-action small,
+.home-stat span,
+.home-stat small {
+  line-height: 1.7;
+}
+
+.nav-tab {
+  font-weight: 750;
+}
+
+.nav-icon {
+  width: 30px;
+  height: 30px;
+  color: #8a6572;
+  background: #fff7f9;
+  border: 1px solid #ecd8df;
+  border-radius: 50%;
+  font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.nav-tab.active .nav-icon {
+  color: #fff;
+  background: var(--rose-dark);
+  border-color: var(--rose-dark);
+}
+
+@media (max-width: 1120px) {
+  .nav-tabs {
+    gap: 4px;
+  }
+
+  .nav-tab {
+    min-height: 58px;
+    padding: 5px 2px 6px;
+    font-size: 10px;
+  }
+
+  .nav-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+    box-shadow: 0 3px 8px rgba(94, 58, 70, 0.08);
+  }
+
+  .nav-tab > span:last-child {
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .nav-tab.active .nav-icon {
+    color: #fff;
+    background: var(--rose-dark);
+    border-color: var(--rose-dark);
+  }
+}
+
+@media (max-width: 680px) {
+  .home-welcome h3 {
+    font-size: 22px;
+    line-height: 1.45;
+  }
+
+  .home-welcome p {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .nav-tab {
+    min-height: 60px;
+  }
+}
+
+/* Coordinate creator */
+.coord-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.coord-controls {
+  position: sticky;
+  top: 92px;
+}
+
+.coord-note {
+  margin: 8px 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.coord-style-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.coord-picker {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.coord-picker label {
+  display: grid;
+  gap: 5px;
+}
+
+.coord-picker span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coord-preview-panel {
+  min-width: 0;
+}
+
+.coord-board-wrap {
+  width: 100%;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+#coordBoard {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff8f9;
+}
+
+.coord-ai-result {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.coord-ai-result img {
+  width: 100%;
+  max-height: 680px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.coord-ai-result a {
+  display: inline-grid;
+  place-items: center;
+  min-height: 42px;
+  padding: 0 16px;
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+@media (max-width: 1120px) {
+  .nav-tabs {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .coord-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .coord-controls {
+    position: static;
+  }
+}
+
+@media (max-width: 680px) {
+  .coord-style-row {
+    grid-template-columns: 1fr;
+  }
+
+  .coord-layout {
+    gap: 12px;
   }
 }
 

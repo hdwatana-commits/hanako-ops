@@ -30,6 +30,7 @@
           <button class="nav-tab active" data-view="brief"><span class="nav-icon">家</span><span>ホーム</span></button>
           <button class="nav-tab" data-view="products"><span class="nav-icon">品</span><span>商品</span></button>
           <button class="nav-tab" data-view="room"><span class="nav-icon">R</span><span>ROOM投稿</span></button>
+          <button class="nav-tab" data-view="coordinate"><span class="nav-icon">装</span><span>コーデ</span></button>
           <button class="nav-tab" data-view="generator"><span class="nav-icon">文</span><span>投稿メーカー</span></button>
           <button class="nav-tab" data-view="calendar"><span class="nav-icon">予</span><span>カレンダー</span></button>
           <button class="nav-tab" data-view="connections"><span class="nav-icon">連</span><span>SNS連携</span></button>
@@ -417,6 +418,80 @@
                 <strong class="quality-score" id="qualityScore">--</strong>
               </div>
               <ul class="checklist" id="checklist"></ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="coordinate">
+          <div class="coord-layout">
+            <article class="panel coord-controls">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">着用イメージ・コーデ投稿</p>
+                  <h3>コーデを作る</h3>
+                </div>
+                <span class="status-pill">本人写真だけ使用</span>
+              </div>
+              <label class="field-label" for="coordPhoto">自分の全身写真</label>
+              <input id="coordPhoto" type="file" accept="image/*">
+              <p class="coord-note">実物の完全再現ではなく、投稿用の「着用イメージ」として作ります。</p>
+
+              <div class="coord-style-row">
+                <div>
+                  <label class="field-label" for="coordStyle">雰囲気</label>
+                  <select id="coordStyle">
+                    <option>大人ガーリー</option>
+                    <option>甘めきれいめ</option>
+                    <option>通学コーデ</option>
+                    <option>週末カフェ</option>
+                    <option>渋谷おでかけ</option>
+                    <option>骨格ウェーブ意識</option>
+                    <option>淡色フェミニン</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="coordOccasion">シーン</label>
+                  <select id="coordOccasion">
+                    <option>友達とカフェ</option>
+                    <option>大学・通学</option>
+                    <option>デート</option>
+                    <option>休日ショッピング</option>
+                    <option>旅行</option>
+                    <option>きれいめ通勤</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="coord-picker">
+                <label><span>ワンピース</span><select id="coordOnepiece"></select></label>
+                <label><span>トップス</span><select id="coordTop"></select></label>
+                <label><span>スカート/パンツ</span><select id="coordBottom"></select></label>
+                <label><span>バッグ</span><select id="coordBag"></select></label>
+                <label><span>シューズ</span><select id="coordShoes"></select></label>
+                <label><span>アクセ</span><select id="coordAccessory"></select></label>
+              </div>
+
+              <div class="button-row">
+                <button class="primary" id="generateCoordinate" type="button">コーデ文と画像ボードを作る</button>
+                <button id="generateOutfitImage" type="button">AI着用イメージ生成</button>
+              </div>
+              <div class="button-row">
+                <button id="copyCoordinateText" type="button">ROOM文コピー</button>
+                <button id="downloadCoordinateBoard" type="button">画像ボード保存</button>
+              </div>
+            </article>
+
+            <article class="panel coord-preview-panel">
+              <div class="panel-heading">
+                <h3>生成結果</h3>
+                <span class="status-pill" id="coordStatus">未生成</span>
+              </div>
+              <div class="coord-board-wrap">
+                <canvas id="coordBoard" width="1080" height="1350" aria-label="コーデ画像ボード"></canvas>
+              </div>
+              <div class="coord-ai-result" id="coordAiResult" hidden></div>
+              <label class="field-label" for="coordinateOutput">ROOMレビュー・SNS文</label>
+              <textarea id="coordinateOutput" class="post-output" spellcheck="false" placeholder="商品を選んで「コーデ文と画像ボードを作る」を押してください"></textarea>
             </article>
           </div>
         </section>
