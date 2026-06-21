@@ -1,4 +1,4 @@
-const CACHE_NAME = "hanako-room-ops-v21";
+const CACHE_NAME = "hanako-room-ops-v24";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -10,6 +10,14 @@ const APP_SHELL = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/hanako-avatar.jpg",
+  "./icons/nav-home.svg",
+  "./icons/nav-products.svg",
+  "./icons/nav-room.svg",
+  "./icons/nav-coordinate.svg",
+  "./icons/nav-generator.svg",
+  "./icons/nav-calendar.svg",
+  "./icons/nav-connections.svg",
+  "./icons/nav-analytics.svg",
 ];
 
 self.addEventListener("install", (event) => {

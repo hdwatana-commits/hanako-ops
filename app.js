@@ -84,6 +84,7 @@ const roomProductSelect = document.querySelector("#roomProductSelect");
 const roomPostOutput = document.querySelector("#roomPostOutput");
 const roomQueue = document.querySelector("#roomQueue");
 const coordinateOutput = document.querySelector("#coordinateOutput");
+const coordGeminiPrompt = document.querySelector("#coordGeminiPrompt");
 const coordBoard = document.querySelector("#coordBoard");
 const toast = document.querySelector("#toast");
 let deferredInstallPrompt = null;
@@ -1096,9 +1097,12 @@ function bindCoordinateActions() {
     if (coordinateOutput.value.trim()) drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
   });
   document.querySelector("#generateCoordinate")?.addEventListener("click", generateCoordinate);
-  document.querySelector("#generateOutfitImage")?.addEventListener("click", generateOutfitImage);
+  document.querySelector("#generateGeminiPrompt")?.addEventListener("click", generateGeminiPrompt);
   document.querySelector("#copyCoordinateText")?.addEventListener("click", () => copyText(coordinateOutput.value));
+  document.querySelector("#copyGeminiPrompt")?.addEventListener("click", () => copyText(coordGeminiPrompt.value));
+  document.querySelector("#openGemini")?.addEventListener("click", openGemini);
   document.querySelector("#downloadCoordinateBoard")?.addEventListener("click", downloadCoordinateBoard);
+  document.querySelector("#coordGeneratedImage")?.addEventListener("change", previewGeneratedCoordinateImage);
 }
 
 function renderCoordinateOptions() {
@@ -1150,6 +1154,7 @@ async function generateCoordinate() {
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
   const text = buildCoordinateText(coordinate);
   coordinateOutput.value = text;
+  coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
   document.querySelector("#coordStatus").textContent = "画像ボード作成済み";
   await drawCoordinateBoard(coordinate, text);
   showToast("コーデ文と画像ボードを作りました");
@@ -1244,50 +1249,57 @@ async function drawProductCard(ctx, product, x, y) {
   wrapCanvasText(ctx, product.hook || createCoordinateHook(product), x + 18, y + 196, 390, 28, 1);
 }
 
-async function generateOutfitImage() {
+function generateGeminiPrompt() {
   const coordinate = getSelectedCoordinate();
   if (!coordinatePhotoDataUrl) return showToast("先に自分の全身写真を選んでください");
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
-  if (!cloudSync.configured || !cloudSync.signedIn) return showToast("先にクラウド同期へログインしてください");
-
-  const button = document.querySelector("#generateOutfitImage");
-  const original = button.textContent;
-  button.disabled = true;
-  button.textContent = "生成中...";
-  document.querySelector("#coordStatus").textContent = "AI生成中";
-  try {
-    const token = await cloudSync.getAccessToken();
-    const response = await fetch(`${cloudSync.url}/functions/v1/outfit-image`, {
-      method: "POST",
-      headers: {
-        apikey: cloudSync.key,
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        photo: coordinatePhotoDataUrl,
-        prompt: buildOutfitImagePrompt(coordinate),
-        productImages: coordinate.products.map((product) => product.image).filter(Boolean).slice(0, 4),
-      }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || "着用イメージを生成できませんでした");
-    const result = document.querySelector("#coordAiResult");
-    result.hidden = false;
-    result.innerHTML = `<img src="data:image/png;base64,${body.image}" alt="AI着用イメージ"><a class="primary" download="hanako-outfit-image.png" href="data:image/png;base64,${body.image}">AI画像を保存</a>`;
-    document.querySelector("#coordStatus").textContent = "AI画像生成済み";
-  } catch (error) {
-    showToast(error.message || "AI画像生成に失敗しました");
-    document.querySelector("#coordStatus").textContent = "生成エラー";
-  } finally {
-    button.disabled = false;
-    button.textContent = original;
-  }
+  coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
+  document.querySelector("#coordStatus").textContent = "Gemini文作成済み";
+  showToast("Gemini用プロンプトを作りました");
 }
 
 function buildOutfitImagePrompt(coordinate) {
-  const items = coordinate.products.map((product) => `${product.category}: ${product.name} ${product.hook || ""}`).join("\n");
-  return `Create a tasteful fashion try-on concept image based on the uploaded full-body photo of the same person. Keep the person's identity, face, pose, and body shape respectful and natural. Change only the outfit styling to match these fashion items and mood. This is a styling concept, not an exact product guarantee.\nMood: ${coordinate.style}\nOccasion: ${coordinate.occasion}\nItems:\n${items}\nJapanese adult-girly, clean feminine styling, natural lighting, modest pose, realistic fabric, no exaggerated body changes, no logos added.`;
+  const items = coordinate.products.map((product) => `・${product.category}: ${product.name}
+  推しポイント: ${product.hook || createCoordinateHook(product)}
+  価格メモ: ${product.price || "未設定"}`).join("\n");
+  return `添付した本人の全身写真を元に、ファッション投稿用の「着用イメージ画像」を作ってください。
+
+目的:
+楽天ROOMとInstagramで使う、大人ガーリーで自然なコーデ案の画像にしたいです。
+
+雰囲気:
+${coordinate.style}
+
+シーン:
+${coordinate.occasion}
+
+合わせたい商品:
+${items}
+
+仕上がり:
+・本人の顔、雰囲気、体型、ポーズはできるだけ自然に保つ
+・服だけを上の商品イメージに近い雰囲気へ変更する
+・日本の大人ガーリー、甘めきれいめ、清潔感のある雰囲気
+・自然光、明るめ、SNS投稿に使いやすい縦長写真
+・過度な露出や不自然な体型変更はしない
+・ブランドロゴや実在ロゴは追加しない
+・商品を完全再現した断定画像ではなく「着用イメージ」として自然に作る
+
+画像内に文字は入れないでください。`;
+}
+
+function openGemini() {
+  window.open("https://gemini.google.com/app", "_blank", "noopener,noreferrer");
+}
+
+async function previewGeneratedCoordinateImage(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const dataUrl = await readFileAsDataUrl(file);
+  const result = document.querySelector("#coordAiResult");
+  result.hidden = false;
+  result.innerHTML = `<img src="${dataUrl}" alt="Geminiで作った着用イメージ"><a class="primary" download="hanako-gemini-outfit.png" href="${dataUrl}">添付画像を保存</a>`;
+  document.querySelector("#coordStatus").textContent = "Gemini画像添付済み";
 }
 
 function downloadCoordinateBoard() {

@@ -27,14 +27,14 @@
         </div>
 
         <nav class="nav-tabs" aria-label="ワークスペース">
-          <button class="nav-tab active" data-view="brief"><span class="nav-icon">家</span><span>ホーム</span></button>
-          <button class="nav-tab" data-view="products"><span class="nav-icon">品</span><span>商品</span></button>
-          <button class="nav-tab" data-view="room"><span class="nav-icon">R</span><span>ROOM投稿</span></button>
-          <button class="nav-tab" data-view="coordinate"><span class="nav-icon">装</span><span>コーデ</span></button>
-          <button class="nav-tab" data-view="generator"><span class="nav-icon">文</span><span>投稿メーカー</span></button>
-          <button class="nav-tab" data-view="calendar"><span class="nav-icon">予</span><span>カレンダー</span></button>
-          <button class="nav-tab" data-view="connections"><span class="nav-icon">連</span><span>SNS連携</span></button>
-          <button class="nav-tab" data-view="analytics"><span class="nav-icon">績</span><span>成果</span></button>
+          <button class="nav-tab active" data-view="brief"><span class="nav-icon"><img src="icons/nav-home.svg" alt=""></span><span>ホーム</span></button>
+          <button class="nav-tab" data-view="products"><span class="nav-icon"><img src="icons/nav-products.svg" alt=""></span><span>商品</span></button>
+          <button class="nav-tab" data-view="room"><span class="nav-icon"><img src="icons/nav-room.svg" alt=""></span><span>ROOM投稿</span></button>
+          <button class="nav-tab" data-view="coordinate"><span class="nav-icon"><img src="icons/nav-coordinate.svg" alt=""></span><span>コーデ</span></button>
+          <button class="nav-tab" data-view="generator"><span class="nav-icon"><img src="icons/nav-generator.svg" alt=""></span><span>投稿メーカー</span></button>
+          <button class="nav-tab" data-view="calendar"><span class="nav-icon"><img src="icons/nav-calendar.svg" alt=""></span><span>カレンダー</span></button>
+          <button class="nav-tab" data-view="connections"><span class="nav-icon"><img src="icons/nav-connections.svg" alt=""></span><span>SNS連携</span></button>
+          <button class="nav-tab" data-view="analytics"><span class="nav-icon"><img src="icons/nav-analytics.svg" alt=""></span><span>成果</span></button>
         </nav>
 
         <div class="side-panel">
@@ -70,10 +70,29 @@
           <div class="home-welcome">
             <div class="home-welcome-copy">
               <span class="home-kicker" id="homeDate">今日の運用</span>
-              <h3>ハナコさん、今日は何を紹介する？</h3>
-              <p>商品を登録したら、ROOMとSNSの投稿文をすぐに作れます。</p>
+              <h3>今日はこの順番で進めればOK</h3>
+              <p>商品を見つけて、コーデかROOM文を作って、投稿予定に入れるだけ。</p>
+              <div class="home-hero-actions">
+                <button class="primary" type="button" data-open-view="products">商品を探す</button>
+                <button type="button" data-open-view="coordinate">コーデを作る</button>
+              </div>
             </div>
             <img src="icons/hanako-avatar.jpg" alt="おしゃれ研究家ハナコ" class="home-avatar">
+          </div>
+
+          <div class="home-roadmap" aria-label="今日の作業手順">
+            <button type="button" data-open-view="products">
+              <span>1</span><strong>商品を登録</strong><small>URLか検索で候補を入れる</small>
+            </button>
+            <button type="button" data-open-view="coordinate">
+              <span>2</span><strong>コーデ作成</strong><small>組み合わせとGemini文を作る</small>
+            </button>
+            <button type="button" data-open-view="room">
+              <span>3</span><strong>ROOM文作成</strong><small>レビュー文をコピー</small>
+            </button>
+            <button type="button" data-open-view="calendar">
+              <span>4</span><strong>投稿予定へ</strong><small>明日以降の投稿を整理</small>
+            </button>
           </div>
 
           <div class="home-stats" aria-label="運用状況">
@@ -89,21 +108,29 @@
           </div>
 
           <div class="home-section-heading">
-            <div><span class="home-kicker">QUICK START</span><h3>よく使うメニュー</h3></div>
-            <span>迷ったら左から順番に</span>
+            <div><span class="home-kicker">ONE TAP</span><h3>よく使う操作</h3></div>
+            <span>今日の作業をすぐ始める</span>
           </div>
           <div class="quick-actions">
             <button class="quick-action quick-product" type="button" data-open-view="products">
-              <span class="quick-step">01</span><span class="quick-icon">＋</span>
-              <strong>商品を登録</strong><small>楽天のURLを貼るだけ</small><span class="quick-arrow">›</span>
+              <span class="quick-step">商品</span><span class="quick-icon"><img src="icons/nav-products.svg" alt=""></span>
+              <strong>商品を探す・登録</strong><small>楽天URL / 商品名検索</small><span class="quick-arrow">›</span>
+            </button>
+            <button class="quick-action quick-coordinate" type="button" data-open-view="coordinate">
+              <span class="quick-step">コーデ</span><span class="quick-icon"><img src="icons/nav-coordinate.svg" alt=""></span>
+              <strong>コーデを作る</strong><small>画像ボードとGemini文</small><span class="quick-arrow">›</span>
             </button>
             <button class="quick-action quick-room" type="button" data-open-view="room">
-              <span class="quick-step">02</span><span class="quick-icon">R</span>
+              <span class="quick-step">ROOM</span><span class="quick-icon"><img src="icons/nav-room.svg" alt=""></span>
               <strong>ROOM投稿を作る</strong><small>レビューを自動生成</small><span class="quick-arrow">›</span>
             </button>
             <button class="quick-action quick-sns" type="button" data-open-view="generator">
-              <span class="quick-step">03</span><span class="quick-icon">✦</span>
+              <span class="quick-step">SNS</span><span class="quick-icon"><img src="icons/nav-generator.svg" alt=""></span>
               <strong>SNS投稿を作る</strong><small>X・Instagram・Threads</small><span class="quick-arrow">›</span>
+            </button>
+            <button class="quick-action quick-calendar" type="button" data-open-view="calendar">
+              <span class="quick-step">予定</span><span class="quick-icon"><img src="icons/nav-calendar.svg" alt=""></span>
+              <strong>投稿予定を見る</strong><small>今日・明日の投稿を整理</small><span class="quick-arrow">›</span>
             </button>
           </div>
 
@@ -473,11 +500,15 @@
 
               <div class="button-row">
                 <button class="primary" id="generateCoordinate" type="button">コーデ文と画像ボードを作る</button>
-                <button id="generateOutfitImage" type="button">AI着用イメージ生成</button>
+                <button id="generateGeminiPrompt" type="button">Gemini用プロンプト作成</button>
               </div>
               <div class="button-row">
                 <button id="copyCoordinateText" type="button">ROOM文コピー</button>
                 <button id="downloadCoordinateBoard" type="button">画像ボード保存</button>
+              </div>
+              <div class="button-row">
+                <button id="copyGeminiPrompt" type="button">Gemini文コピー</button>
+                <button id="openGemini" type="button">Geminiを開く</button>
               </div>
             </article>
 
@@ -490,6 +521,10 @@
                 <canvas id="coordBoard" width="1080" height="1350" aria-label="コーデ画像ボード"></canvas>
               </div>
               <div class="coord-ai-result" id="coordAiResult" hidden></div>
+              <label class="field-label" for="coordGeneratedImage">Geminiで作った画像を添付</label>
+              <input id="coordGeneratedImage" type="file" accept="image/*">
+              <label class="field-label" for="coordGeminiPrompt">Geminiに貼る指示文</label>
+              <textarea id="coordGeminiPrompt" class="coord-prompt-output" spellcheck="false" placeholder="「Gemini用プロンプト作成」を押すと、無料で使うための指示文が出ます"></textarea>
               <label class="field-label" for="coordinateOutput">ROOMレビュー・SNS文</label>
               <textarea id="coordinateOutput" class="post-output" spellcheck="false" placeholder="商品を選んで「コーデ文と画像ボードを作る」を押してください"></textarea>
             </article>
