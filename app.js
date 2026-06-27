@@ -62,20 +62,21 @@ const travelAnglePresets = {
 };
 
 const views = {
-  brief: "今日の運用",
-  products: "商品パイプライン",
-  generator: "投稿メーカー",
+  brief: "ホーム",
+  products: "商品を探す・登録",
+  generator: "SNS投稿を作る",
   room: "ROOM投稿",
   coordinate: "コーデ作成",
-  calendar: "投稿カレンダー",
+  calendar: "投稿予定",
   connections: "SNS連携",
-  analytics: "成果メモ",
+  analytics: "成果を記録",
 };
 
 const profileText = document.querySelector("#profileText");
 const productGrid = document.querySelector("#productGrid");
 const selectedProduct = document.querySelector("#selectedProduct");
 const postOutput = document.querySelector("#postOutput");
+const snsGeminiPrompt = document.querySelector("#snsGeminiPrompt");
 const checklist = document.querySelector("#checklist");
 const calendarList = document.querySelector("#calendarList");
 const metricList = document.querySelector("#metricList");
@@ -90,13 +91,16 @@ const toast = document.querySelector("#toast");
 let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
 let coordinateBoardDataUrl = "";
+let socialGeminiGeneratedImageDataUrl = "";
+let socialGeminiGeneratedImageExtension = "png";
+let socialGeminiAwaitingReturn = false;
+let socialGeminiPromptNeedsRefresh = false;
 
-initialize();
+queueMicrotask(initialize);
 
 function initialize() {
   profileText.value = state.profile || defaultProfile;
   document.querySelector('input[name="date"]').valueAsDate = new Date();
-  renderAngleOptions();
   registerPwa();
   bindNavigation();
   bindForms();
@@ -104,6 +108,7 @@ function initialize() {
   bindCloudSync();
   renderProducts();
   renderProductOptions();
+  restoreGeneratorPreferences();
   renderRoomProductOptions();
   renderCoordinateOptions();
   renderRoomQueue();
@@ -157,15 +162,23 @@ function bindNavigation() {
   document.querySelectorAll("[data-open-view]").forEach((button) => {
     button.addEventListener("click", () => activateView(button.dataset.openView));
   });
+  document.querySelector("#homeNextActionButton")?.addEventListener("click", (event) => {
+    activateView(event.currentTarget.dataset.target || "products");
+  });
+  document.querySelector("#homeBuildPlan")?.addEventListener("click", addHomeSmartPlan);
 }
 
 function activateView(viewName) {
   const nextView = document.querySelector(`#${viewName}`);
   const nextTab = document.querySelector(`.nav-tab[data-view="${viewName}"]`);
   if (!nextView || !nextTab) return;
-  document.querySelectorAll(".nav-tab").forEach((item) => item.classList.remove("active"));
+  document.querySelectorAll(".nav-tab").forEach((item) => {
+    item.classList.remove("active");
+    item.removeAttribute("aria-current");
+  });
   document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
   nextTab.classList.add("active");
+  nextTab.setAttribute("aria-current", "page");
   nextView.classList.add("active");
   document.querySelector("#viewTitle").textContent = views[viewName];
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -184,6 +197,128 @@ function renderHome() {
   if (productNode) productNode.textContent = productCount;
   if (queueNode) queueNode.textContent = queueCount;
   if (calendarNode) calendarNode.textContent = calendarCount;
+  renderHomeCommandCenter();
+}
+
+function renderHomeCommandCenter() {
+  const focusProduct = getHomeFocusProduct();
+  const activeCalendar = (state.calendar || []).filter((item) => !item.done);
+  const hasDraft = Boolean((state.drafts || []).length || (state.roomQueue || []).length);
+  const productReady = Boolean(focusProduct?.url && focusProduct?.hook);
+  const readiness = Math.min(100,
+    (state.products?.length ? 25 : 0)
+    + (productReady ? 20 : 0)
+    + (hasDraft ? 20 : 0)
+    + (activeCalendar.length ? 20 : 0)
+    + ((state.metrics || []).length ? 15 : 0));
+  const readinessNode = document.querySelector("#homeReadinessValue");
+  const progressNode = document.querySelector("#homeProgressBar");
+  if (readinessNode) readinessNode.textContent = `${readiness}%`;
+  if (progressNode) progressNode.style.width = `${readiness}%`;
+
+  const action = getHomeNextAction(focusProduct, productReady, hasDraft, activeCalendar);
+  const actionTitle = document.querySelector("#homeNextActionTitle");
+  const actionReason = document.querySelector("#homeNextActionReason");
+  const actionButton = document.querySelector("#homeNextActionButton");
+  if (actionTitle) actionTitle.textContent = action.title;
+  if (actionReason) actionReason.textContent = action.reason;
+  if (actionButton) {
+    actionButton.textContent = action.button;
+    actionButton.dataset.target = action.target;
+  }
+
+  const insight = getPerformanceInsight("all", "balanced");
+  const insightNode = document.querySelector("#homeInsight");
+  if (insightNode) insightNode.textContent = insight.sampleSize
+    ? `現在の勝ち型は「${viralPatternLabels[insight.pattern]}」。実績${insight.sampleSize}件を反映中です。`
+    : "成果を2件以上記録すると、反応が良い構成を自動で優先します。";
+
+  const focusNode = document.querySelector("#homeFocusProduct");
+  const planNode = document.querySelector("#homeDailyPlan");
+  const planButton = document.querySelector("#homeBuildPlan");
+  if (focusNode) focusNode.textContent = focusProduct ? `主役｜${focusProduct.name}` : "主役商品を登録してください";
+  if (planButton) planButton.disabled = !focusProduct;
+  if (!planNode) return;
+  if (!focusProduct) {
+    planNode.innerHTML = `<p class="muted">商品を登録すると、Instagram・Threads・Xの企画と投稿時間を提案します。</p>`;
+    return;
+  }
+
+  const recommendations = buildProductRecommendations(focusProduct);
+  const platformMarks = { Instagram: "IG", Threads: "TH", X: "X" };
+  planNode.innerHTML = recommendations.map((recommendation, index) => `
+    <div class="home-plan-row">
+      <span class="home-platform-mark platform-${recommendation.platform.toLowerCase()}">${platformMarks[recommendation.platform]}</span>
+      <div>
+        <strong>${escapeHtml(recommendation.angle)}</strong>
+        <small>${escapeHtml(recommendation.dayLabel)} ${escapeHtml(recommendation.time)}｜${escapeHtml(trimText(recommendation.reason, 56))}</small>
+      </div>
+      <button type="button" data-home-plan-index="${index}" data-home-product="${focusProduct.id}">作る</button>
+    </div>`).join("");
+  planNode.querySelectorAll("[data-home-plan-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const product = state.products.find((item) => item.id === button.dataset.homeProduct);
+      const recommendation = buildProductRecommendations(product)[Number(button.dataset.homePlanIndex)];
+      if (!product || !recommendation) return;
+      applyProductRecommendation(product, recommendation);
+      activateView("generator");
+      generateEditorialPost(false);
+    });
+  });
+}
+
+function getHomeFocusProduct() {
+  const products = state.products || [];
+  if (!products.length) return null;
+  const scheduledIds = new Set((state.calendar || []).filter((item) => !item.done).map((item) => item.productId));
+  return products
+    .map((product, index) => ({
+      product,
+      score: (scheduledIds.has(product.id) ? -6 : 0)
+        + (product.url ? 5 : 0)
+        + (product.image ? 4 : 0)
+        + (product.hook ? 3 : 0)
+        + (product.details?.brand || product.details?.location ? 2 : 0)
+        - index * 0.01,
+    }))
+    .sort((a, b) => b.score - a.score)[0].product;
+}
+
+function getHomeNextAction(product, productReady, hasDraft, activeCalendar) {
+  if (!product) return { title: "最初の商品を登録", reason: "URLか商品検索から追加すると、3媒体の投稿案を自動で作れます。", button: "商品を探す", target: "products" };
+  if (!productReady) return { title: "主役商品の情報を整える", reason: `「${product.name}」へURLと推しポイントを入れると、投稿文の具体性が上がります。`, button: "商品を確認", target: "products" };
+  if (!hasDraft) return { title: "今日の投稿文を1本作る", reason: `「${product.name}」のおすすめ企画ができています。まず完成稿を作りましょう。`, button: "SNS投稿を作る", target: "generator" };
+  if (!activeCalendar.length) return { title: "投稿時間を決める", reason: "右のスマートプランから3媒体のおすすめ時間をまとめて予定へ入れられます。", button: "投稿予定を見る", target: "calendar" };
+  if (!(state.metrics || []).length) return { title: "投稿後の反応を記録", reason: "表示・保存・ROOMクリックを入れると、次回から伸びる構成を優先します。", button: "成果を記録", target: "analytics" };
+  return { title: "次の投稿を仕上げる", reason: `${activeCalendar.length}件の予定があります。今日の順番を確認して投稿を進めましょう。`, button: "予定を確認", target: "calendar" };
+}
+
+function addHomeSmartPlan() {
+  const product = getHomeFocusProduct();
+  if (!product) return showToast("先に商品を登録してください");
+  const existing = new Set((state.calendar || []).filter((item) => !item.done).map((item) => `${item.productId}:${item.platform}`));
+  let added = 0;
+  buildProductRecommendations(product).forEach((recommendation) => {
+    const key = `${product.id}:${recommendation.platform}`;
+    if (existing.has(key)) return;
+    const scheduled = nextWeekdayAt(recommendation.weekday, recommendation.time);
+    state.calendar.unshift({
+      id: createId(),
+      date: scheduled.date,
+      time: recommendation.time,
+      platform: recommendation.platform,
+      productId: product.id,
+      pattern: recommendation.pattern,
+      copy: `${product.name}\n${recommendation.angle}｜${viralPatternLabels[recommendation.pattern]}\n${recommendation.reason}`,
+      done: false,
+    });
+    existing.add(key);
+    added += 1;
+  });
+  if (!added) return showToast("この商品の3媒体プランはすでに予定へ入っています");
+  saveState();
+  renderCalendar();
+  showToast(`${product.name}の${added}投稿を予定に追加しました`);
 }
 
 function bindForms() {
@@ -253,15 +388,40 @@ function bindActions() {
       activePlatform = button.dataset.platform;
       renderAngleOptions();
       renderLearningHint();
+      renderSocialGeminiProductPreview();
+      saveGeneratorPreferences();
+      markSocialGeminiPromptStale();
     });
   });
-  selectedProduct.addEventListener("change", renderAngleOptions);
+  selectedProduct.addEventListener("change", () => {
+    renderAngleOptions();
+    renderSocialGeminiProductPreview();
+  });
 
   document.querySelector("#optimizationSelect").addEventListener("change", renderLearningHint);
 
   document.querySelector("#generatePost").addEventListener("click", () => generateEditorialPost(false));
   document.querySelector("#generateVariation").addEventListener("click", () => generateEditorialPost(true));
   document.querySelector("#generateThree").addEventListener("click", generateThreeEditorialPosts);
+  document.querySelector("#generateSocialGeminiImage")?.addEventListener("click", () => generateSocialGeminiImagePrompt());
+  document.querySelector("#generateSocialGeminiCopy")?.addEventListener("click", () => generateSocialGeminiCopyPrompt());
+  document.querySelector("#sendSocialGeminiImage")?.addEventListener("click", () => sendSocialGeminiToGemini("image"));
+  document.querySelector("#sendSocialGeminiCopy")?.addEventListener("click", () => sendSocialGeminiToGemini("copy"));
+  document.querySelector("#goToSocialGemini")?.addEventListener("click", () => {
+    renderSocialGeminiProgress();
+    document.querySelector("#snsGeminiTools")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  document.querySelector("#copySocialGeminiPrompt")?.addEventListener("click", () => copyText(snsGeminiPrompt?.value || ""));
+  document.querySelector("#openSocialGemini")?.addEventListener("click", copyAndOpenSocialGemini);
+  document.querySelector("#snsGeneratedImage")?.addEventListener("change", previewSocialGeminiImage);
+  document.querySelector("#snsGeminiResult")?.addEventListener("input", renderSocialGeminiProgress);
+  document.querySelector("#applySocialGeminiCopy")?.addEventListener("click", applySocialGeminiCopy);
+  document.querySelector("#downloadSocialGeminiImage")?.addEventListener("click", downloadSocialGeminiImage);
+  document.querySelector("#generator")?.addEventListener("change", (event) => {
+    if (!event.target?.closest?.(".sns-gemini-tools")) saveGeneratorPreferences();
+    markSocialGeminiPromptStale(event);
+  });
+  window.addEventListener("focus", handleSocialGeminiReturn);
   postOutput.addEventListener("input", () => renderChecks(postOutput.value));
 
   document.querySelector("#copyPost").addEventListener("click", () => copyText(postOutput.value));
@@ -307,8 +467,18 @@ function bindActions() {
     showToast("完了済みを整理しました");
   });
 
-  document.querySelector("#exportBtn").addEventListener("click", exportData);
-  document.querySelector("#importInput").addEventListener("change", importData);
+  document.querySelector("#exportBtn").addEventListener("click", () => {
+    exportData();
+    document.querySelector("#dataMenu")?.removeAttribute("open");
+  });
+  document.querySelector("#importInput").addEventListener("change", async (event) => {
+    await importData(event);
+    document.querySelector("#dataMenu")?.removeAttribute("open");
+  });
+  document.addEventListener("click", (event) => {
+    const dataMenu = document.querySelector("#dataMenu");
+    if (dataMenu?.open && !dataMenu.contains(event.target)) dataMenu.removeAttribute("open");
+  });
 }
 
 function bindProductImporter() {
@@ -843,10 +1013,10 @@ function applyCloudState(payload) {
   profileText.value = state.profile || defaultProfile;
   renderProducts();
   renderProductOptions();
+  restoreGeneratorPreferences();
   renderRoomProductOptions();
   renderCoordinateOptions();
   renderRoomQueue();
-  renderAngleOptions();
   renderCalendar();
   renderMetrics();
   renderHome();
@@ -860,8 +1030,11 @@ function cloneState() {
 function setSyncStatus(status) {
   const dot = document.querySelector("#syncDot");
   const label = document.querySelector("#syncLabel");
+  const button = document.querySelector("#syncBtn");
   dot.className = `sync-dot ${status === "off" ? "" : status}`.trim();
-  label.textContent = status === "online" ? "同期済み" : status === "busy" ? "同期中" : status === "error" ? "要確認" : "同期";
+  label.textContent = status === "online" ? "同期済み" : status === "busy" ? "同期中" : status === "error" ? "要確認" : "同期設定";
+  button.dataset.status = status;
+  button.setAttribute("aria-label", `${label.textContent}。クラウド同期を開く`);
 }
 
 function renderProducts() {
@@ -1078,6 +1251,7 @@ function nextWeekdayAt(weekday, time) {
 }
 
 function renderProductOptions() {
+  const previous = selectedProduct.value;
   selectedProduct.innerHTML = "";
   state.products.forEach((product) => {
     const option = document.createElement("option");
@@ -1085,7 +1259,83 @@ function renderProductOptions() {
     option.textContent = `${product.name} / ${product.category}`;
     selectedProduct.appendChild(option);
   });
+  if ([...selectedProduct.options].some((option) => option.value === previous)) selectedProduct.value = previous;
   document.querySelector("#todayFocus").textContent = state.products[0]?.name || "商品を追加";
+  renderSocialGeminiProductPreview();
+}
+
+function saveGeneratorPreferences() {
+  const ids = [
+    "selectedProduct", "angleSelect", "audienceSelect", "goalSelect", "optimizationSelect",
+    "emotionSelect", "hookSelect", "ownershipSelect", "viralPatternSelect", "seasonSelect",
+    "toneSelect", "fashionOccasionSelect", "fashionPrioritySelect", "fashionConcernSelect",
+    "travelCompanionSelect", "travelPrioritySelect", "postBrief",
+  ];
+  const values = {};
+  ids.forEach((id) => {
+    const element = document.querySelector(`#${id}`);
+    if (element) values[id] = element.value;
+  });
+  state.generatorSettings = { platform: activePlatform, values };
+  saveState();
+}
+
+function restoreGeneratorPreferences() {
+  const preferences = state.generatorSettings;
+  if (!preferences) {
+    renderAngleOptions();
+    return;
+  }
+  if (["Instagram", "Threads", "X"].includes(preferences.platform)) activePlatform = preferences.platform;
+  document.querySelectorAll("#platformTabs button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.platform === activePlatform);
+  });
+  const values = preferences.values || {};
+  Object.entries(values).forEach(([id, value]) => {
+    if (id === "angleSelect") return;
+    const element = document.querySelector(`#${id}`);
+    if (!element) return;
+    if (element.tagName === "SELECT" && ![...element.options].some((option) => option.value === value)) return;
+    element.value = value;
+  });
+  renderAngleOptions();
+  const angleSelect = document.querySelector("#angleSelect");
+  if ([...angleSelect.options].some((option) => option.value === values.angleSelect)) angleSelect.value = values.angleSelect;
+  renderSocialGeminiProductPreview();
+}
+
+function renderSocialGeminiProductPreview() {
+  const target = document.querySelector("#snsGeminiProductPreview");
+  if (!target) return;
+  const product = state.products.find((item) => item.id === selectedProduct.value) || state.products[0];
+  if (!product) {
+    target.innerHTML = `<p class="muted">商品を登録すると、Geminiへ渡す画像と商品情報がここに表示されます。</p>`;
+    renderSocialGeminiProgress();
+    return;
+  }
+  const imageUrl = safeHttpUrl(product.image);
+  const productUrl = safeHttpUrl(product.url);
+  target.innerHTML = `
+    ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}">` : `<span class="sns-gemini-product-placeholder">品</span>`}
+    <div class="sns-gemini-product-copy">
+      <span>${escapeHtml(activePlatform)}で使用</span>
+      <strong>${escapeHtml(product.name)}</strong>
+      <small>${escapeHtml([product.category, product.price].filter(Boolean).join(" / "))}</small>
+    </div>
+    <div class="sns-gemini-product-links">
+      ${imageUrl ? `<a href="${escapeHtml(imageUrl)}" target="_blank" rel="noopener noreferrer">商品画像を開く</a>` : ""}
+      ${productUrl ? `<a href="${escapeHtml(productUrl)}" target="_blank" rel="noopener noreferrer">商品ページ</a>` : ""}
+    </div>`;
+  renderSocialGeminiProgress();
+}
+
+function safeHttpUrl(value) {
+  try {
+    const url = new URL(String(value || ""), window.location.href);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
 }
 
 function bindCoordinateActions() {
@@ -1107,8 +1357,10 @@ function bindCoordinateActions() {
     showToast(coordinatePhotoDataUrl ? "写真を読み込みました" : "写真を解除しました");
     if (coordinateOutput.value.trim()) drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
   });
+  document.querySelector("#autoCoordinate")?.addEventListener("click", autoSelectCoordinateItems);
   document.querySelector("#generateCoordinate")?.addEventListener("click", generateCoordinate);
   document.querySelector("#generateGeminiPrompt")?.addEventListener("click", generateGeminiPrompt);
+  document.querySelector("#generateGeminiCaptionPrompt")?.addEventListener("click", generateGeminiCaptionPrompt);
   document.querySelector("#copyCoordinateText")?.addEventListener("click", () => copyText(coordinateOutput.value));
   document.querySelector("#copyGeminiPrompt")?.addEventListener("click", () => copyText(coordGeminiPrompt.value));
   document.querySelector("#openGemini")?.addEventListener("click", openGemini);
@@ -1187,6 +1439,8 @@ function selectCoordinateProduct(product) {
   };
   const selector = selectors[product.category];
   const select = selector ? document.querySelector(selector) : null;
+  const mainSelect = document.querySelector("#coordMainProduct");
+  if (mainSelect && !mainSelect.value && [...mainSelect.options].some((option) => option.value === product.id)) mainSelect.value = product.id;
   if (!select || ![...select.options].some((option) => option.value === product.id)) {
     showCoordinateImportStatus("商品を登録しました。下の商品欄から選んでください");
     return;
@@ -1208,6 +1462,20 @@ function showCoordinateImportStatus(message, isError = false) {
 }
 
 function renderCoordinateOptions() {
+  const mainSelect = document.querySelector("#coordMainProduct");
+  if (mainSelect) {
+    const previousMain = mainSelect.value;
+    mainSelect.innerHTML = `<option value="">主役商品を選ぶ</option>`;
+    state.products
+      .filter((product) => product.category !== "ホテル・旅行")
+      .forEach((product) => {
+        const option = document.createElement("option");
+        option.value = product.id;
+        option.textContent = `${product.name} / ${product.category}`;
+        mainSelect.appendChild(option);
+      });
+    if ([...mainSelect.options].some((option) => option.value === previousMain)) mainSelect.value = previousMain;
+  }
   const configs = [
     ["#coordOnepiece", ["ワンピース"]],
     ["#coordTop", ["トップス", "アウター"]],
@@ -1235,40 +1503,99 @@ function renderCoordinateOptions() {
 
 function getSelectedCoordinate() {
   const byId = (selector) => state.products.find((product) => product.id === document.querySelector(selector)?.value) || null;
+  const mainProduct = byId("#coordMainProduct");
   const onepiece = byId("#coordOnepiece");
   const pieces = [
+    mainProduct,
     onepiece,
     onepiece ? null : byId("#coordTop"),
     onepiece ? null : byId("#coordBottom"),
     byId("#coordBag"),
     byId("#coordShoes"),
     byId("#coordAccessory"),
-  ].filter(Boolean);
+  ].filter((product, index, products) => product && products.findIndex((item) => item?.id === product.id) === index);
   return {
     style: document.querySelector("#coordStyle")?.value || "大人ガーリー",
     occasion: document.querySelector("#coordOccasion")?.value || "友達とカフェ",
+    hairStyle: document.querySelector("#coordHairStyle")?.value || "元写真の髪型を保つ",
+    imagePattern: document.querySelector("#coordImagePattern")?.value || "全身1カット＋手書きポイント",
+    concern: document.querySelector("#coordConcern")?.value || "朝、服が決まらない",
+    priority: document.querySelector("#coordPriority")?.value || "着回しやすさ",
+    colorMood: document.querySelector("#coordColorMood")?.value || "商品から自動で整える",
+    season: document.querySelector("#coordSeason")?.value || "今の季節",
     products: pieces,
+    mainProduct: mainProduct || pieces[0] || null,
   };
+}
+
+function autoSelectCoordinateItems() {
+  const fashionProducts = state.products.filter((product) => product.category !== "ホテル・旅行");
+  if (!fashionProducts.length) return showToast("先にファッション商品を登録してください");
+  const mainSelect = document.querySelector("#coordMainProduct");
+  const main = state.products.find((product) => product.id === mainSelect?.value) || fashionProducts[0];
+  if (mainSelect && [...mainSelect.options].some((option) => option.value === main.id)) mainSelect.value = main.id;
+
+  const selectedIds = new Set([main.id]);
+  const setChoice = (selector, categories, forceMain = false) => {
+    const select = document.querySelector(selector);
+    if (!select) return;
+    const candidate = forceMain
+      ? main
+      : chooseCoordinateCompanion(categories, main, selectedIds);
+    const value = candidate && [...select.options].some((option) => option.value === candidate.id) ? candidate.id : "";
+    select.value = value;
+    if (value) selectedIds.add(value);
+  };
+
+  const isOnepiece = main.category === "ワンピース";
+  setChoice("#coordOnepiece", ["ワンピース"], isOnepiece);
+  if (isOnepiece) {
+    document.querySelector("#coordTop").value = "";
+    document.querySelector("#coordBottom").value = "";
+  } else {
+    setChoice("#coordTop", ["トップス", "アウター"], ["トップス", "アウター"].includes(main.category));
+    setChoice("#coordBottom", ["スカート", "パンツ"], ["スカート", "パンツ"].includes(main.category));
+  }
+  setChoice("#coordBag", ["バッグ"], main.category === "バッグ");
+  setChoice("#coordShoes", ["シューズ"], main.category === "シューズ");
+  setChoice("#coordAccessory", ["アクセサリー"], main.category === "アクセサリー");
+  showToast("主役に合う商品を自動で組み合わせました");
+  generateCoordinate();
+}
+
+function chooseCoordinateCompanion(categories, main, selectedIds) {
+  const mainBrand = getCoordinateBrand(main).toLocaleLowerCase("ja-JP");
+  return state.products
+    .filter((product) => categories.includes(product.category) && !selectedIds.has(product.id))
+    .map((product) => {
+      const sameBrand = mainBrand && getCoordinateBrand(product).toLocaleLowerCase("ja-JP") === mainBrand;
+      const hasDetails = Boolean(product.details?.color || product.details?.material);
+      const hasImage = Boolean(product.image);
+      return { product, score: (sameBrand ? 8 : 0) + (hasDetails ? 3 : 0) + (hasImage ? 2 : 0) };
+    })
+    .sort((a, b) => b.score - a.score || a.product.name.localeCompare(b.product.name, "ja"))[0]?.product || null;
 }
 
 async function generateCoordinate() {
   const coordinate = getSelectedCoordinate();
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
+  const analysis = buildCoordinateAnalysis(coordinate);
   const text = buildCoordinateText(coordinate);
   coordinateOutput.value = text;
   coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
-  document.querySelector("#coordStatus").textContent = "画像ボード作成済み";
+  document.querySelector("#coordStatus").textContent = analysis.roomReady ? "投稿条件を確認済み" : "要確認：商品を追加";
   await drawCoordinateBoard(coordinate, text);
-  showToast("コーデ文と画像ボードを作りました");
+  showToast(analysis.roomReady ? "コーデ文と画像ボードを作りました" : "コーデを作りました。ROOM投稿には商品を2点以上選んでください");
 }
 
 function buildCoordinateText(coordinate) {
-  const names = coordinate.products.map((product) => product.name);
+  const analysis = buildCoordinateAnalysis(coordinate);
   const categories = coordinate.products.map((product) => product.category).join("・");
-  const totalHint = coordinate.products.map((product) => product.price).filter(Boolean).slice(0, 3).join(" / ");
-  const main = coordinate.products[0];
-  const points = coordinate.products.map((product) => `・${product.category}: ${product.hook || createCoordinateHook(product)}`).join("\n");
-  return `【PR】${coordinate.style}でまとめる${coordinate.occasion}コーデ\n\n${names.join(" × ")}を合わせた着用イメージです。\n${main?.category || "主役アイテム"}を中心に、甘さは残しつつ大人っぽく見えるように色と小物をそろえました。\n\n${points}\n\n${totalHint ? `価格メモ: ${totalHint}\n` : ""}楽天ROOMに載せているアイテムで組んだコーデ案です。\n実物のサイズ感や色味は商品ページで確認してください。\n\n#楽天ROOM #大人ガーリー #甘めきれいめ #高見えコーデ #${categories.replaceAll("・", " #")}`;
+  const supportingRoles = analysis.itemRoles.slice(1);
+  const itemLines = (supportingRoles.length ? supportingRoles : analysis.itemRoles)
+    .map((item) => `・${item.emoji} ${item.name}｜${trimText(item.role, 38)}`)
+    .join("\n");
+  return `※アフィリエイトを含みます\n\nおはファッション🌸\n${analysis.headline}\n\n「${coordinate.concern}」に寄り添うコーデです。\n${analysis.solution}\n\n🎀 主役｜${analysis.mainName}\n${analysis.mainReason}\n\n🪄 似合わせ設計\n・形｜${analysis.silhouette}\n・色｜${analysis.colorPlan}\n・季節｜${analysis.seasonPlan}\n\n👗 合わせた理由\n${itemLines}\n\n🔎 買う前チェック\n${analysis.checks.map((item) => `・${item}`).join("\n")}\n${analysis.missingNote ? `\n💡 ${analysis.missingNote}\n` : ""}${analysis.totalLabel ? `\n予算メモ｜${analysis.totalLabel}\n` : ""}\n${coordinate.occasion}の日に、頑張りすぎず「ちゃんと可愛い」を作りたい方へ🩷\n保存して手持ち服と比べてみてください。\n\n#楽天ROOM #大人ガーリー #甘めきれいめ #${categories.replaceAll("・", " #")}`;
 }
 
 function createCoordinateHook(product) {
@@ -1285,9 +1612,88 @@ function createCoordinateHook(product) {
   return hooks[product.category] || "コーデの雰囲気を整えやすい";
 }
 
+function buildCoordinateAnalysis(coordinate) {
+  const main = coordinate.mainProduct || coordinate.products[0];
+  const categories = new Set(coordinate.products.map((product) => product.category));
+  const bottom = coordinate.products.find((product) => ["スカート", "パンツ"].includes(product.category));
+  const colors = [...new Set(coordinate.products.map((product) => product.details?.color).filter(Boolean))];
+  const concernSolutions = {
+    "朝、服が決まらない": "主役を先に決め、色を3色以内にまとめる",
+    "甘すぎ・子どもっぽく見せたくない": "甘い要素を主役ひとつに絞り、直線的な小物で締める",
+    "全身のバランスを整えたい": "上下のボリュームに差をつけ、重心を散らさない",
+    "いつも同じ組み合わせになる": "いつもの服に質感か小物で一か所だけ変化を足す",
+    "気温差に対応したい": "脱ぎ着できる一枚と、温度調整しやすい素材を重ねる",
+    "写真で可愛く見せたい": "顔まわりに明るさを置き、全身に縦の流れを作る",
+  };
+  const priorityPlans = {
+    "着回しやすさ": "主役以外をベーシックにして、別の予定にもつなげる",
+    "高見え": "色数を抑え、素材感と小物の形をそろえる",
+    "スタイルバランス": "上半身と下半身のボリュームを片方だけに寄せる",
+    "動きやすさ": "歩く・座る・荷物を持つ動作を邪魔しない組み合わせにする",
+    "写真映え": "顔まわりと主役に明暗差をつけ、輪郭を背景へ埋もれさせない",
+  };
+  const colorPlans = {
+    "商品から自動で整える": colors.length ? `${colors.slice(0, 2).join("＋")}を軸に、全体を3色以内へ` : "主役の色＋白系＋締め色の3色以内",
+    "淡色ワントーン": "白・アイボリー・淡色を重ね、素材差でぼんやり見えを防ぐ",
+    "白ベースで明るく": "白を広く使い、主役の色を一か所に集める",
+    "黒・濃色で引き締め": "バッグか足元へ濃色を置き、甘さを大人っぽく締める",
+    "差し色をひとつ": "ベースを2色に抑え、小物ひとつだけを差し色にする",
+  };
+  const seasonPlans = {
+    "今の季節": `${currentSeason()}の気温に合わせ、羽織りと足元で調整`,
+    春: "朝夕の気温差に備え、軽い羽織りを足せる余白を残す",
+    夏: "透け・汗・日差しを確認し、涼しく見える明るい面積を作る",
+    秋: "軽い重ね着と深みのある小物で、季節感をひとつ足す",
+    冬: "防寒を保ちながら、上半身へ厚みを集めすぎない",
+  };
+  const silhouette = main?.category === "ワンピース"
+    ? "ワンピースの縦ラインを主役に、小物を小さくまとめる"
+    : bottom?.category === "スカート"
+      ? "トップスをコンパクトに見せ、スカートの揺れを主役にする"
+      : bottom?.category === "パンツ"
+        ? "上半身の甘さをパンツの直線で整える"
+        : "主役のボリュームと反対側をすっきりまとめる";
+  const itemEmoji = { ワンピース: "👗", トップス: "👚", アウター: "🧥", スカート: "🎀", パンツ: "👖", バッグ: "👜", シューズ: "👠", アクセサリー: "✨" };
+  const itemRoles = coordinate.products.map((product, index) => ({
+    name: product.name,
+    emoji: itemEmoji[product.category] || "♡",
+    role: index === 0
+      ? `主役として${product.hook || createCoordinateHook(product)}`
+      : `${createCoordinateHook(product)}。主役の甘さと色を邪魔せず整える役`,
+  }));
+  const checks = [
+    main?.category === "ワンピース" ? "着丈と靴を履いた時の裾位置" : "トップスをイン・アウトした時の重心",
+    coordinate.priority === "動きやすさ" ? "歩く・座る・腕を上げる動作のしやすさ" : "素材の厚み、透け感、裏地の有無",
+    "商品画像とレビューで実際の色味・サイズ感を確認",
+    "ROOMへ投稿する時は、実際の写真に写っている商品だけを登録",
+  ];
+  const missing = [];
+  if (!categories.has("バッグ")) missing.push("小さめバッグ");
+  if (!categories.has("シューズ")) missing.push("主役と明るさをそろえた靴");
+  if (!categories.has("アクセサリー")) missing.push("華奢なアクセサリー");
+  const total = coordinate.products.reduce((sum, product) => sum + (productPriceNumber(product.price) || 0), 0);
+  const apparelCategories = new Set(["ワンピース", "トップス", "アウター", "スカート", "パンツ"]);
+  const roomReady = coordinate.products.length >= 2 && coordinate.products.some((product) => apparelCategories.has(product.category));
+  return {
+    headline: `${coordinate.style}｜${coordinate.occasion}の解決コーデ`,
+    mainName: main?.name || "主役アイテム",
+    mainReason: main?.hook || createCoordinateHook(main || {}),
+    solution: `${concernSolutions[coordinate.concern] || concernSolutions["朝、服が決まらない"]}。${priorityPlans[coordinate.priority] || priorityPlans["着回しやすさ"]}`,
+    silhouette,
+    colorPlan: colorPlans[coordinate.colorMood] || colorPlans["商品から自動で整える"],
+    seasonPlan: seasonPlans[coordinate.season] || seasonPlans["今の季節"],
+    itemRoles,
+    checks,
+    missingNote: missing.length ? `${missing.slice(0, 2).join("、")}を加えると完成度が上がります。` : "",
+    totalLabel: total ? `選択商品の合計 約${total.toLocaleString("ja-JP")}円` : "",
+    roomReady,
+  };
+}
+
 async function drawCoordinateBoard(coordinate, text) {
   const canvas = coordBoard;
   if (!canvas) return;
+  const analysis = buildCoordinateAnalysis(coordinate);
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#fff8f9";
@@ -1296,10 +1702,10 @@ async function drawCoordinateBoard(coordinate, text) {
   ctx.fillRect(0, 0, canvas.width, 250);
   ctx.fillStyle = "#2f292c";
   ctx.font = "700 56px Yu Gothic UI, Meiryo, sans-serif";
-  wrapCanvasText(ctx, `${coordinate.style} ${coordinate.occasion}`, 70, 95, 660, 64, 2);
+  wrapCanvasText(ctx, analysis.headline, 70, 95, 660, 64, 2);
   ctx.font = "28px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillStyle = "#795c50";
-  ctx.fillText("Hanako coordinate board", 72, 206);
+  ctx.fillText(`${coordinate.priority} / ${coordinate.colorMood}`, 72, 206);
 
   if (coordinatePhotoDataUrl) {
     const image = await loadImage(coordinatePhotoDataUrl).catch(() => null);
@@ -1320,10 +1726,10 @@ async function drawCoordinateBoard(coordinate, text) {
 
   ctx.fillStyle = "#2f292c";
   ctx.font = "700 30px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("ROOM caption", 72, 1220);
+  ctx.fillText("WHY IT WORKS", 72, 1220);
   ctx.font = "24px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillStyle = "#6c555e";
-  wrapCanvasText(ctx, text.replace(/\n+/g, " "), 72, 1260, 930, 34, 2);
+  wrapCanvasText(ctx, `${analysis.solution} 色は${analysis.colorPlan}`, 72, 1260, 930, 34, 2);
   coordinateBoardDataUrl = canvas.toDataURL("image/png");
 }
 
@@ -1353,49 +1759,147 @@ async function drawProductCard(ctx, product, x, y) {
 
 function generateGeminiPrompt() {
   const coordinate = getSelectedCoordinate();
-  if (!coordinatePhotoDataUrl) return showToast("先に自分の全身写真を選んでください");
+  const originalProductPhotoMode = coordinate.imagePattern === "オリジナル商品写真で投稿";
+  if (!coordinatePhotoDataUrl && !originalProductPhotoMode) return showToast("先に自分の全身写真を選んでください");
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
+  if (!document.querySelector("#coordMainProduct")?.value) return showToast("必ず画像に使う主役商品を選んでください");
   coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
-  document.querySelector("#coordStatus").textContent = "Gemini文作成済み";
-  showToast("画像と紹介文のGeminiプロンプトを作りました");
+  document.querySelector("#coordStatus").textContent = "画像プロンプト作成済み";
+  showToast("画像生成専用のプロンプトを作りました");
 }
 
 function buildOutfitImagePrompt(coordinate) {
+  const mainProduct = coordinate.mainProduct || coordinate.products[0];
+  const stylingPlan = buildCoordinateAnalysis(coordinate);
+  const brand = getCoordinateBrand(mainProduct);
+  const originalProductPhotoMode = coordinate.imagePattern === "オリジナル商品写真で投稿";
+  const brandProducts = getSameBrandProducts(mainProduct);
   const items = coordinate.products.map((product) => `・${product.category}: ${product.name}
+  ブランド: ${getCoordinateBrand(product) || "商品ページで確認"}
   推しポイント: ${product.hook || createCoordinateHook(product)}
   価格メモ: ${product.price || "未設定"}
   商品画像URL: ${product.image || "なし"}
   商品ページURL: ${product.url || "なし"}`).join("\n");
+  const brandItems = brandProducts.length
+    ? brandProducts.map((product) => `・${product.category}: ${product.name}\n  商品画像URL: ${product.image || "なし"}\n  商品ページURL: ${product.url || "なし"}`).join("\n")
+    : "未登録です。添付された同じブランドの商品画像を使ってください。";
   const imageCopy = buildCoordinateImageCopy(coordinate);
-  return `添付した本人の全身写真を元に、楽天ROOMのコーディネートへ投稿するための、究極におしゃれでかわいい「着用イメージ画像」を作ってください。
+  const productPointNotes = buildHandwrittenProductPoints(coordinate);
+  const imagePatternInstruction = getCoordinateImagePatternInstruction(coordinate.imagePattern, coordinate);
+  const sourceInstruction = originalProductPhotoMode
+    ? `画像を生成してください。これは商品写真のレイアウト編集依頼です。文章だけで回答せず、私が撮影して添付した実物の商品写真だけを使って、新しい完成画像を1枚作ってください。
+
+添付していない商品や人物を新しく描かないでください。商品の色、形、柄、素材、ロゴを変えず、実物写真としての正確さを最優先してください。`
+    : `画像を生成してください。これは画像生成・写真編集の依頼です。文章だけで回答せず、添付した本人の全身写真を使って、新しい完成画像を1枚生成してください。
+
+添付写真は私本人の写真で、画像生成に使う権利があります。楽天ROOMのコーディネートへ投稿するための、究極におしゃれでかわいい「着用イメージ画像」に編集してください。`;
+  const personInstruction = originalProductPhotoMode
+    ? `【人物について】
+・このパターンでは人物や着用モデルを生成しない
+・本人写真の髪型設定は使わず、添付した商品写真だけでコーデの組み合わせを見せる`
+    : `【女の子】
+・添付写真と同じ女の子だと分かるよう、顔、髪型、髪色、体型、肌の雰囲気を一貫させる
+・別人にしない。年齢を変えない。顔を大きく加工しない
+・ポーズは元写真を生かしつつ、手元や足元を自然でかわいくアレンジする
+・指、手足、顔、服の重なりを不自然にしない
+・過度な露出や不自然な体型変更はしない`;
+  const hairInstruction = originalProductPhotoMode
+    ? "この商品写真パターンでは髪型の指定は使わない。人物を追加しない。"
+    : `${coordinate.hairStyle}
+・顔、髪色、本人らしい雰囲気は変えず、髪型だけを自然にこの指定へ合わせる
+・「元写真の髪型を保つ」の場合は、長さ、前髪、分け目、髪の流れを変えない
+・髪が服や顔へ不自然に重ならないようにする`;
+  const layoutInstruction = originalProductPhotoMode
+    ? `・元の商品写真が3:4でない場合は、商品を切らずに背景と余白を自然に広げる
+・添付した実物商品が主役。各商品の色、形、柄が分かる構図にする`
+    : `・元写真が3:4でない場合は、人物を切らずに背景と余白を自然に広げる
+・女の子とコーデが主役。全身が見え、服の形と組み合わせが伝わる構図`;
+  const consistencyInstruction = originalProductPhotoMode
+    ? "・完成画像は縦3:4の1枚にまとめ、同じ実物商品写真を描き直さず一貫して使う"
+    : "・完成画像は縦3:4の1枚にまとめ、同じ女の子、同じ髪型、同じコーデを一貫させる";
+  const brandCoordinationInstruction = originalProductPhotoMode
+    ? `・主役商品は、添付された本人撮影の商品写真をそのまま使う
+・同じブランドの商品も、本人が撮影して添付した写真だけを使う
+・URLや追加候補にあっても、写真が添付されていない商品は画像へ追加しない
+・商品の色、形、柄、ロゴを変えず、違う商品や人物を生成しない`
+    : `・主役商品は別の商品へ置き換えず、色、形、丈、素材感が分かるよう必ずコーデに使う
+・主役商品のブランド「${brand || "商品ページで確認できる同じブランド"}」の商品を複数使い、服・バッグ・くつ・アクセを合計3〜5点でまとめる
+・添付された同じブランドの商品画像と、上の選択商品を最優先で使う
+・同じブランドの商品画像または追加候補が2点以上ある場合は、主役商品と自然に合うものを選び、主役以外に最低2点を完成コーデへ反映する
+・違うブランドの商品を勝手に足さない。実在しない商品名、ロゴ、柄を作らない
+・商品ページや画像で確認できない細部は、断定せずシンプルに整える`;
+  const productDisplayInstruction = originalProductPhotoMode
+    ? `・添付した商品写真は切り抜き、傾き補正、明るさ調整、自然な影、背景整理だけを行う
+・商品そのものを再生成、着せ替え、変形、色変更しない
+・元写真の質感を保ち、本人が撮影した商品写真のコラージュとして仕上げる`
+    : `・商品名、商品画像URL、商品ページURLを参考に、選んだ服と小物の色、形、素材感、丈感をできるだけ自然に反映する
+・商品にないロゴや柄、ブランド名を勝手に追加しない
+・完全な実物写真だと断定する見せ方ではなく、自然な着用イメージにする
+・自然光で明るく、服の細部が見やすい高画質にする`;
+  const finalSubjectCheck = originalProductPhotoMode
+    ? "・添付した商品写真の色、形、柄、ロゴが変わっていない"
+    : "・女の子の一貫性が保たれている";
+  const imageTextRestriction = originalProductPhotoMode
+    ? "・画像内にサービス名、URL、値段、新しいブランドロゴを文字として追加しない。元の商品写真に写っているロゴは消したり変えたりしない"
+    : "・画像内に「楽天ROOM」「楽天ルーム」「ROOM」、URL、値段、ブランドロゴを入れない";
+  return `${sourceInstruction}
 
 【画像サイズと構図】
 ・完成画像は必ず縦3:4。推奨サイズは1536×2048px
-・元写真が3:4でない場合は、人物を切らずに背景と余白を自然に広げる
-・女の子とコーデが主役。全身が見え、服の形と組み合わせが伝わる構図
+${layoutInstruction}
 ・右下の端は、背景から自然につながる完全な白にする
 ・右下の白い部分には、文字、服、小物、かざり、影を置かない
+
+【利用上の区分】
+・この生成画像はコーデ検討・SNS用の着用イメージとして作る
+・実際に本人が着用して撮影した事実や、ROOMのオリジナル写真であるかのように見せない
+・ROOMへ実投稿する際は、本人が実際に着用して撮影した全身写真を使い、その写真に写っている商品だけを登録する
+・店舗の商品画像を保存・加工した画像を、本人撮影の商品写真として扱わない
 
 【コーデの雰囲気】
 ${coordinate.style}
 シーン: ${coordinate.occasion}
 全体は明るく、清潔感があり、大人ガーリーで甘めきれいめ。かわいいだけでなく、まねしたくなる洗練されたファッション投稿にする。
 
-【合わせたい商品】
+【スタイリストの設計図】
+解決したい悩み: ${coordinate.concern}
+一番優先すること: ${coordinate.priority}
+解決方法: ${stylingPlan.solution}
+シルエット: ${stylingPlan.silhouette}
+色バランス: ${stylingPlan.colorPlan}
+季節設計: ${stylingPlan.seasonPlan}
+各アイテムの役割:
+${stylingPlan.itemRoles.map((item) => `・${item.name}: ${item.role}`).join("\n")}
+この設計を見た目で伝える。商品をただ並べず、主役・引き立て役・締め色の関係が一目で分かる完成コーデにする。
+
+【選んだ髪型】
+${hairInstruction}
+
+【選んだ画像パターン】
+${coordinate.imagePattern}
+${imagePatternInstruction}
+${consistencyInstruction}
+
+【必ず使う主役商品】
+商品名: ${mainProduct.name}
+ブランド: ${brand || "商品ページと添付画像から確認"}
+カテゴリ: ${mainProduct.category}
+商品画像URL: ${mainProduct.image || "なし"}
+商品ページURL: ${mainProduct.url || "なし"}
+
+【選択した商品】
 ${items}
 
-【女の子】
-・添付写真と同じ女の子だと分かるよう、顔、髪型、髪色、体型、肌の雰囲気を一貫させる
-・別人にしない。年齢を変えない。顔を大きく加工しない
-・ポーズは元写真を生かしつつ、手元や足元を自然でかわいくアレンジする
-・指、手足、顔、服の重なりを不自然にしない
-・過度な露出や不自然な体型変更はしない
+【登録済みの同じブランドの追加候補】
+${brandItems}
+
+【ブランドコーデの絶対条件】
+${brandCoordinationInstruction}
+
+${personInstruction}
 
 【服の見せ方】
-・商品名、商品画像URL、商品ページURLを参考に、選んだ服と小物の色、形、素材感、丈感をできるだけ自然に反映する
-・商品にないロゴや柄、ブランド名を勝手に追加しない
-・完全な実物写真だと断定する見せ方ではなく、自然な着用イメージにする
-・自然光で明るく、服の細部が見やすい高画質にする
+${productDisplayInstruction}
 
 【日本語のデザイン】
 ファッションの特徴を「なやみ → かいけつ → かわいくなる理由」の流れで、余白に短く入れる。
@@ -1404,49 +1908,140 @@ ${items}
 次の文章を基本に、意味を変えず自然に整えて使う:
 ${imageCopy.map((line) => `・${line}`).join("\n")}
 
+【商品の手書き風ポイント】
+・服と小物は写真らしい質感のまま残し、それぞれの近くに手書き風の矢印、細い囲み線、下線、ミニふきだしを添える
+・くすみピンク、こげ茶、白を中心にしたペン画風で、雑誌の手書きメモや上品なスクラップブックのように仕上げる
+・小さなリボン、ハート、きらめき、レース線、マスキングテープ風のアクセントを少量だけ使う
+・各アイテムへの矢印は正しい服や小物を指し、短いポイントを3〜5個だけ配置する
+・人物の顔や服の大事な部分へ文字やかざりを重ねない。余白を生かし、情報を詰め込みすぎない
+・テンプレートを貼っただけに見せず、線の太さ、文字サイズ、囲み方に変化をつけ、丁寧に作り込んだ編集画像にする
+・手書き風でも日本語ははっきり読めるようにし、誤字や文字化けを出さない
+
+入れるポイント候補:
+${productPointNotes.map((line) => `・${line}`).join("\n")}
+
 【文字のルール】
 ・日本語の誤字、文字化け、意味のない文字を出さない
 ・文字数を増やしすぎない。読みにくい場合は文章を減らす
-・画像内に「楽天ROOM」「楽天ルーム」「ROOM」、URL、値段、ブランドロゴを入れない
+${imageTextRestriction}
 ・英語だけの見出しにせず、かわいい日本語を中心にする
 
 【最終チェック】
 ・縦3:4になっている
-・女の子の一貫性が保たれている
+${finalSubjectCheck}
 ・コーデが主役で、商品が自然に組み合わされている
+・悩み「${coordinate.concern}」への解決が、シルエットと色の両方で伝わる
+・季節とシーンに合わない厚着、薄着、靴、小物になっていない
+・主役以外の商品が主張しすぎず、コーデ全体に一つの視線の流れがある
+・画像にない商品を、実際に着用した商品として説明していない
 ・余白の日本語が読みやすく、課題解決風でかわいい
 ・右下の端が自然な完全な白になっている
 ・画像内に楽天ROOMを示す文字が入っていない
 
-【画像のあとに作るコーデ紹介文】
-画像を生成したあと、同じ回答の下に「コーデ紹介文」を1案書いてください。
-選んだ雰囲気、シーン、商品名、カテゴリ、推しポイントをきちんと参考にし、このコーデだけに合う内容にしてください。
+以上の条件をすべて守り、文章による説明や紹介文は返さず、完成画像だけを生成してください。`;
+}
 
-紹介文の条件:
+function generateGeminiCaptionPrompt() {
+  const coordinate = getSelectedCoordinate();
+  if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
+  if (!document.querySelector("#coordMainProduct")?.value) return showToast("紹介する主役商品を選んでください");
+  coordGeminiPrompt.value = buildCoordinateCaptionPrompt(coordinate);
+  document.querySelector("#coordStatus").textContent = "紹介文プロンプト作成済み";
+  showToast("コーデ紹介文のプロンプトを作りました");
+}
+
+function buildCoordinateCaptionPrompt(coordinate) {
+  const mainProduct = coordinate.mainProduct || coordinate.products[0];
+  const stylingPlan = buildCoordinateAnalysis(coordinate);
+  const brand = getCoordinateBrand(mainProduct);
+  const brandProducts = getSameBrandProducts(mainProduct);
+  const items = coordinate.products.map((product) => `・${product.category}: ${product.name}
+  ブランド: ${getCoordinateBrand(product) || "商品ページで確認"}
+  推しポイント: ${product.hook || createCoordinateHook(product)}
+  価格メモ: ${product.price || "未設定"}`).join("\n");
+  const brandItems = brandProducts.length
+    ? brandProducts.map((product) => `・${product.category}: ${product.name}\n  推しポイント: ${product.hook || createCoordinateHook(product)}`).join("\n")
+    : "追加候補なし";
+  return `次の完成コーデを読者へ紹介する、短くてかわいい文章を1案作ってください。商品の一覧説明ではなく、主役商品と同じブランドのアイテムをどう組み合わせたコーデなのかが伝わる文章にしてください。
+
+雰囲気: ${coordinate.style}
+シーン: ${coordinate.occasion}
+髪型: ${coordinate.hairStyle}
+画像パターン: ${coordinate.imagePattern}
+解決したい悩み: ${coordinate.concern}
+一番優先すること: ${coordinate.priority}
+色バランス: ${coordinate.colorMood}
+季節: ${coordinate.season}
+主役商品: ${mainProduct.name}
+主役ブランド: ${brand || "商品ページで確認"}
+
+選んだ商品:
+${items}
+
+同じブランドの追加候補:
+${brandItems}
+
+スタイリストの設計:
+・解決方法: ${stylingPlan.solution}
+・シルエット: ${stylingPlan.silhouette}
+・色: ${stylingPlan.colorPlan}
+・季節: ${stylingPlan.seasonPlan}
+・買う前チェック: ${stylingPlan.checks.join(" / ")}
+
+【紹介文の条件】
 ・最初の1行は必ず「おはファッション🌸」から始める
-・160〜240文字くらいで、短く、読みやすく、かわいくまとめる
+・内部で冒頭3案と構成3案を考え、いちばん自然で保存したくなる完成稿だけを出す
+・200〜320文字くらいで、短い文と空行を使い、スマホで読みやすくまとめる
 ・話し手は礼儀正しく、ファッションが大好きな女子大生
 ・自信のあるファッション解説に、愛のある鋭いひと言、くすっとする面白さ、女子大生らしい共感を自然に入れる
 ・「よくある服のなやみ → このコーデでのかいけつ → かわいく見える理由」の順で書く
-・選んだ商品を最低1つ具体的に取り上げ、色、形、合わせやすさなどを短く説明する
+・悩み「${coordinate.concern}」に共感し、選んだ服の形・色・小物がどう解決するかを具体的に書く
+・「かわいい」「高見え」だけで済ませず、シルエット、色数、重心、着回しのうち2つ以上を説明する
+・主役商品を必ず具体的に紹介し、同じブランドの商品を複数合わせた統一感にもふれる
+・商品名を並べるだけにせず、色、形、素材感、全体のバランスがどうかわいく見えるかを書く
 ・選んだシーンで着たくなる一言と、読んだ人が前向きになれる締めを入れる
 ・1文を短めにし、2〜4つの段落に分ける
-・絵文字は文章になじむものを1〜3個だけ使う
+・絵文字は文章になじむものを3〜5個使い、同じ絵文字を繰り返さない
+・最後は保存したくなる一言か、手持ち服を確認したくなる一言で締める
 ・むずかしい漢字、上から目線、乱暴な言い方、わざとらしい若者言葉、誇大表現は使わない
 ・特定の人物や作風を示す言葉、読者への乱暴な呼びかけは絶対に書かない
 ・実際に買った、着た、使ったと確認できない内容は断定しない
-・紹介文には画像制作の指示や説明を書かない
+・画像制作の指示や前置き、解説、見出しは書かない
 
-出力順:
-1. 条件どおりの完成画像
-2. 見出し「コーデ紹介文」
-3. 完成した紹介文だけ
+完成した紹介文だけを出力してください。`;
+}
 
-以上の条件をすべて守り、画像も紹介文も超絶本気で、おしゃれでかわいく仕上げてください。`;
+function getCoordinateBrand(product) {
+  return String(product?.details?.brand || product?.details?.shopName || "").trim();
+}
+
+function getCoordinateImagePatternInstruction(pattern, coordinate) {
+  const patterns = {
+    "全身1カット＋手書きポイント": "女の子の全身を大きく1カットで見せ、商品の周囲に手書きポイントを配置する。",
+    "おしゃれ雑誌の表紙風": "女の子を中央に大きく配置し、上品な雑誌表紙のような余白、見出し、手書きポイントで編集する。",
+    "3カットのコラージュ": "全身のメインカットを大きく、同じコーデの別ポーズと商品ディテールを小さく2カット添える。",
+    "商品アップ入り編集": "全身のメインカットに、主役商品の素材・形と小物が分かるアップ画像を2〜3個添える。",
+    "おでかけスナップ風": "選んだシーンに合う自然な屋外背景で、歩く・振り返るなどのかわいいスナップ写真風にする。",
+    "淡色スタジオ撮影風": "白と淡いピンクの明るいスタジオで、やわらかな自然光と少ない小物を使い上品に撮影する。",
+    "コレクション表紙用": `コレクションの表紙として、中央に完成コーデを大きく見せる。上部に「大人かわいい ${coordinate.occasion} コーデ」と短く読みやすい日本語を置き、小さな一覧表示でもテーマが伝わる構図にする。重要な文字と商品は端へ寄せず、中央寄りの安全な範囲へ置く。画像内にサービス名は入れない。`,
+    "オリジナル商品写真で投稿": "本人が撮影して添付した商品写真を切り抜き、明るさと背景だけを自然に整え、フラットレイまたは上品な商品コラージュにする。商品そのものを描き直さず、色・形・柄・ロゴを変えない。添付されていない商品や人物を生成しない。",
+  };
+  return patterns[pattern] || patterns["全身1カット＋手書きポイント"];
+}
+
+function getSameBrandProducts(mainProduct) {
+  const brand = getCoordinateBrand(mainProduct).toLocaleLowerCase("ja-JP");
+  if (!brand) return [];
+  return state.products
+    .filter((product) => product.id !== mainProduct?.id
+      && product.category !== "ホテル・旅行"
+      && getCoordinateBrand(product).toLocaleLowerCase("ja-JP") === brand)
+    .slice(0, 6);
 }
 
 function buildCoordinateImageCopy(coordinate) {
   const main = coordinate.products[0];
+  const analysis = buildCoordinateAnalysis(coordinate);
   const categoryLine = {
     ワンピース: "1まいで、ちゃんとかわいい♡",
     トップス: "顔まわりが、ぱっと明るく♡",
@@ -1458,11 +2053,27 @@ function buildCoordinateImageCopy(coordinate) {
     アクセサリー: "きらっと小ものが、ちょうどいい",
   }[main?.category] || "色をそろえて、大人かわいく♡";
   return [
-    "朝の『なに着る？』を3分でかいけつ♡",
-    "甘さはほしい。でも子どもっぽく見せたくない。",
+    `${coordinate.concern}を、かわいくかいけつ♡`,
+    trimText(analysis.solution, 30),
     categoryLine,
-    `${coordinate.occasion}に、ちょうどいい♡`,
+    `${coordinate.occasion}×${coordinate.priority}に、ちょうどいい♡`,
   ];
+}
+
+function buildHandwrittenProductPoints(coordinate) {
+  const pointByCategory = {
+    ワンピース: "ワンピの近く: 『1まいで、ちゃんとかわいい♡』",
+    トップス: "トップスの近く: 『顔まわり、ぱっと明るく♡』",
+    アウター: "はおりの近く: 『さっと重ねて、きれい見え』",
+    スカート: "スカートの近く: 『ふわっと感が、ちょうどいい』",
+    パンツ: "パンツの近く: 『すっきり見えで、甘さを調整』",
+    バッグ: "バッグの近く: 『小さめで、ぬけ感をプラス』",
+    シューズ: "足もとの近く: 『色をそろえて、大人っぽく』",
+    アクセサリー: "アクセの近く: 『きらっと感を、ひとさじ♡』",
+  };
+  return coordinate.products
+    .slice(0, 5)
+    .map((product, index) => `${index === 0 ? "主役♡ " : ""}${pointByCategory[product.category] || "小ものの近く: 『コーデが、きゅっとまとまる』"}`);
 }
 
 function openGemini() {
@@ -1506,6 +2117,15 @@ function readFileAsDataUrl(file) {
         resolve(dataUrl);
       }
     });
+    reader.addEventListener("error", reject);
+    reader.readAsDataURL(file);
+  });
+}
+
+function readOriginalFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
     reader.addEventListener("error", reject);
     reader.readAsDataURL(file);
   });
@@ -1822,8 +2442,9 @@ function generateEditorialPost(isVariation) {
   lastGenerationContext = context;
   lastGenerated = generatePremiumCopy(context);
   postOutput.value = lastGenerated;
+  markSocialGeminiPromptStale();
   const learnedLabel = context.learnedPattern.sampleSize >= 2 ? "実績から最適化" : "新規テスト";
-  document.querySelector("#outputMeta").textContent = `${activePlatform} / ${viralPatternLabels[context.viralPattern]} / ${learnedLabel} / ${context.ownershipVoice.status}`;
+  document.querySelector("#outputMeta").textContent = `${activePlatform} / 18構成から自動選抜 / ${viralPatternLabels[context.viralPattern]} / ${learnedLabel} / ${context.ownershipVoice.status}`;
   renderChecks(lastGenerated);
   rememberGeneration(lastGenerated);
   showToast(isVariation ? "切り口を変えて別案を作りました" : "媒体に合わせて投稿を作りました");
@@ -1844,6 +2465,7 @@ function generateThreeEditorialPosts() {
   }
   lastGenerated = versions.join("\n\n");
   postOutput.value = lastGenerated;
+  markSocialGeminiPromptStale();
   document.querySelector("#outputMeta").textContent = `${activePlatform} / 3つの共感アプローチを比較 / 購入状況に合う表現`;
   renderChecks(lastGenerated);
   showToast("共感の入口を変えた3案を作りました");
@@ -1932,6 +2554,327 @@ function buildEditorialContext(product) {
     empathy: empathyLibrary[emotion],
     ownershipVoice: product.category === "ホテル・旅行" ? travelOwnershipVoices[ownership] : ownershipVoices[ownership],
   };
+}
+
+function generateSocialGeminiImagePrompt(quiet = false) {
+  const data = getSocialGeminiPromptData();
+  if (!data) return false;
+  snsGeminiPrompt.value = buildSocialGeminiImagePrompt(data);
+  socialGeminiPromptNeedsRefresh = false;
+  setSocialGeminiMode("image");
+  setSocialGeminiStatus(`${activePlatform}画像用`);
+  if (!quiet) showToast(`${activePlatform}の画像プロンプトを作りました`);
+  renderSocialGeminiProgress();
+  return true;
+}
+
+function generateSocialGeminiCopyPrompt(quiet = false) {
+  const data = getSocialGeminiPromptData();
+  if (!data) return false;
+  snsGeminiPrompt.value = buildSocialGeminiCopyPrompt(data);
+  socialGeminiPromptNeedsRefresh = false;
+  setSocialGeminiMode("copy");
+  setSocialGeminiStatus(`${activePlatform}投稿文用`);
+  if (!quiet) showToast(`${activePlatform}の投稿文プロンプトを作りました`);
+  renderSocialGeminiProgress();
+  return true;
+}
+
+function sendSocialGeminiToGemini(mode) {
+  const generated = mode === "image"
+    ? generateSocialGeminiImagePrompt(true)
+    : generateSocialGeminiCopyPrompt(true);
+  if (generated) copyAndOpenSocialGemini();
+}
+
+function getSocialGeminiPromptData() {
+  const product = state.products.find((item) => item.id === selectedProduct.value) || state.products[0];
+  if (!product) {
+    showToast("先に商品を登録してください");
+    return null;
+  }
+  const context = buildEditorialContext(product);
+  const selectedLabel = (selector) => {
+    const select = document.querySelector(selector);
+    return select?.selectedOptions?.[0]?.textContent?.trim() || "自動";
+  };
+  return {
+    context,
+    currentDraft: postOutput.value.trim().slice(0, 6000),
+    labels: {
+      audience: selectedLabel("#audienceSelect"),
+      goal: selectedLabel("#goalSelect"),
+      optimization: selectedLabel("#optimizationSelect"),
+      emotion: selectedLabel("#emotionSelect"),
+      hook: hookTypeLabels[context.hookType] || selectedLabel("#hookSelect"),
+      ownership: context.ownershipVoice.status || selectedLabel("#ownershipSelect"),
+      viralPattern: viralPatternLabels[context.viralPattern] || selectedLabel("#viralPatternSelect"),
+      season: selectedLabel("#seasonSelect"),
+      tone: selectedLabel("#toneSelect"),
+      fashionOccasion: selectedLabel("#fashionOccasionSelect"),
+      fashionPriority: selectedLabel("#fashionPrioritySelect"),
+      fashionConcern: selectedLabel("#fashionConcernSelect"),
+      travelCompanion: selectedLabel("#travelCompanionSelect"),
+      travelPriority: selectedLabel("#travelPrioritySelect"),
+    },
+  };
+}
+
+function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft }) {
+  const product = c.product;
+  const details = product.details || {};
+  const supportingProducts = c.products
+    .slice(1)
+    .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
+    .slice(0, 3)
+    .map((item) => `・${item.name} / ${item.category} / ${item.price || "価格未設定"}\n  画像URL: ${item.image || "なし"}`)
+    .join("\n") || "なし";
+  const visualByPlatform = {
+    Instagram: `縦4:5（1080×1350px）の保存したくなる投稿画像を1枚作る。主役商品を大きく見せ、表紙見出し、短いポイント3つ、手書き風の矢印や囲みを上品に配置する。`,
+    Threads: `縦4:5（1080×1350px）の自然なライフスタイル画像を1枚作る。日常の一場面らしい親しみと共感を優先し、文字は短いひと言と手書きポイント2つまでにする。`,
+    X: `横16:9（1600×900px）の一目で内容が分かる情報画像を1枚作る。比較・ランキング・速報・チェック項目が3秒で読める構成にし、見出しは短く強くする。`,
+  }[c.platform];
+  const topicInstruction = c.isTravel
+    ? `添付した宿泊施設の写真を主役にし、客室・眺望・アクセスなど確認できる魅力を整理する。写真にない設備や景色を作らない。`
+    : `添付した商品画像を主役にし、色・形・素材感を変えず、${labels.fashionOccasion}で使うイメージが自然に伝わるようにする。`;
+  return `画像を生成してください。これは${c.platform}投稿用の画像生成依頼です。文章だけで回答せず、添付した商品画像または施設画像を使って完成画像を1枚生成してください。
+
+【投稿先】
+${c.platform}
+
+【画像の構成】
+${visualByPlatform}
+${topicInstruction}
+
+【今回の企画】
+切り口: ${c.angle}
+反応を生む構成: ${labels.viralPattern}
+届けたい相手: ${labels.audience}
+投稿の目的: ${labels.goal}
+成果の最適化: ${labels.optimization}
+寄り添う気持ち: ${labels.emotion}
+冒頭のつかみ: ${labels.hook}
+季節: ${c.seasonLabel}
+今回だけの情報: ${c.brief || "なし"}
+
+【画像とそろえる投稿内容】
+${currentDraft ? currentDraft.slice(0, 1200) : "投稿文はまだ未作成。上の企画から画像を作る"}
+
+【主役】
+商品・施設名: ${product.name}
+カテゴリ: ${product.category}
+価格メモ: ${product.price || "未設定"}
+ブランド: ${details.brand || "未設定"}
+色: ${details.color || "未設定"}
+素材: ${details.material || "未設定"}
+推しポイント: ${product.hook || "商品情報から自然に整理"}
+画像URL: ${product.image || "なし"}
+商品ページURL: ${product.url || "なし"}
+
+【比較・ランキング企画で使える候補】
+${supportingProducts}
+企画が比較・ランキングでない場合は無理に使わない。画像が添付されていない候補を実物そっくりに描かない。
+
+【デザイン】
+・おしゃれ研究家ハナコらしい、大人ガーリーで甘めきれいめな世界観
+・明るく清潔感があり、商品が見やすい。ピンク一色にせず白、黒、淡いピンクをバランスよく使う
+・文字は読みやすい自然な日本語。誤字、文字化け、意味のない文字を出さない
+・商品名を長く載せず、見出しは12〜18文字、説明は短くする
+・商品や人物の大切な部分へ文字を重ねない
+・サービス名、URL、値段、ブランドロゴを新しく画像内へ追加しない
+・確認できない効果、使用感、売上、人気、順位を作らない
+・実物の商品や施設を別物へ変えない
+
+完成画像だけを生成し、説明文や投稿文は返さないでください。`;
+}
+
+function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
+  const product = c.product;
+  const details = product.details || {};
+  const supportingProducts = c.products
+    .slice(1)
+    .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
+    .slice(0, 3)
+    .map((item) => `・${item.name} / ${item.category} / ${item.price || "価格未設定"}`)
+    .join("\n") || "なし";
+  const platformInstruction = {
+    Instagram: `保存したくなるInstagram投稿にする。12〜18文字の表紙見出し、7枚以内のスライド構成、完成キャプションを作る。キャプション冒頭2行で悩みと読む理由を示し、共感、解決、具体的な選び方、正直な確認点、保存CTAの順にする。1段落は1〜3文、ハッシュタグは関連性の高いものを5〜8個。絵文字は表紙・各見出し・保存CTAの目印として6〜12個使い、本文の全行には付けない。`,
+    Threads: `自然なThreads投稿にする。礼儀正しい女子大生の具体的な朝・大学・カフェなどの一場面から入り、観察、本音、小さな気づきをつなぐ。80〜180文字程度、短い段落、売り込みは最後の1行だけ。誰でも答えられる曖昧な質問ではなく、A/Bや具体的な経験を聞く。絵文字は感情・問い・保存の目印として2〜4個、ハッシュタグは0〜2個。`,
+    X: `役に立つX投稿を1本作る。120〜240文字以内で結論を先に置き、比較、ランキング、速報、着回し、買う前チェックのどれか一つに絞る。数字またはA/B、具体的な確認点を入れ、1行を短くする。絵文字は冒頭・比較軸・CTAの視線誘導として2〜5個、URLや導線より本文の情報価値を優先し、ハッシュタグは0〜2個。`,
+  }[c.platform];
+  return `あなたは「おしゃれ研究家ハナコ」。礼儀正しく、ファッションが大好きな女子大生です。次の選択内容をすべて参考に、${c.platform}で共感され、保存・返信・クリックにつながりやすい完成投稿文を1案作ってください。
+
+【${c.platform}の書き方】
+${platformInstruction}
+
+【企画】
+切り口: ${c.angle}
+届けたい相手: ${labels.audience}
+目的: ${labels.goal}
+最適化: ${labels.optimization}
+寄り添う悩み: ${labels.emotion}
+冒頭のつかみ: ${labels.hook}
+反応を生む構成: ${labels.viralPattern}
+季節: ${c.seasonLabel}
+文体: ${labels.tone}
+商品との関係: ${labels.ownership}
+今回だけ入れたい情報: ${c.brief || "なし"}
+
+【商品・施設情報】
+名前: ${product.name}
+カテゴリ: ${product.category}
+価格メモ: ${product.price || "未設定"}
+ブランド: ${details.brand || "未設定"}
+色: ${details.color || "未設定"}
+素材: ${details.material || "未設定"}
+推しポイント: ${product.hook || "未設定"}
+着ていく場面: ${c.isTravel ? labels.travelCompanion : labels.fashionOccasion}
+重視すること: ${c.isTravel ? labels.travelPriority : labels.fashionPriority}
+気になるポイント: ${c.isTravel ? "料金・空室・条件は最新情報を確認" : labels.fashionConcern}
+
+比較・ランキング企画で使える候補:
+${supportingProducts}
+
+【アプリで作った下書き】
+${currentDraft || "下書きなし。上の情報から新しく作る"}
+
+【作成方法】
+・内部で冒頭フックを18案、構成を6案考え、媒体と目的に最も合う1案を選ぶ
+・選んだ理由や検討過程、別案は出力しない
+・完成後に、媒体の文字量、具体性、共感、信頼、CTA、広告表記、重複の少なさを自己確認する
+・弱い場合は内部で書き直し、合格した完成稿だけを返す
+
+【文章の絶対条件】
+・下書きの良い部分は生かすが、そのまま言い換えるだけにしない
+・最初の1〜2行で「自分のことかも」と思える具体的な場面か悩みを示す
+・商品名より先に、読者が止まる情景・違和感・結論のどれかを置く
+・悩み → 気づき → この商品が候補になる理由 → 次の行動、の流れにする
+・くすっとする面白さと愛のある鋭いひと言を少しだけ入れる
+・商品ページで確認できた事実と、話し手の感想・予想を混同しない
+・同じ意味の言葉、同じCTA、同じ商品名を何度も繰り返さない
+・絵文字には「感情」「情報の区切り」「次の行動」の役割を持たせ、飾りとして連続させない
+・同じ絵文字を繰り返さず、1行に絵文字を2個以上並べない
+・広告表記、URL、ハッシュタグの行には絵文字を付けない
+・上から目線、乱暴な呼びかけ、煽り、誇大表現、不自然な若者言葉を使わない
+・購入や使用を確認できない場合は、使ったように断定しない
+・価格、在庫、サイズ、効果、人気、順位を作らない
+・「バズる」「AIが作成」「プロンプト」という言葉を投稿文に書かない
+・商用投稿として「${c.disclosure}」を自然に入れる
+・リンク導線は次を使う:
+${c.roomLine}
+
+前置き、解説、採点を付けず、完成した${c.platform}投稿文だけを出力してください。`;
+}
+
+function setSocialGeminiStatus(message) {
+  const target = document.querySelector("#snsGeminiStatus");
+  if (target) target.textContent = message;
+}
+
+function setSocialGeminiMode(mode) {
+  document.querySelector("#generateSocialGeminiImage")?.classList.toggle("active", mode === "image");
+  document.querySelector("#generateSocialGeminiCopy")?.classList.toggle("active", mode === "copy");
+}
+
+function copyAndOpenSocialGemini() {
+  const prompt = snsGeminiPrompt?.value.trim();
+  if (!prompt) return showToast("先に画像か投稿文のプロンプトを作ってください");
+  socialGeminiAwaitingReturn = true;
+  copyText(prompt);
+  window.open("https://gemini.google.com/app", "_blank", "noopener,noreferrer");
+  renderSocialGeminiProgress();
+}
+
+function handleSocialGeminiReturn() {
+  if (!socialGeminiAwaitingReturn) return;
+  socialGeminiAwaitingReturn = false;
+  const details = document.querySelector("#snsGeminiResultDetails");
+  if (details) details.open = true;
+  setSocialGeminiStatus("結果を貼り付け");
+  renderSocialGeminiProgress();
+}
+
+async function previewSocialGeminiImage(event) {
+  const file = event.target.files?.[0];
+  const preview = document.querySelector("#snsGeneratedImagePreview");
+  const downloadButton = document.querySelector("#downloadSocialGeminiImage");
+  if (!file) {
+    socialGeminiGeneratedImageDataUrl = "";
+    preview.hidden = true;
+    preview.innerHTML = "";
+    downloadButton.disabled = true;
+    return;
+  }
+  socialGeminiGeneratedImageDataUrl = await readOriginalFileAsDataUrl(file);
+  socialGeminiGeneratedImageExtension = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
+  preview.hidden = false;
+  preview.innerHTML = `<img src="${socialGeminiGeneratedImageDataUrl}" alt="Geminiで作った${escapeHtml(activePlatform)}投稿画像">`;
+  downloadButton.disabled = false;
+  document.querySelector("#snsGeminiResultDetails").open = true;
+  setSocialGeminiStatus("完成画像あり");
+  renderSocialGeminiProgress();
+  showToast("完成画像を読み込みました");
+}
+
+function applySocialGeminiCopy() {
+  const result = document.querySelector("#snsGeminiResult")?.value.trim();
+  if (!result) return showToast("Geminiの完成投稿文を貼り付けてください");
+  postOutput.value = result;
+  lastGenerated = result;
+  document.querySelector("#outputMeta").textContent = `${activePlatform} / Gemini仕上げを反映`;
+  renderChecks(result);
+  rememberGeneration(result);
+  setSocialGeminiStatus("完成文を反映済み");
+  renderSocialGeminiProgress();
+  postOutput.scrollIntoView({ behavior: "smooth", block: "center" });
+  showToast("完成投稿文へ反映しました");
+}
+
+function downloadSocialGeminiImage() {
+  if (!socialGeminiGeneratedImageDataUrl) return showToast("先に完成画像を添付してください");
+  const link = document.createElement("a");
+  link.href = socialGeminiGeneratedImageDataUrl;
+  link.download = `hanako-${activePlatform.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.${socialGeminiGeneratedImageExtension}`;
+  link.click();
+}
+
+function markSocialGeminiPromptStale(event) {
+  if (event?.target?.closest?.(".sns-gemini-tools")) return;
+  if (snsGeminiPrompt?.value.trim()) {
+    socialGeminiPromptNeedsRefresh = true;
+    setSocialGeminiStatus("条件変更あり");
+    renderSocialGeminiProgress();
+  }
+}
+
+function renderSocialGeminiProgress() {
+  const product = state.products.find((item) => item.id === selectedProduct?.value) || state.products[0];
+  const hasProduct = Boolean(product);
+  const hasPrompt = Boolean(snsGeminiPrompt?.value.trim()) && !socialGeminiPromptNeedsRefresh;
+  const hasReturnedResult = Boolean(socialGeminiGeneratedImageDataUrl || document.querySelector("#snsGeminiResult")?.value.trim());
+  const steps = {
+    product: hasProduct,
+    create: hasPrompt,
+    return: hasReturnedResult,
+  };
+  document.querySelectorAll("[data-sns-step]").forEach((step) => {
+    const key = step.dataset.snsStep;
+    step.classList.toggle("complete", steps[key]);
+    step.classList.remove("current");
+  });
+  const currentKey = !hasProduct ? "product" : !hasPrompt ? "create" : !hasReturnedResult ? "return" : "return";
+  document.querySelector(`[data-sns-step="${currentKey}"]`)?.classList.add("current");
+  const next = document.querySelector("#snsGeminiNextAction");
+  if (!next) return;
+  next.textContent = !hasProduct
+    ? "先に紹介する商品を選んでください"
+    : socialGeminiPromptNeedsRefresh
+      ? "条件が変わりました。画像か投稿文をもう一度作ってください"
+      : !hasPrompt
+        ? "画像か投稿文を選ぶと、コピーしてGeminiが開きます"
+        : !hasReturnedResult
+          ? "Geminiで作成後、この画面へ戻って結果を貼り付けます"
+          : "結果を確認して、完成稿への反映または画像保存を進めてください";
 }
 
 const travelOwnershipVoices = {
@@ -2186,16 +3129,284 @@ const categoryStyles = {
 };
 
 function generatePremiumCopy(context) {
+  const candidates = buildEditorialCandidateContexts(context)
+    .map((candidateContext) => ({
+      context: candidateContext,
+      text: generatePremiumCopyCandidate(candidateContext),
+    }));
+  const uniqueCandidates = [...new Map(candidates.map((candidate) => [candidate.text, candidate])).values()];
+  return uniqueCandidates
+    .map(({ text, context: candidateContext }, index) => ({
+      text,
+      score: scorePlatformCopy(text, candidateContext) + index * 0.001,
+    }))
+    .sort((a, b) => b.score - a.score)[0].text;
+}
+
+function buildEditorialCandidateContexts(context) {
+  const hookTypes = ["scene", "confession", "specific", "contrarian", "question", "whisper"];
+  const platformPatterns = {
+    X: ["comparison", "checklist", "mistake", "ranking", "costperwear", "beforeafter"],
+    Threads: ["microstory", "commentreply", "unpopular", "beforeafter", "mistake", "comparison"],
+    Instagram: ["checklist", "beforeafter", "ranking", "comparison", "mistake", "costperwear"],
+  };
+  const goalPatterns = {
+    save: ["checklist", "comparison", "ranking", "beforeafter"],
+    room: ["comparison", "costperwear", "mistake", "checklist"],
+    reply: ["microstory", "commentreply", "unpopular", "comparison"],
+    follow: ["microstory", "beforeafter", "ranking", "checklist"],
+  };
+  const learned = context.learnedPattern?.sampleSize >= 2 ? [context.learnedPattern.pattern] : [];
+  const patterns = [...new Set([
+    context.viralPattern,
+    ...learned,
+    ...(goalPatterns[context.goal] || []),
+    ...(platformPatterns[context.platform] || platformPatterns.X),
+  ])];
+  return Array.from({ length: 18 }, (_, index) => ({
+    ...context,
+    hookType: hookTypes[index % hookTypes.length],
+    viralPattern: patterns[index % patterns.length],
+    seed: context.seed + index * 7919,
+    candidateIndex: index,
+  }));
+}
+
+function generatePremiumCopyCandidate(context) {
   let result;
+  const isThreadsSet = context.platform === "Threads" && ["1日5本セット", "骨格ウェーブ目線"].includes(context.angle);
   if (context.product.category === "ホテル・旅行") result = generateTravelCopy(context);
   else if (context.platform === "Instagram") result = generatePremiumInstagram(context);
   else if (context.platform === "Threads") result = generatePremiumThreads(context);
   else result = generatePremiumX(context);
-  if (!context.isTravel) result = enrichFashionCopy(result, context);
-  result = applyViralPattern(result, context);
-  result = weaveEmpathy(result, context);
+  if (!context.isTravel && !isThreadsSet) result = enrichFashionCopy(result, context);
+  if (!isThreadsSet) result = applyViralPattern(result, context);
+  if (!isThreadsSet) result = weaveEmpathy(result, context);
   if (context.platform === "Instagram") result += originalContentDirections(context);
-  return result;
+  if (context.platform === "X" && result.length > 240) result = buildCompactXCopy(context);
+  if (context.platform === "Threads" && result.length > 320 && !["1日5本セット", "骨格ウェーブ目線"].includes(context.angle)) result = buildCompactThreadsCopy(context);
+  result = decorateSocialCopy(result, context);
+  if (context.platform === "X" && result.length > 240) result = decorateSocialCopy(buildCompactXCopy(context), context);
+  return cleanGeneratedCopy(result);
+}
+
+function scorePlatformCopy(text, context) {
+  let score = 0;
+  const firstLine = text.trim().split("\n").find(Boolean) || "";
+  const hashtags = (text.match(/#[^\s#]+/g) || []).length;
+  const ctas = (text.match(/保存|ROOM|楽天トラベル|教えて|どちら|コメント|フォロー|見返/g) || []).length;
+  const emojiCount = countSocialEmoji(text);
+  const readableLines = text.split("\n").map((line) => line.trim()).filter(Boolean);
+  const longLines = readableLines.filter((line) => line.length > 70).length;
+  if (firstLine.length >= 8 && firstLine.length <= 34) score += 14;
+  if (firstLine.length > 0 && firstLine.length <= 24) score += 5;
+  if (/サイズ|素材|着丈|ウエスト|価格|レビュー|アクセス|客室|食事|コーデ|比較|チェック/.test(text)) score += 13;
+  if (/迷|不安|正直|気持ち|安心|自信|悩|あるある|わかる/.test(text)) score += 11;
+  if (/確認|個人差|変わる|購入前|最新|気になる/.test(text)) score += 9;
+  if (/通学|大学|通勤|デート|カフェ|休日|旅行|推し活|イベント/.test(text)) score += 9;
+  if (/保存|ROOM|教えて|どちら|コメント|フォロー|見返/.test(text)) score += 10;
+  if (!/絶対|100%|最安|誰でも|優勝|爆売れ|買わないと損/.test(text)) score += 10;
+  if (/PR|広告|アフィリエイト/.test(text)) score += 6;
+  if (text.includes(shortName(context.product.name).slice(0, 10))) score += 7;
+  if (/正直|ただし|気になる点|確認したい/.test(text) && /サイズ|素材|着丈|価格|レビュー|アクセス|客室/.test(text)) score += 7;
+  if (ctas === 1 || ctas === 2) score += 6;
+  if (ctas >= 5) score -= 8;
+  if (longLines === 0) score += 8;
+  else score -= longLines * 4;
+  if (context.goal === "save" && /保存|見返|チェック|比較/.test(text)) score += 8;
+  if (context.goal === "reply" && /ですか|ますか|どちら|教えて|A｜|B｜/.test(text)) score += 8;
+  if (context.goal === "room" && /ROOM|楽天トラベル/.test(text)) score += 8;
+  if (context.goal === "follow" && /また見|フォロー|研究/.test(text)) score += 8;
+  if (context.platform === "Instagram") {
+    if (/【表紙】/.test(text) && /【キャプション】/.test(text)) score += 16;
+    if ((text.match(/【\d+枚目/g) || []).length >= 4 || /リール設計/.test(text)) score += 8;
+    if (/保存/.test(text) && /選び方|チェック|比較|まとめ/.test(text)) score += 8;
+    if ((text.match(/【\d+枚目/g) || []).length > 7) score -= 8;
+    if (emojiCount >= 5 && emojiCount <= 12) score += 10;
+    if (emojiCount > 16) score -= (emojiCount - 16) * 3;
+  }
+  if (context.platform === "Threads") {
+    if (/ですか|ますか|よね|かも|気がします/.test(text)) score += 10;
+    if (/今日|朝|帰り|授業|カフェ|鏡|クローゼット|電車/.test(text)) score += 9;
+    if (/私は|私も|つい|ふと|最近/.test(text)) score += 7;
+    if (!/おすすめです。おすすめ|今すぐチェック/.test(text)) score += 6;
+    if (/同じ人いますか[？?]?$/.test(text.trim())) score -= 7;
+    if (text.length >= 100 && text.length <= 260) score += 15;
+    if (text.length > 360) score -= 20;
+    if (emojiCount >= 2 && emojiCount <= 4) score += 10;
+    if (!["1日5本セット", "骨格ウェーブ目線"].includes(context.angle) && emojiCount > 6) score -= (emojiCount - 6) * 4;
+  }
+  if (context.platform === "X") {
+    if (text.length >= 45 && text.length <= 180) score += 28;
+    else if (text.length <= 240) score += 22;
+    else if (text.length <= 280) score -= 5;
+    else score -= 40;
+    if (/\n・|\n1\.|A｜|B｜/.test(text)) score += 8;
+    if (hashtags <= 2) score += 6;
+    else score -= (hashtags - 2) * 5;
+    if (/保存|比較|確認|どちら/.test(text)) score += 5;
+    if (emojiCount >= 2 && emojiCount <= 5) score += 10;
+    if (emojiCount > 6) score -= (emojiCount - 6) * 5;
+  }
+  score -= repeatedLinePenalty(text);
+  return score;
+}
+
+function repeatedLinePenalty(text) {
+  const lines = text.split("\n").map((line) => line.trim()).filter((line) => line.length >= 12 && !line.startsWith("【"));
+  const seen = new Set();
+  let repeats = 0;
+  lines.forEach((line) => {
+    const key = line.replace(/[。、！？!?]/g, "").slice(0, 32);
+    if (seen.has(key)) repeats += 1;
+    seen.add(key);
+  });
+  return repeats * 7;
+}
+
+function cleanGeneratedCopy(text) {
+  const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+  const result = [];
+  let previous = "";
+  let disclosureSeen = false;
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    const isDisclosure = /^※.*(?:アフィリエイト|広告|PR)/i.test(trimmed);
+    if (isDisclosure && disclosureSeen) return;
+    if (isDisclosure) disclosureSeen = true;
+    if (trimmed && trimmed === previous && !trimmed.startsWith("【")) return;
+    result.push(line.replace(/[ \t]+$/g, ""));
+    if (trimmed) previous = trimmed;
+  });
+  return result.join("\n").replace(/\n{4,}/g, "\n\n\n").trim();
+}
+
+function countSocialEmoji(text) {
+  return (String(text || "").match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu) || []).length;
+}
+
+function socialProductEmoji(product) {
+  if (product?.category === "ホテル・旅行") return "🏨";
+  const value = `${product?.category || ""} ${product?.name || ""}`;
+  if (/バッグ|鞄|ポーチ/.test(value)) return "👜";
+  if (/靴|パンプス|サンダル|スニーカー/.test(value)) return "👠";
+  if (/ブラウス|トップス|ニット|シャツ/.test(value)) return "👚";
+  return "👗";
+}
+
+function decorateSocialCopy(text, context) {
+  const lines = String(text || "").split("\n");
+  const productEmoji = socialProductEmoji(context.product);
+  let firstContentDecorated = false;
+  let questionDecorated = false;
+  let actionDecorated = false;
+  const isThreadsSet = context.platform === "Threads" && ["1日5本セット", "骨格ウェーブ目線"].includes(context.angle);
+
+  return lines.map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || /^※|^#|https?:\/\//i.test(trimmed)) return line;
+
+    if (context.platform === "Instagram") {
+      if (/^【表紙】/.test(trimmed)) return line.replace("【表紙】", "【表紙】🎀");
+      if (/^【(?:2枚目｜)?選定基準】/.test(trimmed)) return `${line} 🔍`;
+      if (/^【3枚目｜1位】/.test(trimmed)) return line.replace("】", "】🥇");
+      if (/^【4枚目｜2位】/.test(trimmed)) return line.replace("】", "】🥈");
+      if (/^【5枚目｜3位】/.test(trimmed)) return line.replace("】", "】🥉");
+      if (/^【\d+枚目｜.*(?:気になる|確認|選び方)/.test(trimmed)) return line.replace("】", "】🔎");
+      if (/^【\d+枚目｜CTA】/.test(trimmed) || /^【7枚目】/.test(trimmed)) return line.replace("】", "】📌");
+      const slideMatch = trimmed.match(/^【(\d+)枚目/);
+      if (slideMatch) {
+        const slideEmoji = ["✨", productEmoji, "🔍", "📝", "🎀", "📌"][Math.max(0, Number(slideMatch[1]) - 2) % 6];
+        return line.replace("】", `】${slideEmoji}`);
+      }
+      if (/^【キャプション】/.test(trimmed)) return line.replace("】", "】🌸");
+      if (/^【今回の選び方】/.test(trimmed)) return line.replace("】", "】📝");
+      if (/^【商品ページで確認できた情報】/.test(trimmed)) return line.replace("】", "】🔍");
+      if (/^【オリジナル素材メモ】/.test(trimmed)) return line.replace("】", "】📷");
+      return line;
+    }
+
+    if (context.platform === "Threads" && /^【朝/.test(trimmed)) return `${line} ☀️`;
+    if (context.platform === "Threads" && /^【昼/.test(trimmed)) return `${line} ${productEmoji}`;
+    if (context.platform === "Threads" && /^【夕方/.test(trimmed)) return `${line} 🔍`;
+    if (context.platform === "Threads" && /^【夜/.test(trimmed)) return `${line} 💭`;
+    if (context.platform === "Threads" && /^【ROOM/.test(trimmed)) return `${line} 🛍️`;
+    if (isThreadsSet) return line;
+
+    if (!firstContentDecorated) {
+      firstContentDecorated = true;
+      return `${productEmoji} ${line}`;
+    }
+    if (!questionDecorated && /[？?]$/.test(trimmed)) {
+      questionDecorated = true;
+      return `💭 ${line}`;
+    }
+    if (!actionDecorated && /保存|ROOM|楽天トラベル|プロフィール/.test(trimmed)) {
+      actionDecorated = true;
+      return `${/保存/.test(trimmed) ? "📌" : "🛍️"} ${line}`;
+    }
+    if (context.platform === "X" && /^A｜/.test(trimmed)) return `🩷 ${line}`;
+    if (context.platform === "X" && /^B｜/.test(trimmed)) return `🤍 ${line}`;
+    if (context.platform === "X" && /^1[.．]/.test(trimmed)) return `🥇 ${line}`;
+    if (context.platform === "X" && /^2[.．]/.test(trimmed)) return `🥈 ${line}`;
+    if (context.platform === "X" && /^3[.．]/.test(trimmed)) return `🥉 ${line}`;
+    return line;
+  }).join("\n");
+}
+
+function buildCompactXCopy(c) {
+  const p = c.product;
+  const disclosure = c.disclosure;
+  const roomCta = c.product.category === "ホテル・旅行"
+    ? "最新料金・空室はプロフィールの楽天トラベル候補から確認。"
+    : "サイズ・在庫はプロフィールの楽天ROOMから確認。";
+  if (c.angle === "2商品比較") {
+    const second = c.products[1] || p;
+    return `迷ったら、この2つを比較。\n\nA｜${trimText(shortName(p.name), 24)}\n${trimText(naturalHook(p.hook), 34)}\n\nB｜${trimText(shortName(second.name), 24)}\n${trimText(naturalHook(second.hook), 34)}\n\n華やかさならA、着回しならB。どちらが好みですか？\n${disclosure}\n${roomCta}`;
+  }
+  if (["ランキング", "予算別3選"].includes(c.angle)) {
+    const items = c.products.slice(0, 3);
+    return `${c.seasonLabel}の大人可愛い候補3選。\n\n${items.map((item, index) => `${index + 1}. ${trimText(shortName(item.name), 22)}`).join("\n")}\n\n基準は着回し・確認しやすさ・手持ち服との相性。保存して比較用に。\n${disclosure}\n${roomCta}`;
+  }
+  const title = c.angle === "セール速報"
+    ? `セールでも、可愛いだけで決めない。`
+    : c.angle === "買う前チェック"
+      ? `${p.category}を買う前の3確認。`
+      : c.isTravel
+        ? `${c.travelCompanionLabel}の宿選び、この3点。`
+        : `${c.fashionOccasionLabel}で使うなら、この3点。`;
+  return `${title}\n\n${trimText(shortName(p.name), 30)}\n・${trimText(naturalHook(p.hook), 38)}\n・${trimText(c.style.checks[0], 34)}\n・手持ち服で3コーデ作れるか\n\n${trimText(goalCta(c, "X"), 48)}\n${disclosure}\n${roomCta}`;
+}
+
+function buildCompactThreadsCopy(c) {
+  const p = c.product;
+  const scenes = c.isTravel
+    ? [
+        "旅行の予定を立てる夜、写真より先に駅からの道を見てしまいます。",
+        "旅先では、可愛い部屋と移動のラクさの間でいつも迷います。",
+        "予約ボタンの前で、朝食とキャンセル条件だけはもう一度確認。",
+      ]
+    : [
+        "朝、鏡の前で『可愛いけれど大学には頑張りすぎ？』と一度止まります。",
+        "授業だけの日ほど、きちんと見えて気負わない服が難しいです。",
+        "帰りにカフェへ寄る日は、朝から少しだけ可愛いを足したくなります。",
+      ];
+  const scene = scenes[c.candidateIndex % scenes.length];
+  const fact = c.isTravel
+    ? `${shortName(p.name)}は、${trimText(naturalHook(p.hook), 48)}`
+    : `${shortName(p.name)}は、${trimText(naturalHook(p.hook), 48)}`;
+  const check = c.isTravel
+    ? `私は${trimText(c.style.checks[0], 34)}を確認してから候補に残します。`
+    : `私は${trimText(c.style.checks[0], 34)}と、手持ち服で3コーデ作れるかを確認します。`;
+  const question = c.isTravel
+    ? "宿選びは、アクセスと部屋の可愛さならどちらを先に見ますか？"
+    : `${c.style.pairings[0]}と${c.style.pairings[1]}なら、どちらに合わせたいですか？`;
+  const goalLine = c.goal === "room"
+    ? c.roomLine
+    : c.goal === "save"
+      ? "あとで比べたい方は、そっと保存しておいてください。"
+      : "皆さんの選び方も聞いてみたいです。";
+  return `${scene}\n\n${fact}\n${check}\n\n${question}\n${goalLine}\n${c.disclosure}`;
 }
 
 function enrichFashionCopy(text, c) {

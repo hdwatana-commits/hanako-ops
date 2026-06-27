@@ -27,13 +27,13 @@
         </div>
 
         <nav class="nav-tabs" aria-label="ワークスペース">
-          <button class="nav-tab active" data-view="brief"><span class="nav-icon"><img src="icons/nav-home.svg" alt=""></span><span>ホーム</span></button>
-          <button class="nav-tab" data-view="products"><span class="nav-icon"><img src="icons/nav-products.svg" alt=""></span><span>商品</span></button>
-          <button class="nav-tab" data-view="room"><span class="nav-icon"><img src="icons/nav-room.svg" alt=""></span><span>ROOM投稿</span></button>
+          <button class="nav-tab active" data-view="brief" aria-current="page"><span class="nav-icon"><img src="icons/nav-home.svg" alt=""></span><span>ホーム</span></button>
+          <button class="nav-tab" data-view="products"><span class="nav-icon"><img src="icons/nav-products.svg" alt=""></span><span>商品探す</span></button>
+          <button class="nav-tab" data-view="room"><span class="nav-icon"><img src="icons/nav-room.svg" alt=""></span><span>ROOM</span></button>
           <button class="nav-tab" data-view="coordinate"><span class="nav-icon"><img src="icons/nav-coordinate.svg" alt=""></span><span>コーデ</span></button>
-          <button class="nav-tab" data-view="generator"><span class="nav-icon"><img src="icons/nav-generator.svg" alt=""></span><span>投稿メーカー</span></button>
-          <button class="nav-tab" data-view="calendar"><span class="nav-icon"><img src="icons/nav-calendar.svg" alt=""></span><span>カレンダー</span></button>
-          <button class="nav-tab" data-view="connections"><span class="nav-icon"><img src="icons/nav-connections.svg" alt=""></span><span>SNS連携</span></button>
+          <button class="nav-tab" data-view="generator"><span class="nav-icon"><img src="icons/nav-generator.svg" alt=""></span><span>SNS投稿</span></button>
+          <button class="nav-tab" data-view="calendar"><span class="nav-icon"><img src="icons/nav-calendar.svg" alt=""></span><span>投稿予定</span></button>
+          <button class="nav-tab" data-view="connections"><span class="nav-icon"><img src="icons/nav-connections.svg" alt=""></span><span>連携</span></button>
           <button class="nav-tab" data-view="analytics"><span class="nav-icon"><img src="icons/nav-analytics.svg" alt=""></span><span>成果</span></button>
         </nav>
 
@@ -51,18 +51,25 @@
           <div class="topbar-title">
             <img src="icons/hanako-avatar.jpg" alt="" class="topbar-avatar">
             <div>
-            <p class="eyebrow">おしゃれ研究家ハナコ</p>
-            <h2 id="viewTitle">今日の運用</h2>
+            <p class="eyebrow">いまの画面</p>
+            <h2 id="viewTitle">ホーム</h2>
             </div>
           </div>
           <div class="top-actions">
-            <button class="sync-button" id="syncBtn" title="クラウド同期"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">同期</span></button>
-            <button class="install-button" id="installBtn" hidden>iPhoneに追加</button>
-            <button class="icon-button" id="exportBtn" title="データを書き出し">⇩</button>
-            <label class="icon-button file-button" title="データを読み込み">
-              ⇧
-              <input id="importInput" type="file" accept="application/json">
-            </label>
+            <button class="sync-button" id="syncBtn" data-status="off" title="PC・iPhoneのデータを同期" aria-label="同期設定を開く">
+              <span class="sync-symbol" aria-hidden="true">↻</span><span class="sync-dot" id="syncDot"></span><span id="syncLabel" aria-live="polite">同期設定</span>
+            </button>
+            <button class="install-button" id="installBtn" hidden><span aria-hidden="true">＋</span><span>アプリ追加</span></button>
+            <details class="data-menu" id="dataMenu">
+              <summary title="バックアップメニュー"><span aria-hidden="true">•••</span><span>データ</span></summary>
+              <div class="data-menu-popover">
+                <strong>データ管理</strong>
+                <button id="exportBtn" type="button"><span aria-hidden="true">↓</span>バックアップ保存</button>
+                <label class="file-button"><span aria-hidden="true">↑</span>バックアップ読込
+                  <input id="importInput" type="file" accept="application/json">
+                </label>
+              </div>
+            </details>
           </div>
         </header>
 
@@ -106,6 +113,35 @@
               <span>予約・予定</span><strong id="homeCalendarCount">0</strong><small>予定を見る</small>
             </button>
           </div>
+
+          <section class="home-command-center" aria-labelledby="homeCommandTitle">
+            <div class="home-command-heading">
+              <div>
+                <span class="home-kicker">HANAKO CONCIERGE</span>
+                <h3 id="homeCommandTitle">今日の運用ナビ</h3>
+              </div>
+              <div class="home-readiness" aria-label="今日の準備度">
+                <span>準備度</span><strong id="homeReadinessValue">0%</strong>
+              </div>
+            </div>
+            <div class="home-progress-track" aria-hidden="true"><span id="homeProgressBar"></span></div>
+            <div class="home-command-grid">
+              <div class="home-next-action">
+                <span class="home-command-label">NEXT ACTION</span>
+                <h4 id="homeNextActionTitle">商品を登録する</h4>
+                <p id="homeNextActionReason">最初の商品を登録すると、投稿案を自動で組み立てます。</p>
+                <button class="primary" id="homeNextActionButton" type="button">ここから始める</button>
+                <p class="home-insight" id="homeInsight">投稿実績を記録すると、伸びる構成を優先します。</p>
+              </div>
+              <div class="home-daily-plan">
+                <div class="home-plan-heading">
+                  <div><span class="home-command-label">SMART PLAN</span><h4 id="homeFocusProduct">今日の主役商品</h4></div>
+                  <button id="homeBuildPlan" type="button">3投稿を予定に追加</button>
+                </div>
+                <div class="home-plan-list" id="homeDailyPlan"></div>
+              </div>
+            </div>
+          </section>
 
           <div class="home-section-heading">
             <div><span class="home-kicker">ONE TAP</span><h3>よく使う操作</h3></div>
@@ -340,6 +376,9 @@
                 <option value="reply">共感・返信を増やす</option>
                 <option value="follow">フォローにつなげる</option>
               </select>
+              <details class="generator-advanced">
+                <summary><span>細かく調整</span><small>必要なときだけ</small></summary>
+                <div class="generator-advanced-body">
               <label class="field-label">成果の最適化</label>
               <select id="optimizationSelect">
                 <option value="balanced">バランスよく伸ばす</option>
@@ -413,10 +452,13 @@
               </div>
               <label class="field-label">今回だけ入れたい情報</label>
               <textarea id="postBrief" class="brief-input" placeholder="例: 雨の日の通学、白スニーカー合わせ、6月のセール"></textarea>
+                </div>
+              </details>
               <div class="button-row generator-actions">
                 <button class="primary" id="generatePost">投稿を作る</button>
                 <button id="generateVariation">別案を作る</button>
                 <button id="generateThree">3案を比較</button>
+                <button id="goToSocialGemini" type="button">Gemini仕上げ</button>
               </div>
             </article>
 
@@ -433,6 +475,56 @@
                 <button id="saveDraft">下書き保存</button>
                 <button id="scheduleTomorrow">明日に入れる</button>
                 <button class="primary" id="publishPost">SNSへ投稿</button>
+              </div>
+              <div class="sns-gemini-tools" id="snsGeminiTools">
+                <div class="sns-gemini-heading">
+                  <div>
+                    <p class="eyebrow">選択内容をそのまま反映</p>
+                    <h4>Geminiで画像と投稿文を仕上げる</h4>
+                  </div>
+                  <span id="snsGeminiStatus" aria-live="polite">未作成</span>
+                </div>
+                <div class="sns-gemini-progress" aria-label="Gemini作成の進行状況">
+                  <div data-sns-step="product"><span>1</span><strong>商品確認</strong></div>
+                  <div data-sns-step="create"><span>2</span><strong>Geminiで作る</strong></div>
+                  <div data-sns-step="return"><span>3</span><strong>結果を戻す</strong></div>
+                </div>
+                <p class="sns-gemini-next" id="snsGeminiNextAction">まず商品を確認してください</p>
+                <p class="sns-gemini-guide">画像はGeminiの「画像を作成」を選び、商品画像を添付してから送ってください。</p>
+                <div class="sns-gemini-product-preview" id="snsGeminiProductPreview"></div>
+                <div class="sns-gemini-quick-actions">
+                  <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>画像を作りに行く</button>
+                  <button id="sendSocialGeminiCopy" type="button"><span>2</span>投稿文を作りに行く</button>
+                </div>
+                <details class="sns-gemini-prompt-details">
+                  <summary>プロンプトを確認・編集</summary>
+                  <div class="sns-gemini-prompt-body">
+                    <div class="button-row sns-gemini-modes">
+                      <button id="generateSocialGeminiImage" type="button">画像プロンプト</button>
+                      <button id="generateSocialGeminiCopy" type="button">バズ文プロンプト</button>
+                    </div>
+                    <label class="field-label" for="snsGeminiPrompt">Geminiに貼る現在の指示文</label>
+                    <textarea id="snsGeminiPrompt" class="sns-gemini-output" spellcheck="false" placeholder="画像または投稿文のプロンプトを選んでください"></textarea>
+                    <div class="button-row">
+                      <button id="copySocialGeminiPrompt" type="button">指示文をコピー</button>
+                      <button class="primary" id="openSocialGemini" type="button">コピーしてGeminiへ</button>
+                    </div>
+                  </div>
+                </details>
+                <details class="sns-gemini-result-details" id="snsGeminiResultDetails">
+                  <summary><span>Geminiの完成結果を戻す</span><small>画像と投稿文</small></summary>
+                <div class="sns-gemini-result-tools">
+                  <label class="field-label" for="snsGeneratedImage">完成画像を添付</label>
+                  <input id="snsGeneratedImage" type="file" accept="image/*">
+                  <div class="sns-generated-image" id="snsGeneratedImagePreview" hidden></div>
+                  <label class="field-label" for="snsGeminiResult">完成した投稿文を貼り付け</label>
+                  <textarea id="snsGeminiResult" class="sns-gemini-result-output" spellcheck="false" placeholder="Geminiが作った投稿文をここへ貼り付けてください"></textarea>
+                  <div class="button-row">
+                    <button class="primary" id="applySocialGeminiCopy" type="button">完成稿へ反映</button>
+                    <button id="downloadSocialGeminiImage" type="button" disabled>画像を保存</button>
+                  </div>
+                </div>
+                </details>
               </div>
             </article>
 
@@ -497,6 +589,85 @@
                 </div>
               </div>
 
+              <div class="coord-style-row">
+                <div>
+                  <label class="field-label" for="coordConcern">解決したい悩み</label>
+                  <select id="coordConcern">
+                    <option>朝、服が決まらない</option>
+                    <option>甘すぎ・子どもっぽく見せたくない</option>
+                    <option>全身のバランスを整えたい</option>
+                    <option>いつも同じ組み合わせになる</option>
+                    <option>気温差に対応したい</option>
+                    <option>写真で可愛く見せたい</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="coordPriority">一番優先すること</label>
+                  <select id="coordPriority">
+                    <option>着回しやすさ</option>
+                    <option>高見え</option>
+                    <option>スタイルバランス</option>
+                    <option>動きやすさ</option>
+                    <option>写真映え</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="coord-style-row">
+                <div>
+                  <label class="field-label" for="coordColorMood">色バランス</label>
+                  <select id="coordColorMood">
+                    <option>商品から自動で整える</option>
+                    <option>淡色ワントーン</option>
+                    <option>白ベースで明るく</option>
+                    <option>黒・濃色で引き締め</option>
+                    <option>差し色をひとつ</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="coordSeason">季節</label>
+                  <select id="coordSeason">
+                    <option>今の季節</option>
+                    <option>春</option>
+                    <option>夏</option>
+                    <option>秋</option>
+                    <option>冬</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="coord-style-row">
+                <div>
+                  <label class="field-label" for="coordHairStyle">女の子の髪型</label>
+                  <select id="coordHairStyle">
+                    <option>元写真の髪型を保つ</option>
+                    <option>ゆる巻きロング</option>
+                    <option>ふんわりハーフアップ</option>
+                    <option>低めポニーテール</option>
+                    <option>さらさらストレート</option>
+                    <option>上品なおだんごヘア</option>
+                    <option>外はねボブ風</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="coordImagePattern">画像パターン</label>
+                  <select id="coordImagePattern">
+                    <option>全身1カット＋手書きポイント</option>
+                    <option>おしゃれ雑誌の表紙風</option>
+                    <option>3カットのコラージュ</option>
+                    <option>商品アップ入り編集</option>
+                    <option>おでかけスナップ風</option>
+                    <option>淡色スタジオ撮影風</option>
+                    <option>コレクション表紙用</option>
+                    <option>オリジナル商品写真で投稿</option>
+                  </select>
+                </div>
+              </div>
+              <p class="coord-note">「オリジナル商品写真で投稿」は、ご本人が撮影した商品写真をGeminiへ添付して使います。</p>
+
+              <label class="field-label" for="coordMainProduct">主役商品（必ず画像に使う商品）</label>
+              <select id="coordMainProduct"></select>
+
               <div class="coord-picker">
                 <label><span>ワンピース</span><select id="coordOnepiece"></select></label>
                 <label><span>トップス</span><select id="coordTop"></select></label>
@@ -506,17 +677,31 @@
                 <label><span>アクセ</span><select id="coordAccessory"></select></label>
               </div>
 
+              <div class="gemini-mode-guide">
+                <strong>Geminiで写真を作る手順</strong>
+                <ol>
+                  <li>Geminiの「＋」から「画像を作成」を選ぶ</li>
+                  <li>全身写真と、主役商品・同じブランドの商品画像を2〜4枚添付する</li>
+                  <li>「画像生成プロンプト」をコピーして送る</li>
+                </ol>
+                <p>AI画像はコーデ検討・SNS素材用です。ROOMのオリジナル写真・ランク対象として投稿する場合は、ご本人が実際に着用して撮影した全身写真を使い、写真に写る商品だけを登録してください。</p>
+              </div>
+
               <div class="button-row">
+                <button id="autoCoordinate" type="button">合う商品を自動で選ぶ</button>
                 <button class="primary" id="generateCoordinate" type="button">コーデ文と画像ボードを作る</button>
-                <button id="generateGeminiPrompt" type="button">画像＋紹介文プロンプト</button>
               </div>
               <div class="button-row">
-                <button id="copyCoordinateText" type="button">ROOM文コピー</button>
-                <button id="downloadCoordinateBoard" type="button">画像ボード保存</button>
+                <button id="generateGeminiPrompt" type="button">画像生成プロンプト</button>
+                <button id="generateGeminiCaptionPrompt" type="button">紹介文プロンプト</button>
               </div>
               <div class="button-row">
                 <button id="copyGeminiPrompt" type="button">Gemini文コピー</button>
                 <button id="openGemini" type="button">Geminiを開く</button>
+              </div>
+              <div class="button-row">
+                <button id="copyCoordinateText" type="button">ROOM文コピー</button>
+                <button id="downloadCoordinateBoard" type="button">画像ボード保存</button>
               </div>
             </article>
 
@@ -531,8 +716,8 @@
               <div class="coord-ai-result" id="coordAiResult" hidden></div>
               <label class="field-label" for="coordGeneratedImage">Geminiで作った画像を添付</label>
               <input id="coordGeneratedImage" type="file" accept="image/*">
-              <label class="field-label" for="coordGeminiPrompt">Geminiに貼る画像・紹介文の指示</label>
-              <textarea id="coordGeminiPrompt" class="coord-prompt-output" spellcheck="false" placeholder="「画像＋紹介文プロンプト」を押すと、Gemini用の指示文が出ます"></textarea>
+              <label class="field-label" for="coordGeminiPrompt">Geminiに貼る現在の指示文</label>
+              <textarea id="coordGeminiPrompt" class="coord-prompt-output" spellcheck="false" placeholder="画像生成または紹介文のプロンプトを選んでください"></textarea>
               <label class="field-label" for="coordinateOutput">ROOMレビュー・SNS文</label>
               <textarea id="coordinateOutput" class="post-output" spellcheck="false" placeholder="商品を選んで「コーデ文と画像ボードを作る」を押してください"></textarea>
             </article>
