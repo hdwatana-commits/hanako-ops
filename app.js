@@ -1090,6 +1090,17 @@ function renderProductOptions() {
 
 function bindCoordinateActions() {
   if (!coordinateOutput || !coordBoard) return;
+  const coordinateImportUrl = document.querySelector("#coordProductUrl");
+  const coordinateImportButton = document.querySelector("#coordImportProduct");
+  const importCoordinateProduct = () => importProductForCoordinate(coordinateImportUrl, coordinateImportButton);
+  coordinateImportButton?.addEventListener("click", importCoordinateProduct);
+  coordinateImportUrl?.addEventListener("paste", () => window.setTimeout(importCoordinateProduct, 0));
+  coordinateImportUrl?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      importCoordinateProduct();
+    }
+  });
   document.querySelector("#coordPhoto")?.addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
     coordinatePhotoDataUrl = file ? await readFileAsDataUrl(file) : "";
@@ -1103,6 +1114,97 @@ function bindCoordinateActions() {
   document.querySelector("#openGemini")?.addEventListener("click", openGemini);
   document.querySelector("#downloadCoordinateBoard")?.addEventListener("click", downloadCoordinateBoard);
   document.querySelector("#coordGeneratedImage")?.addEventListener("change", previewGeneratedCoordinateImage);
+}
+
+async function importProductForCoordinate(urlInput, button) {
+  const url = urlInput?.value.trim();
+  if (!url) {
+    showCoordinateImportStatus("楽天ROOMの商品URLを入力してください", true);
+    urlInput?.focus();
+    return;
+  }
+  if (!cloudSync.configured) return showCoordinateImportStatus("先にクラウド同期を設定してください", true);
+  if (!cloudSync.signedIn) return showCoordinateImportStatus("画面上部の「同期」からログインしてください", true);
+
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "読込中...";
+  showCoordinateImportStatus("商品情報を読み込んでいます...");
+  try {
+    const imported = await fetchRakutenProduct(url);
+    if (imported.category === "ホテル・旅行") throw new Error("コーデにはファッション商品のURLを使ってください");
+    let product = state.products.find((item) => item.url === url || item.url === imported.sourceUrl);
+    if (product) {
+      Object.assign(product, {
+        name: imported.name || product.name,
+        url: imported.sourceUrl || url,
+        image: imported.image || product.image,
+        details: imported.details || product.details || {},
+        category: imported.category || product.category,
+        price: imported.price || product.price,
+        hook: imported.hook || product.hook,
+      });
+    } else {
+      product = {
+        id: createId(),
+        name: imported.name || "楽天ROOMの商品",
+        url: imported.sourceUrl || url,
+        image: imported.image || "",
+        details: imported.details || {},
+        category: imported.category || "その他",
+        price: imported.price || "",
+        hook: imported.hook || "コーデの雰囲気を整えやすい",
+      };
+      state.products.unshift(product);
+    }
+    saveState();
+    renderProducts();
+    renderProductOptions();
+    renderRoomProductOptions();
+    renderCoordinateOptions();
+    renderAngleOptions();
+    selectCoordinateProduct(product);
+    showCoordinateImportStatus(`「${product.name}」をコーデに追加しました`);
+    showToast("商品を読み込み、コーデに追加しました");
+  } catch (error) {
+    showCoordinateImportStatus(error.message || "商品情報を読み込めませんでした", true);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+function selectCoordinateProduct(product) {
+  const selectors = {
+    ワンピース: "#coordOnepiece",
+    トップス: "#coordTop",
+    アウター: "#coordTop",
+    スカート: "#coordBottom",
+    パンツ: "#coordBottom",
+    バッグ: "#coordBag",
+    シューズ: "#coordShoes",
+    アクセサリー: "#coordAccessory",
+  };
+  const selector = selectors[product.category];
+  const select = selector ? document.querySelector(selector) : null;
+  if (!select || ![...select.options].some((option) => option.value === product.id)) {
+    showCoordinateImportStatus("商品を登録しました。下の商品欄から選んでください");
+    return;
+  }
+  if (product.category === "ワンピース") {
+    document.querySelector("#coordTop").value = "";
+    document.querySelector("#coordBottom").value = "";
+  } else if (["トップス", "アウター", "スカート", "パンツ"].includes(product.category)) {
+    document.querySelector("#coordOnepiece").value = "";
+  }
+  select.value = product.id;
+}
+
+function showCoordinateImportStatus(message, isError = false) {
+  const target = document.querySelector("#coordImportStatus");
+  if (!target) return;
+  target.textContent = message;
+  target.classList.toggle("error", isError);
 }
 
 function renderCoordinateOptions() {
@@ -1255,37 +1357,112 @@ function generateGeminiPrompt() {
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
   coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
   document.querySelector("#coordStatus").textContent = "Gemini文作成済み";
-  showToast("Gemini用プロンプトを作りました");
+  showToast("画像と紹介文のGeminiプロンプトを作りました");
 }
 
 function buildOutfitImagePrompt(coordinate) {
   const items = coordinate.products.map((product) => `・${product.category}: ${product.name}
   推しポイント: ${product.hook || createCoordinateHook(product)}
-  価格メモ: ${product.price || "未設定"}`).join("\n");
-  return `添付した本人の全身写真を元に、ファッション投稿用の「着用イメージ画像」を作ってください。
+  価格メモ: ${product.price || "未設定"}
+  商品画像URL: ${product.image || "なし"}
+  商品ページURL: ${product.url || "なし"}`).join("\n");
+  const imageCopy = buildCoordinateImageCopy(coordinate);
+  return `添付した本人の全身写真を元に、楽天ROOMのコーディネートへ投稿するための、究極におしゃれでかわいい「着用イメージ画像」を作ってください。
 
-目的:
-楽天ROOMとInstagramで使う、大人ガーリーで自然なコーデ案の画像にしたいです。
+【画像サイズと構図】
+・完成画像は必ず縦3:4。推奨サイズは1536×2048px
+・元写真が3:4でない場合は、人物を切らずに背景と余白を自然に広げる
+・女の子とコーデが主役。全身が見え、服の形と組み合わせが伝わる構図
+・右下の端は、背景から自然につながる完全な白にする
+・右下の白い部分には、文字、服、小物、かざり、影を置かない
 
-雰囲気:
+【コーデの雰囲気】
 ${coordinate.style}
+シーン: ${coordinate.occasion}
+全体は明るく、清潔感があり、大人ガーリーで甘めきれいめ。かわいいだけでなく、まねしたくなる洗練されたファッション投稿にする。
 
-シーン:
-${coordinate.occasion}
-
-合わせたい商品:
+【合わせたい商品】
 ${items}
 
-仕上がり:
-・本人の顔、雰囲気、体型、ポーズはできるだけ自然に保つ
-・服だけを上の商品イメージに近い雰囲気へ変更する
-・日本の大人ガーリー、甘めきれいめ、清潔感のある雰囲気
-・自然光、明るめ、SNS投稿に使いやすい縦長写真
+【女の子】
+・添付写真と同じ女の子だと分かるよう、顔、髪型、髪色、体型、肌の雰囲気を一貫させる
+・別人にしない。年齢を変えない。顔を大きく加工しない
+・ポーズは元写真を生かしつつ、手元や足元を自然でかわいくアレンジする
+・指、手足、顔、服の重なりを不自然にしない
 ・過度な露出や不自然な体型変更はしない
-・ブランドロゴや実在ロゴは追加しない
-・商品を完全再現した断定画像ではなく「着用イメージ」として自然に作る
 
-画像内に文字は入れないでください。`;
+【服の見せ方】
+・商品名、商品画像URL、商品ページURLを参考に、選んだ服と小物の色、形、素材感、丈感をできるだけ自然に反映する
+・商品にないロゴや柄、ブランド名を勝手に追加しない
+・完全な実物写真だと断定する見せ方ではなく、自然な着用イメージにする
+・自然光で明るく、服の細部が見やすい高画質にする
+
+【日本語のデザイン】
+ファッションの特徴を「なやみ → かいけつ → かわいくなる理由」の流れで、余白に短く入れる。
+雑誌のようにおしゃれで、少し楽しく、思わず読みたくなる配置にする。
+文字は大きすぎず、人物や服に重ねない。むずかしい漢字は使わず、読みやすい日本語にする。
+次の文章を基本に、意味を変えず自然に整えて使う:
+${imageCopy.map((line) => `・${line}`).join("\n")}
+
+【文字のルール】
+・日本語の誤字、文字化け、意味のない文字を出さない
+・文字数を増やしすぎない。読みにくい場合は文章を減らす
+・画像内に「楽天ROOM」「楽天ルーム」「ROOM」、URL、値段、ブランドロゴを入れない
+・英語だけの見出しにせず、かわいい日本語を中心にする
+
+【最終チェック】
+・縦3:4になっている
+・女の子の一貫性が保たれている
+・コーデが主役で、商品が自然に組み合わされている
+・余白の日本語が読みやすく、課題解決風でかわいい
+・右下の端が自然な完全な白になっている
+・画像内に楽天ROOMを示す文字が入っていない
+
+【画像のあとに作るコーデ紹介文】
+画像を生成したあと、同じ回答の下に「コーデ紹介文」を1案書いてください。
+選んだ雰囲気、シーン、商品名、カテゴリ、推しポイントをきちんと参考にし、このコーデだけに合う内容にしてください。
+
+紹介文の条件:
+・最初の1行は必ず「おはファッション🌸」から始める
+・160〜240文字くらいで、短く、読みやすく、かわいくまとめる
+・話し手は礼儀正しく、ファッションが大好きな女子大生
+・自信のあるファッション解説に、愛のある鋭いひと言、くすっとする面白さ、女子大生らしい共感を自然に入れる
+・「よくある服のなやみ → このコーデでのかいけつ → かわいく見える理由」の順で書く
+・選んだ商品を最低1つ具体的に取り上げ、色、形、合わせやすさなどを短く説明する
+・選んだシーンで着たくなる一言と、読んだ人が前向きになれる締めを入れる
+・1文を短めにし、2〜4つの段落に分ける
+・絵文字は文章になじむものを1〜3個だけ使う
+・むずかしい漢字、上から目線、乱暴な言い方、わざとらしい若者言葉、誇大表現は使わない
+・特定の人物や作風を示す言葉、読者への乱暴な呼びかけは絶対に書かない
+・実際に買った、着た、使ったと確認できない内容は断定しない
+・紹介文には画像制作の指示や説明を書かない
+
+出力順:
+1. 条件どおりの完成画像
+2. 見出し「コーデ紹介文」
+3. 完成した紹介文だけ
+
+以上の条件をすべて守り、画像も紹介文も超絶本気で、おしゃれでかわいく仕上げてください。`;
+}
+
+function buildCoordinateImageCopy(coordinate) {
+  const main = coordinate.products[0];
+  const categoryLine = {
+    ワンピース: "1まいで、ちゃんとかわいい♡",
+    トップス: "顔まわりが、ぱっと明るく♡",
+    アウター: "はおるだけで、きれいにまとまる",
+    スカート: "ふわっと感で、やさしい印象に",
+    パンツ: "甘めトップスを、すっきり見せ♡",
+    バッグ: "小さめバッグで、ぬけ感をプラス",
+    シューズ: "足もとをそろえると、大人っぽい",
+    アクセサリー: "きらっと小ものが、ちょうどいい",
+  }[main?.category] || "色をそろえて、大人かわいく♡";
+  return [
+    "朝の『なに着る？』を3分でかいけつ♡",
+    "甘さはほしい。でも子どもっぽく見せたくない。",
+    categoryLine,
+    `${coordinate.occasion}に、ちょうどいい♡`,
+  ];
 }
 
 function openGemini() {

@@ -2664,6 +2664,37 @@ body {
   line-height: 1.7;
 }
 
+.coord-url-import {
+  margin: 0 0 18px;
+  padding: 14px;
+  background: #fff6f8;
+  border: 1px solid #f1dce3;
+  border-radius: 8px;
+}
+
+.coord-url-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.coord-url-row button {
+  min-width: 126px;
+  white-space: nowrap;
+}
+
+.coord-import-status {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.coord-import-status.error {
+  color: #a93055;
+  font-weight: 700;
+}
+
 .coord-style-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2826,6 +2857,14 @@ body {
 @media (max-width: 680px) {
   .coord-style-row {
     grid-template-columns: 1fr;
+  }
+
+  .coord-url-row {
+    grid-template-columns: 1fr;
+  }
+
+  .coord-url-row button {
+    width: 100%;
   }
 
   .coord-layout {

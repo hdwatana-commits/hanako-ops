@@ -459,6 +459,14 @@
                 </div>
                 <span class="status-pill">本人写真だけ使用</span>
               </div>
+              <div class="coord-url-import">
+                <label class="field-label" for="coordProductUrl">楽天ROOMの商品URLから追加</label>
+                <div class="coord-url-row">
+                  <input id="coordProductUrl" type="url" inputmode="url" placeholder="https://room.rakuten.co.jp/...">
+                  <button class="primary" id="coordImportProduct" type="button">商品を読み込む</button>
+                </div>
+                <p class="coord-import-status" id="coordImportStatus">読み込むと商品を登録し、合うコーデ欄へ自動で入ります。</p>
+              </div>
               <label class="field-label" for="coordPhoto">自分の全身写真</label>
               <input id="coordPhoto" type="file" accept="image/*">
               <p class="coord-note">実物の完全再現ではなく、投稿用の「着用イメージ」として作ります。</p>
@@ -500,7 +508,7 @@
 
               <div class="button-row">
                 <button class="primary" id="generateCoordinate" type="button">コーデ文と画像ボードを作る</button>
-                <button id="generateGeminiPrompt" type="button">Gemini用プロンプト作成</button>
+                <button id="generateGeminiPrompt" type="button">画像＋紹介文プロンプト</button>
               </div>
               <div class="button-row">
                 <button id="copyCoordinateText" type="button">ROOM文コピー</button>
@@ -523,8 +531,8 @@
               <div class="coord-ai-result" id="coordAiResult" hidden></div>
               <label class="field-label" for="coordGeneratedImage">Geminiで作った画像を添付</label>
               <input id="coordGeneratedImage" type="file" accept="image/*">
-              <label class="field-label" for="coordGeminiPrompt">Geminiに貼る指示文</label>
-              <textarea id="coordGeminiPrompt" class="coord-prompt-output" spellcheck="false" placeholder="「Gemini用プロンプト作成」を押すと、無料で使うための指示文が出ます"></textarea>
+              <label class="field-label" for="coordGeminiPrompt">Geminiに貼る画像・紹介文の指示</label>
+              <textarea id="coordGeminiPrompt" class="coord-prompt-output" spellcheck="false" placeholder="「画像＋紹介文プロンプト」を押すと、Gemini用の指示文が出ます"></textarea>
               <label class="field-label" for="coordinateOutput">ROOMレビュー・SNS文</label>
               <textarea id="coordinateOutput" class="post-output" spellcheck="false" placeholder="商品を選んで「コーデ文と画像ボードを作る」を押してください"></textarea>
             </article>
