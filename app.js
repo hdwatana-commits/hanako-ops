@@ -394,8 +394,8 @@ function bindActions() {
     });
   });
   selectedProduct.addEventListener("change", () => {
-    renderAngleOptions();
-    renderSocialGeminiProductPreview();
+    const product = state.products.find((item) => item.id === selectedProduct.value);
+    applyRecommendedSnsDefaults(product);
   });
 
   document.querySelector("#optimizationSelect").addEventListener("change", renderLearningHint);
@@ -1084,10 +1084,11 @@ function renderProducts() {
 
   productGrid.querySelectorAll("[data-use]").forEach((button) => {
     button.addEventListener("click", () => {
-      selectedProduct.value = button.dataset.use;
-      renderAngleOptions();
+      const product = state.products.find((item) => item.id === button.dataset.use);
+      if (!product) return;
+      selectedProduct.value = product.id;
+      applyRecommendedSnsDefaults(product);
       openView("generator");
-      showToast("投稿メーカーにセットしました");
     });
   });
 
@@ -1219,6 +1220,74 @@ function applyProductRecommendation(product, recommendation) {
   if (recommendation.fashionOccasion) document.querySelector("#fashionOccasionSelect").value = recommendation.fashionOccasion;
   if (recommendation.travelPriority) document.querySelector("#travelPrioritySelect").value = recommendation.travelPriority;
   renderLearningHint();
+}
+
+function applyRecommendedSnsDefaults(product, notify = true) {
+  if (!product) return;
+  const recommendations = buildProductRecommendations(product);
+  const recommendation = recommendations.find((item) => item.platform === activePlatform) || recommendations[0];
+  if (!recommendation) return;
+  applyProductRecommendation(product, recommendation);
+
+  const text = `${product.name || ""} ${product.hook || ""} ${product.details?.color || ""} ${product.details?.material || ""}`;
+  const setSelect = (id, value) => {
+    const select = document.querySelector(`#${id}`);
+    if (select && [...select.options].some((option) => option.value === value)) select.value = value;
+  };
+  if (product.category !== "ホテル・旅行") {
+    const audience = /骨格|細見え|華奢|ウエスト|脚長/.test(text)
+      ? "wave"
+      : /通勤|オフィス|仕事|ジャケット/.test(text)
+        ? "office"
+        : /デート|カフェ|お呼ばれ/.test(text)
+          ? "date"
+          : /高見え|プチプラ|価格|コスパ|セール/.test(text)
+            ? "budget"
+            : "university";
+    const priority = /素材|綿|コットン|リネン|シアー|ニット|着心地/.test(text)
+      ? "material"
+      : /骨格|細見え|華奢|ウエスト|脚長/.test(text)
+        ? "balance"
+        : /高見え|上品|きれいめ|質感/.test(text)
+          ? "premium"
+          : /プチプラ|価格|コスパ|セール|割引/.test(text)
+          ? "cost"
+          : "versatility";
+    const concern = /透け|汗|雨|撥水|半袖|ノースリーブ|シアー/.test(text)
+      ? "weather"
+      : /ウエスト|腰|お腹/.test(text)
+        ? "waist"
+        : /丈|ロング|ミニ|身長/.test(text)
+          ? "length"
+          : /ストレッチ|歩き|軽量|締め付け/.test(text)
+            ? "comfort"
+            : "upper";
+    const occasion = /通勤|オフィス|仕事|ジャケット/.test(text)
+      ? "office"
+      : /デート|カフェ|お呼ばれ/.test(text)
+        ? "date"
+        : /推し|ライブ|イベント/.test(text)
+          ? "oshi"
+          : ["バッグ", "シューズ", "アクセサリー"].includes(product.category)
+            ? "weekend"
+            : "campus";
+    const emotion = concern === "weather" ? "weather" : priority === "balance" ? "body" : priority === "cost" ? "budget" : priority === "premium" ? "confidence" : "repeat";
+    setSelect("audienceSelect", audience);
+    setSelect("fashionPrioritySelect", priority);
+    setSelect("fashionConcernSelect", concern);
+    setSelect("fashionOccasionSelect", occasion);
+    setSelect("emotionSelect", emotion);
+  } else {
+    const travelPriority = /駅|アクセス|徒歩|空港/.test(text) ? "access" : /温泉|大浴場/.test(text) ? "spa" : /朝食|食事|レストラン/.test(text) ? "food" : /安|料金|クーポン/.test(text) ? "cost" : "room";
+    setSelect("travelPrioritySelect", travelPriority);
+    setSelect("emotionSelect", "confidence");
+  }
+  setSelect("hookSelect", "auto");
+  setSelect("ownershipSelect", "considering");
+  saveGeneratorPreferences();
+  renderSocialGeminiProductPreview();
+  markSocialGeminiPromptStale();
+  if (notify) showToast(`${product.name}に合うSNS設定を自動で選びました`);
 }
 
 function scheduleProductRecommendation(product, recommendation) {
@@ -1357,7 +1426,11 @@ function bindCoordinateActions() {
     showToast(coordinatePhotoDataUrl ? "写真を読み込みました" : "写真を解除しました");
     if (coordinateOutput.value.trim()) drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
   });
-  document.querySelector("#autoCoordinate")?.addEventListener("click", autoSelectCoordinateItems);
+  document.querySelector("#coordMainProduct")?.addEventListener("change", (event) => {
+    const product = state.products.find((item) => item.id === event.currentTarget.value);
+    if (product) applyRecommendedCoordinateDefaults(product);
+  });
+  document.querySelector("#autoCoordinate")?.addEventListener("click", () => autoSelectCoordinateItems(true, true));
   document.querySelector("#generateCoordinate")?.addEventListener("click", generateCoordinate);
   document.querySelector("#generateGeminiPrompt")?.addEventListener("click", generateGeminiPrompt);
   document.querySelector("#generateGeminiCaptionPrompt")?.addEventListener("click", generateGeminiCaptionPrompt);
@@ -1383,8 +1456,8 @@ async function importProductForCoordinate(urlInput, button) {
   button.textContent = "読込中...";
   showCoordinateImportStatus("商品情報を読み込んでいます...");
   try {
-    const imported = await fetchRakutenProduct(url);
-    if (imported.category === "ホテル・旅行") throw new Error("コーデにはファッション商品のURLを使ってください");
+    const imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
+    if (isDefiniteTravelProduct(imported, url)) throw new Error("このURLは宿泊施設として判定されました。ファッション商品のROOM URLを入力してください");
     let product = state.products.find((item) => item.url === url || item.url === imported.sourceUrl);
     if (product) {
       Object.assign(product, {
@@ -1426,6 +1499,68 @@ async function importProductForCoordinate(urlInput, button) {
   }
 }
 
+function normalizeCoordinateImportedProduct(imported, originalUrl) {
+  const product = { ...imported, details: { ...(imported?.details || {}) } };
+  if (product.category !== "ホテル・旅行") return product;
+  const sourceUrl = product.sourceUrl || product.url || originalUrl;
+  if (isExplicitRakutenTravelUrl(sourceUrl) || isExplicitRakutenTravelUrl(originalUrl)) return product;
+
+  const text = `${product.name || ""} ${product.hook || ""} ${product.details?.brand || ""}`;
+  const fashionCategory = detectFashionCategory(text);
+  const travelText = `${product.name || ""} ${product.hook || ""} ${product.details?.location || ""}`;
+  const hasTravelIdentity = hasTravelProductIdentity(travelText);
+  if (!fashionCategory && hasTravelIdentity) return product;
+
+  const category = fashionCategory || "トップス";
+  return {
+    ...product,
+    category,
+    kind: "product",
+    hook: createCoordinateHook({ category }),
+    details: {
+      brand: product.details?.brand || "",
+      color: product.details?.color || "",
+      material: product.details?.material || "",
+      rating: product.details?.rating || "",
+      reviewCount: product.details?.reviewCount || "",
+    },
+    coordinateCategoryCorrected: true,
+  };
+}
+
+function isDefiniteTravelProduct(product, originalUrl) {
+  if (product?.category !== "ホテル・旅行") return false;
+  if (isExplicitRakutenTravelUrl(product?.sourceUrl || product?.url || "") || isExplicitRakutenTravelUrl(originalUrl)) return true;
+  const text = `${product?.name || ""} ${product?.hook || ""} ${product?.details?.location || ""}`;
+  return hasTravelProductIdentity(text);
+}
+
+function hasTravelProductIdentity(value) {
+  return /ホテル|旅館|宿泊|客室|温泉|リゾート|チェックイン|朝食付き|素泊まり|\b(?:hotel|inn|villa|lodge|resort|stay)\b/i.test(String(value || ""));
+}
+
+function isExplicitRakutenTravelUrl(value) {
+  try {
+    const host = new URL(String(value || "")).hostname.toLowerCase();
+    return host === "travel.rakuten.co.jp" || host.endsWith(".travel.rakuten.co.jp");
+  } catch {
+    return false;
+  }
+}
+
+function detectFashionCategory(value) {
+  const text = String(value || "");
+  if (/コート|ジャケット|ブルゾン|カーディガン|ボレロ|アウター|パーカー/.test(text)) return "アウター";
+  if (/ワンピ|ドレス|チュニック/.test(text)) return "ワンピース";
+  if (/スカート/.test(text)) return "スカート";
+  if (/パンツ|ズボン|デニム|ジーンズ|スラックス|キュロット/.test(text)) return "パンツ";
+  if (/バッグ|鞄|トート|ショルダー|リュック|ポーチ/.test(text)) return "バッグ";
+  if (/パンプス|サンダル|スニーカー|ブーツ|シューズ|ローファー|靴/.test(text)) return "シューズ";
+  if (/ピアス|イヤリング|ネックレス|リング|アクセサリ|ブレスレット|バングル|ヘアクリップ/.test(text)) return "アクセサリー";
+  if (/ブラウス|シャツ|ニット|セーター|カットソー|Tシャツ|トップス|ベスト|キャミソール/.test(text)) return "トップス";
+  return "";
+}
+
 function selectCoordinateProduct(product) {
   const selectors = {
     ワンピース: "#coordOnepiece",
@@ -1440,7 +1575,7 @@ function selectCoordinateProduct(product) {
   const selector = selectors[product.category];
   const select = selector ? document.querySelector(selector) : null;
   const mainSelect = document.querySelector("#coordMainProduct");
-  if (mainSelect && !mainSelect.value && [...mainSelect.options].some((option) => option.value === product.id)) mainSelect.value = product.id;
+  if (mainSelect && [...mainSelect.options].some((option) => option.value === product.id)) mainSelect.value = product.id;
   if (!select || ![...select.options].some((option) => option.value === product.id)) {
     showCoordinateImportStatus("商品を登録しました。下の商品欄から選んでください");
     return;
@@ -1452,6 +1587,7 @@ function selectCoordinateProduct(product) {
     document.querySelector("#coordOnepiece").value = "";
   }
   select.value = product.id;
+  applyRecommendedCoordinateDefaults(product, false);
 }
 
 function showCoordinateImportStatus(message, isError = false) {
@@ -1528,7 +1664,7 @@ function getSelectedCoordinate() {
   };
 }
 
-function autoSelectCoordinateItems() {
+function autoSelectCoordinateItems(generateAfter = true, notify = true) {
   const fashionProducts = state.products.filter((product) => product.category !== "ホテル・旅行");
   if (!fashionProducts.length) return showToast("先にファッション商品を登録してください");
   const mainSelect = document.querySelector("#coordMainProduct");
@@ -1559,8 +1695,93 @@ function autoSelectCoordinateItems() {
   setChoice("#coordBag", ["バッグ"], main.category === "バッグ");
   setChoice("#coordShoes", ["シューズ"], main.category === "シューズ");
   setChoice("#coordAccessory", ["アクセサリー"], main.category === "アクセサリー");
-  showToast("主役に合う商品を自動で組み合わせました");
-  generateCoordinate();
+  if (notify) showToast("主役に合う商品とおすすめ設定を自動で選びました");
+  if (generateAfter) generateCoordinate();
+}
+
+function applyRecommendedCoordinateDefaults(product, notify = true) {
+  if (!product || product.category === "ホテル・旅行") return;
+  const text = `${product.name || ""} ${product.hook || ""} ${product.details?.color || ""} ${product.details?.material || ""}`;
+  const setSelect = (id, value) => {
+    const select = document.querySelector(`#${id}`);
+    if (select && [...select.options].some((option) => option.value === value)) select.value = value;
+  };
+  const style = /骨格|細見え|華奢|ウエスト|脚長/.test(text)
+    ? "骨格ウェーブ意識"
+    : /淡色|アイボリー|ベージュ|オフホワイト|くすみ/.test(text)
+      ? "淡色フェミニン"
+      : /通勤|オフィス|ジャケット|上品/.test(text)
+        ? "甘めきれいめ"
+        : "大人ガーリー";
+  const occasion = /通勤|オフィス|仕事|ジャケット/.test(text)
+    ? "きれいめ通勤"
+    : /旅行|トラベル/.test(text)
+      ? "旅行"
+      : /デート|お呼ばれ/.test(text)
+        ? "デート"
+        : /大学|通学|スクール/.test(text)
+          ? "大学・通学"
+          : ["バッグ", "シューズ", "アクセサリー"].includes(product.category)
+            ? "休日ショッピング"
+            : "友達とカフェ";
+  const concern = /骨格|細見え|華奢|ウエスト|脚長|体型/.test(text)
+    ? "全身のバランスを整えたい"
+    : /透け|汗|雨|撥水|半袖|ノースリーブ|シアー/.test(text)
+      ? "気温差に対応したい"
+      : /着回し|万能|2way|3way/.test(text)
+        ? "いつも同じ組み合わせになる"
+        : /映え|写真|リボン|フリル|レース|甘め/.test(text)
+          ? "甘すぎ・子どもっぽく見せたくない"
+          : "朝、服が決まらない";
+  const priority = /骨格|細見え|華奢|ウエスト|脚長|体型/.test(text)
+    ? "スタイルバランス"
+    : /高見え|上品|きれいめ|素材感/.test(text)
+      ? "高見え"
+      : /軽量|歩き|ストレッチ|スニーカー|通学/.test(text)
+        ? "動きやすさ"
+        : /映え|写真/.test(text)
+          ? "写真映え"
+          : "着回しやすさ";
+  const colorMood = /黒|ブラック|ネイビー|濃色/.test(text)
+    ? "白ベースで明るく"
+    : /赤|ピンク|ブルー|グリーン|イエロー|パープル/.test(text)
+      ? "差し色をひとつ"
+      : /白|ホワイト|アイボリー|ベージュ|淡色/.test(text)
+        ? "黒・濃色で引き締め"
+        : "商品から自動で整える";
+  const season = /半袖|ノースリーブ|シアー|サンダル|接触冷感|夏/.test(text)
+    ? "夏"
+    : /コート|ダウン|裏起毛|ブーツ|厚手|冬/.test(text)
+      ? "冬"
+      : /トレンチ|カーディガン|春/.test(text)
+        ? "春"
+        : /秋|スエード/.test(text)
+          ? "秋"
+          : "今の季節";
+  const imagePattern = ["バッグ", "シューズ", "アクセサリー"].includes(product.category)
+    ? "商品アップ入り編集"
+    : product.category === "ワンピース"
+      ? "おしゃれ雑誌の表紙風"
+      : occasion === "休日ショッピング" || occasion === "旅行"
+        ? "おでかけスナップ風"
+        : "全身1カット＋手書きポイント";
+  const hairStyle = occasion === "きれいめ通勤"
+    ? "低めポニーテール"
+    : occasion === "デート"
+      ? "ふんわりハーフアップ"
+      : "元写真の髪型を保つ";
+
+  setSelect("coordStyle", style);
+  setSelect("coordOccasion", occasion);
+  setSelect("coordConcern", concern);
+  setSelect("coordPriority", priority);
+  setSelect("coordColorMood", colorMood);
+  setSelect("coordSeason", season);
+  setSelect("coordImagePattern", imagePattern);
+  setSelect("coordHairStyle", hairStyle);
+  setSelect("coordMainProduct", product.id);
+  autoSelectCoordinateItems(false, false);
+  if (notify) showToast(`${product.name}に合うコーデ設定を自動で選びました`);
 }
 
 function chooseCoordinateCompanion(categories, main, selectedIds) {
@@ -1800,6 +2021,10 @@ function buildOutfitImagePrompt(coordinate) {
     : `【女の子】
 ・添付写真と同じ女の子だと分かるよう、顔、髪型、髪色、体型、肌の雰囲気を一貫させる
 ・別人にしない。年齢を変えない。顔を大きく加工しない
+・元写真で女の子がマスクを着けている場合は、そのマスクを必ず着けたままにする
+・マスクの色、形、大きさ、柄、ひもの位置、顔を覆う範囲を元写真から変えない
+・マスクを外す、別のマスクへ交換する、透明にする、口や鼻を見せる加工をしない
+・元写真でマスクを着けていない場合は、新しくマスクを追加しない
 ・ポーズは元写真を生かしつつ、手元や足元を自然でかわいくアレンジする
 ・指、手足、顔、服の重なりを不自然にしない
 ・過度な露出や不自然な体型変更はしない`;
@@ -1838,7 +2063,7 @@ function buildOutfitImagePrompt(coordinate) {
 ・自然光で明るく、服の細部が見やすい高画質にする`;
   const finalSubjectCheck = originalProductPhotoMode
     ? "・添付した商品写真の色、形、柄、ロゴが変わっていない"
-    : "・女の子の一貫性が保たれている";
+    : "・女の子の一貫性が保たれ、元写真で着けているマスクも同じ状態で残っている";
   const imageTextRestriction = originalProductPhotoMode
     ? "・画像内にサービス名、URL、値段、新しいブランドロゴを文字として追加しない。元の商品写真に写っているロゴは消したり変えたりしない"
     : "・画像内に「楽天ROOM」「楽天ルーム」「ROOM」、URL、値段、ブランドロゴを入れない";

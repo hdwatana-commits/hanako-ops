@@ -19,7 +19,13 @@ Deno.serve(async (request) => {
     if (!originalUrl) return json({ error: "URLまたは検索キーワードを入力してください" }, 400);
 
     const { html, finalUrl } = await fetchRakutenPage(originalUrl);
-    const isTravel = isRakutenTravelUrl(finalUrl) || isRakutenTravelUrl(originalUrl) || /楽天トラベル|travel\.rakuten\.co\.jp/i.test(html);
+    const productSchema = findJsonLdProduct(html);
+    const travelSchema = findJsonLdTravel(html);
+    const pageUrl = getMeta(html, "og:url");
+    const isTravel = isRakutenTravelUrl(finalUrl)
+      || isRakutenTravelUrl(originalUrl)
+      || isRakutenTravelUrl(pageUrl)
+      || (!productSchema && Boolean(travelSchema));
     const product = extractProduct(html, isTravel);
     if (!product.name) {
       return json({ error: isTravel
@@ -237,9 +243,10 @@ function getAttr(html: string, attr: string) {
 function isRakutenTravelUrl(value: string) {
   try {
     const url = new URL(value);
-    return url.hostname.toLowerCase() === "travel.rakuten.co.jp" || /travel\.rakuten\.co\.jp/i.test(value);
+    const host = url.hostname.toLowerCase();
+    return host === "travel.rakuten.co.jp" || host.endsWith(".travel.rakuten.co.jp");
   } catch {
-    return /travel\.rakuten\.co\.jp/i.test(value);
+    return false;
   }
 }
 
