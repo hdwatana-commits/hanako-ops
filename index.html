@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=66">
+    <link rel="stylesheet" href="styles.css?v=67">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -764,6 +764,9 @@
                   <span>今回のファッション先生</span>
                   <strong id="hanakoTeacherName">リボンピンクのハナコ</strong>
                   <small id="hanakoTeacherTone">作るたびに12種類からランダムで登場します</small>
+                  <label class="teacher-picker-label" for="coordHanakoTeacher">先生を選ぶ
+                    <select id="coordHanakoTeacher" aria-label="画像ボードに表示するハナコ先生"></select>
+                  </label>
                 </div>
                 <button id="rerollHanakoTeacher" type="button" title="先生を変える" aria-label="ハナコ先生をランダムに変える">↻</button>
               </div>
@@ -1034,6 +1037,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=66"></script>
+    <script src="app.js?v=67"></script>
   </body>
 </html>

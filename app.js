@@ -201,6 +201,7 @@ let socialGeminiGeneratedImageDataUrl = "";
 let socialGeminiGeneratedImageExtension = "png";
 let socialGeminiAwaitingReturn = false;
 let socialGeminiPromptNeedsRefresh = false;
+let hanakoTeacherMode = "random";
 const hanakoTeacherGuides = [
   { id: "original", name: "リボンピンクのハナコ", avatar: "icons/hanako-avatar.jpg", tone: "王道かわいいを、分かりやすく解説" },
   { id: "cafe", name: "カフェローズのハナコ", avatar: "icons/hanako-avatar-cafe.png", tone: "やわらかな色合わせを、やさしく解説" },
@@ -276,6 +277,15 @@ function applyAppearance() {
   if (manifestLink) manifestLink.href = theme.manifest;
   if (favicon) favicon.href = theme.icon;
   if (appleTouchIcon) appleTouchIcon.href = theme.icon;
+
+  if (hanakoTeacherMode === "appearance") {
+    currentHanakoTeacher = hanakoTeacherGuides.find((guide) => guide.id === themeName) || hanakoTeacherGuides[0];
+    updateHanakoTeacherPreview();
+    if (coordinateOutput?.value.trim() && isHanakoTeacherPattern()) {
+      const coordinate = getSelectedCoordinate();
+      drawCoordinateBoard(coordinate, coordinateOutput.value);
+    }
+  }
 }
 
 function loadState() {
@@ -1592,7 +1602,7 @@ function bindCoordinateActions() {
     if (product) applyRecommendedCoordinateDefaults(product);
   });
   document.querySelector("#coordImagePattern")?.addEventListener("change", (event) => {
-    if (isHanakoTeacherPattern(event.currentTarget.value)) chooseRandomHanakoTeacher();
+    if (isHanakoTeacherPattern(event.currentTarget.value)) applySelectedHanakoTeacher();
     else updateHanakoTeacherPreview();
     if (coordinateOutput.value.trim()) {
       const coordinate = getSelectedCoordinate();
@@ -1601,6 +1611,9 @@ function bindCoordinateActions() {
     }
   });
   document.querySelector("#rerollHanakoTeacher")?.addEventListener("click", () => {
+    hanakoTeacherMode = "random";
+    const selector = document.querySelector("#coordHanakoTeacher");
+    if (selector) selector.value = "random";
     chooseRandomHanakoTeacher();
     if (coordinateOutput.value.trim()) {
       const coordinate = getSelectedCoordinate();
@@ -1617,6 +1630,7 @@ function bindCoordinateActions() {
   document.querySelector("#openGemini")?.addEventListener("click", openGemini);
   document.querySelector("#downloadCoordinateBoard")?.addEventListener("click", downloadCoordinateBoard);
   document.querySelector("#coordGeneratedImage")?.addEventListener("change", previewGeneratedCoordinateImage);
+  bindHanakoTeacherSelector();
   updateHanakoTeacherPreview();
 }
 
@@ -1627,6 +1641,34 @@ function isHanakoTeacherPattern(pattern = document.querySelector("#coordImagePat
 function chooseRandomHanakoTeacher() {
   const candidates = hanakoTeacherGuides.filter((guide) => guide.id !== currentHanakoTeacher?.id);
   currentHanakoTeacher = candidates[Math.floor(Math.random() * candidates.length)] || hanakoTeacherGuides[0];
+  updateHanakoTeacherPreview();
+  return currentHanakoTeacher;
+}
+
+function bindHanakoTeacherSelector() {
+  const selector = document.querySelector("#coordHanakoTeacher");
+  if (!selector) return;
+  selector.innerHTML = [
+    `<option value="random">毎回ランダム</option>`,
+    `<option value="appearance">選んだアプリアイコン</option>`,
+    ...hanakoTeacherGuides.map((guide) => `<option value="${guide.id}">${guide.name}</option>`),
+  ].join("");
+  selector.value = hanakoTeacherMode;
+  selector.addEventListener("change", (event) => {
+    hanakoTeacherMode = event.currentTarget.value;
+    applySelectedHanakoTeacher();
+    if (coordinateOutput.value.trim()) {
+      const coordinate = getSelectedCoordinate();
+      coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
+      drawCoordinateBoard(coordinate, coordinateOutput.value);
+    }
+  });
+}
+
+function applySelectedHanakoTeacher() {
+  if (hanakoTeacherMode === "random") return chooseRandomHanakoTeacher();
+  const selectedId = hanakoTeacherMode === "appearance" ? state.appearance?.avatarTheme : hanakoTeacherMode;
+  currentHanakoTeacher = hanakoTeacherGuides.find((guide) => guide.id === selectedId) || hanakoTeacherGuides[0];
   updateHanakoTeacherPreview();
   return currentHanakoTeacher;
 }
@@ -2004,7 +2046,7 @@ async function generateCoordinate() {
   let coordinate = getSelectedCoordinate();
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
   if (isHanakoTeacherPattern(coordinate.imagePattern)) {
-    chooseRandomHanakoTeacher();
+    applySelectedHanakoTeacher();
     coordinate = getSelectedCoordinate();
   }
   const analysis = buildCoordinateAnalysis(coordinate);
@@ -2149,7 +2191,7 @@ async function drawCoordinateBoard(coordinate, text) {
     const row = Math.floor(index / 2);
     const x = 70 + col * 485;
     const y = 330 + row * 285;
-    drawProductCard(ctx, product, x, y);
+    await drawProductCard(ctx, product, x, y);
     if (isHanakoTeacherPattern(coordinate.imagePattern)) drawTeacherHandwrittenPoint(ctx, product, index, x, y);
   }
 
