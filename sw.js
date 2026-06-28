@@ -1,9 +1,9 @@
-const CACHE_NAME = "hanako-room-ops-v69";
+const CACHE_NAME = "hanako-room-ops-v71";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=69",
-  "./app.js?v=69",
+  "./styles.css?v=71",
+  "./app.js?v=71",
   "./cloud-sync.js",
   "./room-review-generator.js",
   "./covers/rakuten-room-cover-hanako-v5.jpg",
@@ -104,8 +104,29 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
-  if (new URL(event.request.url).pathname.endsWith("/config.js")) {
+  const url = new URL(event.request.url);
+  if (url.pathname.endsWith("/config.js")) {
     event.respondWith(fetch(event.request));
+    return;
+  }
+
+  const isAppCode = url.origin === self.location.origin && (
+    event.request.mode === "navigate"
+    || url.pathname.endsWith("/index.html")
+    || url.pathname.endsWith("/app.js")
+    || url.pathname.endsWith("/styles.css")
+  );
+
+  if (isAppCode) {
+    event.respondWith(
+      fetch(event.request, { cache: "no-store" })
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html"))),
+    );
     return;
   }
 

@@ -198,6 +198,9 @@ let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
 let coordinateBoardDataUrl = "";
 const coordinateImageCache = new Map();
+const coordinateProductHydration = new Map();
+let currentHanakoComment = "";
+let currentHanakoCommentConcern = "";
 let socialGeminiGeneratedImageDataUrl = "";
 let socialGeminiGeneratedImageExtension = "png";
 let socialGeminiAwaitingReturn = false;
@@ -1618,6 +1621,7 @@ function bindCoordinateActions() {
     chooseRandomHanakoTeacher();
     if (coordinateOutput.value.trim()) {
       const coordinate = getSelectedCoordinate();
+      coordinate.hanakoComment = chooseHanakoTeacherComment(coordinate, true);
       coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
       drawCoordinateBoard(coordinate, coordinateOutput.value);
     }
@@ -1905,6 +1909,7 @@ function getSelectedCoordinate() {
     colorMood: document.querySelector("#coordColorMood")?.value || "商品から自動で整える",
     season: document.querySelector("#coordSeason")?.value || "今の季節",
     hanakoTeacher: currentHanakoTeacher,
+    hanakoComment: currentHanakoComment,
     products: pieces,
     mainProduct: mainProduct || pieces[0] || null,
   };
@@ -2043,6 +2048,7 @@ async function generateCoordinate() {
   if (isHanakoTeacherPattern(coordinate.imagePattern)) {
     applySelectedHanakoTeacher();
     coordinate = getSelectedCoordinate();
+    coordinate.hanakoComment = chooseHanakoTeacherComment(coordinate, true);
   }
   const analysis = buildCoordinateAnalysis(coordinate);
   const text = buildCoordinateText(coordinate);
@@ -2205,8 +2211,9 @@ async function drawCoordinateBoard(coordinate, text) {
 
 async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
   const guide = coordinate.hanakoTeacher || currentHanakoTeacher;
-  const comment = buildHanakoTeacherComment(coordinate, analysis);
-  const avatar = await loadImage(guide.avatar).catch(() => null);
+  const comment = coordinate.hanakoComment || chooseHanakoTeacherComment(coordinate);
+  let avatar = await loadImage(guide.avatar).catch(() => null);
+  if (!avatar) avatar = await loadImage("icons/hanako-avatar.jpg").catch(() => null);
   const avatarX = 70;
   const avatarY = 1160;
   const avatarSize = 142;
@@ -2248,18 +2255,75 @@ async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
   ctx.restore();
 }
 
-function buildHanakoTeacherComment(coordinate) {
-  const comments = {
-    "朝、服が決まらない": "迷う日は、主役を一つ。全部かわいくしようとすると、全部ぼやけるわ。",
-    "甘すぎて幼く見えそう": "甘さは一か所で十分。リボンもフリルも全部盛りでは、服に着られるわよ。",
-    "頑張りすぎて見えたくない": "盛る場所は一つで十分。主役が二人いたら、コーデは迷子よ。",
-    "体型やバランスが気になる": "隠すだけでは重くなるわ。縦ラインを作って、堂々とすっきり見せて。",
-    "可愛いけれど予算も大事": "安いから買うは卒業。三回着たいか、それだけで選びなさい。",
-    "気温・雨・汗にも対応したい": "我慢はおしゃれじゃないの。脱ぎ着できない服は、今日はお留守番よ。",
-    "いつも同じコーデになる": "全部変えなくていいの。小物を一つ替えるだけで、昨日とは別人よ。",
-    "自信を持って出かけたい": "似合うかより、姿勢よ。色を三つに絞ったら、胸を張って出かけなさい。",
+function chooseHanakoTeacherComment(coordinate, force = false) {
+  const variations = {
+    "朝、服が決まらない": [
+      "迷う日は主役を一つ。全部かわいくしようとすると、全部ぼやけるわ。",
+      "鏡の前で悩みすぎ。最初に手が伸びた一着を、堂々と主役にしなさい。",
+      "決まらない原因は服じゃなく欲張り。色を三つまでに絞って。",
+      "朝の正解探しはおしまい。主役、引き立て役、締め色で十分よ。",
+      "時間がない日は冒険しない。得意な形に、旬の小物を一つで勝てるわ。",
+    ],
+    "甘すぎて幼く見えそう": [
+      "甘さは一か所で十分。リボンもフリルも全部盛りでは、服に着られるわよ。",
+      "かわいいを重ねすぎないで。黒か直線を一つ入れれば、大人に戻れるわ。",
+      "ピンクが悪いんじゃないの。形まで甘くするから、幼く見えるのよ。",
+      "フリルを選んだなら小物は静かに。全員センターではまとまらないわ。",
+      "甘め服ほど姿勢と靴が大事。足もとを締めれば、ちゃんと大人よ。",
+    ],
+    "頑張りすぎて見えたくない": [
+      "盛る場所は一つで十分。主役が二人いたら、コーデは迷子よ。",
+      "気合いは見せるものじゃないの。色数を減らして、余裕を着なさい。",
+      "全部新品みたいな顔をさせないで。抜け感は、いつもの一着で作るの。",
+      "アクセも柄も主張中。ひとつ黙らせたら、急におしゃれになるわ。",
+      "完璧より自然体。鏡を見て最初に気になる一つを、潔く外して。",
+    ],
+    "体型やバランスが気になる": [
+      "隠すだけでは重くなるわ。縦ラインを作って、堂々とすっきり見せて。",
+      "体型より重心を見て。腰の位置を少し上げれば、印象は変わるわ。",
+      "ゆるい服を重ねるほど細くは見えないの。どこか一か所、形を出して。",
+      "気になる場所を見張りすぎ。顔まわりを明るくして、視線を上へ。",
+      "サイズを隠すより比率を整えて。上短め、下すっきりが近道よ。",
+    ],
+    "可愛いけれど予算も大事": [
+      "安いから買うは卒業。三回着たいか、それだけで選びなさい。",
+      "値札より出番を見て。一回しか着ない服が、いちばん高いのよ。",
+      "似た服があるなら今日は見送り。かわいいと必要は、別のお話よ。",
+      "予算がある日は主役へ集中。小物まで全部買う必要はないわ。",
+      "セールの魔法に負けないで。定価でも欲しいか、そこで答えが出るわ。",
+    ],
+    "気温・雨・汗にも対応したい": [
+      "我慢はおしゃれじゃないの。脱ぎ着できない服は、今日はお留守番よ。",
+      "天気を無視した服は美しくないわ。羽織り一枚までがコーデよ。",
+      "汗じみを心配して笑えないなら、その色は今日は選ばないで。",
+      "雨の日に繊細すぎる靴はお休み。足もとが決まれば気分も崩れないわ。",
+      "気温差には薄手を重ねて。根性で着る服なんて、おしゃれじゃないの。",
+    ],
+    "いつも同じコーデになる": [
+      "全部変えなくていいの。小物を一つ替えるだけで、昨日とは別人よ。",
+      "同じ服でも配色は変えられるわ。いつもの黒を、今日は淡色にして。",
+      "マンネリの犯人は服じゃなく組み合わせ。上下を一度、別居させなさい。",
+      "新しい服を買う前に靴を替えて。印象の半分は足もとが決めるわ。",
+      "定番は悪くないの。襟元、袖、バッグのどれか一つだけ遊んで。",
+    ],
+    "自信を持って出かけたい": [
+      "似合うかより姿勢よ。色を三つに絞ったら、胸を張って出かけなさい。",
+      "自信は服から借りていいの。いちばん好きな一着を主役にして。",
+      "周りの正解より、自分が鏡で笑えるか。それが今日の合格よ。",
+      "不安な日は冒険より得意を選んで。似合う形は、ちゃんと味方になるわ。",
+      "服は決まってる。あとは下を向かないこと、それだけよ。",
+    ],
   };
-  return comments[coordinate.concern] || "かわいいは足し算じゃないの。主役を一つ決めて、あとは潔く引きなさい。";
+  const options = variations[coordinate.concern] || [
+    "かわいいは足し算じゃないの。主役を一つ決めて、あとは潔く引きなさい。",
+    "おしゃれは全部を語らないの。見せ場を一つ決めて、余白を残して。",
+    "迷ったら色を減らして。まとまりのない豪華さより、潔い普通が勝つわ。",
+  ];
+  if (!force && currentHanakoComment && currentHanakoCommentConcern === coordinate.concern) return currentHanakoComment;
+  const candidates = options.filter((comment) => comment !== currentHanakoComment);
+  currentHanakoComment = candidates[Math.floor(Math.random() * candidates.length)] || options[0];
+  currentHanakoCommentConcern = coordinate.concern;
+  return currentHanakoComment;
 }
 
 function drawTeacherHandwrittenPoint(ctx, product, index, x, y) {
@@ -2309,12 +2373,13 @@ async function drawProductCard(ctx, product, x, y) {
   ctx.fill();
   ctx.strokeStyle = "#eadde1";
   ctx.stroke();
+  await hydrateCoordinateProductImage(product);
   if (product.image) {
     const image = await loadCoordinateProductImage(product.image);
     if (image) drawCoverImage(ctx, image, x + 18, y + 18, 150, 150, 12);
-    else drawPlaceholder(ctx, product.category, x + 18, y + 18, 150, 150);
+    else drawProductImagePlaceholder(ctx, product.category, x + 18, y + 18, 150, 150);
   } else {
-    drawPlaceholder(ctx, product.category, x + 18, y + 18, 150, 150);
+    drawProductImagePlaceholder(ctx, product.category, x + 18, y + 18, 150, 150);
   }
   ctx.fillStyle = "#2f292c";
   ctx.font = "700 25px Yu Gothic UI, Meiryo, sans-serif";
@@ -2325,6 +2390,52 @@ async function drawProductCard(ctx, product, x, y) {
   ctx.fillStyle = "#796e73";
   ctx.font = "20px Yu Gothic UI, Meiryo, sans-serif";
   wrapCanvasText(ctx, product.hook || createCoordinateHook(product), x + 18, y + 196, 390, 28, 1);
+}
+
+async function hydrateCoordinateProductImage(product) {
+  if (product.image || !product.url || !cloudSync.configured || !cloudSync.signedIn) return;
+  if (!coordinateProductHydration.has(product.id)) {
+    coordinateProductHydration.set(product.id, fetchRakutenProduct(product.url)
+      .then((result) => {
+        if (!result.image) return;
+        product.image = result.image;
+        saveState();
+        renderProducts();
+      })
+      .catch(() => null)
+      .finally(() => coordinateProductHydration.delete(product.id)));
+  }
+  await coordinateProductHydration.get(product.id);
+}
+
+function drawProductImagePlaceholder(ctx, category, x, y, width, height) {
+  ctx.save();
+  ctx.fillStyle = "#fff0f4";
+  roundRect(ctx, x, y, width, height, 12);
+  ctx.fill();
+  ctx.strokeStyle = "#d889a5";
+  ctx.lineWidth = 4;
+  if (category === "バッグ") {
+    roundRect(ctx, x + 35, y + 58, 80, 58, 12);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x + 75, y + 60, 24, Math.PI, 0);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(x + 46, y + 52);
+    ctx.lineTo(x + 75, y + 34);
+    ctx.lineTo(x + 104, y + 52);
+    ctx.lineTo(x + 118, y + 105);
+    ctx.lineTo(x + 32, y + 105);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "700 16px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("画像未登録", x + width / 2, y + height - 14);
+  ctx.restore();
 }
 
 async function loadCoordinateProductImage(src) {
@@ -2421,7 +2532,7 @@ function buildOutfitImagePrompt(coordinate) {
   const productPointNotes = buildHandwrittenProductPoints(coordinate);
   const imagePatternInstruction = getCoordinateImagePatternInstruction(coordinate.imagePattern, coordinate);
   const hanakoTeacher = coordinate.hanakoTeacher || currentHanakoTeacher;
-  const hanakoTeacherComment = buildHanakoTeacherComment(coordinate);
+  const hanakoTeacherComment = coordinate.hanakoComment || chooseHanakoTeacherComment(coordinate);
   const attachmentInstruction = originalProductPhotoMode
     ? `【添付画像の役割】
 ・添付した商品写真だけを素材として使う。画像ボードがある場合は、配置と文字の参考にだけ使う
@@ -5823,9 +5934,17 @@ function importData(event) {
 function registerPwa() {
   if (!("serviceWorker" in navigator)) return;
 
+  let reloadingForUpdate = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadingForUpdate) return;
+    reloadingForUpdate = true;
+    window.location.reload();
+  });
+
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js")
+      .register("./sw.js", { updateViaCache: "none" })
+      .then((registration) => registration.update())
       .catch(() => {
         // PWA登録はHTTPS配信時だけ成功すればよいので、ローカル表示では静かに無視する。
       });
