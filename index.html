@@ -8,9 +8,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Hanako Ops">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" href="icons/icon-192.png" type="image/png">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
+    <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
+    <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="styles.css">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
@@ -19,7 +19,7 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <img class="brand-avatar" src="icons/hanako-avatar.jpg" alt="ハナコ">
+          <img class="brand-avatar" src="icons/hanako-avatar.jpg" alt="ハナコ" data-app-avatar>
           <div>
             <p class="eyebrow">おしゃれ研究家</p>
             <h1>Hanako Ops</h1>
@@ -49,7 +49,7 @@
       <main class="workspace">
         <header class="topbar">
           <div class="topbar-title">
-            <img src="icons/hanako-avatar.jpg" alt="" class="topbar-avatar">
+            <img src="icons/hanako-avatar.jpg" alt="" class="topbar-avatar" data-app-avatar>
             <div>
             <p class="eyebrow">いまの画面</p>
             <h2 id="viewTitle">ホーム</h2>
@@ -74,6 +74,15 @@
         </header>
 
         <section class="view active" id="brief">
+          <div class="home-brand-cover">
+            <img
+              src="covers/rakuten-room-cover-hanako-v5.jpg"
+              width="2116"
+              height="743"
+              alt="ファッションハナコ 可愛さラボ"
+              fetchpriority="high"
+            >
+          </div>
           <div class="home-welcome">
             <div class="home-welcome-copy">
               <span class="home-kicker" id="homeDate">今日の運用</span>
@@ -84,7 +93,7 @@
                 <button type="button" data-open-view="coordinate">コーデを作る</button>
               </div>
             </div>
-            <img src="icons/hanako-avatar.jpg" alt="おしゃれ研究家ハナコ" class="home-avatar">
+            <img src="icons/hanako-avatar.jpg" alt="おしゃれ研究家ハナコ" class="home-avatar" data-app-avatar>
           </div>
 
           <div class="home-roadmap" aria-label="今日の作業手順">
@@ -173,6 +182,71 @@
           <details class="profile-settings">
             <summary><span>プロフィールと運用ルール</span><small>必要なときだけ編集</small></summary>
           <div class="two-column">
+            <article class="panel appearance-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">きょうの気分で変更</p>
+                  <h3>アプリのアイコン</h3>
+                </div>
+                <span class="status-pill">12パターン</span>
+              </div>
+              <p class="avatar-group-title">ハナコ</p>
+              <div class="avatar-picker" id="avatarPicker" role="radiogroup" aria-label="ハナコのアイコンを選ぶ">
+                <button type="button" class="avatar-choice" data-avatar-theme="original" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar.jpg" alt="リボンピンク">
+                  <span><strong>リボンピンク</strong><small>いつものハナコ</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="cafe" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-cafe.png" alt="カフェローズ">
+                  <span><strong>カフェローズ</strong><small>やわらか甘め</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="chic" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-chic.png" alt="モノトーン">
+                  <span><strong>モノトーン</strong><small>上品きれいめ</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="lavender" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-lavender.png" alt="ラベンダー">
+                  <span><strong>ラベンダー</strong><small>淡色フェミニン</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="mint" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-mint.png" alt="ミントおでかけ">
+                  <span><strong>ミントおでかけ</strong><small>さわやかガーリー</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="navy" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-navy.png" alt="ネイビー上品">
+                  <span><strong>ネイビー上品</strong><small>知的きれいめ</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="strawberry" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-strawberry.png" alt="いちごピーチ">
+                  <span><strong>いちごピーチ</strong><small>明るく甘め</small></span>
+                </button>
+              </div>
+              <p class="avatar-group-title avatar-group-title-secondary">可愛いモチーフ</p>
+              <div class="avatar-picker" role="radiogroup" aria-label="モチーフのアイコンを選ぶ">
+                <button type="button" class="avatar-choice" data-avatar-theme="perfume" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-perfume.png" alt="リボン香水">
+                  <span><strong>リボン香水</strong><small>華やかロマンティック</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="closet" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-closet.png" alt="クローゼット">
+                  <span><strong>クローゼット</strong><small>おしゃれ研究室</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="shopping" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-shopping.png" alt="お買い物バッグ">
+                  <span><strong>お買い物バッグ</strong><small>楽天ROOMらしい気分</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="mirror" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-mirror.png" alt="花と手鏡">
+                  <span><strong>花と手鏡</strong><small>大人ガーリー</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="notebook" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-notebook.png" alt="コーデノート">
+                  <span><strong>コーデノート</strong><small>ファッション研究中</small></span>
+                </button>
+              </div>
+              <p class="appearance-note">アプリ内はすぐに変更されます。スマホのホーム画面は、選んだあとに追加し直すと新しいアイコンになります。</p>
+            </article>
+
             <article class="panel">
               <div class="panel-heading">
                 <h3>プロフィール設計</h3>

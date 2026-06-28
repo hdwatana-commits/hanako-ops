@@ -40,6 +40,82 @@ let hasMeaningfulLocalData = Boolean(localStorage.getItem("hanako-room-ops"));
 const state = loadState();
 state.updatedAt ||= new Date().toISOString();
 state.roomQueue ||= [];
+state.appearance ||= { avatarTheme: "original" };
+
+const avatarThemes = {
+  original: {
+    avatar: "icons/hanako-avatar.jpg",
+    icon: "icons/icon-192.png",
+    manifest: "manifest.webmanifest",
+    label: "リボンピンク",
+  },
+  cafe: {
+    avatar: "icons/hanako-avatar-cafe.png",
+    icon: "icons/icon-cafe-192.png",
+    manifest: "manifest-cafe.webmanifest",
+    label: "カフェローズ",
+  },
+  chic: {
+    avatar: "icons/hanako-avatar-chic.png",
+    icon: "icons/icon-chic-192.png",
+    manifest: "manifest-chic.webmanifest",
+    label: "モノトーン",
+  },
+  lavender: {
+    avatar: "icons/hanako-avatar-lavender.png",
+    icon: "icons/icon-lavender-192.png",
+    manifest: "manifest-lavender.webmanifest",
+    label: "ラベンダー",
+  },
+  mint: {
+    avatar: "icons/hanako-avatar-mint.png",
+    icon: "icons/icon-mint-192.png",
+    manifest: "manifest-mint.webmanifest",
+    label: "ミントおでかけ",
+  },
+  navy: {
+    avatar: "icons/hanako-avatar-navy.png",
+    icon: "icons/icon-navy-192.png",
+    manifest: "manifest-navy.webmanifest",
+    label: "ネイビー上品",
+  },
+  strawberry: {
+    avatar: "icons/hanako-avatar-strawberry.png",
+    icon: "icons/icon-strawberry-192.png",
+    manifest: "manifest-strawberry.webmanifest",
+    label: "いちごピーチ",
+  },
+  perfume: {
+    avatar: "icons/hanako-avatar-perfume.png",
+    icon: "icons/icon-perfume-192.png",
+    manifest: "manifest-perfume.webmanifest",
+    label: "リボン香水",
+  },
+  closet: {
+    avatar: "icons/hanako-avatar-closet.png",
+    icon: "icons/icon-closet-192.png",
+    manifest: "manifest-closet.webmanifest",
+    label: "クローゼット",
+  },
+  shopping: {
+    avatar: "icons/hanako-avatar-shopping.png",
+    icon: "icons/icon-shopping-192.png",
+    manifest: "manifest-shopping.webmanifest",
+    label: "お買い物バッグ",
+  },
+  mirror: {
+    avatar: "icons/hanako-avatar-mirror.png",
+    icon: "icons/icon-mirror-192.png",
+    manifest: "manifest-mirror.webmanifest",
+    label: "花と手鏡",
+  },
+  notebook: {
+    avatar: "icons/hanako-avatar-notebook.png",
+    icon: "icons/icon-notebook-192.png",
+    manifest: "manifest-notebook.webmanifest",
+    label: "コーデノート",
+  },
+};
 let activePlatform = "Instagram";
 let lastGenerated = "";
 let lastGenerationContext = null;
@@ -101,6 +177,8 @@ queueMicrotask(initialize);
 function initialize() {
   profileText.value = state.profile || defaultProfile;
   document.querySelector('input[name="date"]').valueAsDate = new Date();
+  applyAppearance();
+  bindAppearancePicker();
   registerPwa();
   bindNavigation();
   bindForms();
@@ -117,6 +195,42 @@ function initialize() {
   renderLearningHint();
   renderChecks("");
   renderHome();
+}
+
+function bindAppearancePicker() {
+  document.querySelectorAll("[data-avatar-theme]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const themeName = button.dataset.avatarTheme;
+      if (!avatarThemes[themeName]) return;
+      state.appearance = { ...state.appearance, avatarTheme: themeName };
+      applyAppearance();
+      saveState();
+      showToast(`${avatarThemes[themeName].label}に着替えました`);
+    });
+  });
+}
+
+function applyAppearance() {
+  const themeName = avatarThemes[state.appearance?.avatarTheme] ? state.appearance.avatarTheme : "original";
+  const theme = avatarThemes[themeName];
+  state.appearance ||= {};
+  state.appearance.avatarTheme = themeName;
+
+  document.querySelectorAll("[data-app-avatar]").forEach((image) => {
+    image.src = theme.avatar;
+  });
+  document.querySelectorAll("[data-avatar-theme]").forEach((button) => {
+    const selected = button.dataset.avatarTheme === themeName;
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-checked", String(selected));
+  });
+
+  const manifestLink = document.querySelector("#appManifestLink");
+  const favicon = document.querySelector("#appFavicon");
+  const appleTouchIcon = document.querySelector("#appleTouchIcon");
+  if (manifestLink) manifestLink.href = theme.manifest;
+  if (favicon) favicon.href = theme.icon;
+  if (appleTouchIcon) appleTouchIcon.href = theme.icon;
 }
 
 function loadState() {
@@ -1011,6 +1125,8 @@ function applyCloudState(payload) {
   hasMeaningfulLocalData = true;
   localStorage.setItem("hanako-room-ops", JSON.stringify(state));
   profileText.value = state.profile || defaultProfile;
+  state.appearance ||= { avatarTheme: "original" };
+  applyAppearance();
   renderProducts();
   renderProductOptions();
   restoreGeneratorPreferences();
