@@ -103,6 +103,18 @@ const avatarThemes = {
     manifest: "manifest-classic.webmanifest",
     label: "クラシックローズ",
   },
+  office: {
+    avatar: "icons/hanako-avatar-office.png",
+    icon: "icons/icon-office-192.png",
+    manifest: "manifest-office.webmanifest",
+    label: "きれいめOL",
+  },
+  oshikatsu: {
+    avatar: "icons/hanako-avatar-oshikatsu.png",
+    icon: "icons/icon-oshikatsu-192.png",
+    manifest: "manifest-oshikatsu.webmanifest",
+    label: "推し活ガール",
+  },
   perfume: {
     avatar: "icons/hanako-avatar-perfume.png",
     icon: "icons/icon-perfume-192.png",
@@ -200,6 +212,8 @@ const hanakoTeacherGuides = [
   { id: "lemon", name: "レモンクリームのハナコ", avatar: "icons/hanako-avatar-lemon.png", tone: "明るい色合わせを、やさしく解説" },
   { id: "aqua", name: "アクアリボンのハナコ", avatar: "icons/hanako-avatar-aqua.png", tone: "さわやかな抜け感を、すっきり解説" },
   { id: "classic", name: "クラシックローズのハナコ", avatar: "icons/hanako-avatar-classic.png", tone: "大人っぽい華やかさを、上品に解説" },
+  { id: "office", name: "きれいめOLのハナコ", avatar: "icons/hanako-avatar-office.png", tone: "通勤にも使える上品な着回しを解説" },
+  { id: "oshikatsu", name: "推し活ガールのハナコ", avatar: "icons/hanako-avatar-oshikatsu.png", tone: "推し色を大人かわいく取り入れるコツを解説" },
 ];
 let currentHanakoTeacher = hanakoTeacherGuides[0];
 
@@ -2590,7 +2604,7 @@ function getCoordinateImagePatternInstruction(pattern, coordinate) {
     "商品アップ入り編集": "全身のメインカットに、主役商品の素材・形と小物が分かるアップ画像を2〜3個添える。",
     "おでかけスナップ風": "選んだシーンに合う自然な屋外背景で、歩く・振り返るなどのかわいいスナップ写真風にする。",
     "淡色スタジオ撮影風": "白と淡いピンクの明るいスタジオで、やわらかな自然光と少ない小物を使い上品に撮影する。",
-    "ハナコ先生の吹き出し解説": "完成コーデを大きく見せ、10種類から今回選ばれたハナコの丸い先生アイコンを左下の安全な余白へ配置する。先生の吹き出し2〜3個で似合わせ理由と悩みの解決を総評し、主役商品と小物の近くには別途、手書き風の矢印・丸囲み・下線・短いメモを3〜5個入れる。上部10%は短い見出し、中央約70%は完成コーデ、下部約20%は先生解説として毎回同じ情報階層を保つ。ファッション誌の解説ページのように、かわいく高品質で読みやすく整理する。",
+    "ハナコ先生の吹き出し解説": "完成コーデを大きく見せ、12種類から今回選ばれたハナコの丸い先生アイコンを左下の安全な余白へ配置する。先生の吹き出し2〜3個で似合わせ理由と悩みの解決を総評し、主役商品と小物の近くには別途、手書き風の矢印・丸囲み・下線・短いメモを3〜5個入れる。上部10%は短い見出し、中央約70%は完成コーデ、下部約20%は先生解説として毎回同じ情報階層を保つ。ファッション誌の解説ページのように、かわいく高品質で読みやすく整理する。",
     "コレクション表紙用": `コレクションの表紙として、中央に完成コーデを大きく見せる。上部に「大人かわいい ${coordinate.occasion} コーデ」と短く読みやすい日本語を置き、小さな一覧表示でもテーマが伝わる構図にする。重要な文字と商品は端へ寄せず、中央寄りの安全な範囲へ置く。画像内にサービス名は入れない。`,
     "オリジナル商品写真で投稿": "本人が撮影して添付した商品写真を切り抜き、明るさと背景だけを自然に整え、フラットレイまたは上品な商品コラージュにする。商品そのものを描き直さず、色・形・柄・ロゴを変えない。添付されていない商品や人物を生成しない。",
   };
