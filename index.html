@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=61">
+    <link rel="stylesheet" href="styles.css?v=64">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -732,10 +732,20 @@
                     <option>商品アップ入り編集</option>
                     <option>おでかけスナップ風</option>
                     <option>淡色スタジオ撮影風</option>
+                    <option>ハナコ先生の吹き出し解説</option>
                     <option>コレクション表紙用</option>
                     <option>オリジナル商品写真で投稿</option>
                   </select>
                 </div>
+              </div>
+              <div class="hanako-teacher-preview" id="hanakoTeacherPreview" hidden>
+                <img id="hanakoTeacherAvatar" src="icons/hanako-avatar.jpg" alt="今回のハナコ先生">
+                <div>
+                  <span>今回のファッション先生</span>
+                  <strong id="hanakoTeacherName">リボンピンクのハナコ</strong>
+                  <small id="hanakoTeacherTone">作るたびに7種類からランダムで登場します</small>
+                </div>
+                <button id="rerollHanakoTeacher" type="button" title="先生を変える" aria-label="ハナコ先生をランダムに変える">↻</button>
               </div>
               <p class="coord-note">「オリジナル商品写真で投稿」は、ご本人が撮影した商品写真をGeminiへ添付して使います。</p>
 
@@ -756,6 +766,7 @@
                 <ol>
                   <li>Geminiの「＋」から「画像を作成」を選ぶ</li>
                   <li>全身写真と、主役商品・同じブランドの商品画像を2〜4枚添付する</li>
+                  <li>ハナコ先生パターンでは、作成した画像ボードも一緒に添付する</li>
                   <li>「画像生成プロンプト」をコピーして送る</li>
                 </ol>
                 <p>AI画像はコーデ検討・SNS素材用です。ROOMのオリジナル写真・ランク対象として投稿する場合は、ご本人が実際に着用して撮影した全身写真を使い、写真に写る商品だけを登録してください。</p>
@@ -1003,6 +1014,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=61"></script>
+    <script src="app.js?v=64"></script>
   </body>
 </html>

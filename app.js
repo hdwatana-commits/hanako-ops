@@ -171,6 +171,16 @@ let socialGeminiGeneratedImageDataUrl = "";
 let socialGeminiGeneratedImageExtension = "png";
 let socialGeminiAwaitingReturn = false;
 let socialGeminiPromptNeedsRefresh = false;
+const hanakoTeacherGuides = [
+  { id: "original", name: "リボンピンクのハナコ", avatar: "icons/hanako-avatar.jpg", tone: "王道かわいいを、分かりやすく解説" },
+  { id: "cafe", name: "カフェローズのハナコ", avatar: "icons/hanako-avatar-cafe.png", tone: "やわらかな色合わせを、やさしく解説" },
+  { id: "chic", name: "モノトーンのハナコ", avatar: "icons/hanako-avatar-chic.png", tone: "甘さを大人っぽく整えるコツを解説" },
+  { id: "lavender", name: "ラベンダーのハナコ", avatar: "icons/hanako-avatar-lavender.png", tone: "淡色コーデのまとまり方を解説" },
+  { id: "mint", name: "ミントおでかけのハナコ", avatar: "icons/hanako-avatar-mint.png", tone: "清潔感と抜け感の作り方を解説" },
+  { id: "navy", name: "ネイビー上品のハナコ", avatar: "icons/hanako-avatar-navy.png", tone: "高見えするバランスを端的に解説" },
+  { id: "strawberry", name: "いちごピーチのハナコ", avatar: "icons/hanako-avatar-strawberry.png", tone: "明るくかわいく、着たくなる理由を解説" },
+];
+let currentHanakoTeacher = hanakoTeacherGuides[0];
 
 queueMicrotask(initialize);
 
@@ -1546,6 +1556,23 @@ function bindCoordinateActions() {
     const product = state.products.find((item) => item.id === event.currentTarget.value);
     if (product) applyRecommendedCoordinateDefaults(product);
   });
+  document.querySelector("#coordImagePattern")?.addEventListener("change", (event) => {
+    if (isHanakoTeacherPattern(event.currentTarget.value)) chooseRandomHanakoTeacher();
+    else updateHanakoTeacherPreview();
+    if (coordinateOutput.value.trim()) {
+      const coordinate = getSelectedCoordinate();
+      coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
+      drawCoordinateBoard(coordinate, coordinateOutput.value);
+    }
+  });
+  document.querySelector("#rerollHanakoTeacher")?.addEventListener("click", () => {
+    chooseRandomHanakoTeacher();
+    if (coordinateOutput.value.trim()) {
+      const coordinate = getSelectedCoordinate();
+      coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
+      drawCoordinateBoard(coordinate, coordinateOutput.value);
+    }
+  });
   document.querySelector("#autoCoordinate")?.addEventListener("click", () => autoSelectCoordinateItems(true, true));
   document.querySelector("#generateCoordinate")?.addEventListener("click", generateCoordinate);
   document.querySelector("#generateGeminiPrompt")?.addEventListener("click", generateGeminiPrompt);
@@ -1555,6 +1582,30 @@ function bindCoordinateActions() {
   document.querySelector("#openGemini")?.addEventListener("click", openGemini);
   document.querySelector("#downloadCoordinateBoard")?.addEventListener("click", downloadCoordinateBoard);
   document.querySelector("#coordGeneratedImage")?.addEventListener("change", previewGeneratedCoordinateImage);
+  updateHanakoTeacherPreview();
+}
+
+function isHanakoTeacherPattern(pattern = document.querySelector("#coordImagePattern")?.value) {
+  return pattern === "ハナコ先生の吹き出し解説";
+}
+
+function chooseRandomHanakoTeacher() {
+  const candidates = hanakoTeacherGuides.filter((guide) => guide.id !== currentHanakoTeacher?.id);
+  currentHanakoTeacher = candidates[Math.floor(Math.random() * candidates.length)] || hanakoTeacherGuides[0];
+  updateHanakoTeacherPreview();
+  return currentHanakoTeacher;
+}
+
+function updateHanakoTeacherPreview() {
+  const preview = document.querySelector("#hanakoTeacherPreview");
+  if (!preview) return;
+  preview.hidden = !isHanakoTeacherPattern();
+  const avatar = document.querySelector("#hanakoTeacherAvatar");
+  const name = document.querySelector("#hanakoTeacherName");
+  const tone = document.querySelector("#hanakoTeacherTone");
+  if (avatar) avatar.src = currentHanakoTeacher.avatar;
+  if (name) name.textContent = currentHanakoTeacher.name;
+  if (tone) tone.textContent = currentHanakoTeacher.tone;
 }
 
 async function importProductForCoordinate(urlInput, button) {
@@ -1775,6 +1826,7 @@ function getSelectedCoordinate() {
     priority: document.querySelector("#coordPriority")?.value || "着回しやすさ",
     colorMood: document.querySelector("#coordColorMood")?.value || "商品から自動で整える",
     season: document.querySelector("#coordSeason")?.value || "今の季節",
+    hanakoTeacher: currentHanakoTeacher,
     products: pieces,
     mainProduct: mainProduct || pieces[0] || null,
   };
@@ -1914,8 +1966,12 @@ function chooseCoordinateCompanion(categories, main, selectedIds) {
 }
 
 async function generateCoordinate() {
-  const coordinate = getSelectedCoordinate();
+  let coordinate = getSelectedCoordinate();
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
+  if (isHanakoTeacherPattern(coordinate.imagePattern)) {
+    chooseRandomHanakoTeacher();
+    coordinate = getSelectedCoordinate();
+  }
   const analysis = buildCoordinateAnalysis(coordinate);
   const text = buildCoordinateText(coordinate);
   coordinateOutput.value = text;
@@ -2059,15 +2115,117 @@ async function drawCoordinateBoard(coordinate, text) {
     const x = 70 + col * 485;
     const y = 330 + row * 285;
     drawProductCard(ctx, product, x, y);
+    if (isHanakoTeacherPattern(coordinate.imagePattern)) drawTeacherHandwrittenPoint(ctx, product, index, x, y);
   }
 
-  ctx.fillStyle = "#2f292c";
-  ctx.font = "700 30px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("WHY IT WORKS", 72, 1220);
-  ctx.font = "24px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillStyle = "#6c555e";
-  wrapCanvasText(ctx, `${analysis.solution} 色は${analysis.colorPlan}`, 72, 1260, 930, 34, 2);
+  if (isHanakoTeacherPattern(coordinate.imagePattern)) {
+    await drawHanakoTeacherPanel(ctx, coordinate, analysis);
+  } else {
+    ctx.fillStyle = "#2f292c";
+    ctx.font = "700 30px Yu Gothic UI, Meiryo, sans-serif";
+    ctx.fillText("WHY IT WORKS", 72, 1220);
+    ctx.font = "24px Yu Gothic UI, Meiryo, sans-serif";
+    ctx.fillStyle = "#6c555e";
+    wrapCanvasText(ctx, `${analysis.solution} 色は${analysis.colorPlan}`, 72, 1260, 930, 34, 2);
+  }
   coordinateBoardDataUrl = canvas.toDataURL("image/png");
+}
+
+async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
+  const guide = coordinate.hanakoTeacher || currentHanakoTeacher;
+  const comments = buildHanakoTeacherComments(coordinate, analysis);
+  const avatar = await loadImage(guide.avatar).catch(() => null);
+  const avatarX = 70;
+  const avatarY = 1160;
+  const avatarSize = 142;
+  const bubbleX = 242;
+  const bubbleY = 1148;
+  const bubbleWidth = 768;
+  const bubbleHeight = 166;
+
+  ctx.save();
+  ctx.fillStyle = "#fff";
+  roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 24);
+  ctx.fill();
+  ctx.strokeStyle = "#e4b9c8";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(bubbleX, bubbleY + 76);
+  ctx.lineTo(bubbleX - 28, bubbleY + 96);
+  ctx.lineTo(bubbleX, bubbleY + 112);
+  ctx.closePath();
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.strokeStyle = "#e4b9c8";
+  ctx.stroke();
+
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(`${guide.name}先生のひとこと`, bubbleX + 28, bubbleY + 40);
+  ctx.fillStyle = "#4d3d43";
+  ctx.font = "22px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, `✓ ${comments[0]}`, bubbleX + 28, bubbleY + 78, bubbleWidth - 56, 30, 1);
+  wrapCanvasText(ctx, `✓ ${comments[1]}`, bubbleX + 28, bubbleY + 116, bubbleWidth - 56, 30, 1);
+
+  ctx.fillStyle = "#f4cad7";
+  ctx.beginPath();
+  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 6, 0, Math.PI * 2);
+  ctx.fill();
+  if (avatar) drawCoverImage(ctx, avatar, avatarX, avatarY, avatarSize, avatarSize, avatarSize / 2);
+  else drawPlaceholder(ctx, "ハナコ", avatarX, avatarY, avatarSize, avatarSize);
+  ctx.restore();
+}
+
+function buildHanakoTeacherComments(coordinate, analysis = buildCoordinateAnalysis(coordinate)) {
+  const main = coordinate.mainProduct || coordinate.products[0];
+  const mainName = trimText(main?.name || "主役アイテム", 18);
+  return [
+    `${mainName}を主役に、${trimText(analysis.silhouette, 32)}`,
+    `${coordinate.concern}には、${trimText(analysis.solution, 38)}`,
+    `色は${trimText(analysis.colorPlan, 36)}`,
+  ];
+}
+
+function drawTeacherHandwrittenPoint(ctx, product, index, x, y) {
+  const label = teacherPointLabel(product);
+  const textX = x + 188;
+  const textY = y + 164;
+  ctx.save();
+  ctx.strokeStyle = index === 0 ? "#b83f6b" : "#d786a3";
+  ctx.fillStyle = index === 0 ? "#a43d64" : "#b65d7d";
+  ctx.lineWidth = 2.2;
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.moveTo(textX, textY + 7);
+  ctx.quadraticCurveTo(textX + 85, textY + 14, textX + 190, textY + 5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(textX - 8, textY - 4);
+  ctx.quadraticCurveTo(textX - 28, textY - 16, x + 154, y + 145);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 154, y + 145);
+  ctx.lineTo(x + 163, y + 141);
+  ctx.lineTo(x + 160, y + 151);
+  ctx.fill();
+  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(`${index === 0 ? "主役♡" : "POINT"} ${label}`, textX, textY);
+  ctx.restore();
+}
+
+function teacherPointLabel(product) {
+  return {
+    ワンピース: "縦ラインですっきり",
+    トップス: "顔まわりを明るく",
+    アウター: "重ねても軽やか",
+    スカート: "揺れ感がかわいい",
+    パンツ: "甘さをすっきり調整",
+    バッグ: "小さめで抜け感",
+    シューズ: "足もとの色をそろえる",
+    アクセサリー: "きらめきをひとさじ",
+  }[product?.category] || "全体をきれいにまとめる";
 }
 
 async function drawProductCard(ctx, product, x, y) {
@@ -2118,6 +2276,16 @@ function buildOutfitImagePrompt(coordinate) {
 ・マスクの色、形、大きさ、柄、ひも、顔を覆う範囲を変えないでください
 ・マスクを外す、薄くする、透明にする、別のマスクへ替える、口や鼻を描き足すことは禁止です
 ・マスクが残っていない画像は条件違反です。出力せず、同じマスクを復元してから完成させてください`;
+  const qualityLockInstruction = `【出力フォーマットと品質の固定条件】
+・完成画像は必ず縦3:4の1枚。1536×2048px相当以上の高解像度で出力する
+・低解像度、ぼやけ、強い圧縮、ざらつき、白飛び、過度な美肌加工を避ける
+・人物、主役商品、先生アイコン、吹き出し、手書きポイントの輪郭を鮮明にする
+・商品は色、形、丈、柄、素材感を参照画像へ忠実に合わせ、別商品へ変えない
+・指、手足、顔、服の重なり、バッグの持ち手、靴の左右を自然にする
+・外周に約6%の安全余白を取り、文字や顔、商品を端で切らない
+・主役コーデ約70%、解説要素約20%、呼吸できる余白約10%の情報量を保つ
+・かわいさ、読みやすさ、商品確認のしやすさを同時に満たす、商用ファッション誌レベルへ仕上げる
+・条件を満たさない途中案や低品質案は出力せず、完成画像だけを返す`;
   const brandProducts = getSameBrandProducts(mainProduct);
   const items = coordinate.products.map((product) => `・${product.category}: ${product.name}
   ブランド: ${getCoordinateBrand(product) || "商品ページで確認"}
@@ -2131,6 +2299,26 @@ function buildOutfitImagePrompt(coordinate) {
   const imageCopy = buildCoordinateImageCopy(coordinate);
   const productPointNotes = buildHandwrittenProductPoints(coordinate);
   const imagePatternInstruction = getCoordinateImagePatternInstruction(coordinate.imagePattern, coordinate);
+  const hanakoTeacher = coordinate.hanakoTeacher || currentHanakoTeacher;
+  const hanakoTeacherComments = buildHanakoTeacherComments(coordinate, stylingPlan);
+  const hanakoTeacherInstruction = isHanakoTeacherPattern(coordinate.imagePattern)
+    ? `【ハナコ先生の吹き出し解説・必須】
+・添付した画像ボードに写っている「${hanakoTeacher.name}」を、完成画像にも小さな先生役として登場させる
+・ハナコ先生はコーデを着る本人とは別の、丸いアイコン風の解説キャラクター。人物を2人並べた写真にはしない
+・アイコンの顔、髪型、髪色、服、目の色を参照画像から変えず、描き直して別人にしない
+・完成コーデを画面の約75%で大きく見せ、ハナコ先生は端の安全な余白へ約15〜20%の大きさで配置する
+・ハナコ先生からコーデへ向かう、白地にくすみピンク線の吹き出しを2〜3個だけ付ける
+・吹き出しは服へ重ねず、先生がやさしく授業しているような読み順にする
+・吹き出しとは別に、主役商品と小物の近くへ手書き風の矢印、丸囲み、下線、短いメモを合計3〜5個入れる
+・手書きポイントは商品ごとに具体的にし、同じ文を繰り返さない。服の色、形、重心、着回し、小物の役割を解説する
+・先生の吹き出しは総評、手書きポイントは各商品の解説として役割を分ける
+・手書き文字は、くすみピンクとこげ茶の細いペンで丁寧に書いたファッションノート風にする
+・吹き出し候補1: 「${hanakoTeacherComments[0]}」
+・吹き出し候補2: 「${hanakoTeacherComments[1]}」
+・吹き出し候補3: 「${hanakoTeacherComments[2]}」
+・日本語が正しく書けない場合は、無理に文字を増やさず候補を2個に減らす
+・先生アイコン参考URL: ${new URL(hanakoTeacher.avatar, window.location.href).href}`
+    : "";
   const sourceInstruction = originalProductPhotoMode
     ? `画像を生成してください。これは商品写真のレイアウト編集依頼です。文章だけで回答せず、私が撮影して添付した実物の商品写真だけを使って、新しい完成画像を1枚作ってください。
 
@@ -2195,6 +2383,8 @@ function buildOutfitImagePrompt(coordinate) {
 
 ${maskLockInstruction}
 
+${qualityLockInstruction}
+
 【画像サイズと構図】
 ・完成画像は必ず縦3:4。推奨サイズは1536×2048px
 ${layoutInstruction}
@@ -2230,6 +2420,8 @@ ${hairInstruction}
 ${coordinate.imagePattern}
 ${imagePatternInstruction}
 ${consistencyInstruction}
+
+${hanakoTeacherInstruction}
 
 【必ず使う主役商品】
 商品名: ${mainProduct.name}
@@ -2281,6 +2473,8 @@ ${imageTextRestriction}
 ・縦3:4になっている
 ${finalSubjectCheck}
 ${originalProductPhotoMode ? "" : "・マスクが無い、変形した、口や鼻が見える場合は完成扱いにせず、元写真と同じマスクへ直してから出力する"}
+・1536×2048px相当以上の縦3:4で、人物、商品、文字が鮮明になっている
+${isHanakoTeacherPattern(coordinate.imagePattern) ? "・ハナコ先生の吹き出しが2〜3個、商品への手書きポイントが3〜5個あり、互いに重ならず読みやすい" : ""}
 ・コーデが主役で、商品が自然に組み合わされている
 ・悩み「${coordinate.concern}」への解決が、シルエットと色の両方で伝わる
 ・季節とシーンに合わない厚着、薄着、靴、小物になっていない
@@ -2375,6 +2569,7 @@ function getCoordinateImagePatternInstruction(pattern, coordinate) {
     "商品アップ入り編集": "全身のメインカットに、主役商品の素材・形と小物が分かるアップ画像を2〜3個添える。",
     "おでかけスナップ風": "選んだシーンに合う自然な屋外背景で、歩く・振り返るなどのかわいいスナップ写真風にする。",
     "淡色スタジオ撮影風": "白と淡いピンクの明るいスタジオで、やわらかな自然光と少ない小物を使い上品に撮影する。",
+    "ハナコ先生の吹き出し解説": "完成コーデを大きく見せ、7種類から今回選ばれたハナコの丸い先生アイコンを左下の安全な余白へ配置する。先生の吹き出し2〜3個で似合わせ理由と悩みの解決を総評し、主役商品と小物の近くには別途、手書き風の矢印・丸囲み・下線・短いメモを3〜5個入れる。上部10%は短い見出し、中央約70%は完成コーデ、下部約20%は先生解説として毎回同じ情報階層を保つ。ファッション誌の解説ページのように、かわいく高品質で読みやすく整理する。",
     "コレクション表紙用": `コレクションの表紙として、中央に完成コーデを大きく見せる。上部に「大人かわいい ${coordinate.occasion} コーデ」と短く読みやすい日本語を置き、小さな一覧表示でもテーマが伝わる構図にする。重要な文字と商品は端へ寄せず、中央寄りの安全な範囲へ置く。画像内にサービス名は入れない。`,
     "オリジナル商品写真で投稿": "本人が撮影して添付した商品写真を切り抜き、明るさと背景だけを自然に整え、フラットレイまたは上品な商品コラージュにする。商品そのものを描き直さず、色・形・柄・ロゴを変えない。添付されていない商品や人物を生成しない。",
   };

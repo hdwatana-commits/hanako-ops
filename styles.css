@@ -3088,6 +3088,56 @@ body {
   line-height: 1.7;
 }
 
+.hanako-teacher-preview {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 40px;
+  gap: 11px;
+  align-items: center;
+  margin: 12px 0 14px;
+  padding: 10px;
+  background: #fff7fa;
+  border: 1px solid #ecd5de;
+  border-radius: 8px;
+}
+
+.hanako-teacher-preview[hidden] {
+  display: none;
+}
+
+.hanako-teacher-preview img {
+  width: 58px;
+  height: 58px;
+  object-fit: cover;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(164, 61, 100, 0.16);
+}
+
+.hanako-teacher-preview span,
+.hanako-teacher-preview small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.hanako-teacher-preview strong {
+  display: block;
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+.hanako-teacher-preview button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--rose-dark);
+  background: #fff;
+  border-color: #e8c9d4;
+  border-radius: 50%;
+  font-size: 21px;
+}
+
 .coord-url-import {
   margin: 0 0 18px;
   padding: 14px;
