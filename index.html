@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=61">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -626,12 +626,12 @@
                 <span class="status-pill">本人写真だけ使用</span>
               </div>
               <div class="coord-url-import">
-                <label class="field-label" for="coordProductUrl">楽天ROOMの商品URLから追加</label>
+                <label class="field-label" for="coordProductUrl">楽天ROOM / 楽天市場の商品URLから追加</label>
                 <div class="coord-url-row">
-                  <input id="coordProductUrl" type="url" inputmode="url" placeholder="https://room.rakuten.co.jp/...">
+                  <input id="coordProductUrl" type="url" inputmode="url" placeholder="ROOMまたは item.rakuten.co.jp のURL">
                   <button class="primary" id="coordImportProduct" type="button">商品を読み込む</button>
                 </div>
-                <p class="coord-import-status" id="coordImportStatus">読み込むと商品を登録し、合うコーデ欄へ自動で入ります。</p>
+                <p class="coord-import-status" id="coordImportStatus">ROOMページと楽天市場の商品ページの両方に対応しています。</p>
               </div>
               <label class="field-label" for="coordPhoto">自分の全身写真</label>
               <input id="coordPhoto" type="file" accept="image/*">
@@ -1003,6 +1003,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=61"></script>
   </body>
 </html>

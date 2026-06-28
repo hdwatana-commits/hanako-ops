@@ -18,7 +18,19 @@ Deno.serve(async (request) => {
     if (query) return json({ results: await searchRakutenProducts(query) });
     if (!originalUrl) return json({ error: "URLまたは検索キーワードを入力してください" }, 400);
 
-    const { html, finalUrl } = await fetchRakutenPage(originalUrl);
+    let { html, finalUrl } = await fetchRakutenPage(originalUrl);
+    const initialFinalUrl = finalUrl;
+    const initialProduct = extractProduct(html);
+    const embeddedProductUrl = findEmbeddedRakutenProductUrl(html);
+    if (embeddedProductUrl && (isRakutenRoomUrl(originalUrl) || isRakutenRoomUrl(finalUrl) || !hasUsableProductName(initialProduct.name))) {
+      try {
+        const resolved = await fetchRakutenPage(embeddedProductUrl);
+        html = resolved.html;
+        finalUrl = resolved.finalUrl;
+      } catch {
+        // ROOM側のメタ情報で取得できる場合があるため、元ページの解析を続ける。
+      }
+    }
     const productSchema = findJsonLdProduct(html);
     const travelSchema = findJsonLdTravel(html);
     const pageUrl = getMeta(html, "og:url");
@@ -27,7 +39,7 @@ Deno.serve(async (request) => {
       || isRakutenTravelUrl(pageUrl)
       || (!productSchema && Boolean(travelSchema));
     const product = extractProduct(html, isTravel);
-    if (!product.name) {
+    if (!hasUsableProductName(product.name)) {
       return json({ error: isTravel
         ? "宿泊施設情報を読み取れませんでした。楽天トラベルの施設ページURLでもう一度お試しください"
         : "商品情報を読み取れませんでした。楽天の商品ページURLでもう一度お試しください" }, 422);
@@ -55,7 +67,8 @@ Deno.serve(async (request) => {
         rating: product.rating || "",
         reviewCount: product.reviewCount || "",
       },
-      sourceUrl: finalUrl,
+      sourceUrl: originalUrl,
+      resolvedUrl: finalUrl || initialFinalUrl,
     });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "商品情報を取得できませんでした" }, 400);
@@ -96,6 +109,66 @@ function assertAllowedUrl(url: URL) {
   const host = url.hostname.toLowerCase();
   const allowed = host === "rakuten.co.jp" || host.endsWith(".rakuten.co.jp") || host === "r10.to" || host.endsWith(".r10.to");
   if (!allowed) throw new Error("楽天ROOM、楽天市場、楽天トラベル、楽天アフィリエイトのURLだけ利用できます");
+}
+
+function isRakutenRoomUrl(value: string) {
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host === "room.rakuten.co.jp" || host.endsWith(".room.rakuten.co.jp");
+  } catch {
+    return false;
+  }
+}
+
+function findEmbeddedRakutenProductUrl(html: string) {
+  const expanded = expandEmbeddedUrlText(html);
+  const patterns = [
+    /https?:\/\/(?:item|books|product)\.rakuten\.co\.jp\/[^\s"'<>\\]+/gi,
+    /https?:\/\/hb\.afl\.rakuten\.co\.jp\/[^\s"'<>\\]+/gi,
+    /https?:\/\/(?:a\.)?r10\.to\/[^\s"'<>\\]+/gi,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of expanded.matchAll(pattern)) {
+      const candidate = cleanEmbeddedUrl(match[0]);
+      try {
+        const url = new URL(candidate);
+        assertAllowedUrl(url);
+        if (!isRakutenRoomUrl(url.toString())) return url.toString();
+      } catch {
+        // 壊れた埋め込みURLは次の候補へ進む。
+      }
+    }
+  }
+  return "";
+}
+
+function expandEmbeddedUrlText(value: string) {
+  const decoded = decodeHtml(String(value || ""))
+    .replace(/\\u003a/gi, ":")
+    .replace(/\\u002f/gi, "/")
+    .replace(/\\u0026/gi, "&")
+    .replace(/\\\//g, "/");
+  const encodedUrls = decoded.match(/https?%3a%2f%2f[^\s"'<>]+/gi) || [];
+  const expandedUrls = encodedUrls.map((url) => {
+    try {
+      return decodeURIComponent(url);
+    } catch {
+      return "";
+    }
+  }).filter(Boolean);
+  return `${decoded}\n${expandedUrls.join("\n")}`;
+}
+
+function cleanEmbeddedUrl(value: string) {
+  return decodeHtml(value)
+    .replace(/[),.;]+$/g, "")
+    .replace(/&amp;/g, "&");
+}
+
+function hasUsableProductName(value: unknown) {
+  const name = cleanTitle(String(value || ""));
+  return Boolean(name) && !/^(楽天市場|楽天市場ショッピング|楽天|商品ページ|ROOM)$/i.test(name);
 }
 
 async function searchRakutenProducts(query: string) {
@@ -261,10 +334,10 @@ function extractProduct(html: string, isTravel = false) {
   const aggregateRating = jsonLdProduct?.aggregateRating || {};
   const brand = typeof jsonLdProduct?.brand === "string" ? jsonLdProduct.brand : jsonLdProduct?.brand?.name;
   return {
-    name: jsonLdProduct?.name || getMeta(html, "og:title") || getTitle(html),
+    name: jsonLdProduct?.name || getMeta(html, "og:title") || getMeta(html, "twitter:title") || getTitle(html),
     description: jsonLdProduct?.description || getMeta(html, "og:description"),
     category: jsonLdProduct?.category || "",
-    image: normalizeImage(jsonLdProduct?.image) || getMeta(html, "og:image"),
+    image: normalizeImage(jsonLdProduct?.image) || getMeta(html, "og:image") || getMeta(html, "twitter:image"),
     price: offer?.price || offer?.lowPrice || getMeta(html, "product:price:amount"),
     location,
     rating: aggregateRating.ratingValue || getMeta(html, "rating") || findTextValue(html, ["ratingValue", "reviewAverage"]),

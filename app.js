@@ -1560,7 +1560,7 @@ function bindCoordinateActions() {
 async function importProductForCoordinate(urlInput, button) {
   const url = urlInput?.value.trim();
   if (!url) {
-    showCoordinateImportStatus("楽天ROOMの商品URLを入力してください", true);
+    showCoordinateImportStatus("楽天ROOMまたは楽天市場の商品URLを入力してください", true);
     urlInput?.focus();
     return;
   }
@@ -1573,12 +1573,12 @@ async function importProductForCoordinate(urlInput, button) {
   showCoordinateImportStatus("商品情報を読み込んでいます...");
   try {
     const imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
-    if (isDefiniteTravelProduct(imported, url)) throw new Error("このURLは宿泊施設として判定されました。ファッション商品のROOM URLを入力してください");
-    let product = state.products.find((item) => item.url === url || item.url === imported.sourceUrl);
+    if (isDefiniteTravelProduct(imported, url)) throw new Error("このURLは宿泊施設として判定されました。ファッション商品の楽天URLを入力してください");
+    let product = state.products.find((item) => item.url === url || item.url === imported.sourceUrl || item.url === imported.resolvedUrl);
     if (product) {
       Object.assign(product, {
         name: imported.name || product.name,
-        url: imported.sourceUrl || url,
+        url,
         image: imported.image || product.image,
         details: imported.details || product.details || {},
         category: imported.category || product.category,
@@ -1589,7 +1589,7 @@ async function importProductForCoordinate(urlInput, button) {
       product = {
         id: createId(),
         name: imported.name || "楽天ROOMの商品",
-        url: imported.sourceUrl || url,
+        url,
         image: imported.image || "",
         details: imported.details || {},
         category: imported.category || "その他",
@@ -2110,6 +2110,14 @@ function buildOutfitImagePrompt(coordinate) {
   const stylingPlan = buildCoordinateAnalysis(coordinate);
   const brand = getCoordinateBrand(mainProduct);
   const originalProductPhotoMode = coordinate.imagePattern === "オリジナル商品写真で投稿";
+  const maskLockInstruction = originalProductPhotoMode
+    ? ""
+    : `【最優先・マスク固定モード】
+・添付した本人写真の人物はマスク着用です。完成画像でも、元写真と同じマスクを必ず着けたままにしてください
+・服、髪型、ポーズを編集する前に、マスクを本人の顔の一部として固定してください
+・マスクの色、形、大きさ、柄、ひも、顔を覆う範囲を変えないでください
+・マスクを外す、薄くする、透明にする、別のマスクへ替える、口や鼻を描き足すことは禁止です
+・マスクが残っていない画像は条件違反です。出力せず、同じマスクを復元してから完成させてください`;
   const brandProducts = getSameBrandProducts(mainProduct);
   const items = coordinate.products.map((product) => `・${product.category}: ${product.name}
   ブランド: ${getCoordinateBrand(product) || "商品ページで確認"}
@@ -2137,7 +2145,7 @@ function buildOutfitImagePrompt(coordinate) {
     : `【女の子】
 ・添付写真と同じ女の子だと分かるよう、顔、髪型、髪色、体型、肌の雰囲気を一貫させる
 ・別人にしない。年齢を変えない。顔を大きく加工しない
-・元写真で女の子がマスクを着けている場合は、そのマスクを必ず着けたままにする
+・この依頼では女の子はマスク着用が必須。元写真と同じマスクを必ず着けたままにする
 ・マスクの色、形、大きさ、柄、ひもの位置、顔を覆う範囲を元写真から変えない
 ・マスクを外す、別のマスクへ交換する、透明にする、口や鼻を見せる加工をしない
 ・元写真でマスクを着けていない場合は、新しくマスクを追加しない
@@ -2179,11 +2187,13 @@ function buildOutfitImagePrompt(coordinate) {
 ・自然光で明るく、服の細部が見やすい高画質にする`;
   const finalSubjectCheck = originalProductPhotoMode
     ? "・添付した商品写真の色、形、柄、ロゴが変わっていない"
-    : "・女の子の一貫性が保たれ、元写真で着けているマスクも同じ状態で残っている";
+    : "・最初にマスクを確認する。元写真と同じマスクが同じ状態で残り、口と鼻が見えていない";
   const imageTextRestriction = originalProductPhotoMode
     ? "・画像内にサービス名、URL、値段、新しいブランドロゴを文字として追加しない。元の商品写真に写っているロゴは消したり変えたりしない"
     : "・画像内に「楽天ROOM」「楽天ルーム」「ROOM」、URL、値段、ブランドロゴを入れない";
   return `${sourceInstruction}
+
+${maskLockInstruction}
 
 【画像サイズと構図】
 ・完成画像は必ず縦3:4。推奨サイズは1536×2048px
@@ -2270,6 +2280,7 @@ ${imageTextRestriction}
 【最終チェック】
 ・縦3:4になっている
 ${finalSubjectCheck}
+${originalProductPhotoMode ? "" : "・マスクが無い、変形した、口や鼻が見える場合は完成扱いにせず、元写真と同じマスクへ直してから出力する"}
 ・コーデが主役で、商品が自然に組み合わされている
 ・悩み「${coordinate.concern}」への解決が、シルエットと色の両方で伝わる
 ・季節とシーンに合わない厚着、薄着、靴、小物になっていない
