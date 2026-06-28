@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=64">
+    <link rel="stylesheet" href="styles.css?v=65">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -188,7 +188,7 @@
                   <p class="eyebrow">きょうの気分で変更</p>
                   <h3>アプリのアイコン</h3>
                 </div>
-                <span class="status-pill">12パターン</span>
+                <span class="status-pill">15パターン</span>
               </div>
               <p class="avatar-group-title">ハナコ</p>
               <div class="avatar-picker" id="avatarPicker" role="radiogroup" aria-label="ハナコのアイコンを選ぶ">
@@ -219,6 +219,18 @@
                 <button type="button" class="avatar-choice" data-avatar-theme="strawberry" role="radio" aria-checked="false">
                   <img src="icons/hanako-avatar-strawberry.png" alt="いちごピーチ">
                   <span><strong>いちごピーチ</strong><small>明るく甘め</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="lemon" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-lemon.png" alt="レモンクリーム">
+                  <span><strong>レモンクリーム</strong><small>やさしく明るい</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="aqua" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-aqua.png" alt="アクアリボン">
+                  <span><strong>アクアリボン</strong><small>さわやか上品</small></span>
+                </button>
+                <button type="button" class="avatar-choice" data-avatar-theme="classic" role="radio" aria-checked="false">
+                  <img src="icons/hanako-avatar-classic.png" alt="クラシックローズ">
+                  <span><strong>クラシックローズ</strong><small>大人っぽく華やか</small></span>
                 </button>
               </div>
               <p class="avatar-group-title avatar-group-title-secondary">可愛いモチーフ</p>
@@ -743,7 +755,7 @@
                 <div>
                   <span>今回のファッション先生</span>
                   <strong id="hanakoTeacherName">リボンピンクのハナコ</strong>
-                  <small id="hanakoTeacherTone">作るたびに7種類からランダムで登場します</small>
+                  <small id="hanakoTeacherTone">作るたびに10種類からランダムで登場します</small>
                 </div>
                 <button id="rerollHanakoTeacher" type="button" title="先生を変える" aria-label="ハナコ先生をランダムに変える">↻</button>
               </div>
@@ -1014,6 +1026,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=64"></script>
+    <script src="app.js?v=65"></script>
   </body>
 </html>
