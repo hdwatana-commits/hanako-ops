@@ -197,6 +197,7 @@ const toast = document.querySelector("#toast");
 let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
 let coordinateBoardDataUrl = "";
+const coordinateImageCache = new Map();
 let socialGeminiGeneratedImageDataUrl = "";
 let socialGeminiGeneratedImageExtension = "png";
 let socialGeminiAwaitingReturn = false;
@@ -1898,7 +1899,7 @@ function getSelectedCoordinate() {
     style: document.querySelector("#coordStyle")?.value || "大人ガーリー",
     occasion: document.querySelector("#coordOccasion")?.value || "友達とカフェ",
     hairStyle: document.querySelector("#coordHairStyle")?.value || "元写真の髪型を保つ",
-    imagePattern: document.querySelector("#coordImagePattern")?.value || "全身1カット＋手書きポイント",
+    imagePattern: document.querySelector("#coordImagePattern")?.value || "ハナコ先生の吹き出し解説",
     concern: document.querySelector("#coordConcern")?.value || "朝、服が決まらない",
     priority: document.querySelector("#coordPriority")?.value || "着回しやすさ",
     colorMood: document.querySelector("#coordColorMood")?.value || "商品から自動で整える",
@@ -2003,13 +2004,7 @@ function applyRecommendedCoordinateDefaults(product, notify = true) {
         : /秋|スエード/.test(text)
           ? "秋"
           : "今の季節";
-  const imagePattern = ["バッグ", "シューズ", "アクセサリー"].includes(product.category)
-    ? "商品アップ入り編集"
-    : product.category === "ワンピース"
-      ? "おしゃれ雑誌の表紙風"
-      : occasion === "休日ショッピング" || occasion === "旅行"
-        ? "おでかけスナップ風"
-        : "全身1カット＋手書きポイント";
+  const imagePattern = "ハナコ先生の吹き出し解説";
   const hairStyle = occasion === "きれいめ通勤"
     ? "低めポニーテール"
     : occasion === "デート"
@@ -2210,7 +2205,7 @@ async function drawCoordinateBoard(coordinate, text) {
 
 async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
   const guide = coordinate.hanakoTeacher || currentHanakoTeacher;
-  const comments = buildHanakoTeacherComments(coordinate, analysis);
+  const comment = buildHanakoTeacherComment(coordinate, analysis);
   const avatar = await loadImage(guide.avatar).catch(() => null);
   const avatarX = 70;
   const avatarY = 1160;
@@ -2239,11 +2234,10 @@ async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
 
   ctx.fillStyle = "#a43d64";
   ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText(`${guide.name}先生のひとこと`, bubbleX + 28, bubbleY + 40);
+  ctx.fillText("ハナコ先生のズバッとひとこと", bubbleX + 28, bubbleY + 42);
   ctx.fillStyle = "#4d3d43";
-  ctx.font = "22px Yu Gothic UI, Meiryo, sans-serif";
-  wrapCanvasText(ctx, `✓ ${comments[0]}`, bubbleX + 28, bubbleY + 78, bubbleWidth - 56, 30, 1);
-  wrapCanvasText(ctx, `✓ ${comments[1]}`, bubbleX + 28, bubbleY + 116, bubbleWidth - 56, 30, 1);
+  ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, `「${comment}」`, bubbleX + 28, bubbleY + 86, bubbleWidth - 56, 34, 2);
 
   ctx.fillStyle = "#f4cad7";
   ctx.beginPath();
@@ -2254,14 +2248,18 @@ async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
   ctx.restore();
 }
 
-function buildHanakoTeacherComments(coordinate, analysis = buildCoordinateAnalysis(coordinate)) {
-  const main = coordinate.mainProduct || coordinate.products[0];
-  const mainName = trimText(main?.name || "主役アイテム", 18);
-  return [
-    `${mainName}を主役に、${trimText(analysis.silhouette, 32)}`,
-    `${coordinate.concern}には、${trimText(analysis.solution, 38)}`,
-    `色は${trimText(analysis.colorPlan, 36)}`,
-  ];
+function buildHanakoTeacherComment(coordinate) {
+  const comments = {
+    "朝、服が決まらない": "迷う日は、主役を一つ。全部かわいくしようとすると、全部ぼやけるわ。",
+    "甘すぎて幼く見えそう": "甘さは一か所で十分。リボンもフリルも全部盛りでは、服に着られるわよ。",
+    "頑張りすぎて見えたくない": "盛る場所は一つで十分。主役が二人いたら、コーデは迷子よ。",
+    "体型やバランスが気になる": "隠すだけでは重くなるわ。縦ラインを作って、堂々とすっきり見せて。",
+    "可愛いけれど予算も大事": "安いから買うは卒業。三回着たいか、それだけで選びなさい。",
+    "気温・雨・汗にも対応したい": "我慢はおしゃれじゃないの。脱ぎ着できない服は、今日はお留守番よ。",
+    "いつも同じコーデになる": "全部変えなくていいの。小物を一つ替えるだけで、昨日とは別人よ。",
+    "自信を持って出かけたい": "似合うかより、姿勢よ。色を三つに絞ったら、胸を張って出かけなさい。",
+  };
+  return comments[coordinate.concern] || "かわいいは足し算じゃないの。主役を一つ決めて、あとは潔く引きなさい。";
 }
 
 function drawTeacherHandwrittenPoint(ctx, product, index, x, y) {
@@ -2312,7 +2310,7 @@ async function drawProductCard(ctx, product, x, y) {
   ctx.strokeStyle = "#eadde1";
   ctx.stroke();
   if (product.image) {
-    const image = await loadImage(product.image).catch(() => null);
+    const image = await loadCoordinateProductImage(product.image);
     if (image) drawCoverImage(ctx, image, x + 18, y + 18, 150, 150, 12);
     else drawPlaceholder(ctx, product.category, x + 18, y + 18, 150, 150);
   } else {
@@ -2329,15 +2327,61 @@ async function drawProductCard(ctx, product, x, y) {
   wrapCanvasText(ctx, product.hook || createCoordinateHook(product), x + 18, y + 196, 390, 28, 1);
 }
 
-function generateGeminiPrompt() {
+async function loadCoordinateProductImage(src) {
+  if (!src) return null;
+  if (coordinateImageCache.has(src)) return coordinateImageCache.get(src);
+  let image = await loadImage(src).catch(() => null);
+  if (!image && cloudSync.configured && cloudSync.signedIn && /^https?:\/\//i.test(src)) {
+    try {
+      const dataUrl = await fetchRakutenImageDataUrl(src);
+      image = await loadImage(dataUrl);
+    } catch {
+      image = null;
+    }
+  }
+  if (image) coordinateImageCache.set(src, image);
+  return image;
+}
+
+async function fetchRakutenImageDataUrl(imageUrl) {
+  const token = await cloudSync.getAccessToken();
+  const response = await fetch(`${cloudSync.url}/functions/v1/rakuten-product-import`, {
+    method: "POST",
+    headers: {
+      apikey: cloudSync.key,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ imageUrl }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || "商品画像を読み込めませんでした");
+  }
+  return blobToDataUrl(await response.blob());
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
+    reader.addEventListener("error", reject);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function generateGeminiPrompt() {
   const coordinate = getSelectedCoordinate();
   const originalProductPhotoMode = coordinate.imagePattern === "オリジナル商品写真で投稿";
   if (!coordinatePhotoDataUrl && !originalProductPhotoMode) return showToast("先に自分の全身写真を選んでください");
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
   if (!document.querySelector("#coordMainProduct")?.value) return showToast("必ず画像に使う主役商品を選んでください");
+  const coordinateText = coordinateOutput.value.trim() || buildCoordinateText(coordinate);
+  coordinateOutput.value = coordinateText;
+  await drawCoordinateBoard(coordinate, coordinateText);
   coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
-  document.querySelector("#coordStatus").textContent = "画像プロンプト作成済み";
-  showToast("画像生成専用のプロンプトを作りました");
+  document.querySelector("#coordStatus").textContent = "画像ボード・プロンプト準備済み";
+  showToast("本人写真と保存した画像ボードを一緒にGeminiへ添付してください");
 }
 
 function buildOutfitImagePrompt(coordinate) {
@@ -2377,23 +2421,34 @@ function buildOutfitImagePrompt(coordinate) {
   const productPointNotes = buildHandwrittenProductPoints(coordinate);
   const imagePatternInstruction = getCoordinateImagePatternInstruction(coordinate.imagePattern, coordinate);
   const hanakoTeacher = coordinate.hanakoTeacher || currentHanakoTeacher;
-  const hanakoTeacherComments = buildHanakoTeacherComments(coordinate, stylingPlan);
+  const hanakoTeacherComment = buildHanakoTeacherComment(coordinate);
+  const attachmentInstruction = originalProductPhotoMode
+    ? `【添付画像の役割】
+・添付した商品写真だけを素材として使う。画像ボードがある場合は、配置と文字の参考にだけ使う
+・画像ボード内の商品画像を実物写真として再利用せず、必ず添付された元の商品写真を使う`
+    : `【添付画像の役割・最優先】
+・「本人の全身写真」: 顔、髪、体型、肌、ポーズ、マスクを保つための本人基準画像
+・「コーデ画像ボード」: 選ぶ商品、配置、手書きポイント、ハナコ先生のアイコン、吹き出しの見出しと本文を保つためのデザイン基準画像
+・「商品画像」: 服と小物の色、形、丈、柄、素材感を正確に反映するための商品基準画像
+・本人写真と画像ボードは別の役割として両方使う。どちらか一方を無視しない
+・画像ボード右上の小さな本人写真を拡大して使わず、別添付の元の全身写真を人物の基準にする
+・画像ボード自体をそのまま完成画像にせず、本人写真へ選択商品を自然に着せた新しい縦3:4画像を生成する`;
   const hanakoTeacherInstruction = isHanakoTeacherPattern(coordinate.imagePattern)
     ? `【ハナコ先生の吹き出し解説・必須】
 ・添付した画像ボードに写っている「${hanakoTeacher.name}」を、完成画像にも小さな先生役として登場させる
 ・ハナコ先生はコーデを着る本人とは別の、丸いアイコン風の解説キャラクター。人物を2人並べた写真にはしない
 ・アイコンの顔、髪型、髪色、服、目の色を参照画像から変えず、描き直して別人にしない
 ・完成コーデを画面の約75%で大きく見せ、ハナコ先生は端の安全な余白へ約15〜20%の大きさで配置する
-・ハナコ先生からコーデへ向かう、白地にくすみピンク線の吹き出しを2〜3個だけ付ける
+・ハナコ先生からコーデへ向かう、白地にくすみピンク線の吹き出しを1個だけ付ける
 ・吹き出しは服へ重ねず、先生がやさしく授業しているような読み順にする
 ・吹き出しとは別に、主役商品と小物の近くへ手書き風の矢印、丸囲み、下線、短いメモを合計3〜5個入れる
 ・手書きポイントは商品ごとに具体的にし、同じ文を繰り返さない。服の色、形、重心、着回し、小物の役割を解説する
-・先生の吹き出しは総評、手書きポイントは各商品の解説として役割を分ける
+・先生の吹き出しは短い辛口総評、手書きポイントは各商品の解説として役割を分ける
 ・手書き文字は、くすみピンクとこげ茶の細いペンで丁寧に書いたファッションノート風にする
-・吹き出し候補1: 「${hanakoTeacherComments[0]}」
-・吹き出し候補2: 「${hanakoTeacherComments[1]}」
-・吹き出し候補3: 「${hanakoTeacherComments[2]}」
-・日本語が正しく書けない場合は、無理に文字を増やさず候補を2個に減らす
+・吹き出しの見出しは必ず「ハナコ先生のズバッとひとこと」。アイコンの種類名や「ラベンダーの」は見出しへ入れない
+・吹き出し本文はこの1文だけ: 「${hanakoTeacherComment}」
+・本文を省略したり途中で切ったりしない。最大2行に収め、入らない場合は文字を少し小さくする
+・画像ボードにある先生アイコンと上記のひとことをセットで読み取り、完成画像へ必ず反映する
 ・先生アイコン参考URL: ${new URL(hanakoTeacher.avatar, window.location.href).href}`
     : "";
   const sourceInstruction = originalProductPhotoMode
@@ -2457,6 +2512,8 @@ function buildOutfitImagePrompt(coordinate) {
     ? "・画像内にサービス名、URL、値段、新しいブランドロゴを文字として追加しない。元の商品写真に写っているロゴは消したり変えたりしない"
     : "・画像内に「楽天ROOM」「楽天ルーム」「ROOM」、URL、値段、ブランドロゴを入れない";
   return `${sourceInstruction}
+
+${attachmentInstruction}
 
 ${maskLockInstruction}
 
@@ -2551,7 +2608,10 @@ ${imageTextRestriction}
 ${finalSubjectCheck}
 ${originalProductPhotoMode ? "" : "・マスクが無い、変形した、口や鼻が見える場合は完成扱いにせず、元写真と同じマスクへ直してから出力する"}
 ・1536×2048px相当以上の縦3:4で、人物、商品、文字が鮮明になっている
-${isHanakoTeacherPattern(coordinate.imagePattern) ? "・ハナコ先生の吹き出しが2〜3個、商品への手書きポイントが3〜5個あり、互いに重ならず読みやすい" : ""}
+${isHanakoTeacherPattern(coordinate.imagePattern) ? `・画像ボードと同じハナコ先生アイコンがある
+・見出しは「ハナコ先生のズバッとひとこと」になっている
+・吹き出し本文「${hanakoTeacherComment}」が省略されず最大2行で読める
+・先生の吹き出しは1個、商品への手書きポイントは3〜5個あり、互いに重ならず読みやすい` : ""}
 ・コーデが主役で、商品が自然に組み合わされている
 ・悩み「${coordinate.concern}」への解決が、シルエットと色の両方で伝わる
 ・季節とシーンに合わない厚着、薄着、靴、小物になっていない
@@ -2650,7 +2710,7 @@ function getCoordinateImagePatternInstruction(pattern, coordinate) {
     "コレクション表紙用": `コレクションの表紙として、中央に完成コーデを大きく見せる。上部に「大人かわいい ${coordinate.occasion} コーデ」と短く読みやすい日本語を置き、小さな一覧表示でもテーマが伝わる構図にする。重要な文字と商品は端へ寄せず、中央寄りの安全な範囲へ置く。画像内にサービス名は入れない。`,
     "オリジナル商品写真で投稿": "本人が撮影して添付した商品写真を切り抜き、明るさと背景だけを自然に整え、フラットレイまたは上品な商品コラージュにする。商品そのものを描き直さず、色・形・柄・ロゴを変えない。添付されていない商品や人物を生成しない。",
   };
-  return patterns[pattern] || patterns["全身1カット＋手書きポイント"];
+  return patterns[pattern] || patterns["ハナコ先生の吹き出し解説"];
 }
 
 function getSameBrandProducts(mainProduct) {

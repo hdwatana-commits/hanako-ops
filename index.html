@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=67">
+    <link rel="stylesheet" href="styles.css?v=69">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -746,13 +746,13 @@
                 <div>
                   <label class="field-label" for="coordImagePattern">画像パターン</label>
                   <select id="coordImagePattern">
+                    <option selected>ハナコ先生の吹き出し解説</option>
                     <option>全身1カット＋手書きポイント</option>
                     <option>おしゃれ雑誌の表紙風</option>
                     <option>3カットのコラージュ</option>
                     <option>商品アップ入り編集</option>
                     <option>おでかけスナップ風</option>
                     <option>淡色スタジオ撮影風</option>
-                    <option>ハナコ先生の吹き出し解説</option>
                     <option>コレクション表紙用</option>
                     <option>オリジナル商品写真で投稿</option>
                   </select>
@@ -787,9 +787,10 @@
               <div class="gemini-mode-guide">
                 <strong>Geminiで写真を作る手順</strong>
                 <ol>
+                  <li>「コーデ文と画像ボードを作る」を押し、画像ボードを保存する</li>
                   <li>Geminiの「＋」から「画像を作成」を選ぶ</li>
-                  <li>全身写真と、主役商品・同じブランドの商品画像を2〜4枚添付する</li>
-                  <li>ハナコ先生パターンでは、作成した画像ボードも一緒に添付する</li>
+                  <li>本人の全身写真と保存した画像ボードを一緒に添付する</li>
+                  <li>主役商品・同じブランドの商品画像も2〜4枚添付する</li>
                   <li>「画像生成プロンプト」をコピーして送る</li>
                 </ol>
                 <p>AI画像はコーデ検討・SNS素材用です。ROOMのオリジナル写真・ランク対象として投稿する場合は、ご本人が実際に着用して撮影した全身写真を使い、写真に写る商品だけを登録してください。</p>
@@ -1037,6 +1038,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=67"></script>
+    <script src="app.js?v=69"></script>
   </body>
 </html>
