@@ -3089,12 +3089,10 @@ body {
 }
 
 .hanako-teacher-preview {
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) 40px;
-  gap: 11px;
-  align-items: center;
+  display: block;
   margin: 12px 0 14px;
-  padding: 10px;
+  padding: 12px;
+  overflow: hidden;
   background: #fff7fa;
   border: 1px solid #ecd5de;
   border-radius: 8px;
@@ -3104,7 +3102,14 @@ body {
   display: none;
 }
 
-.hanako-teacher-preview img {
+.teacher-selected-summary {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 40px;
+  gap: 11px;
+  align-items: center;
+}
+
+.teacher-selected-summary > img {
   width: 58px;
   height: 58px;
   object-fit: cover;
@@ -3113,21 +3118,22 @@ body {
   box-shadow: 0 4px 12px rgba(164, 61, 100, 0.16);
 }
 
-.hanako-teacher-preview span,
-.hanako-teacher-preview small {
+.teacher-selected-summary span,
+.teacher-selected-summary small {
   display: block;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.45;
 }
 
-.hanako-teacher-preview strong {
+.teacher-selected-summary strong {
   display: block;
   margin: 2px 0;
   font-size: 13px;
 }
 
-.hanako-teacher-preview button {
+.teacher-reroll-button,
+.teacher-coverflow-nav {
   width: 40px;
   height: 40px;
   padding: 0;
@@ -3138,24 +3144,144 @@ body {
   font-size: 21px;
 }
 
-.teacher-picker-label {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px;
-  align-items: center;
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 11px;
+.teacher-coverflow-picker {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #efdce3;
 }
 
-.teacher-picker-label select {
-  min-width: 0;
-  width: 100%;
-  height: 34px;
-  padding: 4px 28px 4px 9px;
-  border-color: #e5cbd4;
-  background-color: #fff;
+.teacher-coverflow-title {
+  display: block;
+  margin: 0 0 4px 3px;
+  color: #7b4d5e;
   font-size: 12px;
+  font-weight: 800;
+}
+
+.teacher-coverflow-stage {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  gap: 3px;
+  align-items: center;
+}
+
+.teacher-coverflow-nav {
+  position: relative;
+  z-index: 30;
+  width: 34px;
+  height: 34px;
+  font-size: 24px;
+}
+
+.teacher-coverflow {
+  display: flex;
+  gap: 0;
+  align-items: center;
+  min-width: 0;
+  min-height: 132px;
+  padding: 12px calc(50% - 47px) 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  perspective: 760px;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+
+.teacher-coverflow::-webkit-scrollbar {
+  display: none;
+}
+
+.teacher-coverflow-card {
+  --cover-rotate: 0deg;
+  --cover-scale: 0.82;
+  --cover-opacity: 0.7;
+  --cover-z: 1;
+  position: relative;
+  z-index: var(--cover-z);
+  flex: 0 0 94px;
+  width: 94px;
+  min-height: 112px;
+  padding: 2px 4px 0;
+  color: #5d3b48;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  opacity: var(--cover-opacity);
+  scroll-snap-align: center;
+  transform: rotateY(var(--cover-rotate)) scale(var(--cover-scale));
+  transform-style: preserve-3d;
+  transition: transform 160ms ease, opacity 160ms ease, filter 160ms ease;
+}
+
+.teacher-coverflow-card:hover {
+  background: transparent;
+  border: 0;
+}
+
+.teacher-coverflow-image-wrap {
+  position: relative;
+  display: block;
+  width: 78px;
+  height: 78px;
+  margin: 0 auto 5px;
+}
+
+.teacher-coverflow-card img {
+  display: block;
+  width: 78px;
+  height: 78px;
+  object-fit: cover;
+  background: #fff;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 7px 18px rgba(103, 66, 80, 0.18);
+}
+
+.teacher-coverflow-card small {
+  position: absolute;
+  right: -2px;
+  bottom: 0;
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 5px;
+  place-items: center;
+  color: #fff;
+  background: #b74771;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.teacher-coverflow-card strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.teacher-coverflow-card.selected {
+  color: #9e315d;
+  filter: saturate(1.08);
+}
+
+.teacher-coverflow-card.selected img {
+  border-color: #d85886;
+  box-shadow: 0 0 0 3px #ffe1eb, 0 9px 22px rgba(164, 61, 100, 0.27);
+}
+
+.teacher-coverflow-card:focus-visible {
+  outline: 2px solid #b74771;
+  outline-offset: 2px;
 }
 
 .coord-url-import {

@@ -115,6 +115,41 @@ const avatarThemes = {
     manifest: "manifest-oshikatsu.webmanifest",
     label: "推し活ガール",
   },
+  campus: { avatar: "icons/hanako-avatar-campus.png", icon: "icons/icon-campus-192.png", manifest: "manifest-campus.webmanifest", label: "キャンパスプレッピー" },
+  rainy: { avatar: "icons/hanako-avatar-rainy.png", icon: "icons/icon-rainy-192.png", manifest: "manifest-rainy.webmanifest", label: "雨の日ブルー" },
+  sakura: { avatar: "icons/hanako-avatar-sakura.png", icon: "icons/icon-sakura-192.png", manifest: "manifest-sakura.webmanifest", label: "桜ピクニック" },
+  marine: { avatar: "icons/hanako-avatar-marine.png", icon: "icons/icon-marine-192.png", manifest: "manifest-marine.webmanifest", label: "マリンリボン" },
+  autumn: { avatar: "icons/hanako-avatar-autumn.png", icon: "icons/icon-autumn-192.png", manifest: "manifest-autumn.webmanifest", label: "秋色ブック" },
+  winter: { avatar: "icons/hanako-avatar-winter.png", icon: "icons/icon-winter-192.png", manifest: "manifest-winter.webmanifest", label: "冬ふわピンク" },
+  beauty: { avatar: "icons/hanako-avatar-beauty.png", icon: "icons/icon-beauty-192.png", manifest: "manifest-beauty.webmanifest", label: "ビューティーローズ" },
+  travelgirl: { avatar: "icons/hanako-avatar-travelgirl.png", icon: "icons/icon-travelgirl-192.png", manifest: "manifest-travelgirl.webmanifest", label: "旅するハナコ" },
+  sporty: { avatar: "icons/hanako-avatar-sporty.png", icon: "icons/icon-sporty-192.png", manifest: "manifest-sporty.webmanifest", label: "スポーティー" },
+  evening: { avatar: "icons/hanako-avatar-evening.png", icon: "icons/icon-evening-192.png", manifest: "manifest-evening.webmanifest", label: "ナイトエレガント" },
+  chocolate: { avatar: "icons/hanako-avatar-chocolate.png", icon: "icons/icon-chocolate-192.png", manifest: "manifest-chocolate.webmanifest", label: "チョコブラウン" },
+  florist: { avatar: "icons/hanako-avatar-florist.png", icon: "icons/icon-florist-192.png", manifest: "manifest-florist.webmanifest", label: "フラワーショップ" },
+  music: { avatar: "icons/hanako-avatar-music.png", icon: "icons/icon-music-192.png", manifest: "manifest-music.webmanifest", label: "ミュージック" },
+  denim: { avatar: "icons/hanako-avatar-denim.png", icon: "icons/icon-denim-192.png", manifest: "manifest-denim.webmanifest", label: "デニム休日" },
+  museum: { avatar: "icons/hanako-avatar-museum.png", icon: "icons/icon-museum-192.png", manifest: "manifest-museum.webmanifest", label: "ミュージアム" },
+  bakery: { avatar: "icons/hanako-avatar-bakery.png", icon: "icons/icon-bakery-192.png", manifest: "manifest-bakery.webmanifest", label: "ベーカリー" },
+  resort: { avatar: "icons/hanako-avatar-resort.png", icon: "icons/icon-resort-192.png", manifest: "manifest-resort.webmanifest", label: "リゾート" },
+  studynight: { avatar: "icons/hanako-avatar-studynight.png", icon: "icons/icon-studynight-192.png", manifest: "manifest-studynight.webmanifest", label: "お勉強ナイト" },
+  wamodern: { avatar: "icons/hanako-avatar-wamodern.png", icon: "icons/icon-wamodern-192.png", manifest: "manifest-wamodern.webmanifest", label: "和モダン" },
+  holiday: { avatar: "icons/hanako-avatar-holiday.png", icon: "icons/icon-holiday-192.png", manifest: "manifest-holiday.webmanifest", label: "ホリデー" },
+  parisienne: { avatar: "icons/hanako-avatar-parisienne.png", icon: "icons/icon-parisienne-192.png", manifest: "manifest-parisienne.webmanifest", label: "パリジェンヌ" },
+  picnic: { avatar: "icons/hanako-avatar-picnic.png", icon: "icons/icon-picnic-192.png", manifest: "manifest-picnic.webmanifest", label: "ピクニック" },
+  balletcore: { avatar: "icons/hanako-avatar-balletcore.png", icon: "icons/icon-balletcore-192.png", manifest: "manifest-balletcore.webmanifest", label: "バレエコア" },
+  cinema: { avatar: "icons/hanako-avatar-cinema.png", icon: "icons/icon-cinema-192.png", manifest: "manifest-cinema.webmanifest", label: "映画館" },
+  ceramics: { avatar: "icons/hanako-avatar-ceramics.png", icon: "icons/icon-ceramics-192.png", manifest: "manifest-ceramics.webmanifest", label: "陶芸アトリエ" },
+  gardening: { avatar: "icons/hanako-avatar-gardening.png", icon: "icons/icon-gardening-192.png", manifest: "manifest-gardening.webmanifest", label: "お花ガーデン" },
+  library: { avatar: "icons/hanako-avatar-library.png", icon: "icons/icon-library-192.png", manifest: "manifest-library.webmanifest", label: "図書館" },
+  seaside: { avatar: "icons/hanako-avatar-seaside.png", icon: "icons/icon-seaside-192.png", manifest: "manifest-seaside.webmanifest", label: "海辺のお嬢さん" },
+  nightout: { avatar: "icons/hanako-avatar-nightout.png", icon: "icons/icon-nightout-192.png", manifest: "manifest-nightout.webmanifest", label: "夜のおでかけ" },
+  ribbonlady: { avatar: "icons/hanako-avatar-ribbonlady.png", icon: "icons/icon-ribbonlady-192.png", manifest: "manifest-ribbonlady.webmanifest", label: "リボンレディ" },
+  royalgala: { avatar: "icons/hanako-avatar-royalgala.png", icon: "icons/icon-royalgala-192.png", manifest: "manifest-royalgala.webmanifest", label: "ロイヤルガラ" },
+  yozakura: { avatar: "icons/hanako-avatar-yozakura.png", icon: "icons/icon-yozakura-192.png", manifest: "manifest-yozakura.webmanifest", label: "夜桜スペシャル" },
+  moonlight: { avatar: "icons/hanako-avatar-moonlight.png", icon: "icons/icon-moonlight-192.png", manifest: "manifest-moonlight.webmanifest", label: "月夜のプリンセス" },
+  anniversaryrose: { avatar: "icons/hanako-avatar-anniversaryrose.png", icon: "icons/icon-anniversaryrose-192.png", manifest: "manifest-anniversaryrose.webmanifest", label: "記念日ローズ" },
+  jewelprincess: { avatar: "icons/hanako-avatar-jewelprincess.png", icon: "icons/icon-jewelprincess-192.png", manifest: "manifest-jewelprincess.webmanifest", label: "宝石箱プリンセス" },
   perfume: {
     avatar: "icons/hanako-avatar-perfume.png",
     icon: "icons/icon-perfume-192.png",
@@ -145,6 +180,36 @@ const avatarThemes = {
     manifest: "manifest-notebook.webmanifest",
     label: "コーデノート",
   },
+  heels: { avatar: "icons/hanako-avatar-heels.png", icon: "icons/icon-heels-192.png", manifest: "manifest-heels.webmanifest", label: "リボンパンプス" },
+  jewelry: { avatar: "icons/hanako-avatar-jewelry.png", icon: "icons/icon-jewelry-192.png", manifest: "manifest-jewelry.webmanifest", label: "ジュエリーボックス" },
+  teatime: { avatar: "icons/hanako-avatar-teatime.png", icon: "icons/icon-teatime-192.png", manifest: "manifest-teatime.webmanifest", label: "アフタヌーンティー" },
+  bouquet: { avatar: "icons/hanako-avatar-bouquet.png", icon: "icons/icon-bouquet-192.png", manifest: "manifest-bouquet.webmanifest", label: "ピンクブーケ" },
+  smartphone: { avatar: "icons/hanako-avatar-smartphone.png", icon: "icons/icon-smartphone-192.png", manifest: "manifest-smartphone.webmanifest", label: "投稿プランナー" },
+  parasol: { avatar: "icons/hanako-avatar-parasol.png", icon: "icons/icon-parasol-192.png", manifest: "manifest-parasol.webmanifest", label: "レース日傘" },
+  sewing: { avatar: "icons/hanako-avatar-sewing.png", icon: "icons/icon-sewing-192.png", manifest: "manifest-sewing.webmanifest", label: "ソーイングバスケット" },
+  camera: { avatar: "icons/hanako-avatar-camera.png", icon: "icons/icon-camera-192.png", manifest: "manifest-camera.webmanifest", label: "リボンカメラ" },
+  sunhat: { avatar: "icons/hanako-avatar-sunhat.png", icon: "icons/icon-sunhat-192.png", manifest: "manifest-sunhat.webmanifest", label: "夏のおでかけ" },
+  dessert: { avatar: "icons/hanako-avatar-dessert.png", icon: "icons/icon-dessert-192.png", manifest: "manifest-dessert.webmanifest", label: "いちごケーキ" },
+  vanitytray: { avatar: "icons/hanako-avatar-vanitytray.png", icon: "icons/icon-vanitytray-192.png", manifest: "manifest-vanitytray.webmanifest", label: "コスメトレー" },
+  maryjanes: { avatar: "icons/hanako-avatar-maryjanes.png", icon: "icons/icon-maryjanes-192.png", manifest: "manifest-maryjanes.webmanifest", label: "メリージェーン" },
+  ribboncardigan: { avatar: "icons/hanako-avatar-ribboncardigan.png", icon: "icons/icon-ribboncardigan-192.png", manifest: "manifest-ribboncardigan.webmanifest", label: "リボンカーデ" },
+  cafeplate: { avatar: "icons/hanako-avatar-cafeplate.png", icon: "icons/icon-cafeplate-192.png", manifest: "manifest-cafeplate.webmanifest", label: "カフェプレート" },
+  charmbracelet: { avatar: "icons/hanako-avatar-charmbracelet.png", icon: "icons/icon-charmbracelet-192.png", manifest: "manifest-charmbracelet.webmanifest", label: "チャームブレス" },
+  colorpalette: { avatar: "icons/hanako-avatar-colorpalette.png", icon: "icons/icon-colorpalette-192.png", manifest: "manifest-colorpalette.webmanifest", label: "色合わせ先生" },
+  wardrobeaudit: { avatar: "icons/hanako-avatar-wardrobeaudit.png", icon: "icons/icon-wardrobeaudit-192.png", manifest: "manifest-wardrobeaudit.webmanifest", label: "クローゼット診断" },
+  fitcheck: { avatar: "icons/hanako-avatar-fitcheck.png", icon: "icons/icon-fitcheck-192.png", manifest: "manifest-fitcheck.webmanifest", label: "着やせチェック" },
+  shoeclinic: { avatar: "icons/hanako-avatar-shoeclinic.png", icon: "icons/icon-shoeclinic-192.png", manifest: "manifest-shoeclinic.webmanifest", label: "靴選び先生" },
+  accessorylab: { avatar: "icons/hanako-avatar-accessorylab.png", icon: "icons/icon-accessorylab-192.png", manifest: "manifest-accessorylab.webmanifest", label: "小物研究室" },
+  salehunter: { avatar: "icons/hanako-avatar-salehunter.png", icon: "icons/icon-salehunter-192.png", manifest: "manifest-salehunter.webmanifest", label: "セール発掘隊" },
+  layering: { avatar: "icons/hanako-avatar-layering.png", icon: "icons/icon-layering-192.png", manifest: "manifest-layering.webmanifest", label: "重ね着先生" },
+  formalguest: { avatar: "icons/hanako-avatar-formalguest.png", icon: "icons/icon-formalguest-192.png", manifest: "manifest-formalguest.webmanifest", label: "お呼ばれハナコ" },
+  streetstyle: { avatar: "icons/hanako-avatar-streetstyle.png", icon: "icons/icon-streetstyle-192.png", manifest: "manifest-streetstyle.webmanifest", label: "街角スナップ" },
+  creatorstudio: { avatar: "icons/hanako-avatar-creatorstudio.png", icon: "icons/icon-creatorstudio-192.png", manifest: "manifest-creatorstudio.webmanifest", label: "撮影スタジオ" },
+  ribbonmannequin: { avatar: "icons/hanako-avatar-ribbonmannequin.png", icon: "icons/icon-ribbonmannequin-192.png", manifest: "manifest-ribbonmannequin.webmanifest", label: "リボンマネキン" },
+  styletablet: { avatar: "icons/hanako-avatar-styletablet.png", icon: "icons/icon-styletablet-192.png", manifest: "manifest-styletablet.webmanifest", label: "コーデタブレット" },
+  magazinestack: { avatar: "icons/hanako-avatar-magazinestack.png", icon: "icons/icon-magazinestack-192.png", manifest: "manifest-magazinestack.webmanifest", label: "ルックブック" },
+  jewelhanger: { avatar: "icons/hanako-avatar-jewelhanger.png", icon: "icons/icon-jewelhanger-192.png", manifest: "manifest-jewelhanger.webmanifest", label: "ジュエルハンガー" },
+  coordboard: { avatar: "icons/hanako-avatar-coordboard.png", icon: "icons/icon-coordboard-192.png", manifest: "manifest-coordboard.webmanifest", label: "コーデボード" },
 };
 let activePlatform = "Instagram";
 let lastGenerated = "";
@@ -206,6 +271,8 @@ let socialGeminiGeneratedImageExtension = "png";
 let socialGeminiAwaitingReturn = false;
 let socialGeminiPromptNeedsRefresh = false;
 let hanakoTeacherMode = "random";
+let hanakoTeacherCoverflowScrollTimer = null;
+let hanakoTeacherCoverflowIgnoreUntil = 0;
 const hanakoTeacherGuides = [
   { id: "original", name: "リボンピンクのハナコ", avatar: "icons/hanako-avatar.jpg", tone: "王道かわいいを、分かりやすく解説" },
   { id: "cafe", name: "カフェローズのハナコ", avatar: "icons/hanako-avatar-cafe.png", tone: "やわらかな色合わせを、やさしく解説" },
@@ -219,6 +286,51 @@ const hanakoTeacherGuides = [
   { id: "classic", name: "クラシックローズのハナコ", avatar: "icons/hanako-avatar-classic.png", tone: "大人っぽい華やかさを、上品に解説" },
   { id: "office", name: "きれいめOLのハナコ", avatar: "icons/hanako-avatar-office.png", tone: "通勤にも使える上品な着回しを解説" },
   { id: "oshikatsu", name: "推し活ガールのハナコ", avatar: "icons/hanako-avatar-oshikatsu.png", tone: "推し色を大人かわいく取り入れるコツを解説" },
+  { id: "campus", name: "キャンパスプレッピーのハナコ", avatar: "icons/hanako-avatar-campus.png", tone: "通学コーデを知的にかわいく解説" },
+  { id: "rainy", name: "雨の日ブルーのハナコ", avatar: "icons/hanako-avatar-rainy.png", tone: "雨の日も崩れにくい着こなしを解説" },
+  { id: "sakura", name: "桜ピクニックのハナコ", avatar: "icons/hanako-avatar-sakura.png", tone: "春色を甘くなりすぎず整えるコツを解説" },
+  { id: "marine", name: "マリンリボンのハナコ", avatar: "icons/hanako-avatar-marine.png", tone: "夏の爽やかな配色と抜け感を解説" },
+  { id: "autumn", name: "秋色ブックのハナコ", avatar: "icons/hanako-avatar-autumn.png", tone: "深みカラーを重く見せない方法を解説" },
+  { id: "winter", name: "冬ふわピンクのハナコ", avatar: "icons/hanako-avatar-winter.png", tone: "防寒とかわいさを両立する重ね方を解説" },
+  { id: "beauty", name: "ビューティーローズのハナコ", avatar: "icons/hanako-avatar-beauty.png", tone: "服とメイクの色を自然につなげて解説" },
+  { id: "travelgirl", name: "旅するハナコ", avatar: "icons/hanako-avatar-travelgirl.png", tone: "女子旅で動きやすいきれいめコーデを解説" },
+  { id: "sporty", name: "スポーティーなハナコ", avatar: "icons/hanako-avatar-sporty.png", tone: "カジュアルを子どもっぽく見せないコツを解説" },
+  { id: "evening", name: "ナイトエレガントのハナコ", avatar: "icons/hanako-avatar-evening.png", tone: "夜のおめかしを上品にまとめるコツを解説" },
+  { id: "chocolate", name: "チョコブラウンのハナコ", avatar: "icons/hanako-avatar-chocolate.png", tone: "ブラウンを甘く上品に見せる配色を解説" },
+  { id: "florist", name: "フラワーショップのハナコ", avatar: "icons/hanako-avatar-florist.png", tone: "花色を取り入れた優しいコーデを解説" },
+  { id: "music", name: "ミュージックのハナコ", avatar: "icons/hanako-avatar-music.png", tone: "リラックス感のある淡色カジュアルを解説" },
+  { id: "denim", name: "デニム休日のハナコ", avatar: "icons/hanako-avatar-denim.png", tone: "デニムを甘めきれいめに寄せる方法を解説" },
+  { id: "museum", name: "ミュージアムのハナコ", avatar: "icons/hanako-avatar-museum.png", tone: "静かなモノトーンの高見えバランスを解説" },
+  { id: "bakery", name: "ベーカリーのハナコ", avatar: "icons/hanako-avatar-bakery.png", tone: "温かみのあるベージュコーデを解説" },
+  { id: "resort", name: "リゾートのハナコ", avatar: "icons/hanako-avatar-resort.png", tone: "旅先で映える爽やかな着こなしを解説" },
+  { id: "studynight", name: "お勉強ナイトのハナコ", avatar: "icons/hanako-avatar-studynight.png", tone: "夜まで快適な通学コーデを解説" },
+  { id: "wamodern", name: "和モダンのハナコ", avatar: "icons/hanako-avatar-wamodern.png", tone: "和の色を今っぽく整えるコツを解説" },
+  { id: "holiday", name: "ホリデーのハナコ", avatar: "icons/hanako-avatar-holiday.png", tone: "イベント服を華やかにまとめるコツを解説" },
+  { id: "parisienne", name: "パリジェンヌのハナコ", avatar: "icons/hanako-avatar-parisienne.png", tone: "フレンチシックを軽やかに見せるコツを解説" },
+  { id: "picnic", name: "ピクニックのハナコ", avatar: "icons/hanako-avatar-picnic.png", tone: "ギンガムを子どもっぽく見せないコツを解説" },
+  { id: "balletcore", name: "バレエコアのハナコ", avatar: "icons/hanako-avatar-balletcore.png", tone: "淡いピンクをすっきり着るコツを解説" },
+  { id: "cinema", name: "映画館のハナコ", avatar: "icons/hanako-avatar-cinema.png", tone: "深い赤を主役にした夜コーデを解説" },
+  { id: "ceramics", name: "陶芸アトリエのハナコ", avatar: "icons/hanako-avatar-ceramics.png", tone: "天然素材を可愛く整えるコツを解説" },
+  { id: "gardening", name: "お花ガーデンのハナコ", avatar: "icons/hanako-avatar-gardening.png", tone: "花柄とグリーンを爽やかにまとめるコツを解説" },
+  { id: "library", name: "図書館のハナコ", avatar: "icons/hanako-avatar-library.png", tone: "知的なブラウンコーデを重く見せないコツを解説" },
+  { id: "seaside", name: "海辺のお嬢さんハナコ", avatar: "icons/hanako-avatar-seaside.png", tone: "水色を上品に見せる夏コーデを解説" },
+  { id: "nightout", name: "夜のおでかけハナコ", avatar: "icons/hanako-avatar-nightout.png", tone: "黒を甘く華やかに着るコツを解説" },
+  { id: "ribbonlady", name: "リボンレディのハナコ", avatar: "icons/hanako-avatar-ribbonlady.png", tone: "リボンを盛っても上品に見せるコツを解説" },
+  { id: "royalgala", name: "ロイヤルガラのハナコ", avatar: "icons/hanako-avatar-royalgala.png", tone: "特別な日の濃色ドレスを上品に見せるコツを解説" },
+  { id: "yozakura", name: "夜桜スペシャルのハナコ", avatar: "icons/hanako-avatar-yozakura.png", tone: "夜の桜色を華やかにまとめるコツを解説" },
+  { id: "moonlight", name: "月夜のプリンセスハナコ", avatar: "icons/hanako-avatar-moonlight.png", tone: "光る淡色を大人っぽく見せるコツを解説" },
+  { id: "anniversaryrose", name: "記念日ローズのハナコ", avatar: "icons/hanako-avatar-anniversaryrose.png", tone: "記念日コーデの盛りすぎない華やかさを解説" },
+  { id: "jewelprincess", name: "宝石箱プリンセスハナコ", avatar: "icons/hanako-avatar-jewelprincess.png", tone: "宝石色を主役にする配色のコツを解説" },
+  { id: "colorpalette", name: "色合わせ先生のハナコ", avatar: "icons/hanako-avatar-colorpalette.png", tone: "似合う色と顔映りを、迷わず選べるように解説" },
+  { id: "wardrobeaudit", name: "クローゼット診断のハナコ", avatar: "icons/hanako-avatar-wardrobeaudit.png", tone: "手持ち服を生かす着回しと買い足し順を解説" },
+  { id: "fitcheck", name: "着やせチェックのハナコ", avatar: "icons/hanako-avatar-fitcheck.png", tone: "丈とシルエットで、すっきり見せるコツを解説" },
+  { id: "shoeclinic", name: "靴選び先生のハナコ", avatar: "icons/hanako-avatar-shoeclinic.png", tone: "足もとで全身のバランスを整えるコツを解説" },
+  { id: "accessorylab", name: "小物研究室のハナコ", avatar: "icons/hanako-avatar-accessorylab.png", tone: "小物を盛りすぎず、華やかに見せるコツを解説" },
+  { id: "salehunter", name: "セール発掘隊のハナコ", avatar: "icons/hanako-avatar-salehunter.png", tone: "安さだけで選ばず、長く使える一着を見抜いて解説" },
+  { id: "layering", name: "重ね着先生のハナコ", avatar: "icons/hanako-avatar-layering.png", tone: "着ぶくれしない重ね方と色のつなぎ方を解説" },
+  { id: "formalguest", name: "お呼ばれハナコ", avatar: "icons/hanako-avatar-formalguest.png", tone: "きちんと感と華やかさを両立する方法を解説" },
+  { id: "streetstyle", name: "街角スナップのハナコ", avatar: "icons/hanako-avatar-streetstyle.png", tone: "写真映えする主役と抜け感の作り方を解説" },
+  { id: "creatorstudio", name: "撮影スタジオのハナコ", avatar: "icons/hanako-avatar-creatorstudio.png", tone: "商品の魅力が伝わる並べ方と見せ場を解説" },
 ];
 let currentHanakoTeacher = hanakoTeacherGuides[0];
 
@@ -1615,16 +1727,7 @@ function bindCoordinateActions() {
     }
   });
   document.querySelector("#rerollHanakoTeacher")?.addEventListener("click", () => {
-    hanakoTeacherMode = "random";
-    const selector = document.querySelector("#coordHanakoTeacher");
-    if (selector) selector.value = "random";
-    chooseRandomHanakoTeacher();
-    if (coordinateOutput.value.trim()) {
-      const coordinate = getSelectedCoordinate();
-      coordinate.hanakoComment = chooseHanakoTeacherComment(coordinate, true);
-      coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
-      drawCoordinateBoard(coordinate, coordinateOutput.value);
-    }
+    activateHanakoTeacherMode("random", true, true);
   });
   document.querySelector("#autoCoordinate")?.addEventListener("click", () => autoSelectCoordinateItems(true, true));
   document.querySelector("#generateCoordinate")?.addEventListener("click", generateCoordinate);
@@ -1652,21 +1755,127 @@ function chooseRandomHanakoTeacher() {
 
 function bindHanakoTeacherSelector() {
   const selector = document.querySelector("#coordHanakoTeacher");
-  if (!selector) return;
-  selector.innerHTML = [
-    `<option value="random">毎回ランダム</option>`,
-    `<option value="appearance">選んだアプリアイコン</option>`,
-    ...hanakoTeacherGuides.map((guide) => `<option value="${guide.id}">${guide.name}</option>`),
-  ].join("");
+  const coverflow = document.querySelector("#teacherCoverflow");
+  if (!selector || !coverflow) return;
+  const items = getHanakoTeacherCoverflowItems();
+  selector.innerHTML = items.map((item) => `<option value="${item.id}">${item.name}</option>`).join("");
   selector.value = hanakoTeacherMode;
   selector.addEventListener("change", (event) => {
-    hanakoTeacherMode = event.currentTarget.value;
-    applySelectedHanakoTeacher();
-    if (coordinateOutput.value.trim()) {
-      const coordinate = getSelectedCoordinate();
-      coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
-      drawCoordinateBoard(coordinate, coordinateOutput.value);
+    activateHanakoTeacherMode(event.currentTarget.value, true);
+  });
+
+  coverflow.innerHTML = items.map((item) => `
+    <button class="teacher-coverflow-card" type="button" role="option" aria-selected="false" data-teacher-mode="${item.id}" title="${item.name}">
+      <span class="teacher-coverflow-image-wrap">
+        <img src="${item.avatar}" alt="">
+        ${item.badge ? `<small>${item.badge}</small>` : ""}
+      </span>
+      <strong>${item.shortName}</strong>
+    </button>`).join("");
+  coverflow.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-teacher-mode]");
+    if (card) activateHanakoTeacherMode(card.dataset.teacherMode, true);
+  });
+  coverflow.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+    event.preventDefault();
+    stepHanakoTeacherCoverflow(event.key === "ArrowRight" ? 1 : -1);
+  });
+  coverflow.addEventListener("scroll", () => {
+    window.requestAnimationFrame(paintHanakoTeacherCoverflow);
+    window.clearTimeout(hanakoTeacherCoverflowScrollTimer);
+    hanakoTeacherCoverflowScrollTimer = window.setTimeout(selectCenteredHanakoTeacherCard, 140);
+  }, { passive: true });
+  document.querySelector("#teacherCoverflowPrev")?.addEventListener("click", () => stepHanakoTeacherCoverflow(-1));
+  document.querySelector("#teacherCoverflowNext")?.addEventListener("click", () => stepHanakoTeacherCoverflow(1));
+  window.addEventListener("resize", paintHanakoTeacherCoverflow, { passive: true });
+  syncHanakoTeacherCoverflow(true);
+}
+
+function getHanakoTeacherCoverflowItems() {
+  const appearanceId = state.appearance?.avatarTheme || "original";
+  const appearanceGuide = hanakoTeacherGuides.find((guide) => guide.id === appearanceId) || hanakoTeacherGuides[0];
+  return [
+    { id: "random", name: "毎回ランダム", shortName: "おまかせ", avatar: currentHanakoTeacher.avatar, badge: "↻" },
+    { id: "appearance", name: "選んだアプリアイコン", shortName: "アプリと同じ", avatar: appearanceGuide.avatar, badge: "同じ" },
+    ...hanakoTeacherGuides.map((guide) => ({ ...guide, shortName: guide.name.replace(/の?ハナコ$/, "") })),
+  ];
+}
+
+function activateHanakoTeacherMode(mode, scrollSelected = true, refreshComment = false) {
+  const validModes = new Set(["random", "appearance", ...hanakoTeacherGuides.map((guide) => guide.id)]);
+  hanakoTeacherMode = validModes.has(mode) ? mode : "random";
+  const selector = document.querySelector("#coordHanakoTeacher");
+  if (selector) selector.value = hanakoTeacherMode;
+  applySelectedHanakoTeacher();
+  syncHanakoTeacherCoverflow(scrollSelected);
+  if (coordinateOutput.value.trim()) {
+    const coordinate = getSelectedCoordinate();
+    if (refreshComment) coordinate.hanakoComment = chooseHanakoTeacherComment(coordinate, true);
+    coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
+    drawCoordinateBoard(coordinate, coordinateOutput.value);
+  }
+}
+
+function stepHanakoTeacherCoverflow(direction) {
+  const items = getHanakoTeacherCoverflowItems();
+  const currentIndex = Math.max(0, items.findIndex((item) => item.id === hanakoTeacherMode));
+  const nextIndex = Math.min(items.length - 1, Math.max(0, currentIndex + direction));
+  activateHanakoTeacherMode(items[nextIndex].id, true);
+}
+
+function selectCenteredHanakoTeacherCard() {
+  if (Date.now() < hanakoTeacherCoverflowIgnoreUntil) return;
+  const coverflow = document.querySelector("#teacherCoverflow");
+  if (!coverflow) return;
+  const center = coverflow.getBoundingClientRect().left + coverflow.clientWidth / 2;
+  const cards = [...coverflow.querySelectorAll("[data-teacher-mode]")];
+  const nearest = cards.reduce((best, card) => {
+    const rect = card.getBoundingClientRect();
+    const distance = Math.abs(rect.left + rect.width / 2 - center);
+    return !best || distance < best.distance ? { card, distance } : best;
+  }, null);
+  const mode = nearest?.card.dataset.teacherMode;
+  if (mode && mode !== hanakoTeacherMode) activateHanakoTeacherMode(mode, false);
+}
+
+function syncHanakoTeacherCoverflow(scrollSelected = false) {
+  const coverflow = document.querySelector("#teacherCoverflow");
+  if (!coverflow) return;
+  const randomImage = coverflow.querySelector('[data-teacher-mode="random"] img');
+  const appearanceImage = coverflow.querySelector('[data-teacher-mode="appearance"] img');
+  const appearanceId = state.appearance?.avatarTheme || "original";
+  const appearanceGuide = hanakoTeacherGuides.find((guide) => guide.id === appearanceId) || hanakoTeacherGuides[0];
+  if (randomImage) randomImage.src = currentHanakoTeacher.avatar;
+  if (appearanceImage) appearanceImage.src = appearanceGuide.avatar;
+  coverflow.querySelectorAll("[data-teacher-mode]").forEach((card) => {
+    const selected = card.dataset.teacherMode === hanakoTeacherMode;
+    card.classList.toggle("selected", selected);
+    card.setAttribute("aria-selected", String(selected));
+  });
+  if (scrollSelected) {
+    const selectedCard = coverflow.querySelector(`[data-teacher-mode="${hanakoTeacherMode}"]`);
+    if (selectedCard) {
+      hanakoTeacherCoverflowIgnoreUntil = Date.now() + 550;
+      selectedCard.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     }
+  }
+  window.requestAnimationFrame(paintHanakoTeacherCoverflow);
+}
+
+function paintHanakoTeacherCoverflow() {
+  const coverflow = document.querySelector("#teacherCoverflow");
+  if (!coverflow) return;
+  const bounds = coverflow.getBoundingClientRect();
+  const center = bounds.left + bounds.width / 2;
+  coverflow.querySelectorAll("[data-teacher-mode]").forEach((card) => {
+    const rect = card.getBoundingClientRect();
+    const offset = Math.max(-2.2, Math.min(2.2, (rect.left + rect.width / 2 - center) / Math.max(82, rect.width)));
+    const distance = Math.abs(offset);
+    card.style.setProperty("--cover-rotate", `${offset * -24}deg`);
+    card.style.setProperty("--cover-scale", String(Math.max(0.72, 1 - distance * 0.16)));
+    card.style.setProperty("--cover-opacity", String(Math.max(0.48, 1 - distance * 0.22)));
+    card.style.setProperty("--cover-z", String(Math.round(20 - distance * 5)));
   });
 }
 
@@ -1688,6 +1897,7 @@ function updateHanakoTeacherPreview() {
   if (avatar) avatar.src = currentHanakoTeacher.avatar;
   if (name) name.textContent = currentHanakoTeacher.name;
   if (tone) tone.textContent = currentHanakoTeacher.tone;
+  syncHanakoTeacherCoverflow(false);
 }
 
 async function importProductForCoordinate(urlInput, button) {
@@ -2817,7 +3027,7 @@ function getCoordinateImagePatternInstruction(pattern, coordinate) {
     "商品アップ入り編集": "全身のメインカットに、主役商品の素材・形と小物が分かるアップ画像を2〜3個添える。",
     "おでかけスナップ風": "選んだシーンに合う自然な屋外背景で、歩く・振り返るなどのかわいいスナップ写真風にする。",
     "淡色スタジオ撮影風": "白と淡いピンクの明るいスタジオで、やわらかな自然光と少ない小物を使い上品に撮影する。",
-    "ハナコ先生の吹き出し解説": "完成コーデを大きく見せ、12種類から今回選ばれたハナコの丸い先生アイコンを左下の安全な余白へ配置する。先生の吹き出し2〜3個で似合わせ理由と悩みの解決を総評し、主役商品と小物の近くには別途、手書き風の矢印・丸囲み・下線・短いメモを3〜5個入れる。上部10%は短い見出し、中央約70%は完成コーデ、下部約20%は先生解説として毎回同じ情報階層を保つ。ファッション誌の解説ページのように、かわいく高品質で読みやすく整理する。",
+    "ハナコ先生の吹き出し解説": "完成コーデを大きく見せ、47種類から今回選ばれたハナコの丸い先生アイコンを左下の安全な余白へ配置する。先生の吹き出し1個で悩みの解決を短く総評し、主役商品と小物の近くには別途、手書き風の矢印・丸囲み・下線・短いメモを3〜5個入れる。上部10%は短い見出し、中央約70%は完成コーデ、下部約20%は先生解説として毎回同じ情報階層を保つ。ファッション誌の解説ページのように、かわいく高品質で読みやすく整理する。",
     "コレクション表紙用": `コレクションの表紙として、中央に完成コーデを大きく見せる。上部に「大人かわいい ${coordinate.occasion} コーデ」と短く読みやすい日本語を置き、小さな一覧表示でもテーマが伝わる構図にする。重要な文字と商品は端へ寄せず、中央寄りの安全な範囲へ置く。画像内にサービス名は入れない。`,
     "オリジナル商品写真で投稿": "本人が撮影して添付した商品写真を切り抜き、明るさと背景だけを自然に整え、フラットレイまたは上品な商品コラージュにする。商品そのものを描き直さず、色・形・柄・ロゴを変えない。添付されていない商品や人物を生成しない。",
   };
