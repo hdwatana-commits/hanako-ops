@@ -210,6 +210,16 @@ const avatarThemes = {
   magazinestack: { avatar: "icons/hanako-avatar-magazinestack.png", icon: "icons/icon-magazinestack-192.png", manifest: "manifest-magazinestack.webmanifest", label: "ルックブック" },
   jewelhanger: { avatar: "icons/hanako-avatar-jewelhanger.png", icon: "icons/icon-jewelhanger-192.png", manifest: "manifest-jewelhanger.webmanifest", label: "ジュエルハンガー" },
   coordboard: { avatar: "icons/hanako-avatar-coordboard.png", icon: "icons/icon-coordboard-192.png", manifest: "manifest-coordboard.webmanifest", label: "コーデボード" },
+  wavebalance: { avatar: "icons/hanako-avatar-wavebalance.png", icon: "icons/icon-wavebalance-192.png", manifest: "manifest-wavebalance.webmanifest", label: "骨格ウェーブ先生" },
+  petitebalance: { avatar: "icons/hanako-avatar-petitebalance.png", icon: "icons/icon-petitebalance-192.png", manifest: "manifest-petitebalance.webmanifest", label: "小柄バランス" },
+  fabricexpert: { avatar: "icons/hanako-avatar-fabricexpert.png", icon: "icons/icon-fabricexpert-192.png", manifest: "manifest-fabricexpert.webmanifest", label: "素材見極め先生" },
+  bagstylist: { avatar: "icons/hanako-avatar-bagstylist.png", icon: "icons/icon-bagstylist-192.png", manifest: "manifest-bagstylist.webmanifest", label: "バッグ合わせ先生" },
+  travelpacking: { avatar: "icons/hanako-avatar-travelpacking.png", icon: "icons/icon-travelpacking-192.png", manifest: "manifest-travelpacking.webmanifest", label: "旅行パッキング" },
+  photoangle: { avatar: "icons/hanako-avatar-photoangle.png", icon: "icons/icon-photoangle-192.png", manifest: "manifest-photoangle.webmanifest", label: "写真映え先生" },
+  temperature: { avatar: "icons/hanako-avatar-temperature.png", icon: "icons/icon-temperature-192.png", manifest: "manifest-temperature.webmanifest", label: "気温別コーデ" },
+  datestyle: { avatar: "icons/hanako-avatar-datestyle.png", icon: "icons/icon-datestyle-192.png", manifest: "manifest-datestyle.webmanifest", label: "デート服先生" },
+  fabriccare: { avatar: "icons/hanako-avatar-fabriccare.png", icon: "icons/icon-fabriccare-192.png", manifest: "manifest-fabriccare.webmanifest", label: "服のお手入れ" },
+  trendcheck: { avatar: "icons/hanako-avatar-trendcheck.png", icon: "icons/icon-trendcheck-192.png", manifest: "manifest-trendcheck.webmanifest", label: "トレンド診断" },
 };
 let activePlatform = "Instagram";
 let lastGenerated = "";
@@ -331,6 +341,16 @@ const hanakoTeacherGuides = [
   { id: "formalguest", name: "お呼ばれハナコ", avatar: "icons/hanako-avatar-formalguest.png", tone: "きちんと感と華やかさを両立する方法を解説" },
   { id: "streetstyle", name: "街角スナップのハナコ", avatar: "icons/hanako-avatar-streetstyle.png", tone: "写真映えする主役と抜け感の作り方を解説" },
   { id: "creatorstudio", name: "撮影スタジオのハナコ", avatar: "icons/hanako-avatar-creatorstudio.png", tone: "商品の魅力が伝わる並べ方と見せ場を解説" },
+  { id: "wavebalance", name: "骨格ウェーブ先生のハナコ", avatar: "icons/hanako-avatar-wavebalance.png", tone: "重心を上げて、やわらかな体型をきれいに見せるコツを解説" },
+  { id: "petitebalance", name: "小柄バランスのハナコ", avatar: "icons/hanako-avatar-petitebalance.png", tone: "丈と小物の大きさで、すらりと見せる方法を解説" },
+  { id: "fabricexpert", name: "素材見極め先生のハナコ", avatar: "icons/hanako-avatar-fabricexpert.png", tone: "生地の質感から、高見えする組み合わせを解説" },
+  { id: "bagstylist", name: "バッグ合わせ先生のハナコ", avatar: "icons/hanako-avatar-bagstylist.png", tone: "服の甘さとバッグの形を自然につなぐコツを解説" },
+  { id: "travelpacking", name: "旅行パッキングのハナコ", avatar: "icons/hanako-avatar-travelpacking.png", tone: "少ない服で着回せる、旅コーデの組み方を解説" },
+  { id: "photoangle", name: "写真映え先生のハナコ", avatar: "icons/hanako-avatar-photoangle.png", tone: "服がきれいに見える角度とポーズをやさしく解説" },
+  { id: "temperature", name: "気温別コーデのハナコ", avatar: "icons/hanako-avatar-temperature.png", tone: "寒暖差に対応しながら、かわいさを保つ重ね方を解説" },
+  { id: "datestyle", name: "デート服先生のハナコ", avatar: "icons/hanako-avatar-datestyle.png", tone: "頑張りすぎず、好印象に見える甘さを解説" },
+  { id: "fabriccare", name: "服のお手入れ先生のハナコ", avatar: "icons/hanako-avatar-fabriccare.png", tone: "お気に入りを長くきれいに着るお手入れ方法を解説" },
+  { id: "trendcheck", name: "トレンド診断のハナコ", avatar: "icons/hanako-avatar-trendcheck.png", tone: "流行を盛りすぎず、自分らしく取り入れる方法を解説" },
 ];
 let currentHanakoTeacher = hanakoTeacherGuides[0];
 
