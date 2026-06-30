@@ -2991,6 +2991,7 @@ function generateGeminiCaptionPrompt() {
 function buildCoordinateCaptionPrompt(coordinate) {
   const mainProduct = coordinate.mainProduct || coordinate.products[0];
   const stylingPlan = buildCoordinateAnalysis(coordinate);
+  const greeting = buildRandomFashionGreeting();
   const brand = getCoordinateBrand(mainProduct);
   const brandProducts = getSameBrandProducts(mainProduct);
   const items = coordinate.products.map((product) => `・${product.category}: ${product.name}
@@ -3027,26 +3028,46 @@ ${brandItems}
 ・買う前チェック: ${stylingPlan.checks.join(" / ")}
 
 【紹介文の条件】
-・最初の1行は必ず「おはファッション🌸」から始める
+・最初の1行は必ず「${greeting}」と一字一句同じにする
+・「おはファッション〜っ！」の文字は毎回固定し、その直後の絵文字だけを今回指定した組み合わせにする
 ・内部で冒頭3案と構成3案を考え、いちばん自然で保存したくなる完成稿だけを出す
-・200〜320文字くらいで、短い文と空行を使い、スマホで読みやすくまとめる
+・240〜380文字くらいで、短い文と空行を使い、スマホで読みやすくまとめる
 ・話し手は礼儀正しく、ファッションが大好きな女子大生
-・自信のあるファッション解説に、愛のある鋭いひと言、くすっとする面白さ、女子大生らしい共感を自然に入れる
+・ハナコ先生として、自信のあるファッション解説に、愛のある鋭いひと言、くすっとする面白さ、女子大生らしい共感を自然に入れる
 ・「よくある服のなやみ → このコーデでのかいけつ → かわいく見える理由」の順で書く
 ・悩み「${coordinate.concern}」に共感し、選んだ服の形・色・小物がどう解決するかを具体的に書く
-・「かわいい」「高見え」だけで済ませず、シルエット、色数、重心、着回しのうち2つ以上を説明する
+・「かわいい」「高見え」だけで済ませず、シルエット、色数、重心、丈、素材、小物、着回しから今回本当に役立つものを2〜3個選んで説明する
+・先生らしい実用アドバイスとして「なぜ似合うか」「選ぶときに見る場所」「手持ち服で再現する方法」のうち2つ以上を必ず入れる
+・買う前に確認するポイントを1つ入れる。サイズ、丈、透け感、素材、洗濯表示、手持ち服との相性から商品に合うものを選ぶ
+・抽象的なほめ言葉を続けず、読者が明日の服選びで実際に試せる内容にする
 ・主役商品を必ず具体的に紹介し、同じブランドの商品を複数合わせた統一感にもふれる
 ・商品名を並べるだけにせず、色、形、素材感、全体のバランスがどうかわいく見えるかを書く
 ・選んだシーンで着たくなる一言と、読んだ人が前向きになれる締めを入れる
 ・1文を短めにし、2〜4つの段落に分ける
-・絵文字は文章になじむものを3〜5個使い、同じ絵文字を繰り返さない
-・最後は保存したくなる一言か、手持ち服を確認したくなる一言で締める
+・冒頭以外の絵文字も、文章になじむものを2〜4個選び、毎回同じ並びにせず、同じ絵文字を繰り返さない
+・本文の最後は保存したくなる一言か、手持ち服を確認したくなる一言で締める
+・その次の最終行に、内容と商品に合うハッシュタグを必ず4個だけ入れる
+・ハッシュタグは「#楽天ROOM」を1個含め、残り3個はコーデの系統、悩み、着用シーンから具体的に選ぶ
+・ハッシュタグは重複させず、絵文字や文章を同じ行へ混ぜない。5個以上にしない
 ・むずかしい漢字、上から目線、乱暴な言い方、わざとらしい若者言葉、誇大表現は使わない
 ・特定の人物や作風を示す言葉、読者への乱暴な呼びかけは絶対に書かない
 ・実際に買った、着た、使ったと確認できない内容は断定しない
 ・画像制作の指示や前置き、解説、見出しは書かない
 
 完成した紹介文だけを出力してください。`;
+}
+
+function buildRandomFashionGreeting() {
+  const emojiSets = [
+    "🌸👗✨", "🎀🪞🌷", "🩷👠✨", "🌼👗🫧", "🎀👜🌸",
+    "💐👗🩰", "🌷🪄🩷", "👒🌸✨", "🦢🎀🪞", "🍓👗🤍",
+    "🌹👜✨", "🫧👠🎀",
+  ];
+  const previous = buildRandomFashionGreeting.previousEmoji || "";
+  const candidates = emojiSets.filter((emojiSet) => emojiSet !== previous);
+  const selected = candidates[Math.floor(Math.random() * candidates.length)] || emojiSets[0];
+  buildRandomFashionGreeting.previousEmoji = selected;
+  return `おはファッション〜っ！${selected}`;
 }
 
 function getCoordinateBrand(product) {
