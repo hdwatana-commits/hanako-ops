@@ -2445,12 +2445,12 @@ async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
   let avatar = await loadImage(guide.avatar).catch(() => null);
   if (!avatar) avatar = await loadImage("icons/hanako-avatar.jpg").catch(() => null);
   const avatarX = 70;
-  const avatarY = 1160;
+  const avatarY = 1128;
   const avatarSize = 142;
   const bubbleX = 242;
-  const bubbleY = 1148;
+  const bubbleY = 1112;
   const bubbleWidth = 768;
-  const bubbleHeight = 166;
+  const bubbleHeight = 184;
 
   ctx.save();
   ctx.fillStyle = "#fff";
@@ -2745,6 +2745,7 @@ function buildOutfitImagePrompt(coordinate) {
 ・商品は色、形、丈、柄、素材感を参照画像へ忠実に合わせ、別商品へ変えない
 ・指、手足、顔、服の重なり、バッグの持ち手、靴の左右を自然にする
 ・外周に約6%の安全余白を取り、文字や顔、商品を端で切らない
+・特に最下部の文字は画像下端から8%以上離し、最後の句読点と閉じかぎ括弧まで完全に見せる
 ・主役コーデ約70%、解説要素約20%、呼吸できる余白約10%の情報量を保つ
 ・かわいさ、読みやすさ、商品確認のしやすさを同時に満たす、商用ファッション誌レベルへ仕上げる
 ・条件を満たさない途中案や低品質案は出力せず、完成画像だけを返す`;
@@ -2788,7 +2789,11 @@ function buildOutfitImagePrompt(coordinate) {
 ・手書き文字は、くすみピンクとこげ茶の細いペンで丁寧に書いたファッションノート風にする
 ・吹き出しの見出しは必ず「ハナコ先生のズバッとひとこと」。アイコンの種類名や「ラベンダーの」は見出しへ入れない
 ・吹き出し本文はこの1文だけ: 「${hanakoTeacherComment}」
-・本文を省略したり途中で切ったりしない。最大2行に収め、入らない場合は文字を少し小さくする
+・吹き出し全体を画像の左右端から8%以上、下端から8%以上離した安全域に置く。画像の最下端へ接触させない
+・本文は1行14〜18文字を目安に自然な位置で改行し、最大3行まで使ってよい
+・見出し、本文、句読点、閉じかぎ括弧をすべて吹き出しの内側へ収め、上下左右に十分な内側余白を残す
+・本文を省略、要約、途中切れ、三点リーダー化しない。入りきらない場合は、吹き出しを上へ移動または縦に広げ、それでも必要なら全文が読める範囲で文字を小さくする
+・文字を服、先生アイコン、画像の外へはみ出させない。文章の最後の1文字まで見えることを生成前に確認する
 ・画像ボードにある先生アイコンと上記のひとことをセットで読み取り、完成画像へ必ず反映する
 ・先生アイコン参考URL: ${new URL(hanakoTeacher.avatar, window.location.href).href}`
     : "";
@@ -2951,7 +2956,8 @@ ${originalProductPhotoMode ? "" : "・マスクが無い、変形した、口や
 ・1536×2048px相当以上の縦3:4で、人物、商品、文字が鮮明になっている
 ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・画像ボードと同じハナコ先生アイコンがある
 ・見出しは「ハナコ先生のズバッとひとこと」になっている
-・吹き出し本文「${hanakoTeacherComment}」が省略されず最大2行で読める
+・吹き出し本文「${hanakoTeacherComment}」の最初から最後の閉じかぎ括弧まで、省略や欠けがなく最大3行で読める
+・吹き出しは画像下端から8%以上離れ、本文の全周に内側余白がある
 ・先生の吹き出しは1個、商品への手書きポイントは3〜5個あり、互いに重ならず読みやすい` : ""}
 ・コーデが主役で、商品が自然に組み合わされている
 ・悩み「${coordinate.concern}」への解決が、シルエットと色の両方で伝わる
