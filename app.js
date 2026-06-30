@@ -336,6 +336,8 @@ const hanakoTeacherGuides = [
   { id: "sakurajewel", name: "桜ジュエル姫のハナコ", avatar: "icons/hanako-avatar-sakurajewel.png", tone: "桜色ときらめきを、大人っぽく見せる配色を解説" },
   { id: "legendteacher", name: "伝説のファッション先生ハナコ", avatar: "icons/hanako-avatar-legendteacher.png", tone: "主役、引き立て役、締め色をズバッと見極めて解説" },
   { id: "celestial", name: "星月夜のスペシャルハナコ", avatar: "icons/hanako-avatar-celestial.png", tone: "深い夜色と淡い光を、華やかに整えるコツを解説" },
+  { id: "ribbonresort", name: "リボンリゾートのハナコ先生", avatar: "icons/hanako-avatar-ribbonresort.png", tone: "水着の甘さと羽織りを、上品にまとめるコツを解説" },
+  { id: "marineswim", name: "マリン水着のハナコ先生", avatar: "icons/hanako-avatar-marineswim.png", tone: "紺と白で爽やかなリゾートコーデを作る方法を解説" },
   { id: "colorpalette", name: "色合わせ先生のハナコ", avatar: "icons/hanako-avatar-colorpalette.png", tone: "似合う色と顔映りを、迷わず選べるように解説" },
   { id: "wardrobeaudit", name: "クローゼット診断のハナコ", avatar: "icons/hanako-avatar-wardrobeaudit.png", tone: "手持ち服を生かす着回しと買い足し順を解説" },
   { id: "fitcheck", name: "着やせチェックのハナコ", avatar: "icons/hanako-avatar-fitcheck.png", tone: "丈とシルエットで、すっきり見せるコツを解説" },
