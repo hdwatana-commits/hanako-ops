@@ -15,6 +15,8 @@ Deno.serve(async (request) => {
     const body = await request.json();
     const originalUrl = String(body?.url || "").trim();
     const query = String(body?.query || "").trim();
+    const imageUrl = String(body?.imageUrl || "").trim();
+    if (imageUrl) return proxyRakutenImage(imageUrl);
     if (query) return json({ results: await searchRakutenProducts(query) });
     if (!originalUrl) return json({ error: "URLまたは検索キーワードを入力してください" }, 400);
 
@@ -75,6 +77,41 @@ Deno.serve(async (request) => {
   }
 });
 
+async function proxyRakutenImage(input: string) {
+  let current = new URL(input);
+  assertAllowedImageUrl(current);
+  for (let index = 0; index < 5; index += 1) {
+    const response = await fetch(current, {
+      redirect: "manual",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+        Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+      },
+    });
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      const location = response.headers.get("location");
+      if (!location) throw new Error("商品画像の転送先を確認できませんでした");
+      current = new URL(location, current);
+      assertAllowedImageUrl(current);
+      continue;
+    }
+    if (!response.ok) throw new Error(`商品画像を開けませんでした (${response.status})`);
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().startsWith("image/")) throw new Error("商品画像として読み込めない形式です");
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength > 8 * 1024 * 1024) throw new Error("商品画像のサイズが大きすぎます");
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=86400",
+      },
+    });
+  }
+  throw new Error("商品画像の転送回数が多すぎます");
+}
+
 async function fetchRakutenPage(input: string) {
   let current = new URL(input);
   assertAllowedUrl(current);
@@ -109,6 +146,13 @@ function assertAllowedUrl(url: URL) {
   const host = url.hostname.toLowerCase();
   const allowed = host === "rakuten.co.jp" || host.endsWith(".rakuten.co.jp") || host === "r10.to" || host.endsWith(".r10.to");
   if (!allowed) throw new Error("楽天ROOM、楽天市場、楽天トラベル、楽天アフィリエイトのURLだけ利用できます");
+}
+
+function assertAllowedImageUrl(url: URL) {
+  if (url.protocol !== "https:") throw new Error("httpsの商品画像だけ利用できます");
+  const host = url.hostname.toLowerCase();
+  const allowed = ["rakuten.co.jp", "r10s.jp", "rakuten.ne.jp"].some((domain) => host === domain || host.endsWith(`.${domain}`));
+  if (!allowed) throw new Error("楽天の商品画像だけ利用できます");
 }
 
 function isRakutenRoomUrl(value: string) {
