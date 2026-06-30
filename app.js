@@ -3115,6 +3115,36 @@ function buildHandwrittenProductPoints(coordinate) {
 }
 
 function openGemini() {
+  openGeminiDestination();
+}
+
+function openGeminiDestination() {
+  const userAgent = navigator.userAgent || "";
+  const isAndroid = /Android/i.test(userAgent);
+  const isIos = /iPhone|iPad|iPod/i.test(userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (isAndroid) {
+    location.href = "intent://gemini.google.com/app#Intent;scheme=https;package=com.google.android.apps.bard;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.google.android.apps.bard;end";
+    return;
+  }
+
+  if (isIos) {
+    let appOpened = false;
+    const markOpened = () => {
+      if (document.hidden) appOpened = true;
+    };
+    document.addEventListener("visibilitychange", markOpened, { once: true });
+    location.href = "gemini://";
+    window.setTimeout(() => {
+      document.removeEventListener("visibilitychange", markOpened);
+      if (!appOpened && !document.hidden) {
+        location.href = "https://apps.apple.com/jp/app/google-gemini/id6477489729";
+      }
+    }, 1400);
+    return;
+  }
+
   window.open("https://gemini.google.com/app", "_blank", "noopener,noreferrer");
 }
 
@@ -3819,7 +3849,7 @@ function copyAndOpenSocialGemini() {
   if (!prompt) return showToast("先に画像か投稿文のプロンプトを作ってください");
   socialGeminiAwaitingReturn = true;
   copyText(prompt);
-  window.open("https://gemini.google.com/app", "_blank", "noopener,noreferrer");
+  openGeminiDestination();
   renderSocialGeminiProgress();
 }
 
