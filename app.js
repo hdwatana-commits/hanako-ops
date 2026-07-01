@@ -273,6 +273,7 @@ const roomPostOutput = document.querySelector("#roomPostOutput");
 const roomQueue = document.querySelector("#roomQueue");
 const coordinateOutput = document.querySelector("#coordinateOutput");
 const coordGeminiPrompt = document.querySelector("#coordGeminiPrompt");
+const coordGeminiCaptionPrompt = document.querySelector("#coordGeminiCaptionPrompt");
 const coordBoard = document.querySelector("#coordBoard");
 const toast = document.querySelector("#toast");
 let deferredInstallPrompt = null;
@@ -1938,7 +1939,7 @@ function bindCoordinateActions() {
     else updateHanakoTeacherPreview();
     if (coordinateOutput.value.trim()) {
       const coordinate = getSelectedCoordinate();
-      coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
+      setCoordinatePrompts(coordinate);
       drawCoordinateBoard(coordinate, coordinateOutput.value);
     }
   });
@@ -1947,10 +1948,9 @@ function bindCoordinateActions() {
   });
   document.querySelector("#autoCoordinate")?.addEventListener("click", () => autoSelectCoordinateItems(true, true));
   document.querySelector("#generateCoordinate")?.addEventListener("click", generateCoordinate);
-  document.querySelector("#generateGeminiPrompt")?.addEventListener("click", generateGeminiPrompt);
-  document.querySelector("#generateGeminiCaptionPrompt")?.addEventListener("click", generateGeminiCaptionPrompt);
   document.querySelector("#copyCoordinateText")?.addEventListener("click", () => copyText(coordinateOutput.value));
-  document.querySelector("#copyGeminiPrompt")?.addEventListener("click", () => copyText(coordGeminiPrompt.value));
+  document.querySelector("#copyGeminiImagePrompt")?.addEventListener("click", () => copyText(coordGeminiPrompt.value));
+  document.querySelector("#copyGeminiCaptionPrompt")?.addEventListener("click", () => copyText(coordGeminiCaptionPrompt.value));
   document.querySelector("#openGemini")?.addEventListener("click", openGemini);
   document.querySelector("#downloadCoordinateBoard")?.addEventListener("click", downloadCoordinateBoard);
   document.querySelector("#coordGeneratedImage")?.addEventListener("change", previewGeneratedCoordinateImage);
@@ -2034,7 +2034,7 @@ function activateHanakoTeacherMode(mode, scrollSelected = true, refreshComment =
   if (coordinateOutput.value.trim()) {
     const coordinate = getSelectedCoordinate();
     if (refreshComment) coordinate.hanakoComment = chooseHanakoTeacherComment(coordinate, true);
-    coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
+    setCoordinatePrompts(coordinate);
     drawCoordinateBoard(coordinate, coordinateOutput.value);
   }
 }
@@ -2488,10 +2488,15 @@ async function generateCoordinate() {
   const analysis = buildCoordinateAnalysis(coordinate);
   const text = buildCoordinateText(coordinate);
   coordinateOutput.value = text;
-  coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
+  setCoordinatePrompts(coordinate);
   document.querySelector("#coordStatus").textContent = analysis.roomReady ? "投稿条件を確認済み" : "要確認：商品を追加";
   await drawCoordinateBoard(coordinate, text);
-  showToast(analysis.roomReady ? "コーデ文と画像ボードを作りました" : "コーデを作りました。ROOM投稿には商品を2点以上選んでください");
+  showToast(analysis.roomReady ? "コーデ・画像ボード・2つのプロンプトを作りました" : "コーデと2つのプロンプトを作りました。ROOM投稿には商品を2点以上選んでください");
+}
+
+function setCoordinatePrompts(coordinate) {
+  if (coordGeminiPrompt) coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
+  if (coordGeminiCaptionPrompt) coordGeminiCaptionPrompt.value = buildCoordinateCaptionPrompt(coordinate);
 }
 
 function buildCoordinateText(coordinate) {
@@ -3033,7 +3038,7 @@ async function generateGeminiPrompt() {
   const coordinateText = coordinateOutput.value.trim() || buildCoordinateText(coordinate);
   coordinateOutput.value = coordinateText;
   await drawCoordinateBoard(coordinate, coordinateText);
-  coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
+  setCoordinatePrompts(coordinate);
   document.querySelector("#coordStatus").textContent = "画像ボード・プロンプト準備済み";
   showToast("本人写真と保存した画像ボードを一緒にGeminiへ添付してください");
 }
@@ -3324,7 +3329,7 @@ function generateGeminiCaptionPrompt() {
   const coordinate = getSelectedCoordinate();
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
   if (!document.querySelector("#coordMainProduct")?.value) return showToast("紹介する主役商品を選んでください");
-  coordGeminiPrompt.value = buildCoordinateCaptionPrompt(coordinate);
+  coordGeminiCaptionPrompt.value = buildCoordinateCaptionPrompt(coordinate);
   document.querySelector("#coordStatus").textContent = "紹介文プロンプト作成済み";
   showToast("コーデ紹介文のプロンプトを作りました");
 }

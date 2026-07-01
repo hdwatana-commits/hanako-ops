@@ -3516,6 +3516,67 @@ body {
   line-height: 1.75;
 }
 
+.coord-prompt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.coord-prompt-card {
+  min-width: 0;
+  padding: 12px;
+  background: #fffafb;
+  border: 1px solid #ead5dc;
+  border-radius: 8px;
+}
+
+.coord-prompt-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+.coord-prompt-heading div {
+  min-width: 0;
+}
+
+.coord-prompt-heading span {
+  display: block;
+  margin-bottom: 2px;
+  color: #a43d64;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.coord-prompt-heading h4 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.coord-prompt-heading button {
+  flex: 0 0 auto;
+}
+
+.coord-prompt-card .coord-prompt-output {
+  min-height: 300px;
+  margin: 0;
+  background: #fff;
+}
+
+@media (max-width: 760px) {
+  .coord-prompt-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .coord-prompt-card .coord-prompt-output {
+    min-height: 240px;
+  }
+}
+
 /* Clearer home dashboard */
 .home-welcome {
   background: linear-gradient(135deg, #ffe7ee 0%, #fff8f9 58%, #f7f1ff 100%);

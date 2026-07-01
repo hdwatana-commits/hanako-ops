@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=95">
+    <link rel="stylesheet" href="styles.css?v=96">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -912,7 +912,8 @@
                   <li>Geminiの「＋」から「画像を作成」を選ぶ</li>
                   <li>本人の全身写真と保存した画像ボードを一緒に添付する</li>
                   <li>主役商品・同じブランドの商品画像も2〜4枚添付する</li>
-                  <li>「画像生成プロンプト」をコピーして送る</li>
+                  <li>画像生成プロンプトをコピーして画像を作る</li>
+                  <li>紹介文プロンプトをコピーして紹介文を作る</li>
                 </ol>
                 <p>AI画像はコーデ検討・SNS素材用です。ROOMのオリジナル写真・ランク対象として投稿する場合は、ご本人が実際に着用して撮影した全身写真を使い、写真に写る商品だけを登録してください。</p>
               </div>
@@ -922,14 +923,7 @@
                 <button class="primary" id="generateCoordinate" type="button">コーデ文と画像ボードを作る</button>
               </div>
               <div class="button-row">
-                <button id="generateGeminiPrompt" type="button">画像生成プロンプト</button>
-                <button id="generateGeminiCaptionPrompt" type="button">紹介文プロンプト</button>
-              </div>
-              <div class="button-row">
-                <button id="copyGeminiPrompt" type="button">Gemini文コピー</button>
                 <button id="openGemini" type="button">Geminiを開く</button>
-              </div>
-              <div class="button-row">
                 <button id="copyCoordinateText" type="button">ROOM文コピー</button>
                 <button id="downloadCoordinateBoard" type="button">画像ボード保存</button>
               </div>
@@ -946,8 +940,22 @@
               <div class="coord-ai-result" id="coordAiResult" hidden></div>
               <label class="field-label" for="coordGeneratedImage">Geminiで作った画像を添付</label>
               <input id="coordGeneratedImage" type="file" accept="image/*">
-              <label class="field-label" for="coordGeminiPrompt">Geminiに貼る現在の指示文</label>
-              <textarea id="coordGeminiPrompt" class="coord-prompt-output" spellcheck="false" placeholder="画像生成または紹介文のプロンプトを選んでください"></textarea>
+              <div class="coord-prompt-grid">
+                <section class="coord-prompt-card">
+                  <div class="coord-prompt-heading">
+                    <div><span>IMAGE</span><h4>画像生成プロンプト</h4></div>
+                    <button id="copyGeminiImagePrompt" type="button">コピー</button>
+                  </div>
+                  <textarea id="coordGeminiPrompt" class="coord-prompt-output" spellcheck="false" placeholder="コーデを作ると、画像生成用の指示文がここに表示されます"></textarea>
+                </section>
+                <section class="coord-prompt-card">
+                  <div class="coord-prompt-heading">
+                    <div><span>CAPTION</span><h4>紹介文プロンプト</h4></div>
+                    <button id="copyGeminiCaptionPrompt" type="button">コピー</button>
+                  </div>
+                  <textarea id="coordGeminiCaptionPrompt" class="coord-prompt-output" spellcheck="false" placeholder="コーデを作ると、紹介文用の指示文がここに表示されます"></textarea>
+                </section>
+              </div>
               <label class="field-label" for="coordinateOutput">ROOMレビュー・SNS文</label>
               <textarea id="coordinateOutput" class="post-output" spellcheck="false" placeholder="商品を選んで「コーデ文と画像ボードを作る」を押してください"></textarea>
             </article>
@@ -1159,6 +1167,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=95"></script>
+    <script src="app.js?v=96"></script>
   </body>
 </html>
