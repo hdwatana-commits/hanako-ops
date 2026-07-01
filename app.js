@@ -3073,6 +3073,7 @@ function buildOutfitImagePrompt(coordinate) {
     ? brandProducts.map((product) => `・${product.category}: ${product.name}\n  商品画像URL: ${product.image || "なし"}\n  商品ページURL: ${product.url || "なし"}`).join("\n")
     : "未登録です。添付された同じブランドの商品画像を使ってください。";
   const imageCopy = buildCoordinateImageCopy(coordinate);
+  const fixedImageHeadline = imageCopy[0];
   const productPointNotes = buildHandwrittenProductPoints(coordinate);
   const imagePatternInstruction = getCoordinateImagePatternInstruction(coordinate.imagePattern, coordinate);
   const hanakoTeacher = coordinate.hanakoTeacher || currentHanakoTeacher;
@@ -3243,12 +3244,25 @@ ${personInstruction}
 【服の見せ方】
 ${productDisplayInstruction}
 
+【選択商品の見た目を固定・最優先】
+・添付した各商品画像を「似た商品の参考」ではなく、完成画像で再現する同一商品の設計図として扱う
+・生成前に商品ごとに、色、配色、形、丈、袖丈、袖の形、襟ぐり、首元、ウエスト位置、裾、柄、柄の大きさと位置、素材感、ギャザー、フリル、リボン、ボタン、持ち手、金具を目で照合する
+・上記の特徴を省略、単純化、誇張、左右反転、別の色へ変更しない。無地を柄物にせず、柄物を無地にしない
+・トップスを別の襟や袖へ変えない。スカートやパンツの丈と広がりを変えない。バッグの輪郭、持ち手、色、金具を別デザインへ変えない
+・体へ自然に沿わせるためのしわと遠近だけを調整し、商品のデザインそのものは編集しない
+・商品画像で確認できない部分を想像で華美に足さない。判別できない細部は目立たせず、確認できる特徴を優先する
+・完成前に各商品を参照画像と一つずつ見比べ、色、輪郭、丈、袖、襟、柄、装飾のどれか一つでも違う場合は、同じ商品に見えるまで修正する
+・正確に再現できない商品を、似た別商品で代用しない。その場合は画像を完成扱いにせず再生成する
+
 【日本語のデザイン】
 ファッションの特徴を「なやみ → かいけつ → かわいくなる理由」の流れで、余白に短く入れる。
 雑誌のようにおしゃれで、少し楽しく、思わず読みたくなる配置にする。
 文字は大きすぎず、人物や服に重ねない。むずかしい漢字は使わず、読みやすい日本語にする。
 次の文章は書き換えず、そのまま使う。語尾の変更、要約、言い換え、単語の追加をしない:
 ${imageCopy.map((line) => `・${line}`).join("\n")}
+・画像の一番上の見出しは必ず「${fixedImageHeadline}」と一字一句同じにする
+・見出しの「解決」は必ずこの2文字で書く。「いけつ」「かいけつ」の一部欠け、別の漢字、似た字へ変えない
+・一番上の見出しはコピー用の完成文であり、助詞を削除したり、語順を変えたり、新しい言葉を足したりしない
 
 【商品の手書き風ポイント】
 ・服と小物は写真らしい質感のまま残し、選択した商品だけに手書き風の矢印、細い囲み線、下線、短い平文ラベルを添える。商品用のミニふきだしは作らない
@@ -3272,6 +3286,7 @@ ${productPointNotes.map((line) => `・${line}`).join("\n")}
 ・画像へ書いてよい文章は、このプロンプト内で表示文として明示した文章、指定した見出し、指定した吹き出し本文だけ
 ・指定されていない文章を新しく作らない。意味を説明できない単語、一般的な日本語辞書にない造語、途中で切れた語を出さない
 ・文字の生成に少しでも自信がない場合は、その文字要素を追加せず省略する。ただし指定した先生の見出しと本文は省略せず正確に書く
+・上部見出し「${fixedImageHeadline}」を出力直前に一文字ずつ照合し、違う文字や欠けがあれば正しい完成文へ直す
 ・文字数を増やしすぎない。読みにくい場合は文章を減らす
 ${imageTextRestriction}
 ・英語だけの見出しにせず、かわいい日本語を中心にする
@@ -3281,6 +3296,7 @@ ${imageTextRestriction}
 ${finalSubjectCheck}
 ${originalProductPhotoMode ? "" : "・マスクが無い、変形した、口や鼻が見える場合は完成扱いにせず、元写真と同じマスクへ直してから出力する"}
 ・1536×2048px相当以上の縦3:4で、人物、商品、文字が鮮明になっている
+・一番上の見出しが「${fixedImageHeadline}」と完全一致し、「解決」の2文字が正しく読める
 ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・画像ボードと同じハナコ先生アイコンがある
 ・見出しは「ハナコ先生のズバッとひとこと」になっている
 ・吹き出し本文「${hanakoTeacherComment}」の最初から最後の閉じかぎ括弧まで、省略や欠けがなく最大3行で読める
@@ -3289,6 +3305,7 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・画像ボードと同じ
 ・画像内の全テキストを一文字ずつ読み直し、入力にない語、意味不明語、造語、文字化け、途中切れが一つでもあれば、その文字を削除または指定文へ修正してから出力する
 ・商品への手書きポイントは選択商品数以内で、互いに重ならず読みやすい` : ""}
 ・手書きポイントは選択した商品だけに付き、表示文の内容と矢印の対象カテゴリが一致している
+・選択商品の色、形、丈、袖、襟、柄、素材、装飾、バッグの輪郭と持ち手が、添付した各商品画像と一致している
 ・「トップスの近く」「バッグの近く」「ワンピの近く」「〜の近く」という不要な位置説明が画像内にない
 ・バッグを指す矢印に、顔まわり・トップス・足もとの説明が付いていない
 ・コーデが主役で、商品が自然に組み合わされている
@@ -3426,7 +3443,7 @@ function getSameBrandProducts(mainProduct) {
 function buildCoordinateImageCopy(coordinate) {
   const analysis = buildCoordinateAnalysis(coordinate);
   return [
-    `${coordinate.concern}を、かわいくかいけつ♡`,
+    `「${coordinate.concern}」をかわいく解決♡`,
     trimText(analysis.solution, 30),
     `${coordinate.occasion}×${coordinate.priority}に、ちょうどいい♡`,
   ];
