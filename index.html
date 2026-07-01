@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=90">
+    <link rel="stylesheet" href="styles.css?v=91">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -76,6 +76,7 @@
         <section class="view active" id="brief">
           <div class="home-brand-cover">
             <img
+              id="homeCoverImage"
               src="covers/rakuten-room-cover-hanako-v5.jpg"
               width="2116"
               height="743"
@@ -188,10 +189,32 @@
                   <p class="eyebrow">きょうの気分で変更</p>
                   <h3>アプリのアイコン</h3>
                 </div>
-                <span class="status-pill">67パターン</span>
+                <span class="status-pill">自作画像対応</span>
               </div>
+              <div class="custom-brand-uploader">
+                <div class="custom-brand-upload">
+                  <strong>自作アイコン</strong>
+                  <small>正方形に自動調整</small>
+                  <label class="file-button custom-upload-button">画像を選ぶ
+                    <input id="customAvatarInput" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif">
+                  </label>
+                </div>
+                <div class="custom-brand-upload">
+                  <strong>自作カバー</strong>
+                  <small>横長に自動調整</small>
+                  <label class="file-button custom-upload-button">画像を選ぶ
+                    <input id="customCoverInput" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif">
+                  </label>
+                </div>
+                <button id="resetCustomBrand" class="custom-brand-reset" type="button">自作画像を外す</button>
+              </div>
+              <p class="custom-brand-status" id="customBrandStatus" aria-live="polite">画像を選ぶと、この端末と同期データへ保存されます。</p>
               <p class="avatar-group-title">ハナコ</p>
               <div class="avatar-picker" id="avatarPicker" role="radiogroup" aria-label="ハナコのアイコンを選ぶ">
+                <button type="button" class="avatar-choice custom-avatar-choice" id="customAvatarChoice" data-avatar-theme="custom" role="radio" aria-checked="false" hidden>
+                  <img id="customAvatarPreview" src="icons/hanako-avatar.jpg" alt="自作アイコン">
+                  <span><strong>自作アイコン</strong><small>アップロードした画像</small></span>
+                </button>
                 <button type="button" class="avatar-choice" data-avatar-theme="original" role="radio" aria-checked="false">
                   <img src="icons/hanako-avatar.jpg" alt="リボンピンク">
                   <span><strong>リボンピンク</strong><small>いつものハナコ</small></span>
@@ -1121,6 +1144,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=90"></script>
+    <script src="app.js?v=91"></script>
   </body>
 </html>

@@ -447,6 +447,48 @@ summary:focus-visible {
   border-radius: 8px;
 }
 
+.custom-brand-uploader {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 8px;
+}
+
+.custom-brand-upload {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #ead9df;
+  border-radius: 8px;
+  background: #fffafb;
+}
+
+.custom-brand-upload strong { font-size: 14px; }
+.custom-brand-upload small { color: #806d74; font-size: 11px; }
+
+.custom-upload-button {
+  justify-content: center;
+  margin-top: 5px;
+  min-height: 38px;
+}
+
+.custom-brand-reset {
+  grid-column: 1 / -1;
+  min-height: 38px;
+}
+
+.custom-brand-status {
+  margin: 0 0 14px;
+  color: #806d74;
+  font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  .custom-brand-uploader { grid-template-columns: 1fr; }
+  .custom-brand-reset { grid-column: auto; }
+}
+
 .avatar-choice:hover {
   border-color: #dba8b8;
   background: #fff5f8;

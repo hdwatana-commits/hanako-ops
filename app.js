@@ -43,6 +43,12 @@ state.roomQueue ||= [];
 state.appearance ||= { avatarTheme: "original" };
 
 const avatarThemes = {
+  custom: {
+    avatar: "icons/hanako-avatar.jpg",
+    icon: "icons/icon-192.png",
+    manifest: "manifest.webmanifest",
+    label: "自作アイコン",
+  },
   original: {
     avatar: "icons/hanako-avatar.jpg",
     icon: "icons/icon-192.png",
@@ -366,6 +372,7 @@ queueMicrotask(initialize);
 function initialize() {
   profileText.value = state.profile || defaultProfile;
   document.querySelector('input[name="date"]').valueAsDate = new Date();
+  hydrateCustomBrandAssets();
   applyAppearance();
   bindAppearancePicker();
   registerPwa();
@@ -397,9 +404,13 @@ function bindAppearancePicker() {
       showToast(`${avatarThemes[themeName].label}に着替えました`);
     });
   });
+  document.querySelector("#customAvatarInput")?.addEventListener("change", uploadCustomAvatar);
+  document.querySelector("#customCoverInput")?.addEventListener("change", uploadCustomCover);
+  document.querySelector("#resetCustomBrand")?.addEventListener("click", resetCustomBrandAssets);
 }
 
 function applyAppearance() {
+  hydrateCustomBrandAssets();
   const themeName = avatarThemes[state.appearance?.avatarTheme] ? state.appearance.avatarTheme : "original";
   const theme = avatarThemes[themeName];
   state.appearance ||= {};
@@ -422,13 +433,104 @@ function applyAppearance() {
   if (appleTouchIcon) appleTouchIcon.href = theme.icon;
 
   if (hanakoTeacherMode === "appearance") {
-    currentHanakoTeacher = hanakoTeacherGuides.find((guide) => guide.id === themeName) || hanakoTeacherGuides[0];
+    currentHanakoTeacher = hanakoTeacherGuides.find((guide) => guide.id === themeName)
+      || (themeName === "custom" ? {
+        id: "custom",
+        name: "自作アイコンのハナコ先生",
+        avatar: theme.avatar,
+        tone: "自分で選んだアイコンでコーデを解説",
+      } : hanakoTeacherGuides[0]);
     updateHanakoTeacherPreview();
     if (coordinateOutput?.value.trim() && isHanakoTeacherPattern()) {
       const coordinate = getSelectedCoordinate();
       drawCoordinateBoard(coordinate, coordinateOutput.value);
     }
   }
+}
+
+function hydrateCustomBrandAssets() {
+  state.appearance ||= { avatarTheme: "original" };
+  const customAvatar = state.appearance.customAvatar || "";
+  const customCover = state.appearance.customCover || "";
+  const customChoice = document.querySelector("#customAvatarChoice");
+  const customPreview = document.querySelector("#customAvatarPreview");
+  const homeCover = document.querySelector("#homeCoverImage");
+  const status = document.querySelector("#customBrandStatus");
+
+  avatarThemes.custom.avatar = customAvatar || "icons/hanako-avatar.jpg";
+  avatarThemes.custom.icon = customAvatar || "icons/icon-192.png";
+  if (customChoice) customChoice.hidden = !customAvatar;
+  if (customPreview) customPreview.src = avatarThemes.custom.avatar;
+  if (homeCover) homeCover.src = customCover || "covers/rakuten-room-cover-hanako-v5.jpg";
+  if (status) {
+    const saved = [customAvatar && "アイコン", customCover && "カバー"].filter(Boolean);
+    status.textContent = saved.length ? `${saved.join("と")}を自作画像に設定中です。` : "画像を選ぶと、この端末と同期データへ保存されます。";
+  }
+}
+
+async function uploadCustomAvatar(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    validateCustomImage(file);
+    const dataUrl = await resizeCustomImage(file, 512, 512);
+    state.appearance = { ...state.appearance, customAvatar: dataUrl, avatarTheme: "custom" };
+    hydrateCustomBrandAssets();
+    applyAppearance();
+    saveState();
+    renderHanakoTeacherCoverflow();
+    showToast("自作アイコンを設定しました");
+  } catch (error) {
+    showToast(error.message || "アイコン画像を読み込めませんでした");
+  } finally {
+    event.target.value = "";
+  }
+}
+
+async function uploadCustomCover(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    validateCustomImage(file);
+    state.appearance = { ...state.appearance, customCover: await resizeCustomImage(file, 1600, 562) };
+    hydrateCustomBrandAssets();
+    saveState();
+    showToast("自作カバーを設定しました");
+  } catch (error) {
+    showToast(error.message || "カバー画像を読み込めませんでした");
+  } finally {
+    event.target.value = "";
+  }
+}
+
+function validateCustomImage(file) {
+  if (!file.type.startsWith("image/")) throw new Error("画像ファイルを選んでください");
+  if (file.size > 15 * 1024 * 1024) throw new Error("画像は15MB以下にしてください");
+}
+
+async function resizeCustomImage(file, targetWidth, targetHeight) {
+  const source = await readFileAsDataUrl(file);
+  const image = await loadImage(source);
+  const canvas = document.createElement("canvas");
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, targetWidth, targetHeight);
+  drawCoverImage(ctx, image, 0, 0, targetWidth, targetHeight, 0);
+  return canvas.toDataURL("image/jpeg", targetWidth === targetHeight ? 0.9 : 0.86);
+}
+
+function resetCustomBrandAssets() {
+  state.appearance ||= {};
+  delete state.appearance.customAvatar;
+  delete state.appearance.customCover;
+  if (state.appearance.avatarTheme === "custom") state.appearance.avatarTheme = "original";
+  hydrateCustomBrandAssets();
+  applyAppearance();
+  saveState();
+  renderHanakoTeacherCoverflow();
+  showToast("自作画像を外しました");
 }
 
 function loadState() {
