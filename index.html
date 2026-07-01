@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=91">
+    <link rel="stylesheet" href="styles.css?v=92">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -96,6 +96,21 @@
             </div>
             <img src="icons/hanako-avatar.jpg" alt="おしゃれ研究家ハナコ" class="home-avatar" data-app-avatar>
           </div>
+
+          <section class="home-avatar-coverflow-picker" aria-labelledby="homeAvatarCoverflowTitle">
+            <div class="home-avatar-coverflow-heading">
+              <div>
+                <span class="home-kicker">ICON CLOSET</span>
+                <h3 id="homeAvatarCoverflowTitle">今日のアイコンを選ぶ</h3>
+              </div>
+              <small>横にスワイプ</small>
+            </div>
+            <div class="teacher-coverflow-stage home-avatar-coverflow-stage">
+              <button class="teacher-coverflow-nav" id="homeAvatarCoverflowPrev" type="button" title="前のアイコン" aria-label="前のアイコン">‹</button>
+              <div class="teacher-coverflow home-avatar-coverflow" id="homeAvatarCoverflow" role="listbox" aria-label="アプリに表示するアイコン" tabindex="0"></div>
+              <button class="teacher-coverflow-nav" id="homeAvatarCoverflowNext" type="button" title="次のアイコン" aria-label="次のアイコン">›</button>
+            </div>
+          </section>
 
           <div class="home-roadmap" aria-label="今日の作業手順">
             <button type="button" data-open-view="products">
@@ -1144,6 +1159,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=91"></script>
+    <script src="app.js?v=92"></script>
   </body>
 </html>

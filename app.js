@@ -375,6 +375,7 @@ function initialize() {
   hydrateCustomBrandAssets();
   applyAppearance();
   bindAppearancePicker();
+  bindHomeAvatarCoverflow();
   registerPwa();
   bindNavigation();
   bindForms();
@@ -396,17 +397,22 @@ function initialize() {
 function bindAppearancePicker() {
   document.querySelectorAll("[data-avatar-theme]").forEach((button) => {
     button.addEventListener("click", () => {
-      const themeName = button.dataset.avatarTheme;
-      if (!avatarThemes[themeName]) return;
-      state.appearance = { ...state.appearance, avatarTheme: themeName };
-      applyAppearance();
-      saveState();
-      showToast(`${avatarThemes[themeName].label}に着替えました`);
+      selectAppearanceTheme(button.dataset.avatarTheme);
     });
   });
   document.querySelector("#customAvatarInput")?.addEventListener("change", uploadCustomAvatar);
   document.querySelector("#customCoverInput")?.addEventListener("change", uploadCustomCover);
   document.querySelector("#resetCustomBrand")?.addEventListener("click", resetCustomBrandAssets);
+}
+
+function selectAppearanceTheme(themeName, scrollCoverflow = true) {
+  if (!avatarThemes[themeName]) return;
+  if (themeName === "custom" && !state.appearance?.customAvatar) return;
+  state.appearance = { ...state.appearance, avatarTheme: themeName };
+  applyAppearance();
+  saveState();
+  syncHomeAvatarCoverflow(scrollCoverflow);
+  showToast(`${avatarThemes[themeName].label}に着替えました`);
 }
 
 function applyAppearance() {
@@ -424,6 +430,7 @@ function applyAppearance() {
     button.classList.toggle("selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
+  syncHomeAvatarCoverflow(false);
 
   const manifestLink = document.querySelector("#appManifestLink");
   const favicon = document.querySelector("#appFavicon");
@@ -478,7 +485,8 @@ async function uploadCustomAvatar(event) {
     hydrateCustomBrandAssets();
     applyAppearance();
     saveState();
-    renderHanakoTeacherCoverflow();
+    renderHomeAvatarCoverflow();
+    syncHanakoTeacherCoverflow(false);
     showToast("自作アイコンを設定しました");
   } catch (error) {
     showToast(error.message || "アイコン画像を読み込めませんでした");
@@ -529,8 +537,87 @@ function resetCustomBrandAssets() {
   hydrateCustomBrandAssets();
   applyAppearance();
   saveState();
-  renderHanakoTeacherCoverflow();
+  renderHomeAvatarCoverflow();
+  syncHanakoTeacherCoverflow(false);
   showToast("自作画像を外しました");
+}
+
+function bindHomeAvatarCoverflow() {
+  const coverflow = document.querySelector("#homeAvatarCoverflow");
+  if (!coverflow || coverflow.dataset.bound === "true") return;
+  coverflow.dataset.bound = "true";
+  coverflow.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-home-avatar-theme]");
+    if (card) selectAppearanceTheme(card.dataset.homeAvatarTheme, false);
+  });
+  coverflow.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+    event.preventDefault();
+    stepHomeAvatarCoverflow(event.key === "ArrowRight" ? 1 : -1);
+  });
+  coverflow.addEventListener("scroll", () => window.requestAnimationFrame(paintHomeAvatarCoverflow), { passive: true });
+  document.querySelector("#homeAvatarCoverflowPrev")?.addEventListener("click", () => stepHomeAvatarCoverflow(-1));
+  document.querySelector("#homeAvatarCoverflowNext")?.addEventListener("click", () => stepHomeAvatarCoverflow(1));
+  window.addEventListener("resize", paintHomeAvatarCoverflow, { passive: true });
+  renderHomeAvatarCoverflow();
+}
+
+function renderHomeAvatarCoverflow() {
+  const coverflow = document.querySelector("#homeAvatarCoverflow");
+  if (!coverflow) return;
+  const items = [...document.querySelectorAll("#avatarPicker [data-avatar-theme]")]
+    .map((button) => button.dataset.avatarTheme)
+    .filter((themeName) => themeName !== "custom" || Boolean(state.appearance?.customAvatar))
+    .filter((themeName, index, values) => avatarThemes[themeName] && values.indexOf(themeName) === index)
+    .map((themeName) => ({ id: themeName, ...avatarThemes[themeName] }));
+  coverflow.innerHTML = items.map((item) => `
+    <button class="teacher-coverflow-card home-avatar-coverflow-card" type="button" role="option" aria-selected="false" data-home-avatar-theme="${item.id}" title="${escapeHtml(item.label)}">
+      <span class="teacher-coverflow-image-wrap"><img src="${item.avatar}" alt=""></span>
+      <strong>${escapeHtml(item.label)}</strong>
+    </button>`).join("");
+  syncHomeAvatarCoverflow(true);
+}
+
+function syncHomeAvatarCoverflow(scrollSelected = false) {
+  const coverflow = document.querySelector("#homeAvatarCoverflow");
+  if (!coverflow) return;
+  const selectedId = state.appearance?.avatarTheme || "original";
+  coverflow.querySelectorAll("[data-home-avatar-theme]").forEach((card) => {
+    const selected = card.dataset.homeAvatarTheme === selectedId;
+    card.classList.toggle("selected", selected);
+    card.setAttribute("aria-selected", String(selected));
+  });
+  paintHomeAvatarCoverflow();
+  if (scrollSelected) {
+    const selectedCard = coverflow.querySelector(`[data-home-avatar-theme="${selectedId}"]`);
+    selectedCard?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }
+}
+
+function stepHomeAvatarCoverflow(direction) {
+  const coverflow = document.querySelector("#homeAvatarCoverflow");
+  if (!coverflow) return;
+  const cards = [...coverflow.querySelectorAll("[data-home-avatar-theme]")];
+  if (!cards.length) return;
+  const selectedId = state.appearance?.avatarTheme || "original";
+  const currentIndex = Math.max(0, cards.findIndex((card) => card.dataset.homeAvatarTheme === selectedId));
+  const nextIndex = (currentIndex + direction + cards.length) % cards.length;
+  selectAppearanceTheme(cards[nextIndex].dataset.homeAvatarTheme, true);
+}
+
+function paintHomeAvatarCoverflow() {
+  const coverflow = document.querySelector("#homeAvatarCoverflow");
+  if (!coverflow) return;
+  const center = coverflow.getBoundingClientRect().left + coverflow.clientWidth / 2;
+  coverflow.querySelectorAll("[data-home-avatar-theme]").forEach((card) => {
+    const bounds = card.getBoundingClientRect();
+    const offset = (bounds.left + bounds.width / 2 - center) / Math.max(bounds.width, 1);
+    const distance = Math.min(3, Math.abs(offset));
+    card.style.setProperty("--cover-rotate", `${offset * -22}deg`);
+    card.style.setProperty("--cover-scale", String(Math.max(0.74, 1 - distance * 0.15)));
+    card.style.setProperty("--cover-opacity", String(Math.max(0.5, 1 - distance * 0.2)));
+    card.style.setProperty("--cover-z", String(Math.round(20 - distance * 5)));
+  });
 }
 
 function loadState() {
@@ -1923,7 +2010,13 @@ function bindHanakoTeacherSelector() {
 
 function getHanakoTeacherCoverflowItems() {
   const appearanceId = state.appearance?.avatarTheme || "original";
-  const appearanceGuide = hanakoTeacherGuides.find((guide) => guide.id === appearanceId) || hanakoTeacherGuides[0];
+  const appearanceGuide = hanakoTeacherGuides.find((guide) => guide.id === appearanceId)
+    || (appearanceId === "custom" && state.appearance?.customAvatar ? {
+      id: "custom",
+      name: "自作アイコンのハナコ先生",
+      avatar: state.appearance.customAvatar,
+      tone: "自分で選んだアイコンでコーデを解説",
+    } : hanakoTeacherGuides[0]);
   return [
     { id: "random", name: "毎回ランダム", shortName: "おまかせ", avatar: currentHanakoTeacher.avatar, badge: "↻" },
     { id: "appearance", name: "選んだアプリアイコン", shortName: "アプリと同じ", avatar: appearanceGuide.avatar, badge: "同じ" },
@@ -1974,7 +2067,10 @@ function syncHanakoTeacherCoverflow(scrollSelected = false) {
   const randomImage = coverflow.querySelector('[data-teacher-mode="random"] img');
   const appearanceImage = coverflow.querySelector('[data-teacher-mode="appearance"] img');
   const appearanceId = state.appearance?.avatarTheme || "original";
-  const appearanceGuide = hanakoTeacherGuides.find((guide) => guide.id === appearanceId) || hanakoTeacherGuides[0];
+  const appearanceGuide = hanakoTeacherGuides.find((guide) => guide.id === appearanceId)
+    || (appearanceId === "custom" && state.appearance?.customAvatar ? {
+      avatar: state.appearance.customAvatar,
+    } : hanakoTeacherGuides[0]);
   if (randomImage) randomImage.src = currentHanakoTeacher.avatar;
   if (appearanceImage) appearanceImage.src = appearanceGuide.avatar;
   coverflow.querySelectorAll("[data-teacher-mode]").forEach((card) => {
