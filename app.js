@@ -2518,42 +2518,7 @@ function applyRecommendedCoordinateDefaults(product, notify = true) {
     const select = document.querySelector(`#${id}`);
     if (select && [...select.options].some((option) => option.value === value)) select.value = value;
   };
-  const style = /骨格|細見え|華奢|ウエスト|脚長/.test(text)
-    ? "骨格ウェーブ意識"
-    : /淡色|アイボリー|ベージュ|オフホワイト|くすみ/.test(text)
-      ? "淡色フェミニン"
-      : /通勤|オフィス|ジャケット|上品/.test(text)
-        ? "甘めきれいめ"
-        : "大人ガーリー";
-  const occasion = /通勤|オフィス|仕事|ジャケット/.test(text)
-    ? "きれいめ通勤"
-    : /旅行|トラベル/.test(text)
-      ? "旅行"
-      : /デート|お呼ばれ/.test(text)
-        ? "デート"
-        : /大学|通学|スクール/.test(text)
-          ? "大学・通学"
-          : ["バッグ", "シューズ", "アクセサリー"].includes(product.category)
-            ? "休日ショッピング"
-            : "友達とカフェ";
-  const concern = /骨格|細見え|華奢|ウエスト|脚長|体型/.test(text)
-    ? "全身のバランスを整えたい"
-    : /透け|汗|雨|撥水|半袖|ノースリーブ|シアー/.test(text)
-      ? "気温差に対応したい"
-      : /着回し|万能|2way|3way/.test(text)
-        ? "いつも同じ組み合わせになる"
-        : /映え|写真|リボン|フリル|レース|甘め/.test(text)
-          ? "甘すぎ・子どもっぽく見せたくない"
-          : "朝、服が決まらない";
-  const priority = /骨格|細見え|華奢|ウエスト|脚長|体型/.test(text)
-    ? "スタイルバランス"
-    : /高見え|上品|きれいめ|素材感/.test(text)
-      ? "高見え"
-      : /軽量|歩き|ストレッチ|スニーカー|通学/.test(text)
-        ? "動きやすさ"
-        : /映え|写真/.test(text)
-          ? "写真映え"
-          : "着回しやすさ";
+  const { style, occasion, concern, priority } = recommendCoordinateSettings(product, text);
   const colorMood = /黒|ブラック|ネイビー|濃色/.test(text)
     ? "白ベースで明るく"
     : /赤|ピンク|ブルー|グリーン|イエロー|パープル/.test(text)
@@ -2587,7 +2552,63 @@ function applyRecommendedCoordinateDefaults(product, notify = true) {
   setSelect("coordHairStyle", hairStyle);
   setSelect("coordMainProduct", product.id);
   autoSelectCoordinateItems(false, false, true);
-  if (notify) showToast(`${product.name}に合うコーデ設定を自動で選びました`);
+  if (notify) showToast(`おすすめを自動選択｜${style}・${occasion}・${concern}・${priority}`);
+}
+
+function recommendCoordinateSettings(product, sourceText = "") {
+  const text = String(sourceText || `${product.name || ""} ${product.hook || ""} ${product.details?.color || ""} ${product.details?.material || ""}`).toLowerCase();
+  const category = product.category || "";
+  const has = (pattern) => pattern.test(text);
+
+  const style = has(/骨格|細見え|華奢|ウエスト|脚長|マーメイド|ハイウエスト/)
+    ? "骨格ウェーブ意識"
+    : has(/淡色|アイボリー|ベージュ|オフホワイト|くすみ|ミルク|エクリュ/)
+      ? "淡色フェミニン"
+      : has(/通勤|オフィス|仕事|ジャケット|上品|きれいめ|パール|ツイード/)
+        ? "甘めきれいめ"
+        : has(/大学|通学|スクール|スウェット|デニム|スニーカー|カジュアル/)
+          ? "通学コーデ"
+          : has(/渋谷|トレンド|韓国|ミニ|推し活/)
+            ? "渋谷おでかけ"
+            : has(/カフェ|休日|リラックス/)
+              ? "週末カフェ"
+              : "大人ガーリー";
+
+  const occasion = has(/通勤|オフィス|仕事|ジャケット|きちんと|セットアップ/)
+    ? "きれいめ通勤"
+    : has(/旅行|トラベル|リゾート|温泉|キャリー/)
+      ? "旅行"
+      : has(/デート|お呼ばれ|記念日|レース|リボン|フリル|ワンピース/)
+        ? "デート"
+        : has(/大学|通学|スクール|スウェット|デニム|スニーカー/)
+          ? "大学・通学"
+          : ["バッグ", "シューズ", "アクセサリー"].includes(category) || has(/買い物|ショッピング|推し活/)
+            ? "休日ショッピング"
+            : "友達とカフェ";
+
+  const concern = has(/骨格|細見え|華奢|ウエスト|脚長|体型|着やせ|マーメイド|ハイウエスト/)
+    ? "全身のバランスを整えたい"
+    : has(/透け|汗|雨|撥水|半袖|ノースリーブ|シアー|接触冷感|裏起毛|防寒/)
+      ? "気温差に対応したい"
+      : has(/映え|写真|推し活|顔映り|華やか/)
+        ? "写真で可愛く見せたい"
+        : has(/着回し|万能|2way|3way|定番|ベーシック/)
+          ? "いつも同じ組み合わせになる"
+          : has(/リボン|フリル|レース|甘め|ピンク|ティアード/)
+            ? "甘すぎ・子どもっぽく見せたくない"
+            : "朝、服が決まらない";
+
+  const priority = has(/骨格|細見え|華奢|ウエスト|脚長|体型|着やせ|マーメイド|ハイウエスト/)
+    ? "スタイルバランス"
+    : has(/高見え|上品|きれいめ|素材感|パール|ツイード|本革/)
+      ? "高見え"
+      : has(/軽量|歩き|ストレッチ|スニーカー|通学|撥水|洗える|楽ちん/)
+        ? "動きやすさ"
+        : has(/映え|写真|推し活|華やか/)
+          ? "写真映え"
+          : "着回しやすさ";
+
+  return { style, occasion, concern, priority };
 }
 
 function chooseCoordinateCompanion(categories, main, selectedIds) {
