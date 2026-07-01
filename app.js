@@ -1946,7 +1946,7 @@ function bindCoordinateActions() {
   document.querySelector("#rerollHanakoTeacher")?.addEventListener("click", () => {
     activateHanakoTeacherMode("random", true, true);
   });
-  document.querySelector("#autoCoordinate")?.addEventListener("click", () => autoSelectCoordinateItems(true, true));
+  document.querySelector("#autoCoordinate")?.addEventListener("click", () => autoSelectCoordinateItems(true, true, true));
   document.querySelector("#generateCoordinate")?.addEventListener("click", generateCoordinate);
   document.querySelector("#copyCoordinateText")?.addEventListener("click", () => copyText(coordinateOutput.value));
   document.querySelector("#copyGeminiImagePrompt")?.addEventListener("click", () => copyText(coordGeminiPrompt.value));
@@ -2328,7 +2328,7 @@ function getSelectedCoordinate() {
   const pieces = [
     mainProduct,
     onepiece,
-    onepiece ? null : byId("#coordTop"),
+    onepiece && byId("#coordTop")?.category !== "アウター" ? null : byId("#coordTop"),
     onepiece ? null : byId("#coordBottom"),
     byId("#coordBag"),
     byId("#coordShoes"),
@@ -2350,7 +2350,7 @@ function getSelectedCoordinate() {
   };
 }
 
-function autoSelectCoordinateItems(generateAfter = true, notify = true) {
+async function autoSelectCoordinateItems(generateAfter = true, notify = true, searchRakuten = true) {
   const fashionProducts = state.products.filter((product) => product.category !== "ホテル・旅行");
   if (!fashionProducts.length) return showToast("先にファッション商品を登録してください");
   const mainSelect = document.querySelector("#coordMainProduct");
@@ -2358,31 +2358,157 @@ function autoSelectCoordinateItems(generateAfter = true, notify = true) {
   if (mainSelect && [...mainSelect.options].some((option) => option.value === main.id)) mainSelect.value = main.id;
 
   const selectedIds = new Set([main.id]);
-  const setChoice = (selector, categories, forceMain = false) => {
+  const slots = coordinateCompanionSlots(main.category);
+  const setChoice = (selector, categories) => {
     const select = document.querySelector(selector);
     if (!select) return;
-    const candidate = forceMain
-      ? main
-      : chooseCoordinateCompanion(categories, main, selectedIds);
+    const candidate = chooseCoordinateCompanion(categories, main, selectedIds);
     const value = candidate && [...select.options].some((option) => option.value === candidate.id) ? candidate.id : "";
     select.value = value;
     if (value) selectedIds.add(value);
   };
 
-  const isOnepiece = main.category === "ワンピース";
-  setChoice("#coordOnepiece", ["ワンピース"], isOnepiece);
-  if (isOnepiece) {
-    document.querySelector("#coordTop").value = "";
-    document.querySelector("#coordBottom").value = "";
-  } else {
-    setChoice("#coordTop", ["トップス", "アウター"], ["トップス", "アウター"].includes(main.category));
-    setChoice("#coordBottom", ["スカート", "パンツ"], ["スカート", "パンツ"].includes(main.category));
+  clearCoordinateCompanionSelects();
+  slots.forEach((slot) => setChoice(slot.selector, slot.categories));
+
+  if (searchRakuten && slots.length) {
+    await fillCoordinateSlotsFromRakuten(main, slots, selectedIds, notify);
   }
-  setChoice("#coordBag", ["バッグ"], main.category === "バッグ");
-  setChoice("#coordShoes", ["シューズ"], main.category === "シューズ");
-  setChoice("#coordAccessory", ["アクセサリー"], main.category === "アクセサリー");
-  if (notify) showToast("主役に合う商品とおすすめ設定を自動で選びました");
-  if (generateAfter) generateCoordinate();
+
+  const selectedCount = getSelectedCoordinate().products.length;
+  if (notify) showToast(selectedCount > 1
+    ? "主役に合うカテゴリだけでコーデを選びました"
+    : "合う商品が見つかりませんでした。楽天検索設定を確認してください");
+  if (generateAfter) await generateCoordinate();
+}
+
+function clearCoordinateCompanionSelects() {
+  ["#coordOnepiece", "#coordTop", "#coordBottom", "#coordBag", "#coordShoes", "#coordAccessory"].forEach((selector) => {
+    const select = document.querySelector(selector);
+    if (select) select.value = "";
+  });
+}
+
+function coordinateCompanionSlots(mainCategory) {
+  const common = [
+    { selector: "#coordBag", categories: ["バッグ"], keyword: "レディース バッグ" },
+    { selector: "#coordShoes", categories: ["シューズ"], keyword: "レディース シューズ パンプス" },
+    { selector: "#coordAccessory", categories: ["アクセサリー"], keyword: "レディース アクセサリー" },
+  ];
+  if (mainCategory === "ワンピース") return common;
+  if (mainCategory === "トップス") return [
+    { selector: "#coordBottom", categories: ["スカート", "パンツ"], keyword: "レディース スカート" },
+    ...common,
+  ];
+  if (["スカート", "パンツ"].includes(mainCategory)) return [
+    { selector: "#coordTop", categories: ["トップス"], keyword: "レディース ブラウス トップス" },
+    ...common,
+  ];
+  if (mainCategory === "アウター") return [
+    { selector: "#coordTop", categories: ["トップス"], keyword: "レディース ブラウス トップス" },
+    { selector: "#coordBottom", categories: ["スカート", "パンツ"], keyword: "レディース スカート" },
+    ...common,
+  ];
+  return [
+    { selector: "#coordTop", categories: ["トップス"], keyword: "レディース ブラウス トップス" },
+    { selector: "#coordBottom", categories: ["スカート", "パンツ"], keyword: "レディース スカート" },
+    ...common.filter((slot) => !slot.categories.includes(mainCategory)),
+  ];
+}
+
+async function fillCoordinateSlotsFromRakuten(main, slots, selectedIds, notify) {
+  if (!cloudSync.configured || !cloudSync.signedIn) {
+    if (notify) showCoordinateImportStatus("登録商品で不足しています。楽天市場から探すには同期へログインしてください", true);
+    return;
+  }
+  const button = document.querySelector("#autoCoordinate");
+  const originalLabel = button?.textContent || "";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "楽天市場からコーデを検索中...";
+  }
+  showCoordinateImportStatus("主役に合う商品を楽天市場全体から探しています...");
+  let added = 0;
+  try {
+    for (const slot of slots) {
+      const query = buildCoordinateRakutenQuery(main, slot.keyword);
+      const results = await fetchRakutenProductSearch(query);
+      const candidate = chooseRakutenCoordinateCandidate(results, slot.categories, main, selectedIds);
+      if (!candidate) continue;
+      const product = addRakutenSearchProductToPipeline(candidate);
+      if (!product) continue;
+      selectedIds.add(product.id);
+      added += 1;
+      renderCoordinateOptions();
+      const select = document.querySelector(slot.selector);
+      if (select && [...select.options].some((option) => option.value === product.id)) select.value = product.id;
+    }
+    if (added) {
+      saveState();
+      renderProducts();
+      renderRoomProductOptions();
+      renderAngleOptions();
+      showCoordinateImportStatus(`楽天市場から相性のよい商品を${added}点追加し、コーデに選びました`);
+    } else {
+      showCoordinateImportStatus("楽天市場で条件に合う商品が見つかりませんでした。登録商品から選びました", true);
+    }
+  } catch (error) {
+    showCoordinateImportStatus(error.message || "楽天市場のコーデ検索に失敗しました", true);
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  }
+}
+
+function buildCoordinateRakutenQuery(main, categoryKeyword) {
+  const style = document.querySelector("#coordStyle")?.value || "大人ガーリー";
+  const season = document.querySelector("#coordSeason")?.value || "";
+  const styleKeyword = {
+    "大人ガーリー": "大人可愛い",
+    "甘めきれいめ": "きれいめ",
+    "骨格ウェーブ意識": "きれいめ",
+    "淡色フェミニン": "淡色",
+  }[style] || "きれいめ";
+  const seasonalKeyword = ["夏", "冬"].includes(season) ? season : "";
+  return [categoryKeyword, styleKeyword, seasonalKeyword]
+    .filter(Boolean).join(" ").slice(0, 80);
+}
+
+function chooseRakutenCoordinateCandidate(results, categories, main, selectedIds) {
+  const mainText = `${main.name || ""} ${main.details?.color || ""} ${main.details?.material || ""}`;
+  const styleWords = (document.querySelector("#coordStyle")?.value || "").split(/[・\s]+/).filter((word) => word.length >= 2);
+  return results
+    .filter((item) => categories.includes(item.category))
+    .filter((item) => !state.products.some((product) => selectedIds.has(product.id) && (product.url === item.sourceUrl || product.url === item.url)))
+    .map((item) => {
+      const text = `${item.name || ""} ${item.hook || ""} ${item.details?.color || ""}`;
+      const styleScore = styleWords.reduce((score, word) => score + (text.includes(word) ? 2 : 0), 0);
+      const imageScore = item.image ? 3 : 0;
+      const ratingScore = Math.min(3, Number(item.details?.rating || 0) / 2);
+      const duplicatePenalty = mainText && text === mainText ? -20 : 0;
+      return { item, score: 10 + styleScore + imageScore + ratingScore + duplicatePenalty };
+    })
+    .sort((a, b) => b.score - a.score)[0]?.item || null;
+}
+
+function addRakutenSearchProductToPipeline(item) {
+  const url = item.sourceUrl || item.url || "";
+  const existing = state.products.find((product) => url && product.url === url);
+  if (existing) return existing;
+  const product = {
+    id: createId(),
+    name: item.name || "楽天市場の商品",
+    url,
+    image: item.image || "",
+    details: { ...(item.details || {}), shopName: item.shopName || item.details?.brand || "" },
+    category: item.category || "その他",
+    price: item.price || "",
+    hook: item.hook || createCoordinateHook(item),
+  };
+  state.products.unshift(product);
+  return product;
 }
 
 function applyRecommendedCoordinateDefaults(product, notify = true) {
@@ -2460,7 +2586,7 @@ function applyRecommendedCoordinateDefaults(product, notify = true) {
   setSelect("coordImagePattern", imagePattern);
   setSelect("coordHairStyle", hairStyle);
   setSelect("coordMainProduct", product.id);
-  autoSelectCoordinateItems(false, false);
+  autoSelectCoordinateItems(false, false, true);
   if (notify) showToast(`${product.name}に合うコーデ設定を自動で選びました`);
 }
 
@@ -2472,7 +2598,10 @@ function chooseCoordinateCompanion(categories, main, selectedIds) {
       const sameBrand = mainBrand && getCoordinateBrand(product).toLocaleLowerCase("ja-JP") === mainBrand;
       const hasDetails = Boolean(product.details?.color || product.details?.material);
       const hasImage = Boolean(product.image);
-      return { product, score: (sameBrand ? 8 : 0) + (hasDetails ? 3 : 0) + (hasImage ? 2 : 0) };
+      const mainColor = String(main.details?.color || "").trim();
+      const candidateText = `${product.name || ""} ${product.details?.color || ""} ${product.hook || ""}`;
+      const colorMatch = mainColor && candidateText.includes(mainColor);
+      return { product, score: (sameBrand ? 8 : 0) + (hasDetails ? 3 : 0) + (hasImage ? 2 : 0) + (colorMatch ? 2 : 0) };
     })
     .sort((a, b) => b.score - a.score || a.product.name.localeCompare(b.product.name, "ja"))[0]?.product || null;
 }
