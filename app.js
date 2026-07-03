@@ -283,6 +283,7 @@ const coordinateImageCache = new Map();
 const coordinateProductHydration = new Map();
 let currentHanakoComment = "";
 let currentHanakoCommentConcern = "";
+let currentCoordinateHandwrittenPoints = new Map();
 let socialGeminiGeneratedImageDataUrl = "";
 let socialGeminiGeneratedImageExtension = "png";
 let socialGeminiAwaitingReturn = false;
@@ -2635,6 +2636,7 @@ async function generateCoordinate() {
     coordinate = getSelectedCoordinate();
     coordinate.hanakoComment = chooseHanakoTeacherComment(coordinate, true);
   }
+  refreshCoordinateHandwrittenPoints(coordinate);
   const analysis = buildCoordinateAnalysis(coordinate);
   const text = buildCoordinateText(coordinate);
   coordinateOutput.value = text;
@@ -2783,7 +2785,7 @@ async function drawCoordinateBoard(coordinate, text) {
     const x = 70 + col * 485;
     const y = 330 + row * 285;
     await drawProductCard(ctx, product, x, y);
-    if (isHanakoTeacherPattern(coordinate.imagePattern)) drawTeacherHandwrittenPoint(ctx, product, index, x, y);
+    if (isHanakoTeacherPattern(coordinate.imagePattern)) drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate);
   }
 
   if (isHanakoTeacherPattern(coordinate.imagePattern)) {
@@ -3024,8 +3026,8 @@ function chooseHanakoTeacherComment(coordinate, force = false) {
   return currentHanakoComment;
 }
 
-function drawTeacherHandwrittenPoint(ctx, product, index, x, y) {
-  const label = teacherPointLabel(product);
+function drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate) {
+  const label = teacherPointLabel(product, coordinate);
   const textX = x + 188;
   const textY = y + 164;
   ctx.save();
@@ -3052,17 +3054,8 @@ function drawTeacherHandwrittenPoint(ctx, product, index, x, y) {
   ctx.restore();
 }
 
-function teacherPointLabel(product) {
-  return {
-    ワンピース: "縦ラインですっきり",
-    トップス: "顔まわりを明るく",
-    アウター: "重ねても軽やか",
-    スカート: "揺れ感がかわいい",
-    パンツ: "甘さをすっきり調整",
-    バッグ: "小さめで抜け感",
-    シューズ: "足もとの色をそろえる",
-    アクセサリー: "きらめきをひとさじ",
-  }[product?.category] || "全体をきれいにまとめる";
+function teacherPointLabel(product, coordinate) {
+  return getCoordinateHandwrittenPoint(product, coordinate).copy;
 }
 
 async function drawProductCard(ctx, product, x, y) {
@@ -3187,6 +3180,7 @@ async function generateGeminiPrompt() {
   if (!document.querySelector("#coordMainProduct")?.value) return showToast("必ず画像に使う主役商品を選んでください");
   const coordinateText = coordinateOutput.value.trim() || buildCoordinateText(coordinate);
   coordinateOutput.value = coordinateText;
+  ensureCoordinateHandwrittenPoints(coordinate);
   await drawCoordinateBoard(coordinate, coordinateText);
   setCoordinatePrompts(coordinate);
   document.querySelector("#coordStatus").textContent = "画像ボード・プロンプト準備済み";
@@ -3605,23 +3599,85 @@ function buildCoordinateImageCopy(coordinate) {
 }
 
 function buildHandwrittenProductPoints(coordinate) {
-  const pointByCategory = {
-    ワンピース: { copy: "1まいで、ちゃんとかわいい♡", target: "ワンピース本体の身頃またはスカート部分" },
-    トップス: { copy: "顔まわり、ぱっと明るく♡", target: "上半身のトップス本体。バッグ、腕、顔ではない" },
-    アウター: { copy: "さっと重ねて、きれい見え", target: "羽織っているアウター本体" },
-    スカート: { copy: "ふわっと感が、ちょうどいい", target: "腰から下のスカート本体" },
-    パンツ: { copy: "すっきり見えで、甘さを調整", target: "脚を覆うパンツ本体" },
-    バッグ: { copy: "小さめで、ぬけ感をプラス", target: "手または肩に持つバッグ本体。トップス、顔ではない" },
-    シューズ: { copy: "色をそろえて、大人っぽく", target: "足に履いている靴本体" },
-    アクセサリー: { copy: "きらっと感を、ひとさじ♡", target: "実際に着けているアクセサリー本体" },
-  };
   return coordinate.products
     .slice(0, 5)
     .map((product, index) => {
-      const point = pointByCategory[product.category];
+      const point = getCoordinateHandwrittenPoint(product, coordinate);
       if (!point) return `対象${index + 1}｜商品名: ${product.name}｜カテゴリ: ${product.category}｜注釈なし（対象を判別できる場合も文字を追加しない）`;
       return `対象${index + 1}${index === 0 ? "・主役" : ""}｜商品名: ${product.name}｜カテゴリ: ${product.category}｜表示文: 「${point.copy}」｜矢印の終点: ${point.target}`;
     });
+}
+
+function refreshCoordinateHandwrittenPoints(coordinate) {
+  const previous = currentCoordinateHandwrittenPoints;
+  const next = new Map();
+  coordinate.products.slice(0, 5).forEach((product) => {
+    next.set(product.id, chooseCoordinateHandwrittenPoint(product, coordinate, previous.get(product.id)?.copy));
+  });
+  currentCoordinateHandwrittenPoints = next;
+}
+
+function ensureCoordinateHandwrittenPoints(coordinate) {
+  coordinate.products.slice(0, 5).forEach((product) => {
+    if (!currentCoordinateHandwrittenPoints.has(product.id)) {
+      currentCoordinateHandwrittenPoints.set(product.id, chooseCoordinateHandwrittenPoint(product, coordinate));
+    }
+  });
+}
+
+function getCoordinateHandwrittenPoint(product, coordinate) {
+  if (!product) return null;
+  ensureCoordinateHandwrittenPoints(coordinate || { products: [product] });
+  return currentCoordinateHandwrittenPoints.get(product.id) || null;
+}
+
+function chooseCoordinateHandwrittenPoint(product, coordinate, previousCopy = "") {
+  const text = `${product.name || ""} ${product.hook || ""} ${product.details?.color || ""} ${product.details?.material || ""}`;
+  const contextual = [];
+  if (/黒|ブラック|ネイビー|濃色/.test(text)) contextual.push("濃色で全体をきゅっと", "締め色で甘さを整える");
+  if (/白|ホワイト|アイボリー|ベージュ|淡色/.test(text)) contextual.push("淡色でやさしくつなぐ", "明るい色で軽やかに");
+  if (/赤|ピンク|ブルー|グリーン|イエロー|パープル/.test(text)) contextual.push("差し色はここにひとつ", "この色をコーデの主役に");
+  if (/レース/.test(text)) contextual.push("レースは一か所で上品に", "繊細レースで華やぎ足し");
+  if (/シアー|透け/.test(text)) contextual.push("透け感で重さをオフ", "シアー感で軽く見せる");
+  if (/デニム/.test(text)) contextual.push("デニムで甘さをほどよく", "デニムで気負わず整える");
+  if (/ニット|編み/.test(text)) contextual.push("編み地でやさしい立体感", "ニットの質感を主役に");
+  if (/リボン/.test(text)) contextual.push("リボン主役で小物は静かに", "リボンへ視線を集めて");
+  if (/フリル|ティアード/.test(text)) contextual.push("甘いディテールはここだけ", "揺れ感を一か所で効かせる");
+  if (/ハイウエスト|脚長|ウエスト/.test(text)) contextual.push("高め重心で脚長バランス", "腰位置を上げてすっきり");
+  if (/軽量|歩き|ストレッチ/.test(text)) contextual.push("動きやすさもかわいさの味方", "軽やかだから一日頼れる");
+
+  const byCategory = {
+    ワンピース: ["1まいでコーデが完成", "縦の流れですっきり見え", "主役ワンピは小物で引き算", "丈感を生かして上品に", "シルエットをきれいに見せる", "一枚で華やぎをつくる", "小物を静かにして主役顔", "全身の色数をすっきり"],
+    トップス: ["顔まわりへ視線を集めて", "上半身を明るく見せる", "主役トップスで迷わない", "裾の入れ方で重心アップ", "首もとに抜け感をつくる", "ボトムは静かに受け止めて", "袖の表情をかわいく見せる", "トップスの形を主役に"],
+    アウター: ["羽織りで縦ラインを追加", "重ねても軽く見せる", "前を開けてすっきり縦長", "コーデの輪郭をきれいに", "温度調整までおしゃれに", "肩まわりを端正に整える", "羽織るだけで印象を更新", "中の甘さをきれいに締める"],
+    スカート: ["揺れ感をコーデの見せ場に", "高め重心ですらっと見せる", "トップスを受け止める主役丈", "広がりは上半身で引き算", "足もとまで流れをつなぐ", "やわらかな動きをひとさじ", "腰まわりをすっきり整える", "甘さは丈感で大人に寄せる"],
+    パンツ: ["直線ラインで甘さを調整", "脚の流れをすっきり見せる", "きれいめパンツで大人顔", "トップスの甘さを受け止める", "センターラインを味方に", "足もとまで色をつなげる", "動きやすく端正にまとめる", "下半身をすっきり引き締め"],
+    バッグ: ["バッグで配色をひとまとめ", "小物の色をここでつなぐ", "バッグでほどよい抜け感", "主役服を邪魔せず引き立てる", "サイズ感で全身を軽やかに", "手もとへ小さな見せ場を", "かっちり感を少しだけ足す", "コーデの仕上げ色を担当"],
+    シューズ: ["足もとでコーデを引き締め", "靴の色で全身をつなぐ", "つま先まできれいめに", "軽い足もとで抜けをつくる", "歩きやすさまで抜かりなく", "靴で甘さの温度を調整", "足もとに小さな締め色", "全身の重心を靴で整える"],
+    アクセサリー: ["顔まわりへ光をひとさじ", "小さなきらめきで上品に", "アクセは一点だけ効かせる", "主役服を邪魔しない輝き", "視線を上へ運ぶ仕上げ役", "余白にきらめきを添える", "甘さを上品にまとめる", "最後のひとさじで完成"],
+  };
+  const targetByCategory = {
+    ワンピース: "ワンピース本体の身頃またはスカート部分",
+    トップス: "上半身のトップス本体。バッグ、腕、顔ではない",
+    アウター: "羽織っているアウター本体",
+    スカート: "腰から下のスカート本体",
+    パンツ: "脚を覆うパンツ本体",
+    バッグ: "手または肩に持つバッグ本体。トップス、顔ではない",
+    シューズ: "足に履いている靴本体",
+    アクセサリー: "実際に着けているアクセサリー本体",
+  };
+  const base = byCategory[product.category] || ["全体をきれいにまとめる", "主役を引き立てる名脇役"];
+  const concernSpecific = coordinate?.priority === "スタイルバランス"
+    ? ["重心を整えてすっきり見え"]
+    : coordinate?.priority === "高見え"
+      ? ["素材感を生かして高見え"]
+      : coordinate?.priority === "写真映え"
+        ? ["写真で伝わる見せ場をここに"]
+        : [];
+  const options = [...new Set([...contextual, ...concernSpecific, ...base])];
+  const candidates = options.filter((copy) => copy !== previousCopy);
+  const copy = candidates[Math.floor(Math.random() * candidates.length)] || options[0];
+  return { copy, target: targetByCategory[product.category] || "該当する商品の実物本体" };
 }
 
 function openGemini() {
