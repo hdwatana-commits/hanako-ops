@@ -3211,16 +3211,13 @@ function buildOutfitImagePrompt(coordinate) {
 ・主役コーデ約70%、解説要素約20%、呼吸できる余白約10%の情報量を保つ
 ・かわいさ、読みやすさ、商品確認のしやすさを同時に満たす、商用ファッション誌レベルへ仕上げる
 ・条件を満たさない途中案や低品質案は出力せず、完成画像だけを返す`;
-  const brandProducts = getSameBrandProducts(mainProduct);
   const items = coordinate.products.map((product) => `・${product.category}: ${product.name}
   ブランド: ${getCoordinateBrand(product) || "商品ページで確認"}
   推しポイント: ${product.hook || createCoordinateHook(product)}
   価格メモ: ${product.price || "未設定"}
   商品画像URL: ${product.image || "なし"}
   商品ページURL: ${product.url || "なし"}`).join("\n");
-  const brandItems = brandProducts.length
-    ? brandProducts.map((product) => `・${product.category}: ${product.name}\n  商品画像URL: ${product.image || "なし"}\n  商品ページURL: ${product.url || "なし"}`).join("\n")
-    : "未登録です。添付された同じブランドの商品画像を使ってください。";
+  const selectedProductManifest = coordinate.products.map((product, index) => `${index + 1}. ${product.category}「${product.name}」`).join("\n");
   const imageCopy = buildCoordinateImageCopy(coordinate);
   const fixedImageHeadline = imageCopy[0];
   const productPointNotes = buildHandwrittenProductPoints(coordinate);
@@ -3235,6 +3232,7 @@ function buildOutfitImagePrompt(coordinate) {
 ・「本人の全身写真」: 顔、髪、体型、肌、ポーズ、マスクを保つための本人基準画像
 ・「コーデ画像ボード」: 選ぶ商品、配置、手書きポイント、ハナコ先生のアイコン、吹き出しの見出しと本文を保つためのデザイン基準画像
 ・「商品画像」: 服と小物の色、形、丈、柄、素材感を正確に反映するための商品基準画像
+・商品画像は下の「使用許可された商品一覧」と1枚ずつ照合する。選択されていない画像は使わない
 ・本人写真と画像ボードは別の役割として両方使う。どちらか一方を無視しない
 ・画像ボード右上の小さな本人写真を拡大して使わず、別添付の元の全身写真を人物の基準にする
 ・画像ボード自体をそのまま完成画像にせず、本人写真へ選択商品を自然に着せた新しい縦3:4画像を生成する`;
@@ -3303,20 +3301,20 @@ function buildOutfitImagePrompt(coordinate) {
     : "・完成画像は縦3:4の1枚にまとめ、同じ女の子、同じ髪型、同じコーデを一貫させる";
   const brandCoordinationInstruction = originalProductPhotoMode
     ? `・主役商品は、添付された本人撮影の商品写真をそのまま使う
-・同じブランドの商品も、本人が撮影して添付した写真だけを使う
-・URLや追加候補にあっても、写真が添付されていない商品は画像へ追加しない
+・下の「使用許可された商品一覧」にある商品だけを使う
+・同じブランドでも、一覧にない商品や写真が添付されていない商品は画像へ追加しない
 ・商品の色、形、柄、ロゴを変えず、違う商品や人物を生成しない`
-    : `・主役商品は別の商品へ置き換えず、色、形、丈、素材感が分かるよう必ずコーデに使う
-・主役商品のブランド「${brand || "商品ページで確認できる同じブランド"}」の商品を複数使い、服・バッグ・くつ・アクセを合計3〜5点でまとめる
-・添付された同じブランドの商品画像と、上の選択商品を最優先で使う
-・同じブランドの商品画像または追加候補が2点以上ある場合は、主役商品と自然に合うものを選び、主役以外に最低2点を完成コーデへ反映する
-・違うブランドの商品を勝手に足さない。実在しない商品名、ロゴ、柄を作らない
-・商品ページや画像で確認できない細部は、断定せずシンプルに整える`;
+    : `・下の「使用許可された商品一覧」にある選択商品だけでコーデを作る
+・主役商品を別の商品へ置き換えず、選択したほかの商品も省略せず、すべて1点ずつ完成コーデへ反映する
+・同じブランドでも、一覧にない商品、似た商品、色違い、形違い、AIが考えた代用品を絶対に足さない
+・選択商品を別カテゴリへ変えない。トップスをワンピースへ、スカートをパンツへ、バッグを別形状へ変えない
+・実在しない商品名、ロゴ、柄、装飾を作らない。商品画像で確認できない細部は足さず、見えない側へ自然に逃がす
+・一覧の商品写真が不足している場合は、似た商品を生成して埋めない。不足している商品名を短く伝え、画像生成を開始しない`;
   const productDisplayInstruction = originalProductPhotoMode
     ? `・添付した商品写真は切り抜き、傾き補正、明るさ調整、自然な影、背景整理だけを行う
 ・商品そのものを再生成、着せ替え、変形、色変更しない
 ・元写真の質感を保ち、本人が撮影した商品写真のコラージュとして仕上げる`
-    : `・商品名、商品画像URL、商品ページURLを参考に、選んだ服と小物の色、形、素材感、丈感をできるだけ自然に反映する
+    : `・商品名、添付商品画像、商品画像URL、商品ページURLを照合し、選んだ服と小物を同一商品として正確に再現する
 ・商品にないロゴや柄、ブランド名を勝手に追加しない
 ・完全な実物写真だと断定する見せ方ではなく、自然な着用イメージにする
 ・自然光で明るく、服の細部が見やすい高画質にする`;
@@ -3382,10 +3380,12 @@ ${hanakoTeacherInstruction}
 【選択した商品】
 ${items}
 
-【登録済みの同じブランドの追加候補】
-${brandItems}
+【使用許可された商品一覧・この商品以外は禁止】
+選択数: ${coordinate.products.length}点
+${selectedProductManifest}
+・上記${coordinate.products.length}点をすべて使う。1点も省略しない、別商品へ置換しない、一覧外の商品を追加しない
 
-【ブランドコーデの絶対条件】
+【選択商品固定の絶対条件】
 ${brandCoordinationInstruction}
 
 ${personInstruction}
@@ -3395,6 +3395,7 @@ ${productDisplayInstruction}
 
 【選択商品の見た目を固定・最優先】
 ・添付した各商品画像を「似た商品の参考」ではなく、完成画像で再現する同一商品の設計図として扱う
+・商品ごとに一覧番号、商品名、カテゴリ、商品画像を対応させ、別番号の商品特徴を混ぜない
 ・生成前に商品ごとに、色、配色、形、丈、袖丈、袖の形、襟ぐり、首元、ウエスト位置、裾、柄、柄の大きさと位置、素材感、ギャザー、フリル、リボン、ボタン、持ち手、金具を目で照合する
 ・上記の特徴を省略、単純化、誇張、左右反転、別の色へ変更しない。無地を柄物にせず、柄物を無地にしない
 ・トップスを別の襟や袖へ変えない。スカートやパンツの丈と広がりを変えない。バッグの輪郭、持ち手、色、金具を別デザインへ変えない
@@ -3402,6 +3403,7 @@ ${productDisplayInstruction}
 ・商品画像で確認できない部分を想像で華美に足さない。判別できない細部は目立たせず、確認できる特徴を優先する
 ・完成前に各商品を参照画像と一つずつ見比べ、色、輪郭、丈、袖、襟、柄、装飾のどれか一つでも違う場合は、同じ商品に見えるまで修正する
 ・正確に再現できない商品を、似た別商品で代用しない。その場合は画像を完成扱いにせず再生成する
+・主役だけ合っていても合格にしない。選択した${coordinate.products.length}点すべてが、それぞれの参照商品と同じであることを必須にする
 
 【日本語のデザイン】
 ファッションの特徴を「なやみ → かいけつ → かわいくなる理由」の流れで、余白に短く入れる。
@@ -3455,6 +3457,7 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・画像ボードと同じ
 ・商品への手書きポイントは選択商品数以内で、互いに重ならず読みやすい` : ""}
 ・手書きポイントは選択した商品だけに付き、表示文の内容と矢印の対象カテゴリが一致している
 ・選択商品の色、形、丈、袖、襟、柄、素材、装飾、バッグの輪郭と持ち手が、添付した各商品画像と一致している
+・使用許可された${coordinate.products.length}点がすべて画像内にあり、未選択商品、似た代用品、色違い、形違いが一つもない
 ・「トップスの近く」「バッグの近く」「ワンピの近く」「〜の近く」という不要な位置説明が画像内にない
 ・バッグを指す矢印に、顔まわり・トップス・足もとの説明が付いていない
 ・コーデが主役で、商品が自然に組み合わされている
@@ -3483,7 +3486,7 @@ function buildCoordinateCaptionPrompt(coordinate) {
   const stylingPlan = buildCoordinateAnalysis(coordinate);
   const greeting = buildRandomFashionGreeting();
   const brand = getCoordinateBrand(mainProduct);
-  const brandProducts = getSameBrandProducts(mainProduct);
+  const brandProducts = [];
   const items = coordinate.products.map((product) => `・${product.category}: ${product.name}
   ブランド: ${getCoordinateBrand(product) || "商品ページで確認"}
   推しポイント: ${product.hook || createCoordinateHook(product)}
@@ -3491,7 +3494,7 @@ function buildCoordinateCaptionPrompt(coordinate) {
   const brandItems = brandProducts.length
     ? brandProducts.map((product) => `・${product.category}: ${product.name}\n  推しポイント: ${product.hook || createCoordinateHook(product)}`).join("\n")
     : "追加候補なし";
-  return `次の完成コーデを読者へ紹介する、短くてかわいい文章を1案作ってください。商品の一覧説明ではなく、主役商品と同じブランドのアイテムをどう組み合わせたコーデなのかが伝わる文章にしてください。
+  return `次の完成コーデを読者へ紹介する、短くてかわいい文章を1案作ってください。商品の一覧説明ではなく、コーデ画面で選択した商品だけをどう組み合わせたのかが伝わる文章にしてください。
 
 雰囲気: ${coordinate.style}
 シーン: ${coordinate.occasion}
@@ -3507,8 +3510,8 @@ function buildCoordinateCaptionPrompt(coordinate) {
 選んだ商品:
 ${items}
 
-同じブランドの追加候補:
-${brandItems}
+追加商品について:
+選択されていない商品は紹介しない。似た商品や同ブランドの別商品を追加しない。
 
 スタイリストの設計:
 ・解決方法: ${stylingPlan.solution}
@@ -3530,7 +3533,7 @@ ${brandItems}
 ・先生らしい実用アドバイスとして「なぜ似合うか」「選ぶときに見る場所」「手持ち服で再現する方法」のうち2つ以上を必ず入れる
 ・買う前に確認するポイントを1つ入れる。サイズ、丈、透け感、素材、洗濯表示、手持ち服との相性から商品に合うものを選ぶ
 ・抽象的なほめ言葉を続けず、読者が明日の服選びで実際に試せる内容にする
-・主役商品を必ず具体的に紹介し、同じブランドの商品を複数合わせた統一感にもふれる
+・主役商品を必ず具体的に紹介し、選択した商品の組み合わせによる統一感にふれる
 ・商品名を並べるだけにせず、色、形、素材感、全体のバランスがどうかわいく見えるかを書く
 ・選んだシーンで着たくなる一言と、読んだ人が前向きになれる締めを入れる
 ・1文を短めにし、2〜4つの段落に分ける
