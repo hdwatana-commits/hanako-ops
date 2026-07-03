@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=101">
+    <link rel="stylesheet" href="styles.css?v=102">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -703,7 +703,15 @@
                     <label><input id="snsIncludeHanakoTeacher" type="checkbox" checked><span>ハナコ先生の吹き出しを入れる</span></label>
                     <button id="rerollSnsHanakoTeacher" type="button" title="先生をランダムに変える" aria-label="SNS画像のハナコ先生をランダムに変える">↻</button>
                   </div>
-                  <select id="snsHanakoTeacher" aria-label="SNS画像に表示するハナコ先生"></select>
+                  <div class="teacher-coverflow-picker sns-teacher-coverflow-picker">
+                    <span class="teacher-coverflow-title">SNS画像の先生を選ぶ</span>
+                    <div class="teacher-coverflow-stage">
+                      <button class="teacher-coverflow-nav" id="snsTeacherCoverflowPrev" type="button" title="前の先生" aria-label="前のSNSハナコ先生">‹</button>
+                      <div class="teacher-coverflow" id="snsTeacherCoverflow" role="listbox" aria-label="SNS画像に表示するハナコ先生" tabindex="0"></div>
+                      <button class="teacher-coverflow-nav" id="snsTeacherCoverflowNext" type="button" title="次の先生" aria-label="次のSNSハナコ先生">›</button>
+                    </div>
+                  </div>
+                  <select id="snsHanakoTeacher" aria-label="SNS画像に表示するハナコ先生" tabindex="-1" hidden></select>
                   <div class="sns-teacher-selected" id="snsHanakoTeacherPreview">
                     <img id="snsHanakoTeacherAvatar" src="icons/hanako-avatar.jpg" alt="SNS画像のハナコ先生">
                     <div><strong id="snsHanakoTeacherName">ハナコ先生</strong><small id="snsHanakoTeacherComment">商品に合うひとことを自動で作ります</small></div>
@@ -716,17 +724,25 @@
                   <button id="sendSocialGeminiCopy" type="button"><span>2</span>投稿文を作りに行く</button>
                 </div>
                 <details class="sns-gemini-prompt-details">
-                  <summary>プロンプトを確認・編集</summary>
+                  <summary>画像と投稿文のプロンプトを確認・編集</summary>
                   <div class="sns-gemini-prompt-body">
-                    <div class="button-row sns-gemini-modes">
-                      <button id="generateSocialGeminiImage" type="button">画像プロンプト</button>
-                      <button id="generateSocialGeminiCopy" type="button">バズ文プロンプト</button>
-                    </div>
-                    <label class="field-label" for="snsGeminiPrompt">Geminiに貼る現在の指示文</label>
-                    <textarea id="snsGeminiPrompt" class="sns-gemini-output" spellcheck="false" placeholder="画像または投稿文のプロンプトを選んでください"></textarea>
-                    <div class="button-row">
-                      <button id="copySocialGeminiPrompt" type="button">指示文をコピー</button>
-                      <button class="primary" id="openSocialGemini" type="button">コピーしてGeminiへ</button>
+                    <div class="coord-prompt-grid sns-prompt-grid">
+                      <section class="coord-prompt-card">
+                        <div class="coord-prompt-heading">
+                          <div><span>IMAGE</span><h4>画像生成プロンプト</h4></div>
+                          <button id="copySocialGeminiImagePrompt" type="button">コピー</button>
+                        </div>
+                        <textarea id="snsGeminiPrompt" class="sns-gemini-output coord-prompt-output" spellcheck="false" placeholder="商品を選ぶと画像用の指示文が表示されます"></textarea>
+                        <button class="primary sns-prompt-open" id="openSocialGeminiImage" type="button">コピーしてGeminiへ</button>
+                      </section>
+                      <section class="coord-prompt-card">
+                        <div class="coord-prompt-heading">
+                          <div><span>CAPTION</span><h4>投稿文プロンプト</h4></div>
+                          <button id="copySocialGeminiCopyPrompt" type="button">コピー</button>
+                        </div>
+                        <textarea id="snsGeminiCopyPrompt" class="sns-gemini-output coord-prompt-output" spellcheck="false" placeholder="商品を選ぶと投稿文用の指示文が表示されます"></textarea>
+                        <button class="primary sns-prompt-open" id="openSocialGeminiCopy" type="button">コピーしてGeminiへ</button>
+                      </section>
                     </div>
                   </div>
                 </details>
@@ -1179,6 +1195,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=101"></script>
+    <script src="app.js?v=102"></script>
   </body>
 </html>

@@ -3569,6 +3569,23 @@ body {
   opacity: 0.45;
 }
 
+.sns-teacher-coverflow-picker {
+  margin: 2px -4px 0;
+}
+
+.sns-prompt-grid {
+  margin-top: 0;
+}
+
+.sns-prompt-grid .coord-prompt-output {
+  min-height: 320px;
+}
+
+.sns-prompt-open {
+  width: 100%;
+  margin-top: 9px;
+}
+
 @media (max-width: 560px) {
   .sns-teacher-selected {
     align-items: flex-start;

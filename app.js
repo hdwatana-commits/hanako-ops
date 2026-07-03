@@ -264,6 +264,7 @@ const productGrid = document.querySelector("#productGrid");
 const selectedProduct = document.querySelector("#selectedProduct");
 const postOutput = document.querySelector("#postOutput");
 const snsGeminiPrompt = document.querySelector("#snsGeminiPrompt");
+const snsGeminiCopyPrompt = document.querySelector("#snsGeminiCopyPrompt");
 const checklist = document.querySelector("#checklist");
 const calendarList = document.querySelector("#calendarList");
 const metricList = document.querySelector("#metricList");
@@ -288,6 +289,8 @@ let socialGeminiGeneratedImageDataUrl = "";
 let socialGeminiGeneratedImageExtension = "png";
 let socialGeminiAwaitingReturn = false;
 let socialGeminiPromptNeedsRefresh = false;
+let socialHanakoCoverflowScrollTimer = null;
+let socialHanakoCoverflowIgnoreUntil = 0;
 let hanakoTeacherMode = "random";
 let hanakoTeacherCoverflowScrollTimer = null;
 let hanakoTeacherCoverflowIgnoreUntil = 0;
@@ -436,6 +439,11 @@ function applyAppearance() {
     button.setAttribute("aria-checked", String(selected));
   });
   syncHomeAvatarCoverflow(false);
+  if (socialHanakoTeacherMode === "appearance") {
+    resolveSocialHanakoTeacher(false);
+    updateSocialHanakoTeacherPreview();
+  }
+  syncSocialHanakoTeacherCoverflow(false);
 
   const manifestLink = document.querySelector("#appManifestLink");
   const favicon = document.querySelector("#appFavicon");
@@ -909,16 +917,17 @@ function bindActions() {
   document.querySelector("#generatePost").addEventListener("click", () => generateEditorialPost(false));
   document.querySelector("#generateVariation").addEventListener("click", () => generateEditorialPost(true));
   document.querySelector("#generateThree").addEventListener("click", generateThreeEditorialPosts);
-  document.querySelector("#generateSocialGeminiImage")?.addEventListener("click", () => generateSocialGeminiImagePrompt());
-  document.querySelector("#generateSocialGeminiCopy")?.addEventListener("click", () => generateSocialGeminiCopyPrompt());
   document.querySelector("#sendSocialGeminiImage")?.addEventListener("click", () => sendSocialGeminiToGemini("image"));
   document.querySelector("#sendSocialGeminiCopy")?.addEventListener("click", () => sendSocialGeminiToGemini("copy"));
   document.querySelector("#goToSocialGemini")?.addEventListener("click", () => {
+    generateBothSocialGeminiPrompts(true);
     renderSocialGeminiProgress();
     document.querySelector("#snsGeminiTools")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
-  document.querySelector("#copySocialGeminiPrompt")?.addEventListener("click", () => copyText(snsGeminiPrompt?.value || ""));
-  document.querySelector("#openSocialGemini")?.addEventListener("click", copyAndOpenSocialGemini);
+  document.querySelector("#copySocialGeminiImagePrompt")?.addEventListener("click", () => copyText(snsGeminiPrompt?.value || ""));
+  document.querySelector("#copySocialGeminiCopyPrompt")?.addEventListener("click", () => copyText(snsGeminiCopyPrompt?.value || ""));
+  document.querySelector("#openSocialGeminiImage")?.addEventListener("click", () => copyAndOpenSocialGemini("image"));
+  document.querySelector("#openSocialGeminiCopy")?.addEventListener("click", () => copyAndOpenSocialGemini("copy"));
   document.querySelector("#snsGeneratedImage")?.addEventListener("change", previewSocialGeminiImage);
   document.querySelector("#snsGeminiResult")?.addEventListener("input", renderSocialGeminiProgress);
   document.querySelector("#applySocialGeminiCopy")?.addEventListener("click", applySocialGeminiCopy);
@@ -4214,10 +4223,27 @@ function generateSocialGeminiImagePrompt(quiet = false) {
   return true;
 }
 
+function generateBothSocialGeminiPrompts(quiet = false) {
+  const data = getSocialGeminiPromptData();
+  if (!data) return false;
+  if (data.includeHanakoTeacher) {
+    data.hanakoTeacher = resolveSocialHanakoTeacher(true);
+    data.hanakoComment = chooseSocialHanakoComment(data, true);
+    updateSocialHanakoTeacherPreview();
+  }
+  snsGeminiPrompt.value = buildSocialGeminiImagePrompt(data);
+  snsGeminiCopyPrompt.value = buildSocialGeminiCopyPrompt(data);
+  socialGeminiPromptNeedsRefresh = false;
+  setSocialGeminiStatus(`${activePlatform}の画像・投稿文用`);
+  if (!quiet) showToast(`${activePlatform}の2つのプロンプトを作りました`);
+  renderSocialGeminiProgress();
+  return true;
+}
+
 function generateSocialGeminiCopyPrompt(quiet = false) {
   const data = getSocialGeminiPromptData();
   if (!data) return false;
-  snsGeminiPrompt.value = buildSocialGeminiCopyPrompt(data);
+  snsGeminiCopyPrompt.value = buildSocialGeminiCopyPrompt(data);
   socialGeminiPromptNeedsRefresh = false;
   setSocialGeminiMode("copy");
   setSocialGeminiStatus(`${activePlatform}投稿文用`);
@@ -4227,10 +4253,8 @@ function generateSocialGeminiCopyPrompt(quiet = false) {
 }
 
 function sendSocialGeminiToGemini(mode) {
-  const generated = mode === "image"
-    ? generateSocialGeminiImagePrompt(true)
-    : generateSocialGeminiCopyPrompt(true);
-  if (generated) copyAndOpenSocialGemini();
+  const generated = generateBothSocialGeminiPrompts(true);
+  if (generated) copyAndOpenSocialGemini(mode);
 }
 
 function getSocialGeminiPromptData() {
@@ -4353,13 +4377,10 @@ ${supportingProducts}
 
 function bindSocialHanakoTeacher() {
   const select = document.querySelector("#snsHanakoTeacher");
-  if (!select) return;
+  const coverflow = document.querySelector("#snsTeacherCoverflow");
+  if (!select || !coverflow) return;
   select.innerHTML = "";
-  const options = [
-    { id: "random", name: "毎回ランダム" },
-    { id: "appearance", name: "アプリと同じアイコン" },
-    ...hanakoTeacherGuides.map((guide) => ({ id: guide.id, name: guide.name })),
-  ];
+  const options = getSocialHanakoTeacherItems();
   options.forEach((item) => {
     const option = document.createElement("option");
     option.value = item.id;
@@ -4374,13 +4395,33 @@ function bindSocialHanakoTeacher() {
     updateSocialHanakoTeacherPreview();
     markSocialGeminiPromptStale();
   });
+  coverflow.innerHTML = options.map((item) => `
+    <button class="teacher-coverflow-card" type="button" role="option" aria-selected="false" data-sns-teacher-mode="${item.id}" title="${item.name}">
+      <span class="teacher-coverflow-image-wrap">
+        <img src="${item.avatar}" alt="">
+        ${item.badge ? `<small>${item.badge}</small>` : ""}
+      </span>
+      <strong>${item.shortName}</strong>
+    </button>`).join("");
+  coverflow.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-sns-teacher-mode]");
+    if (card) activateSocialHanakoTeacher(card.dataset.snsTeacherMode, true, card.dataset.snsTeacherMode === "random");
+  });
+  coverflow.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+    event.preventDefault();
+    stepSocialHanakoTeacher(event.key === "ArrowRight" ? 1 : -1);
+  });
+  coverflow.addEventListener("scroll", () => {
+    window.requestAnimationFrame(paintSocialHanakoTeacherCoverflow);
+    window.clearTimeout(socialHanakoCoverflowScrollTimer);
+    socialHanakoCoverflowScrollTimer = window.setTimeout(selectCenteredSocialHanakoTeacher, 140);
+  }, { passive: true });
+  document.querySelector("#snsTeacherCoverflowPrev")?.addEventListener("click", () => stepSocialHanakoTeacher(-1));
+  document.querySelector("#snsTeacherCoverflowNext")?.addEventListener("click", () => stepSocialHanakoTeacher(1));
+  window.addEventListener("resize", paintSocialHanakoTeacherCoverflow, { passive: true });
   document.querySelector("#rerollSnsHanakoTeacher")?.addEventListener("click", () => {
-    socialHanakoTeacherMode = "random";
-    select.value = "random";
-    resolveSocialHanakoTeacher(true);
-    currentSocialHanakoComment = "";
-    updateSocialHanakoTeacherPreview();
-    markSocialGeminiPromptStale();
+    activateSocialHanakoTeacher("random", true, true);
   });
   document.querySelector("#snsIncludeHanakoTeacher")?.addEventListener("change", () => {
     updateSocialHanakoTeacherPreview();
@@ -4389,6 +4430,86 @@ function bindSocialHanakoTeacher() {
   document.querySelector("#downloadSnsHanakoTeacher")?.addEventListener("click", downloadSocialHanakoTeacher);
   resolveSocialHanakoTeacher(false);
   updateSocialHanakoTeacherPreview();
+  syncSocialHanakoTeacherCoverflow(true);
+}
+
+function getSocialHanakoTeacherItems() {
+  return getHanakoTeacherCoverflowItems().map((item) => item.id === "random"
+    ? { ...item, avatar: currentSocialHanakoTeacher.avatar }
+    : item);
+}
+
+function activateSocialHanakoTeacher(mode, scrollSelected = true, forceRandom = false) {
+  const validModes = new Set(getSocialHanakoTeacherItems().map((item) => item.id));
+  socialHanakoTeacherMode = validModes.has(mode) ? mode : "random";
+  const select = document.querySelector("#snsHanakoTeacher");
+  if (select) select.value = socialHanakoTeacherMode;
+  resolveSocialHanakoTeacher(forceRandom);
+  currentSocialHanakoComment = "";
+  updateSocialHanakoTeacherPreview();
+  syncSocialHanakoTeacherCoverflow(scrollSelected);
+  markSocialGeminiPromptStale();
+}
+
+function stepSocialHanakoTeacher(direction) {
+  const items = getSocialHanakoTeacherItems();
+  const currentIndex = Math.max(0, items.findIndex((item) => item.id === socialHanakoTeacherMode));
+  const nextIndex = Math.min(items.length - 1, Math.max(0, currentIndex + direction));
+  activateSocialHanakoTeacher(items[nextIndex].id, true, items[nextIndex].id === "random");
+}
+
+function selectCenteredSocialHanakoTeacher() {
+  if (Date.now() < socialHanakoCoverflowIgnoreUntil) return;
+  const coverflow = document.querySelector("#snsTeacherCoverflow");
+  if (!coverflow) return;
+  const center = coverflow.getBoundingClientRect().left + coverflow.clientWidth / 2;
+  const cards = [...coverflow.querySelectorAll("[data-sns-teacher-mode]")];
+  const nearest = cards.reduce((best, card) => {
+    const rect = card.getBoundingClientRect();
+    const distance = Math.abs(rect.left + rect.width / 2 - center);
+    return !best || distance < best.distance ? { card, distance } : best;
+  }, null);
+  const mode = nearest?.card.dataset.snsTeacherMode;
+  if (mode && mode !== socialHanakoTeacherMode) activateSocialHanakoTeacher(mode, false, mode === "random");
+}
+
+function syncSocialHanakoTeacherCoverflow(scrollSelected = false) {
+  const coverflow = document.querySelector("#snsTeacherCoverflow");
+  if (!coverflow) return;
+  const randomImage = coverflow.querySelector('[data-sns-teacher-mode="random"] img');
+  const appearanceImage = coverflow.querySelector('[data-sns-teacher-mode="appearance"] img');
+  const appearanceItem = getSocialHanakoTeacherItems().find((item) => item.id === "appearance");
+  if (randomImage) randomImage.src = currentSocialHanakoTeacher.avatar;
+  if (appearanceImage && appearanceItem) appearanceImage.src = appearanceItem.avatar;
+  coverflow.querySelectorAll("[data-sns-teacher-mode]").forEach((card) => {
+    const selected = card.dataset.snsTeacherMode === socialHanakoTeacherMode;
+    card.classList.toggle("selected", selected);
+    card.setAttribute("aria-selected", String(selected));
+  });
+  if (scrollSelected) {
+    const selectedCard = coverflow.querySelector(`[data-sns-teacher-mode="${socialHanakoTeacherMode}"]`);
+    if (selectedCard) {
+      socialHanakoCoverflowIgnoreUntil = Date.now() + 550;
+      selectedCard.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }
+  window.requestAnimationFrame(paintSocialHanakoTeacherCoverflow);
+}
+
+function paintSocialHanakoTeacherCoverflow() {
+  const coverflow = document.querySelector("#snsTeacherCoverflow");
+  if (!coverflow) return;
+  const bounds = coverflow.getBoundingClientRect();
+  const center = bounds.left + bounds.width / 2;
+  coverflow.querySelectorAll("[data-sns-teacher-mode]").forEach((card) => {
+    const rect = card.getBoundingClientRect();
+    const offset = Math.max(-2.2, Math.min(2.2, (rect.left + rect.width / 2 - center) / Math.max(82, rect.width)));
+    const distance = Math.abs(offset);
+    card.style.setProperty("--cover-rotate", `${offset * -24}deg`);
+    card.style.setProperty("--cover-scale", String(Math.max(0.72, 1 - distance * 0.16)));
+    card.style.setProperty("--cover-opacity", String(Math.max(0.48, 1 - distance * 0.22)));
+    card.style.setProperty("--cover-z", String(Math.round(20 - distance * 5)));
+  });
 }
 
 function resolveSocialHanakoTeacher(forceRandom = false) {
@@ -4414,18 +4535,37 @@ function resolveSocialHanakoTeacher(forceRandom = false) {
 function chooseSocialHanakoComment(data, force = false) {
   if (!force && currentSocialHanakoComment) return currentSocialHanakoComment;
   const product = data.context.product;
+  const labels = data.labels || {};
+  const productText = `${product.name || ""} ${product.hook || ""} ${product.details?.color || ""} ${product.details?.material || ""}`;
   const categoryComments = {
-    トップス: ["主役トップスの日は、小物を静かに。", "顔まわりの見せ場は、一つで十分よ。", "トップスが華やかなら、色数はしぼって。"],
-    ワンピース: ["一枚で決まる日は、小物で欲張らない。", "ワンピが主役。あとは軽く整えれば十分。", "丈と靴のつながりまで見て、完成よ。"],
-    スカート: ["揺れ感を生かして、上半身はすっきり。", "甘いスカートほど、足もとは大人に。", "腰位置をぼかさない。それだけで整うわ。"],
-    パンツ: ["直線を一本入れると、甘さが整うわ。", "パンツの落ち感を、トップスで隠さないで。", "足もとまで色をつなぐと、すらっと見える。"],
-    バッグ: ["バッグは穴埋めじゃない。配色の仕上げよ。", "主役服を邪魔しないサイズ感が正解。", "小物の色は、全身から一色拾いなさい。"],
-    シューズ: ["コーデの性格は、最後に靴が決めるわ。", "足もとが軽いと、全身までこなれて見える。", "歩けない靴では、かわいさも続かないわ。"],
-    アクセサリー: ["きらめきは一か所。全部盛りはお休み。", "顔まわりに光を足して、視線を上へ。", "主役服の日は、アクセは名脇役でいて。"],
-    "ホテル・旅行": ["映えより先に、移動と立地を確認して。", "旅は予定を詰めすぎないほうが、おしゃれよ。", "写真の印象だけで決めず、条件も見てね。"],
+    トップス: ["主役トップスの日は、小物を静かに。", "顔まわりの見せ場は、一つで十分よ。", "トップスが華やかなら、色数はしぼって。", "裾の入れ方で、重心はちゃんと変わるわ。", "甘いトップスには、直線を一つ足して。", "首もとを見せると、全身まで軽くなる。", "袖が主役なら、アクセは少し休ませて。", "ボトムは競わせず、きれいに支えて。"],
+    ワンピース: ["一枚で決まる日は、小物で欲張らない。", "ワンピが主役。あとは軽く整えれば十分。", "丈と靴のつながりまで見て、完成よ。", "甘いワンピほど、バッグは端正に。", "ウエスト位置が、全身の印象を決めるわ。", "柄ワンピの日は、色を増やしすぎない。", "羽織りは隠すためじゃなく、縦線づくり。", "一枚の強さを、小物で邪魔しないで。"],
+    アウター: ["羽織りは、前を開けると縦長になるわ。", "アウターが主役なら、中は静かに。", "重ね着の日ほど、色数は少なくして。", "肩の位置が合うだけで、高見えするわ。", "長い羽織りには、小さなバッグが効く。", "防寒だけで終わらせない。輪郭も整えて。", "中の甘さを、羽織りでほどよく締めて。", "脱いだ後まで考えて、コーデは完成よ。"],
+    スカート: ["揺れ感を生かして、上半身はすっきり。", "甘いスカートほど、足もとは大人に。", "腰位置をぼかさない。それだけで整うわ。", "広がる形なら、トップスは短めが正解。", "丈の終わりと靴の色を、きれいにつないで。", "柄スカートの日は、上を無地で休ませて。", "ふんわり感は一か所。それで十分かわいい。", "スカートの動きを、バッグで止めないで。"],
+    パンツ: ["直線を一本入れると、甘さが整うわ。", "パンツの落ち感を、トップスで隠さないで。", "足もとまで色をつなぐと、すらっと見える。", "腰位置を上げれば、脚の印象は変わるわ。", "太めパンツには、上半身の抜けが必要。", "甘いトップスを、大人に戻す名脇役よ。", "丈が合わないと全部惜しい。靴まで確認して。", "きれいな縦線は、アクセより効くわ。"],
+    バッグ: ["バッグは穴埋めじゃない。配色の仕上げよ。", "主役服を邪魔しないサイズ感が正解。", "小物の色は、全身から一色拾いなさい。", "丸いバッグなら、服に直線を残して。", "かっちりバッグで、甘さを大人に戻して。", "バッグの大きさで、全身の重心は変わる。", "差し色は一つ。バッグなら失敗しにくい。", "持ち手まで見て。そこに高見えが出るわ。"],
+    シューズ: ["コーデの性格は、最後に靴が決めるわ。", "足もとが軽いと、全身までこなれて見える。", "歩けない靴では、かわいさも続かないわ。", "靴の色をつなげると、脚がすっきり見える。", "甘い服には、少し端正な靴を合わせて。", "重い足もとは、コーデまで沈ませるわ。", "つま先の形で、大人っぽさを調整して。", "迷ったらバッグより、先に靴を決めて。"],
+    アクセサリー: ["きらめきは一か所。全部盛りはお休み。", "顔まわりに光を足して、視線を上へ。", "主役服の日は、アクセは名脇役でいて。", "大ぶりを選ぶなら、ほかは静かに。", "首もとが華やかなら、耳元は引き算。", "小さな光ほど、上品に効くのよ。", "アクセは足し算じゃなく、視線の案内役。", "服の金具と色をそろえると、まとまるわ。"],
+    "ホテル・旅行": ["映えより先に、移動と立地を確認して。", "旅は予定を詰めすぎないほうが、おしゃれよ。", "写真の印象だけで決めず、条件も見てね。", "朝食より先に、キャンセル条件も確認して。", "駅近の価値は、帰り道に分かるものよ。", "安さだけで選ぶと、移動で疲れるわ。", "眺望は部屋タイプまで見て、初めて確実。", "旅のかわいさは、無理のない予定から。"],
   };
-  const common = ["かわいいは足し算じゃない。主役を決めて。", "見せ場は一つ。余白までがおしゃれよ。", "迷ったら色を減らす。それが近道。"];
-  const options = categoryComments[product.category] || common;
+  const common = ["かわいいは足し算じゃない。主役を決めて。", "見せ場は一つ。余白までがおしゃれよ。", "迷ったら色を減らす。それが近道。", "全部を語らない。ひとつ伝われば強いわ。", "似合う理由を一つ言えたら、もう十分。", "主役と脇役、両方を目立たせないで。"];
+  const contextual = [];
+  if (data.context.platform === "Instagram") contextual.push("保存したくなるのは、まねできる一工夫よ。", "表紙は欲張らない。答えを一つ見せて。");
+  if (data.context.platform === "Threads") contextual.push("うまい話より、朝の本音がいちばん届くわ。", "完璧より共感。小さな失敗も味方よ。");
+  if (data.context.platform === "X") contextual.push("結論は先に。役立つ理由を一つ添えて。", "三秒で伝わらないなら、情報を減らして。");
+  if (/保存/.test(labels.goal || "")) contextual.push("保存されるのは、明日まねできる投稿よ。");
+  if (/返信|コメント/.test(labels.goal || "")) contextual.push("答えやすい二択なら、会話が始まるわ。");
+  if (/クリック|ROOM|購入/.test(`${labels.goal || ""} ${labels.optimization || ""}`)) contextual.push("売る前に、選ぶ理由を一つ渡しなさい。");
+  if (/体型|バランス/.test(labels.fashionConcern || "")) contextual.push("隠すより重心。視線を上へ運んで。");
+  if (/甘すぎ|子ども/.test(labels.fashionConcern || "")) contextual.push("甘さは一か所。直線を一つ足して。");
+  if (/気温|雨|汗/.test(labels.fashionConcern || "")) contextual.push("我慢はおしゃれじゃない。天気も味方に。");
+  if (/着回し/.test(labels.fashionPriority || "")) contextual.push("三通り浮かぶ服なら、出番は増えるわ。");
+  if (/高見え/.test(labels.fashionPriority || "")) contextual.push("高見えは値段より、色数とサイズ感よ。");
+  if (/写真/.test(labels.fashionPriority || "")) contextual.push("写真では、見せ場を一つに絞りなさい。");
+  if (/黒|ブラック|ネイビー/.test(productText)) contextual.push("濃色は重くしない。どこかに白を残して。");
+  if (/白|アイボリー|ベージュ|淡色/.test(productText)) contextual.push("淡色の日こそ、輪郭を一つ締めて。");
+  if (/リボン|フリル|レース/.test(productText)) contextual.push("甘い要素は主役だけ。小物は静かに。");
+  const options = [...new Set([...contextual, ...(categoryComments[product.category] || common), ...common])];
   const candidates = options.filter((comment) => comment !== currentSocialHanakoComment);
   currentSocialHanakoComment = candidates[Math.floor(Math.random() * candidates.length)] || options[0];
   return currentSocialHanakoComment;
@@ -4533,14 +4673,11 @@ function setSocialGeminiStatus(message) {
   if (target) target.textContent = message;
 }
 
-function setSocialGeminiMode(mode) {
-  document.querySelector("#generateSocialGeminiImage")?.classList.toggle("active", mode === "image");
-  document.querySelector("#generateSocialGeminiCopy")?.classList.toggle("active", mode === "copy");
-}
+function setSocialGeminiMode() {}
 
-function copyAndOpenSocialGemini() {
-  const prompt = snsGeminiPrompt?.value.trim();
-  if (!prompt) return showToast("先に画像か投稿文のプロンプトを作ってください");
+function copyAndOpenSocialGemini(mode = "image") {
+  const prompt = (mode === "copy" ? snsGeminiCopyPrompt : snsGeminiPrompt)?.value.trim();
+  if (!prompt) return showToast("先にプロンプトを作ってください");
   socialGeminiAwaitingReturn = true;
   copyText(prompt);
   openGeminiDestination();
@@ -4602,7 +4739,7 @@ function downloadSocialGeminiImage() {
 
 function markSocialGeminiPromptStale(event) {
   if (event?.target?.closest?.(".sns-gemini-tools")) return;
-  if (snsGeminiPrompt?.value.trim()) {
+  if (snsGeminiPrompt?.value.trim() || snsGeminiCopyPrompt?.value.trim()) {
     socialGeminiPromptNeedsRefresh = true;
     setSocialGeminiStatus("条件変更あり");
     renderSocialGeminiProgress();
@@ -4612,7 +4749,7 @@ function markSocialGeminiPromptStale(event) {
 function renderSocialGeminiProgress() {
   const product = state.products.find((item) => item.id === selectedProduct?.value) || state.products[0];
   const hasProduct = Boolean(product);
-  const hasPrompt = Boolean(snsGeminiPrompt?.value.trim()) && !socialGeminiPromptNeedsRefresh;
+  const hasPrompt = Boolean(snsGeminiPrompt?.value.trim() && snsGeminiCopyPrompt?.value.trim()) && !socialGeminiPromptNeedsRefresh;
   const hasReturnedResult = Boolean(socialGeminiGeneratedImageDataUrl || document.querySelector("#snsGeminiResult")?.value.trim());
   const steps = {
     product: hasProduct,

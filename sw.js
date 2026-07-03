@@ -1,9 +1,9 @@
-const CACHE_NAME = "hanako-room-ops-v101";
+const CACHE_NAME = "hanako-room-ops-v102";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=101",
-  "./app.js?v=101",
+  "./styles.css?v=102",
+  "./app.js?v=102",
   "./cloud-sync.js",
   "./room-review-generator.js",
   "./covers/rakuten-room-cover-hanako-v5.jpg",
@@ -395,8 +395,8 @@ const APP_SHELL = [
 const CORE_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=101",
-  "./app.js?v=101",
+  "./styles.css?v=102",
+  "./app.js?v=102",
   "./cloud-sync.js",
   "./room-review-generator.js",
 ];
