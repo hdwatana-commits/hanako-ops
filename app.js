@@ -4296,6 +4296,8 @@ function getSocialGeminiPromptData() {
 function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includeHanakoTeacher, hanakoTeacher, hanakoComment }) {
   const product = c.product;
   const details = product.details || {};
+  const imageHeadline = buildSocialImageHeadline(c, labels);
+  const imagePoints = buildSocialImagePoints(c, labels);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -4303,7 +4305,7 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
     .map((item) => `・${item.name} / ${item.category} / ${item.price || "価格未設定"}\n  画像URL: ${item.image || "なし"}`)
     .join("\n") || "なし";
   const visualByPlatform = {
-    Instagram: `縦4:5（1080×1350px）の保存したくなる投稿画像を1枚作る。主役商品を大きく見せ、表紙見出し、短いポイント3つ、手書き風の矢印や囲みを上品に配置する。`,
+    Instagram: `縦4:5（1080×1350px）の保存したくなる投稿画像を1枚作る。主役商品を大きく見せ、指定済みの表紙見出し、短いポイント3つ、手書き風の矢印や囲みを上品に配置する。`,
     Threads: `縦4:5（1080×1350px）の自然なライフスタイル画像を1枚作る。日常の一場面らしい親しみと共感を優先し、文字は短いひと言と手書きポイント2つまでにする。`,
     X: `横16:9（1600×900px）の一目で内容が分かる情報画像を1枚作る。比較・ランキング・速報・チェック項目が3秒で読める構成にし、見出しは短く強くする。`,
   }[c.platform];
@@ -4332,6 +4334,17 @@ ${visualByPlatform}
 ${topicInstruction}
 
 ${hanakoInstruction}
+
+【画像内へ書く日本語・一字一句固定】
+一番上の見出し: 「${imageHeadline}」
+ポイント1: 「${imagePoints[0]}」
+ポイント2: 「${imagePoints[1]}」
+ポイント3: 「${imagePoints[2]}」
+・上の4文は意味と文法を確認済みの完成文。言い換え、要約、語順変更、単語追加、数字追加をしない
+・投稿文や企画名から別の見出しを新しく作らない。「予定別」「4パターン」「ランキング」など、上の固定文にない言葉や数字を追加しない
+・実際に複数の着回し画像を見せていないのに「○パターン」「○選」と書かない
+・見出しと3ポイント以外の説明文を勝手に増やさない。ハナコ先生を入れる場合だけ、指定された先生見出しと本文を追加してよい
+・生成後に画像内の日本語を一文字ずつ読み直し、意味不明、文法誤り、文字欠け、造語があれば固定文へ修正してから出力する
 
 【今回の企画】
 切り口: ${c.angle}
@@ -4366,13 +4379,61 @@ ${supportingProducts}
 ・おしゃれ研究家ハナコらしい、大人ガーリーで甘めきれいめな世界観
 ・明るく清潔感があり、商品が見やすい。ピンク一色にせず白、黒、淡いピンクをバランスよく使う
 ・文字は読みやすい自然な日本語。誤字、文字化け、意味のない文字を出さない
-・商品名を長く載せず、見出しは12〜18文字、説明は短くする
+・商品名を長く載せず、見出しは上で指定した完成文だけを使い、説明は指定した3ポイントだけにする
 ・商品や人物の大切な部分へ文字を重ねない
 ・サービス名、URL、値段、ブランドロゴを新しく画像内へ追加しない
 ・確認できない効果、使用感、売上、人気、順位を作らない
 ・実物の商品や施設を別物へ変えない
 
 完成画像だけを生成し、説明文や投稿文は返さないでください。`;
+}
+
+function buildSocialImageHeadline(context, labels) {
+  if (context.isTravel) {
+    const companion = labels.travelCompanion && !/自動|選択/.test(labels.travelCompanion) ? labels.travelCompanion : "旅の日";
+    return trimText(`${companion}に合う宿選び`, 18);
+  }
+  const category = context.product.category || "アイテム";
+  const priority = labels.fashionPriority || "";
+  const headlineByPriority = [
+    [/着回し/, `着回しやすい${category}の選び方`],
+    [/高見え/, `高見えする${category}の選び方`],
+    [/スタイル|バランス/, `すっきり見える${category}選び`],
+    [/動きやすさ/, `一日頼れる${category}の選び方`],
+    [/写真映え/, `写真に映える${category}の選び方`],
+  ];
+  return trimText(headlineByPriority.find(([pattern]) => pattern.test(priority))?.[1] || `大人かわいい${category}の選び方`, 20);
+}
+
+function buildSocialImagePoints(context, labels) {
+  if (context.isTravel) return [
+    "立地と移動時間を確認",
+    "部屋タイプと条件を確認",
+    "料金と空室は予約前に確認",
+  ];
+  const category = context.product.category || "商品";
+  const categoryPoints = {
+    バッグ: ["手持ち服との色相性を確認", "大きさと持ち手を確認", "素材と収納力を確認"],
+    トップス: ["顔まわりの色を確認", "袖と首もとの形を確認", "手持ちボトムとの相性を確認"],
+    ワンピース: ["丈とウエスト位置を確認", "透け感と裏地を確認", "手持ちの靴との相性を確認"],
+    アウター: ["肩幅と着丈を確認", "重ね着できる余裕を確認", "手持ち服との色相性を確認"],
+    スカート: ["丈と広がり方を確認", "ウエスト位置を確認", "手持ちトップスとの相性を確認"],
+    パンツ: ["股下と腰まわりを確認", "生地の落ち感を確認", "手持ちの靴との相性を確認"],
+    シューズ: ["足幅とヒール高を確認", "歩きやすさを確認", "バッグとの色相性を確認"],
+    アクセサリー: ["大きさと重さを確認", "金具の色をそろえる", "主役服とのバランスを確認"],
+  };
+  const points = categoryPoints[category] || ["色と形を確認", "サイズと素材を確認", "手持ち服との相性を確認"];
+  if (/写真/.test(labels.fashionPriority || "")) {
+    points[2] = category === "アクセサリー" ? "写真で見える位置を確認" : "光の下で色味を確認";
+  }
+  if (/動き/.test(labels.fashionPriority || "")) {
+    points[2] = category === "シューズ"
+      ? "一日歩ける履き心地を確認"
+      : category === "バッグ"
+        ? "一日持てる重さを確認"
+        : "動きやすいゆとりを確認";
+  }
+  return points;
 }
 
 function bindSocialHanakoTeacher() {
