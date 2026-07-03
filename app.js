@@ -368,6 +368,9 @@ const hanakoTeacherGuides = [
   { id: "trendcheck", name: "トレンド診断のハナコ", avatar: "icons/hanako-avatar-trendcheck.png", tone: "流行を盛りすぎず、自分らしく取り入れる方法を解説" },
 ];
 let currentHanakoTeacher = hanakoTeacherGuides[0];
+let socialHanakoTeacherMode = "random";
+let currentSocialHanakoTeacher = hanakoTeacherGuides[0];
+let currentSocialHanakoComment = "";
 
 queueMicrotask(initialize);
 
@@ -920,6 +923,7 @@ function bindActions() {
   document.querySelector("#snsGeminiResult")?.addEventListener("input", renderSocialGeminiProgress);
   document.querySelector("#applySocialGeminiCopy")?.addEventListener("click", applySocialGeminiCopy);
   document.querySelector("#downloadSocialGeminiImage")?.addEventListener("click", downloadSocialGeminiImage);
+  bindSocialHanakoTeacher();
   document.querySelector("#generator")?.addEventListener("change", (event) => {
     if (!event.target?.closest?.(".sns-gemini-tools")) saveGeneratorPreferences();
     markSocialGeminiPromptStale(event);
@@ -4196,6 +4200,11 @@ function buildEditorialContext(product) {
 function generateSocialGeminiImagePrompt(quiet = false) {
   const data = getSocialGeminiPromptData();
   if (!data) return false;
+  if (data.includeHanakoTeacher) {
+    data.hanakoTeacher = resolveSocialHanakoTeacher(true);
+    data.hanakoComment = chooseSocialHanakoComment(data, true);
+    updateSocialHanakoTeacherPreview();
+  }
   snsGeminiPrompt.value = buildSocialGeminiImagePrompt(data);
   socialGeminiPromptNeedsRefresh = false;
   setSocialGeminiMode("image");
@@ -4254,10 +4263,13 @@ function getSocialGeminiPromptData() {
       travelCompanion: selectedLabel("#travelCompanionSelect"),
       travelPriority: selectedLabel("#travelPrioritySelect"),
     },
+    includeHanakoTeacher: document.querySelector("#snsIncludeHanakoTeacher")?.checked !== false,
+    hanakoTeacher: currentSocialHanakoTeacher,
+    hanakoComment: currentSocialHanakoComment,
   };
 }
 
-function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft }) {
+function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includeHanakoTeacher, hanakoTeacher, hanakoComment }) {
   const product = c.product;
   const details = product.details || {};
   const supportingProducts = c.products
@@ -4274,6 +4286,18 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft }) {
   const topicInstruction = c.isTravel
     ? `添付した宿泊施設の写真を主役にし、客室・眺望・アクセスなど確認できる魅力を整理する。写真にない設備や景色を作らない。`
     : `添付した商品画像を主役にし、色・形・素材感を変えず、${labels.fashionOccasion}で使うイメージが自然に伝わるようにする。`;
+  const hanakoInstruction = includeHanakoTeacher ? `【ハナコ先生の吹き出し・必須】
+・添付した先生画像「${hanakoTeacher.name}」を、丸いアイコンとして完成画像へ入れる
+・先生画像URL: ${new URL(hanakoTeacher.avatar, window.location.href).href}
+・先生の顔、髪型、髪色、服、目の色、表情を添付画像から変えず、別人に描き直さない
+・先生は商品やモデルとは別の解説キャラクター。画像の左下に、外周から6%以上離して全体の18〜22%の大きさで置く
+・先生の真上に、白地とくすみピンク線の吹き出しを1個だけ置き、下向きのしっぽで先生へつなぐ
+・吹き出しの見出しは必ず「ハナコ先生のズバッとひとこと」
+・吹き出し本文は必ずこの1文だけ: 「${hanakoComment}」
+・見出しと本文を一字一句変えない。造語、誤字、文字化け、追加の掛け声、別の吹き出しを作らない
+・吹き出しと先生を商品、人物、重要な文字へ重ねず、本文の最後まで枠内へ収める
+・${c.platform === "X" ? "横長画像でも先生と吹き出しを左下の安全域へまとめ、比較情報を隠さない" : "縦長画像の下端から8%以上離し、先生と吹き出しを縦に並べる"}` : `【ハナコ先生】
+・今回は先生アイコンと吹き出しを入れない`;
   return `画像を生成してください。これは${c.platform}投稿用の画像生成依頼です。文章だけで回答せず、添付した商品画像または施設画像を使って完成画像を1枚生成してください。
 
 【投稿先】
@@ -4282,6 +4306,8 @@ ${c.platform}
 【画像の構成】
 ${visualByPlatform}
 ${topicInstruction}
+
+${hanakoInstruction}
 
 【今回の企画】
 切り口: ${c.angle}
@@ -4323,6 +4349,105 @@ ${supportingProducts}
 ・実物の商品や施設を別物へ変えない
 
 完成画像だけを生成し、説明文や投稿文は返さないでください。`;
+}
+
+function bindSocialHanakoTeacher() {
+  const select = document.querySelector("#snsHanakoTeacher");
+  if (!select) return;
+  select.innerHTML = "";
+  const options = [
+    { id: "random", name: "毎回ランダム" },
+    { id: "appearance", name: "アプリと同じアイコン" },
+    ...hanakoTeacherGuides.map((guide) => ({ id: guide.id, name: guide.name })),
+  ];
+  options.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.name;
+    select.appendChild(option);
+  });
+  select.value = socialHanakoTeacherMode;
+  select.addEventListener("change", () => {
+    socialHanakoTeacherMode = select.value;
+    resolveSocialHanakoTeacher(true);
+    currentSocialHanakoComment = "";
+    updateSocialHanakoTeacherPreview();
+    markSocialGeminiPromptStale();
+  });
+  document.querySelector("#rerollSnsHanakoTeacher")?.addEventListener("click", () => {
+    socialHanakoTeacherMode = "random";
+    select.value = "random";
+    resolveSocialHanakoTeacher(true);
+    currentSocialHanakoComment = "";
+    updateSocialHanakoTeacherPreview();
+    markSocialGeminiPromptStale();
+  });
+  document.querySelector("#snsIncludeHanakoTeacher")?.addEventListener("change", () => {
+    updateSocialHanakoTeacherPreview();
+    markSocialGeminiPromptStale();
+  });
+  document.querySelector("#downloadSnsHanakoTeacher")?.addEventListener("click", downloadSocialHanakoTeacher);
+  resolveSocialHanakoTeacher(false);
+  updateSocialHanakoTeacherPreview();
+}
+
+function resolveSocialHanakoTeacher(forceRandom = false) {
+  if (socialHanakoTeacherMode === "appearance") {
+    const appearanceItem = getHanakoTeacherCoverflowItems().find((item) => item.id === "appearance");
+    currentSocialHanakoTeacher = {
+      id: "appearance",
+      name: "アプリと同じハナコ先生",
+      avatar: appearanceItem?.avatar || hanakoTeacherGuides[0].avatar,
+      tone: "選んだアプリアイコンでSNS投稿を解説",
+    };
+  } else if (socialHanakoTeacherMode === "random") {
+    if (forceRandom || !currentSocialHanakoTeacher) {
+      const candidates = hanakoTeacherGuides.filter((guide) => guide.id !== currentSocialHanakoTeacher?.id);
+      currentSocialHanakoTeacher = candidates[Math.floor(Math.random() * candidates.length)] || hanakoTeacherGuides[0];
+    }
+  } else {
+    currentSocialHanakoTeacher = hanakoTeacherGuides.find((guide) => guide.id === socialHanakoTeacherMode) || hanakoTeacherGuides[0];
+  }
+  return currentSocialHanakoTeacher;
+}
+
+function chooseSocialHanakoComment(data, force = false) {
+  if (!force && currentSocialHanakoComment) return currentSocialHanakoComment;
+  const product = data.context.product;
+  const categoryComments = {
+    トップス: ["主役トップスの日は、小物を静かに。", "顔まわりの見せ場は、一つで十分よ。", "トップスが華やかなら、色数はしぼって。"],
+    ワンピース: ["一枚で決まる日は、小物で欲張らない。", "ワンピが主役。あとは軽く整えれば十分。", "丈と靴のつながりまで見て、完成よ。"],
+    スカート: ["揺れ感を生かして、上半身はすっきり。", "甘いスカートほど、足もとは大人に。", "腰位置をぼかさない。それだけで整うわ。"],
+    パンツ: ["直線を一本入れると、甘さが整うわ。", "パンツの落ち感を、トップスで隠さないで。", "足もとまで色をつなぐと、すらっと見える。"],
+    バッグ: ["バッグは穴埋めじゃない。配色の仕上げよ。", "主役服を邪魔しないサイズ感が正解。", "小物の色は、全身から一色拾いなさい。"],
+    シューズ: ["コーデの性格は、最後に靴が決めるわ。", "足もとが軽いと、全身までこなれて見える。", "歩けない靴では、かわいさも続かないわ。"],
+    アクセサリー: ["きらめきは一か所。全部盛りはお休み。", "顔まわりに光を足して、視線を上へ。", "主役服の日は、アクセは名脇役でいて。"],
+    "ホテル・旅行": ["映えより先に、移動と立地を確認して。", "旅は予定を詰めすぎないほうが、おしゃれよ。", "写真の印象だけで決めず、条件も見てね。"],
+  };
+  const common = ["かわいいは足し算じゃない。主役を決めて。", "見せ場は一つ。余白までがおしゃれよ。", "迷ったら色を減らす。それが近道。"];
+  const options = categoryComments[product.category] || common;
+  const candidates = options.filter((comment) => comment !== currentSocialHanakoComment);
+  currentSocialHanakoComment = candidates[Math.floor(Math.random() * candidates.length)] || options[0];
+  return currentSocialHanakoComment;
+}
+
+function updateSocialHanakoTeacherPreview() {
+  const enabled = document.querySelector("#snsIncludeHanakoTeacher")?.checked !== false;
+  const preview = document.querySelector("#snsHanakoTeacherPreview");
+  if (preview) preview.classList.toggle("disabled", !enabled);
+  const avatar = document.querySelector("#snsHanakoTeacherAvatar");
+  const name = document.querySelector("#snsHanakoTeacherName");
+  const comment = document.querySelector("#snsHanakoTeacherComment");
+  if (avatar) avatar.src = currentSocialHanakoTeacher.avatar;
+  if (name) name.textContent = currentSocialHanakoTeacher.name;
+  if (comment) comment.textContent = enabled ? (currentSocialHanakoComment || "商品に合うひとことを自動で作ります") : "今回は画像へ表示しません";
+}
+
+function downloadSocialHanakoTeacher() {
+  const link = document.createElement("a");
+  link.href = currentSocialHanakoTeacher.avatar;
+  link.download = `${currentSocialHanakoTeacher.id || "hanako-teacher"}.png`;
+  link.click();
 }
 
 function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {

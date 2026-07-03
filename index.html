@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=100">
+    <link rel="stylesheet" href="styles.css?v=101">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -697,7 +697,19 @@
                   <div data-sns-step="return"><span>3</span><strong>結果を戻す</strong></div>
                 </div>
                 <p class="sns-gemini-next" id="snsGeminiNextAction">まず商品を確認してください</p>
-                <p class="sns-gemini-guide">画像はGeminiの「画像を作成」を選び、商品画像を添付してから送ってください。</p>
+                <p class="sns-gemini-guide">画像はGeminiの「画像を作成」を選び、商品画像と下のハナコ先生画像を添付してから送ってください。</p>
+                <div class="sns-teacher-control">
+                  <div class="sns-teacher-control-head">
+                    <label><input id="snsIncludeHanakoTeacher" type="checkbox" checked><span>ハナコ先生の吹き出しを入れる</span></label>
+                    <button id="rerollSnsHanakoTeacher" type="button" title="先生をランダムに変える" aria-label="SNS画像のハナコ先生をランダムに変える">↻</button>
+                  </div>
+                  <select id="snsHanakoTeacher" aria-label="SNS画像に表示するハナコ先生"></select>
+                  <div class="sns-teacher-selected" id="snsHanakoTeacherPreview">
+                    <img id="snsHanakoTeacherAvatar" src="icons/hanako-avatar.jpg" alt="SNS画像のハナコ先生">
+                    <div><strong id="snsHanakoTeacherName">ハナコ先生</strong><small id="snsHanakoTeacherComment">商品に合うひとことを自動で作ります</small></div>
+                    <button id="downloadSnsHanakoTeacher" type="button">先生画像を保存</button>
+                  </div>
+                </div>
                 <div class="sns-gemini-product-preview" id="snsGeminiProductPreview"></div>
                 <div class="sns-gemini-quick-actions">
                   <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>画像を作りに行く</button>
@@ -1167,6 +1179,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=100"></script>
+    <script src="app.js?v=101"></script>
   </body>
 </html>
