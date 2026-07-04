@@ -657,7 +657,7 @@ function loadState() {
   }
 
   try {
-    return JSON.parse(saved);
+    return normalizeState(JSON.parse(saved));
   } catch {
     return {
       profile: defaultProfile,
@@ -668,6 +668,21 @@ function loadState() {
       roomQueue: [],
     };
   }
+}
+
+function normalizeState(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return {
+    ...source,
+    profile: typeof source.profile === "string" ? source.profile : defaultProfile,
+    products: Array.isArray(source.products) ? source.products.filter((item) => item && typeof item === "object") : [],
+    drafts: Array.isArray(source.drafts) ? source.drafts : [],
+    calendar: Array.isArray(source.calendar) ? source.calendar : [],
+    metrics: Array.isArray(source.metrics) ? source.metrics : [],
+    roomQueue: Array.isArray(source.roomQueue) ? source.roomQueue : [],
+    coordinatePhotos: Array.isArray(source.coordinatePhotos) ? source.coordinatePhotos : [],
+    appearance: source.appearance && typeof source.appearance === "object" ? source.appearance : { avatarTheme: "original" },
+  };
 }
 
 function saveState() {
@@ -4240,6 +4255,7 @@ function renderRoomImagePhotoPreview() {
 }
 
 function markRoomImagePromptStale() {
+  roomReferenceBoardDataUrl = "";
   const status = document.querySelector("#roomImagePromptStatus");
   if (status) status.textContent = "設定を変更しました";
 }
@@ -4416,13 +4432,19 @@ async function copyRoomImagePrompt() {
 }
 
 async function openRoomImageGemini() {
-  const prompt = await generateRoomImagePrompt(true);
-  if (!prompt || !roomReferenceBoardDataUrl) return;
-  await copyText(prompt);
+  const prompt = document.querySelector("#roomImagePrompt")?.value.trim();
+  if (!prompt || !roomReferenceBoardDataUrl) {
+    const prepared = await generateRoomImagePrompt(true);
+    if (prepared && roomReferenceBoardDataUrl) {
+      showToast("参照画像を準備しました。もう一度このボタンを押してください");
+    }
+    return;
+  }
   const boardFile = dataUrlToFile(roomReferenceBoardDataUrl, "hanako-room-reference.jpg");
   const files = [boardFile];
   if (navigator.share && navigator.canShare?.({ files })) {
     try {
+      void copyText(prompt);
       await navigator.share({
         title: "Hanako Style Studio・ROOM画像",
         text: prompt,
@@ -4434,6 +4456,7 @@ async function openRoomImageGemini() {
       if (error?.name === "AbortError") return;
     }
   }
+  await copyText(prompt);
   downloadReferenceFile(boardFile, "hanako-room-reference.jpg");
   openGeminiDestination();
   showToast("参照画像を保存し、プロンプトをコピーしました。Geminiへ画像1枚を添付してください");
@@ -4773,6 +4796,7 @@ function generateSocialGeminiImagePrompt(quiet = false) {
   setSocialGeminiStatus(`${activePlatform}画像用`);
   if (!quiet) showToast(`${activePlatform}の画像プロンプトを作りました`);
   renderSocialGeminiProgress();
+  void prepareSocialReferenceBoard(data);
   return true;
 }
 
@@ -4790,6 +4814,7 @@ function generateBothSocialGeminiPrompts(quiet = false) {
   setSocialGeminiStatus(`${activePlatform}の画像・投稿文用`);
   if (!quiet) showToast(`${activePlatform}の2つのプロンプトを作りました`);
   renderSocialGeminiProgress();
+  void prepareSocialReferenceBoard(data);
   return true;
 }
 
@@ -4811,41 +4836,58 @@ function sendSocialGeminiToGemini(mode) {
 }
 
 async function shareSocialReferenceToGemini() {
-  const generated = generateBothSocialGeminiPrompts(true);
-  if (!generated) return;
-  const data = getSocialGeminiPromptData();
-  if (!data) return;
-  if (!data.context.product.image) return showToast("この商品には参照できる商品画像がありません");
+  const prompt = snsGeminiPrompt.value.trim();
+  if (!prompt || socialGeminiPromptNeedsRefresh || !socialReferenceBoardDataUrl) {
+    const generated = generateBothSocialGeminiPrompts(true);
+    if (!generated) return;
+    const prepared = await prepareSocialReferenceBoard();
+    if (prepared) showToast("参照画像を準備しました。もう一度このボタンを押してください");
+    return;
+  }
+  const boardFile = dataUrlToFile(socialReferenceBoardDataUrl, `hanako-${activePlatform.toLowerCase()}-reference.jpg`);
+  const files = [boardFile];
+  if (navigator.share && navigator.canShare?.({ files })) {
+    try {
+      void copyText(prompt);
+      await navigator.share({
+        title: `Hanako Style Studio・${activePlatform}画像`,
+        text: prompt,
+        files,
+      });
+      showToast("Geminiでコピー済みプロンプトを貼ってください");
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+  await copyText(prompt);
+  downloadReferenceFile(boardFile, `hanako-${activePlatform.toLowerCase()}-reference.jpg`);
+  openGeminiDestination();
+  showToast("参照画像を保存し、プロンプトをコピーしました。Geminiへ画像1枚を添付してください");
+}
+
+async function prepareSocialReferenceBoard(existingData = null) {
+  const data = existingData || getSocialGeminiPromptData();
+  if (!data) return false;
+  if (!data.context.product.image) {
+    showToast("この商品には参照できる商品画像がありません");
+    return false;
+  }
   const photo = getSelectedCoordinatePhoto();
-  if (!photo) return showToast("コーデ画面で本人写真を保存して選んでください");
+  if (!photo) {
+    showToast("コーデ画面で本人写真を保存して選んでください");
+    return false;
+  }
   try {
     await ensureSelectedCoordinatePhotoUrl();
     await loadCoordinatePhotoPreview(photo);
     data.hanakoTeacher = currentSocialHanakoTeacher;
     data.hanakoComment = currentSocialHanakoComment;
     await drawSocialReferenceBoard(data);
-    const prompt = snsGeminiPrompt.value.trim();
-    await copyText(prompt);
-    const boardFile = dataUrlToFile(socialReferenceBoardDataUrl, `hanako-${activePlatform.toLowerCase()}-reference.jpg`);
-    const files = [boardFile];
-    if (navigator.share && navigator.canShare?.({ files })) {
-      try {
-        await navigator.share({
-          title: `Hanako Style Studio・${activePlatform}画像`,
-          text: prompt,
-          files,
-        });
-        showToast("Geminiでコピー済みプロンプトを貼ってください");
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-      }
-    }
-    downloadReferenceFile(boardFile, `hanako-${activePlatform.toLowerCase()}-reference.jpg`);
-    openGeminiDestination();
-    showToast("参照画像を保存し、プロンプトをコピーしました。Geminiへ画像1枚を添付してください");
+    return true;
   } catch (error) {
     showToast(error.message || "SNS参照画像を作れませんでした");
+    return false;
   }
 }
 
@@ -5508,6 +5550,7 @@ function downloadSocialGeminiImage() {
 
 function markSocialGeminiPromptStale(event) {
   if (event?.target?.closest?.(".sns-gemini-tools")) return;
+  socialReferenceBoardDataUrl = "";
   if (snsGeminiPrompt?.value.trim() || snsGeminiCopyPrompt?.value.trim()) {
     socialGeminiPromptNeedsRefresh = true;
     setSocialGeminiStatus("条件変更あり");
@@ -7849,9 +7892,16 @@ function openView(viewName) {
 
 async function copyText(text) {
   if (!text.trim()) return showToast("コピーする内容がありません");
+  let copied = false;
   if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
-  } else {
+    try {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    } catch {
+      copied = false;
+    }
+  }
+  if (!copied) {
     const helper = document.createElement("textarea");
     helper.value = text;
     helper.setAttribute("readonly", "");
@@ -7859,10 +7909,11 @@ async function copyText(text) {
     helper.style.opacity = "0";
     document.body.appendChild(helper);
     helper.select();
-    document.execCommand("copy");
+    copied = document.execCommand("copy");
     helper.remove();
   }
-  showToast("コピーしました");
+  showToast(copied ? "コピーしました" : "コピーできませんでした。文章を長押ししてコピーしてください");
+  return copied;
 }
 
 function exportData() {
@@ -7882,7 +7933,8 @@ function importData(event) {
   const reader = new FileReader();
   reader.addEventListener("load", () => {
     try {
-      const imported = JSON.parse(reader.result);
+      const imported = normalizeState(JSON.parse(reader.result));
+      Object.keys(state).forEach((key) => delete state[key]);
       Object.assign(state, imported);
       saveState();
       location.reload();
