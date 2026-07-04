@@ -2418,8 +2418,9 @@ async function importProductForCoordinate(urlInput, button) {
     renderCoordinateOptions();
     renderAngleOptions();
     selectCoordinateProduct(product);
-    showCoordinateImportStatus(`「${product.name}」をコーデに追加しました`);
-    showToast("商品を読み込み、コーデに追加しました");
+    showCoordinateImportStatus(`「${product.name}」を追加しました。コーデを作成しています...`);
+    await generateCoordinate();
+    showCoordinateImportStatus(`「${product.name}」からコーデ文・画像ボードを作りました`);
   } catch (error) {
     showCoordinateImportStatus(error.message || "商品情報を読み込めませんでした", true);
   } finally {
@@ -2430,6 +2431,8 @@ async function importProductForCoordinate(urlInput, button) {
 
 function normalizeCoordinateImportedProduct(imported, originalUrl) {
   const product = { ...imported, details: { ...(imported?.details || {}) } };
+  const detectedCategory = detectFashionCategory(`${product.name || ""} ${product.category || ""} ${product.hook || ""}`);
+  if (detectedCategory && product.category !== "ホテル・旅行") product.category = detectedCategory;
   if (product.category !== "ホテル・旅行") return product;
   const sourceUrl = product.sourceUrl || product.url || originalUrl;
   if (isExplicitRakutenTravelUrl(sourceUrl) || isExplicitRakutenTravelUrl(originalUrl)) return product;
@@ -2912,14 +2915,13 @@ function chooseCoordinateCompanion(categories, main, selectedIds) {
 }
 
 async function generateCoordinate() {
+  let photoWarning = "";
   try {
     await ensureSelectedCoordinatePhotoUrl();
   } catch (error) {
-    return showToast(error.message || "自分の写真URLを準備できませんでした");
+    photoWarning = "本人写真を一時的に読めないため、写真欄は仮表示で作成しました";
   }
   let coordinate = getSelectedCoordinate();
-  const originalProductPhotoMode = coordinate.imagePattern === "オリジナル商品写真で投稿";
-  if (!coordinate.personPhotoUrl && !originalProductPhotoMode) return showToast("先に保存した自分の全身写真を選んでください");
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
   if (isHanakoTeacherPattern(coordinate.imagePattern)) {
     applySelectedHanakoTeacher();
@@ -2931,9 +2933,11 @@ async function generateCoordinate() {
   const text = buildCoordinateText(coordinate);
   coordinateOutput.value = text;
   setCoordinatePrompts(coordinate);
-  document.querySelector("#coordStatus").textContent = analysis.roomReady ? "投稿条件を確認済み" : "要確認：商品を追加";
+  document.querySelector("#coordStatus").textContent = photoWarning
+    ? "作成済み：本人写真を再確認"
+    : analysis.roomReady ? "投稿条件を確認済み" : "要確認：商品を追加";
   await drawCoordinateBoard(coordinate, text);
-  showToast(analysis.roomReady ? "コーデ・画像ボード・2つのプロンプトを作りました" : "コーデと2つのプロンプトを作りました。ROOM投稿には商品を2点以上選んでください");
+  showToast(photoWarning || (analysis.roomReady ? "コーデ・画像ボード・2つのプロンプトを作りました" : "コーデと2つのプロンプトを作りました。ROOM投稿には商品を2点以上選んでください"));
 }
 
 function setCoordinatePrompts(coordinate) {

@@ -23,7 +23,10 @@ Deno.serve(async (request) => {
     let { html, finalUrl } = await fetchRakutenPage(originalUrl);
     const initialFinalUrl = finalUrl;
     const initialProduct = extractProduct(html);
-    const embeddedProductUrl = findEmbeddedRakutenProductUrl(html);
+    const roomEmbeddedProduct = isRakutenRoomUrl(originalUrl) || isRakutenRoomUrl(finalUrl)
+      ? extractRoomEmbeddedProduct(html)
+      : null;
+    const embeddedProductUrl = roomEmbeddedProduct?.sourceUrl || findEmbeddedRakutenProductUrl(html);
     if (embeddedProductUrl && (isRakutenRoomUrl(originalUrl) || isRakutenRoomUrl(finalUrl) || !hasUsableProductName(initialProduct.name))) {
       try {
         const resolved = await fetchRakutenPage(embeddedProductUrl);
@@ -40,7 +43,18 @@ Deno.serve(async (request) => {
       || isRakutenTravelUrl(originalUrl)
       || isRakutenTravelUrl(pageUrl)
       || (!productSchema && Boolean(travelSchema));
-    const product = extractProduct(html, isTravel);
+    let product = extractProduct(html, isTravel);
+    if (!isTravel && roomEmbeddedProduct) product = mergeProductData(product, roomEmbeddedProduct);
+    if (!isTravel && !hasUsableProductName(product.name) && embeddedProductUrl) {
+      const apiProduct = await fetchRakutenItemByUrl(embeddedProductUrl).catch(() => null);
+      if (apiProduct) {
+        return json({
+          ...apiProduct,
+          sourceUrl: originalUrl,
+          resolvedUrl: embeddedProductUrl,
+        });
+      }
+    }
     if (!hasUsableProductName(product.name)) {
       return json({ error: isTravel
         ? "宿泊施設情報を読み取れませんでした。楽天トラベルの施設ページURLでもう一度お試しください"
@@ -81,7 +95,7 @@ async function proxyRakutenImage(input: string) {
   let current = new URL(input);
   assertAllowedImageUrl(current);
   for (let index = 0; index < 5; index += 1) {
-    const response = await fetch(current, {
+    let response = await fetch(current, {
       redirect: "manual",
       headers: {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
@@ -117,7 +131,7 @@ async function fetchRakutenPage(input: string) {
   assertAllowedUrl(current);
 
   for (let index = 0; index < 8; index += 1) {
-    const response = await fetch(current, {
+    let response = await fetch(current, {
       redirect: "manual",
       headers: {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
@@ -125,6 +139,17 @@ async function fetchRakutenPage(input: string) {
         Accept: "text/html,application/xhtml+xml",
       },
     });
+    if ([403, 429].includes(response.status) && isRakutenRoomUrl(current.toString())) {
+      response = await fetch(current, {
+        redirect: "manual",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36",
+          "Accept-Language": "ja-JP,ja;q=0.9,en;q=0.5",
+          Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+          Referer: "https://room.rakuten.co.jp/",
+        },
+      });
+    }
 
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("location");
@@ -210,9 +235,61 @@ function cleanEmbeddedUrl(value: string) {
     .replace(/&amp;/g, "&");
 }
 
+function extractRoomEmbeddedProduct(html: string) {
+  const expanded = expandEmbeddedUrlText(html);
+  const read = (keys: string[]) => {
+    for (const key of keys) {
+      const pattern = new RegExp(`["']${key}["']\\s*:\\s*["']((?:\\\\.|[^"'])*)["']`, "i");
+      const value = pattern.exec(expanded)?.[1];
+      if (value) return decodeEmbeddedJsonValue(value);
+    }
+    return "";
+  };
+  const sourceUrl = findEmbeddedRakutenProductUrl(expanded);
+  const name = cleanTitle(read(["itemName", "productName", "itemTitle"]));
+  const image = read(["mediumImageUrl", "imageUrl", "itemImageUrl", "productImageUrl"]);
+  const price = read(["itemPrice", "price"]);
+  const description = read(["itemCaption", "caption", "description"]);
+  const brand = read(["shopName", "brandName"]);
+  const category = read(["genreName", "categoryName"]);
+  if (!name && !sourceUrl && !image) return null;
+  return { name, image, price, description, brand, category, sourceUrl };
+}
+
+function decodeEmbeddedJsonValue(value: string) {
+  const decoded = decodeHtml(String(value || ""))
+    .replace(/\\u([0-9a-f]{4})/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/\\\//g, "/")
+    .replace(/\\n|\\r|\\t/g, " ")
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, "\\")
+    .trim();
+  if (/%[0-9a-f]{2}/i.test(decoded)) {
+    try {
+      return decodeURIComponent(decoded);
+    } catch {
+      return decoded;
+    }
+  }
+  return decoded;
+}
+
+function mergeProductData(primary: Record<string, any>, fallback: Record<string, any>) {
+  const merged = { ...primary };
+  for (const key of ["name", "description", "category", "image", "price", "brand", "color", "material"]) {
+    if (!merged[key] && fallback[key]) merged[key] = fallback[key];
+  }
+  if (fallback.name && (!hasUsableProductName(primary.name) || /(?:楽天)?ROOM/i.test(String(primary.name || "")))) {
+    merged.name = fallback.name;
+  }
+  return merged;
+}
+
 function hasUsableProductName(value: unknown) {
   const name = cleanTitle(String(value || ""));
-  return Boolean(name) && !/^(楽天市場|楽天市場ショッピング|楽天|商品ページ|ROOM)$/i.test(name);
+  return Boolean(name)
+    && !/^(楽天市場|楽天市場ショッピング|楽天|商品ページ|ROOM)$/i.test(name)
+    && !/(?:さん)?のROOM(?:へようこそ)?$/i.test(name);
 }
 
 async function searchRakutenProducts(query: string) {
@@ -251,6 +328,25 @@ async function searchRakutenApi(keyword: string) {
   const body = await response.json().catch(() => ({}));
   const items = Array.isArray(body?.Items) ? body.Items : [];
   return items.map((entry: Record<string, any>) => normalizeSearchItem(entry?.Item || entry)).filter(Boolean).slice(0, 12);
+}
+
+async function fetchRakutenItemByUrl(value: string) {
+  const applicationId = Deno.env.get("RAKUTEN_APP_ID") || Deno.env.get("RAKUTEN_APPLICATION_ID") || "";
+  if (!applicationId) return null;
+  const url = new URL(value);
+  if (url.hostname.toLowerCase() !== "item.rakuten.co.jp") return null;
+  const [shopCode, itemCode] = url.pathname.split("/").filter(Boolean);
+  if (!shopCode || !itemCode) return null;
+  const apiUrl = new URL("https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706");
+  apiUrl.searchParams.set("applicationId", applicationId);
+  apiUrl.searchParams.set("itemCode", `${shopCode}:${itemCode}`);
+  apiUrl.searchParams.set("hits", "1");
+  apiUrl.searchParams.set("imageFlag", "1");
+  const response = await fetch(apiUrl);
+  if (!response.ok) return null;
+  const body = await response.json().catch(() => ({}));
+  const item = body?.Items?.[0]?.Item || body?.Items?.[0];
+  return item ? normalizeSearchItem(item) : null;
 }
 
 function normalizeSearchItem(item: Record<string, any>) {
