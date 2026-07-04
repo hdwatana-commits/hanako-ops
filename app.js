@@ -2029,7 +2029,9 @@ function bindCoordinateActions() {
 }
 
 function isHanakoTeacherPattern(pattern = document.querySelector("#coordImagePattern")?.value) {
-  return pattern === "ハナコ先生の吹き出し解説";
+  const normalized = String(pattern || "").replace(/\s+/g, "").trim();
+  return normalized === "ハナコ先生の吹き出し解説"
+    || (normalized.includes("ハナコ先生") && normalized.includes("吹き出し"));
 }
 
 async function uploadCoordinatePhotos(event) {
@@ -3092,8 +3094,9 @@ async function drawCoordinateBoard(coordinate, text) {
     drawPlaceholder(ctx, "PHOTO", 760, 54, 230, 230);
   }
 
+  const teacherPattern = isHanakoTeacherPattern(coordinate.imagePattern);
   const products = coordinate.products.slice(0, 6);
-  const compactProductLayout = isHanakoTeacherPattern(coordinate.imagePattern) && products.length > 4;
+  const compactProductLayout = teacherPattern && products.length > 4;
   for (let index = 0; index < products.length; index += 1) {
     const product = products[index];
     const col = index % 2;
@@ -3101,11 +3104,15 @@ async function drawCoordinateBoard(coordinate, text) {
     const x = 70 + col * 485;
     const y = compactProductLayout ? 300 + row * 195 : 330 + row * 285;
     await drawProductCard(ctx, product, x, y, compactProductLayout);
-    if (isHanakoTeacherPattern(coordinate.imagePattern)) drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate, compactProductLayout);
+    if (teacherPattern) drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate, compactProductLayout);
   }
 
-  if (isHanakoTeacherPattern(coordinate.imagePattern)) {
-    await drawHanakoTeacherPanel(ctx, coordinate, analysis);
+  if (teacherPattern) {
+    try {
+      await drawHanakoTeacherPanel(ctx, coordinate, analysis);
+    } catch {
+      drawHanakoTeacherFallbackPanel(ctx, coordinate);
+    }
   } else {
     ctx.fillStyle = "#2f292c";
     ctx.font = "700 30px Yu Gothic UI, Meiryo, sans-serif";
@@ -3160,6 +3167,44 @@ async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
   ctx.fill();
   if (avatar) drawCoverImage(ctx, avatar, avatarX, avatarY, avatarSize, avatarSize, avatarSize / 2);
   else drawPlaceholder(ctx, "ハナコ", avatarX, avatarY, avatarSize, avatarSize);
+  ctx.restore();
+}
+
+function drawHanakoTeacherFallbackPanel(ctx, coordinate) {
+  const comment = coordinate.hanakoComment || chooseHanakoTeacherComment(coordinate);
+  const bubbleX = 70;
+  const bubbleY = 900;
+  const bubbleWidth = 940;
+  const bubbleHeight = 184;
+  ctx.save();
+  ctx.fillStyle = "#fff";
+  roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 24);
+  ctx.fill();
+  ctx.strokeStyle = "#e4b9c8";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(bubbleX + 76, bubbleY + bubbleHeight);
+  ctx.lineTo(bubbleX + 105, bubbleY + bubbleHeight + 28);
+  ctx.lineTo(bubbleX + 134, bubbleY + bubbleHeight);
+  ctx.closePath();
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("ハナコ先生のズバッとひとこと", bubbleX + 28, bubbleY + 42);
+  ctx.fillStyle = "#4d3d43";
+  wrapCanvasText(ctx, `「${comment}」`, bubbleX + 28, bubbleY + 86, bubbleWidth - 56, 34, 2);
+  ctx.fillStyle = "#f4cad7";
+  ctx.beginPath();
+  ctx.arc(175, 1215, 111, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "700 28px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("ハナコ先生", 175, 1225);
+  ctx.textAlign = "left";
   ctx.restore();
 }
 
