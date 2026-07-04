@@ -4100,11 +4100,15 @@ function generateEditorialPost(isVariation) {
   lastGenerated = generatePremiumCopy(context);
   postOutput.value = lastGenerated;
   markSocialGeminiPromptStale();
+  generateBothSocialGeminiPrompts(true);
   const learnedLabel = context.learnedPattern.sampleSize >= 2 ? "実績から最適化" : "新規テスト";
   document.querySelector("#outputMeta").textContent = `${activePlatform} / 18構成から自動選抜 / ${viralPatternLabels[context.viralPattern]} / ${learnedLabel} / ${context.ownershipVoice.status}`;
   renderChecks(lastGenerated);
   rememberGeneration(lastGenerated);
-  showToast(isVariation ? "切り口を変えて別案を作りました" : "媒体に合わせて投稿を作りました");
+  const teacherIncluded = document.querySelector("#snsIncludeHanakoTeacher")?.checked;
+  showToast(isVariation
+    ? `切り口を変えて別案と${teacherIncluded ? "先生入り" : ""}画像指示を作りました`
+    : `投稿文と${teacherIncluded ? "先生入り" : ""}画像指示を作りました`);
 }
 
 function generateThreeEditorialPosts() {
@@ -4123,9 +4127,11 @@ function generateThreeEditorialPosts() {
   lastGenerated = versions.join("\n\n");
   postOutput.value = lastGenerated;
   markSocialGeminiPromptStale();
+  generateBothSocialGeminiPrompts(true);
   document.querySelector("#outputMeta").textContent = `${activePlatform} / 3つの共感アプローチを比較 / 購入状況に合う表現`;
   renderChecks(lastGenerated);
-  showToast("共感の入口を変えた3案を作りました");
+  const teacherIncluded = document.querySelector("#snsIncludeHanakoTeacher")?.checked;
+  showToast(`3案と${teacherIncluded ? "先生入り" : ""}画像の指示をまとめて作りました`);
 }
 
 function getExperimentPatterns(platform, goal) {

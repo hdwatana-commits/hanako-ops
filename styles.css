@@ -3526,6 +3526,49 @@ body {
   background: #fffafb;
 }
 
+.sns-teacher-control-main {
+  margin: 16px 0 4px;
+  border-color: #e8bdcc;
+  background: linear-gradient(135deg, #fffafb 0%, #fff3f7 100%);
+  box-shadow: 0 8px 22px rgba(145, 76, 101, 0.08);
+}
+
+.sns-teacher-intro {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sns-teacher-intro .eyebrow {
+  margin: 0 0 2px;
+}
+
+.sns-teacher-intro strong {
+  font-size: 16px;
+}
+
+.sns-teacher-intro > span {
+  max-width: 290px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .sns-teacher-intro {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .sns-teacher-intro > span {
+    max-width: none;
+    text-align: left;
+  }
+}
+
 .sns-teacher-control-head,
 .sns-teacher-selected {
   display: flex;

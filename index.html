@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=104">
+    <link rel="stylesheet" href="styles.css?v=105">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -661,11 +661,38 @@
               <textarea id="postBrief" class="brief-input" placeholder="例: 雨の日の通学、白スニーカー合わせ、6月のセール"></textarea>
                 </div>
               </details>
+              <div class="sns-teacher-control sns-teacher-control-main">
+                <div class="sns-teacher-intro">
+                  <div>
+                    <p class="eyebrow">SNS画像</p>
+                    <strong>ハナコ先生と吹き出しを入れる</strong>
+                  </div>
+                  <span>選んだ投稿内容に合わせて、先生のひとことも自動で作ります</span>
+                </div>
+                <div class="sns-teacher-control-head">
+                  <label><input id="snsIncludeHanakoTeacher" type="checkbox" checked><span>先生入り画像を作る</span></label>
+                  <button id="rerollSnsHanakoTeacher" type="button" title="先生をランダムに変える" aria-label="SNS画像のハナコ先生をランダムに変える">↻</button>
+                </div>
+                <div class="teacher-coverflow-picker sns-teacher-coverflow-picker">
+                  <span class="teacher-coverflow-title">画像に登場する先生を選ぶ</span>
+                  <div class="teacher-coverflow-stage">
+                    <button class="teacher-coverflow-nav" id="snsTeacherCoverflowPrev" type="button" title="前の先生" aria-label="前のSNSハナコ先生">‹</button>
+                    <div class="teacher-coverflow" id="snsTeacherCoverflow" role="listbox" aria-label="SNS画像に表示するハナコ先生" tabindex="0"></div>
+                    <button class="teacher-coverflow-nav" id="snsTeacherCoverflowNext" type="button" title="次の先生" aria-label="次のSNSハナコ先生">›</button>
+                  </div>
+                </div>
+                <select id="snsHanakoTeacher" aria-label="SNS画像に表示するハナコ先生" tabindex="-1" hidden></select>
+                <div class="sns-teacher-selected" id="snsHanakoTeacherPreview">
+                  <img id="snsHanakoTeacherAvatar" src="icons/hanako-avatar.jpg" alt="SNS画像のハナコ先生">
+                  <div><strong id="snsHanakoTeacherName">ハナコ先生</strong><small id="snsHanakoTeacherComment">投稿内容に合うひとことを自動で作ります</small></div>
+                  <button id="downloadSnsHanakoTeacher" type="button">先生画像を保存</button>
+                </div>
+              </div>
               <div class="button-row generator-actions">
                 <button class="primary" id="generatePost">投稿を作る</button>
                 <button id="generateVariation">別案を作る</button>
                 <button id="generateThree">3案を比較</button>
-                <button id="goToSocialGemini" type="button">Gemini仕上げ</button>
+                <button id="goToSocialGemini" type="button">先生入り画像・投稿文</button>
               </div>
             </article>
 
@@ -697,27 +724,7 @@
                   <div data-sns-step="return"><span>3</span><strong>結果を戻す</strong></div>
                 </div>
                 <p class="sns-gemini-next" id="snsGeminiNextAction">まず商品を確認してください</p>
-                <p class="sns-gemini-guide">画像はGeminiの「画像を作成」を選び、商品画像と下のハナコ先生画像を添付してから送ってください。</p>
-                <div class="sns-teacher-control">
-                  <div class="sns-teacher-control-head">
-                    <label><input id="snsIncludeHanakoTeacher" type="checkbox" checked><span>ハナコ先生の吹き出しを入れる</span></label>
-                    <button id="rerollSnsHanakoTeacher" type="button" title="先生をランダムに変える" aria-label="SNS画像のハナコ先生をランダムに変える">↻</button>
-                  </div>
-                  <div class="teacher-coverflow-picker sns-teacher-coverflow-picker">
-                    <span class="teacher-coverflow-title">SNS画像の先生を選ぶ</span>
-                    <div class="teacher-coverflow-stage">
-                      <button class="teacher-coverflow-nav" id="snsTeacherCoverflowPrev" type="button" title="前の先生" aria-label="前のSNSハナコ先生">‹</button>
-                      <div class="teacher-coverflow" id="snsTeacherCoverflow" role="listbox" aria-label="SNS画像に表示するハナコ先生" tabindex="0"></div>
-                      <button class="teacher-coverflow-nav" id="snsTeacherCoverflowNext" type="button" title="次の先生" aria-label="次のSNSハナコ先生">›</button>
-                    </div>
-                  </div>
-                  <select id="snsHanakoTeacher" aria-label="SNS画像に表示するハナコ先生" tabindex="-1" hidden></select>
-                  <div class="sns-teacher-selected" id="snsHanakoTeacherPreview">
-                    <img id="snsHanakoTeacherAvatar" src="icons/hanako-avatar.jpg" alt="SNS画像のハナコ先生">
-                    <div><strong id="snsHanakoTeacherName">ハナコ先生</strong><small id="snsHanakoTeacherComment">商品に合うひとことを自動で作ります</small></div>
-                    <button id="downloadSnsHanakoTeacher" type="button">先生画像を保存</button>
-                  </div>
-                </div>
+                <p class="sns-gemini-guide">上で選んだハナコ先生の画像と商品画像をGeminiへ添付すると、吹き出し付きのSNS画像を作れます。</p>
                 <div class="sns-gemini-product-preview" id="snsGeminiProductPreview"></div>
                 <div class="sns-gemini-quick-actions">
                   <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>画像を作りに行く</button>
@@ -1195,6 +1202,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=104"></script>
+    <script src="app.js?v=105"></script>
   </body>
 </html>
