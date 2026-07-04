@@ -1987,15 +1987,26 @@ async function uploadCoordinatePhotos(event) {
   const files = [...(event.target.files || [])];
   event.target.value = "";
   if (!files.length) return;
-  if (!cloudSync.signedIn) return showToast("先に同期設定からログインしてください");
+  const status = document.querySelector("#coordPhotoStatus");
+  if (!cloudSync.signedIn) {
+    const message = "先に画面上の同期設定からログインしてください";
+    if (status) {
+      status.textContent = message;
+      status.classList.add("error");
+    }
+    return showToast(message);
+  }
   const available = Math.max(0, 5 - state.coordinatePhotos.length);
   if (!available) return showToast("写真は5枚までです。入れ替える写真を削除してください");
   const targets = files.slice(0, available);
-  const status = document.querySelector("#coordPhotoStatus");
   try {
+    status?.classList.remove("error");
     if (status) status.textContent = `${targets.length}枚を安全に保存しています…`;
+    let uploadedCount = 0;
     for (const file of targets) {
-      if (!file.type.startsWith("image/")) continue;
+      const extension = String(file.name || "").split(".").pop().toLowerCase();
+      const looksLikeImage = file.type.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "heic", "heif", "avif"].includes(extension);
+      if (!looksLikeImage) throw new Error("画像ファイルを選んでください");
       if (file.size > 10 * 1024 * 1024) throw new Error("写真は1枚10MB以下にしてください");
       const uploaded = await cloudSync.uploadPrivateImage(file);
       const photo = {
@@ -2008,13 +2019,19 @@ async function uploadCoordinatePhotos(event) {
       };
       state.coordinatePhotos.push(photo);
       state.selectedCoordinatePhotoId = photo.id;
+      uploadedCount += 1;
     }
+    if (!uploadedCount) throw new Error("写真を読み込めませんでした。写真アプリから画像を選び直してください");
     saveState();
     renderCoordinatePhotoLibrary();
-    showToast(`${targets.length}枚の写真を保存しました`);
+    showToast(`${uploadedCount}枚の写真を保存しました`);
   } catch (error) {
-    if (status) status.textContent = error.message || "写真を保存できませんでした";
-    showToast(error.message || "写真を保存できませんでした");
+    const message = error.message || "写真を保存できませんでした";
+    if (status) {
+      status.textContent = message;
+      status.classList.add("error");
+    }
+    showToast(message);
   }
 }
 
@@ -2072,6 +2089,9 @@ function renderCoordinatePhotoLibrary() {
   if (status) status.textContent = cloudSync.signedIn
     ? `${state.coordinatePhotos.length}/5枚保存中。選択写真は生成時に2時間限定URLへ更新します。`
     : "写真を追加・更新するには、クラウド同期へログインしてください。";
+  if (status && !status.textContent.includes("できません") && !status.textContent.includes("未完了") && !status.textContent.includes("権限")) {
+    status.classList.remove("error");
+  }
 }
 
 function getSelectedCoordinatePhoto() {

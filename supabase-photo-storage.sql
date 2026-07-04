@@ -7,7 +7,7 @@ values (
   'hanako-private-photos',
   false,
   10485760,
-  array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+  array['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/avif', 'application/octet-stream']
 )
 on conflict (id) do update set
   public = excluded.public,

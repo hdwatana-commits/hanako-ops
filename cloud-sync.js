@@ -67,11 +67,18 @@
     async uploadPrivateImage(file, bucket = "hanako-private-photos") {
       if (!this.signedIn) throw new Error("先にクラウド同期へログインしてください");
       const extension = String(file?.name || "photo.jpg").split(".").pop().replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
-      const path = `${this.user.id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const uniqueId = globalThis.crypto?.randomUUID?.()
+        || `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+      const contentTypes = {
+        jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+        heic: "image/heic", heif: "image/heif", avif: "image/avif",
+      };
+      const contentType = file.type || contentTypes[extension] || "application/octet-stream";
+      const path = `${this.user.id}/${Date.now()}-${uniqueId}.${extension}`;
       await this.authorizedFetch(`/storage/v1/object/${bucket}/${this.encodeStoragePath(path)}`, {
         method: "POST",
         headers: {
-          "Content-Type": file.type || "application/octet-stream",
+          "Content-Type": contentType,
           "x-upsert": "false",
           "cache-control": "3600",
         },
@@ -150,6 +157,13 @@
         message = body.msg || body.message || body.error_description || body.error || message;
       } catch {
         // JSON以外のエラーは共通メッセージを使う。
+      }
+      if (response.status === 404 && /bucket|not found/i.test(message)) {
+        message = "写真保存の初期設定が未完了です。Supabaseで写真保存用SQLを実行してください";
+      } else if (response.status === 400 && /mime|content.?type/i.test(message)) {
+        message = "この写真形式は保存できません。iPhoneでスクリーンショットにしてから追加してください";
+      } else if (response.status === 401 || response.status === 403) {
+        message = "写真を保存する権限がありません。同期へログインし直し、写真保存用SQLを確認してください";
       }
       return new Error(message);
     }
