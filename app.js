@@ -2467,14 +2467,38 @@ function isExplicitRakutenTravelUrl(value) {
 
 function detectFashionCategory(value) {
   const text = String(value || "");
-  if (/コート|ジャケット|ブルゾン|カーディガン|ボレロ|アウター|パーカー/.test(text)) return "アウター";
+  if (/マタニティ|授乳服/.test(text)) return "マタニティ";
+  if (/ブラジャー|ショーツ|ランジェリー|補正下着|ナイトブラ/.test(text)) return "ランジェリー";
+  if (/インナー|ペチコート|肌着/.test(text)) return "インナー";
+  if (/水着|ラッシュガード|ビキニ|スイムウェア/.test(text)) return "水着・水際";
+  if (/ルームウェア|パジャマ|部屋着/.test(text)) return "ルームウェア";
+  if (/浴衣|ゆかた|甚平/.test(text)) return "浴衣";
+  if (/レインコート|レインウェア|雨具/.test(text)) return "レインウェア";
+  if (/スポーツウェア|ヨガウェア|トレーニングウェア/.test(text)) return "スポーツウェア";
+  if (/ブライダル|ウェディング|花嫁/.test(text)) return "ブライダル";
+  if (/スーツ|フォーマル|礼服|喪服/.test(text)) return "スーツ・フォーマル";
+  if (/セットアップ/.test(text)) return "セットアップ";
+  if (/オールインワン|サロペット|ジャンプスーツ/.test(text)) return "オールインワン";
+  if (/カーディガン|ボレロ/.test(text)) return "カーディガン";
+  if (/コート|ジャケット|ブルゾン|アウター|パーカー/.test(text)) return "アウター";
   if (/ワンピ|ドレス|チュニック/.test(text)) return "ワンピース";
   if (/スカート/.test(text)) return "スカート";
-  if (/パンツ|ズボン|デニム|ジーンズ|スラックス|キュロット/.test(text)) return "パンツ";
+  if (/デニム|ジーンズ|ジーパン/.test(text)) return "デニム";
+  if (/パンツ|ズボン|スラックス|キュロット/.test(text)) return "パンツ";
   if (/バッグ|鞄|トート|ショルダー|リュック|ポーチ/.test(text)) return "バッグ";
   if (/パンプス|サンダル|スニーカー|ブーツ|シューズ|ローファー|靴/.test(text)) return "シューズ";
-  if (/ピアス|イヤリング|ネックレス|リング|アクセサリ|ブレスレット|バングル|ヘアクリップ/.test(text)) return "アクセサリー";
-  if (/ブラウス|シャツ|ニット|セーター|カットソー|Tシャツ|トップス|ベスト|キャミソール/.test(text)) return "トップス";
+  if (/財布|ウォレット|カードケース/.test(text)) return "財布";
+  if (/帽子|キャップ|ハット|ベレー/.test(text)) return "帽子";
+  if (/ヘアクリップ|バレッタ|シュシュ|カチューシャ|ヘアアクセ/.test(text)) return "ヘアアクセサリー";
+  if (/腕時計|ウォッチ/.test(text)) return "腕時計";
+  if (/ストール|マフラー|スカーフ/.test(text)) return "ストール・マフラー";
+  if (/ベルト/.test(text)) return "ベルト";
+  if (/サングラス|眼鏡|メガネ/.test(text)) return "サングラス";
+  if (/タイツ|靴下|ソックス|レギンス/.test(text)) return "レッグウェア";
+  if (/傘|日傘/.test(text)) return "傘";
+  if (/ピアス|イヤリング|ネックレス|リング|アクセサリ|ブレスレット|バングル/.test(text)) return "アクセサリー";
+  if (/ニット|セーター/.test(text)) return "ニット";
+  if (/ブラウス|シャツ|カットソー|Tシャツ|トップス|ベスト|キャミソール/.test(text)) return "トップス";
   return "";
 }
 
@@ -2488,6 +2512,20 @@ function selectCoordinateProduct(product) {
     バッグ: "#coordBag",
     シューズ: "#coordShoes",
     アクセサリー: "#coordAccessory",
+    ニット: "#coordTop",
+    カーディガン: "#coordTop",
+    デニム: "#coordBottom",
+    オールインワン: "#coordOnepiece",
+    ヘアアクセサリー: "#coordAccessory",
+    帽子: "#coordAccessory",
+    腕時計: "#coordAccessory",
+    "ストール・マフラー": "#coordAccessory",
+    ベルト: "#coordAccessory",
+    サングラス: "#coordAccessory",
+    レッグウェア: "#coordAccessory",
+    傘: "#coordAccessory",
+    財布: "#coordAccessory",
+    ファッション小物: "#coordAccessory",
   };
   const selector = selectors[product.category];
   const select = selector ? document.querySelector(selector) : null;
@@ -2497,10 +2535,10 @@ function selectCoordinateProduct(product) {
     showCoordinateImportStatus("商品を登録しました。下の商品欄から選んでください");
     return;
   }
-  if (product.category === "ワンピース") {
+  if (["ワンピース", "オールインワン"].includes(product.category)) {
     document.querySelector("#coordTop").value = "";
     document.querySelector("#coordBottom").value = "";
-  } else if (["トップス", "アウター", "スカート", "パンツ"].includes(product.category)) {
+  } else if (["トップス", "ニット", "カーディガン", "アウター", "スカート", "パンツ", "デニム"].includes(product.category)) {
     document.querySelector("#coordOnepiece").value = "";
   }
   select.value = product.id;
@@ -2530,12 +2568,12 @@ function renderCoordinateOptions() {
     if ([...mainSelect.options].some((option) => option.value === previousMain)) mainSelect.value = previousMain;
   }
   const configs = [
-    ["#coordOnepiece", ["ワンピース"]],
-    ["#coordTop", ["トップス", "アウター"]],
-    ["#coordBottom", ["スカート", "パンツ"]],
+    ["#coordOnepiece", ["ワンピース", "オールインワン"]],
+    ["#coordTop", ["トップス", "ニット", "カーディガン", "アウター"]],
+    ["#coordBottom", ["スカート", "パンツ", "デニム"]],
     ["#coordBag", ["バッグ"]],
     ["#coordShoes", ["シューズ"]],
-    ["#coordAccessory", ["アクセサリー"]],
+    ["#coordAccessory", ["アクセサリー", "ヘアアクセサリー", "帽子", "腕時計", "ストール・マフラー", "ベルト", "サングラス", "レッグウェア", "傘", "財布", "ファッション小物"]],
   ];
   configs.forEach(([selector, categories]) => {
     const select = document.querySelector(selector);
@@ -2627,25 +2665,25 @@ function coordinateCompanionSlots(mainCategory) {
   const common = [
     { selector: "#coordBag", categories: ["バッグ"], keyword: "レディース バッグ" },
     { selector: "#coordShoes", categories: ["シューズ"], keyword: "レディース シューズ パンプス" },
-    { selector: "#coordAccessory", categories: ["アクセサリー"], keyword: "レディース アクセサリー" },
+    { selector: "#coordAccessory", categories: ["アクセサリー", "ヘアアクセサリー", "帽子", "腕時計", "ストール・マフラー", "ベルト", "サングラス", "レッグウェア", "傘", "財布", "ファッション小物"], keyword: "レディース ファッション小物 アクセサリー" },
   ];
-  if (mainCategory === "ワンピース") return common;
-  if (mainCategory === "トップス") return [
-    { selector: "#coordBottom", categories: ["スカート", "パンツ"], keyword: "レディース スカート" },
+  if (["ワンピース", "オールインワン", "セットアップ", "スーツ・フォーマル", "ブライダル", "ルームウェア", "水着・水際", "浴衣", "スポーツウェア", "レインウェア"].includes(mainCategory)) return common;
+  if (["トップス", "ニット"].includes(mainCategory)) return [
+    { selector: "#coordBottom", categories: ["スカート", "パンツ", "デニム"], keyword: "レディース スカート パンツ" },
     ...common,
   ];
-  if (["スカート", "パンツ"].includes(mainCategory)) return [
-    { selector: "#coordTop", categories: ["トップス"], keyword: "レディース ブラウス トップス" },
+  if (["スカート", "パンツ", "デニム"].includes(mainCategory)) return [
+    { selector: "#coordTop", categories: ["トップス", "ニット"], keyword: "レディース ブラウス ニット トップス" },
     ...common,
   ];
-  if (mainCategory === "アウター") return [
-    { selector: "#coordTop", categories: ["トップス"], keyword: "レディース ブラウス トップス" },
-    { selector: "#coordBottom", categories: ["スカート", "パンツ"], keyword: "レディース スカート" },
+  if (["アウター", "カーディガン"].includes(mainCategory)) return [
+    { selector: "#coordTop", categories: ["トップス", "ニット"], keyword: "レディース ブラウス トップス" },
+    { selector: "#coordBottom", categories: ["スカート", "パンツ", "デニム"], keyword: "レディース スカート パンツ" },
     ...common,
   ];
   return [
-    { selector: "#coordTop", categories: ["トップス"], keyword: "レディース ブラウス トップス" },
-    { selector: "#coordBottom", categories: ["スカート", "パンツ"], keyword: "レディース スカート" },
+    { selector: "#coordTop", categories: ["トップス", "ニット"], keyword: "レディース ブラウス トップス" },
+    { selector: "#coordBottom", categories: ["スカート", "パンツ", "デニム"], keyword: "レディース スカート パンツ" },
     ...common.filter((slot) => !slot.categories.includes(mainCategory)),
   ];
 }
@@ -2987,7 +3025,7 @@ function buildCoordinateAnalysis(coordinate) {
   if (!categories.has("シューズ")) missing.push("主役と明るさをそろえた靴");
   if (!categories.has("アクセサリー")) missing.push("華奢なアクセサリー");
   const total = coordinate.products.reduce((sum, product) => sum + (productPriceNumber(product.price) || 0), 0);
-  const apparelCategories = new Set(["ワンピース", "トップス", "アウター", "スカート", "パンツ"]);
+  const apparelCategories = new Set(["ワンピース", "トップス", "ニット", "カーディガン", "アウター", "スカート", "パンツ", "デニム", "セットアップ", "オールインワン", "スーツ・フォーマル", "ブライダル", "ルームウェア", "水着・水際", "浴衣", "マタニティ", "スポーツウェア", "レインウェア"]);
   const roomReady = coordinate.products.length >= 2 && coordinate.products.some((product) => apparelCategories.has(product.category));
   return {
     headline: `${coordinate.style}｜${coordinate.occasion}の解決コーデ`,
@@ -4403,7 +4441,7 @@ async function drawRoomReferenceBoard(product, mode) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#2f2529";
   ctx.font = "700 34px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("GEMINI REFERENCE BOARD", 56, 62);
+  ctx.fillText("AI REFERENCE BOARD", 56, 62);
   ctx.fillStyle = "#9b4665";
   ctx.font = "700 22px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText(mode === "collection" ? "COLLECTION COVER" : "ROOM POST", 56, 98);
@@ -4814,7 +4852,7 @@ function buildEditorialContext(product) {
     season,
     seasonLabel: seasonLabels[season],
     seed,
-    style: categoryStyles[product.category] || categoryStyles.トップス,
+    style: categoryStyles[resolveCategoryStyleKey(product.category)] || categoryStyles.トップス,
     roomLine: product.url
       ? product.category === "ホテル・旅行"
         ? `楽天トラベルでプランを確認\n${product.url}`
@@ -5884,6 +5922,16 @@ const categoryStyles = {
     shots: ["客室全体と窓からの景色", "朝食・夕食と館内設備", "駅や観光地からの道順"],
   },
 };
+
+function resolveCategoryStyleKey(category) {
+  if (["ニット"].includes(category)) return "トップス";
+  if (["カーディガン", "レインウェア"].includes(category)) return "アウター";
+  if (["オールインワン", "セットアップ", "スーツ・フォーマル", "ブライダル", "ルームウェア", "水着・水際", "浴衣", "マタニティ", "スポーツウェア"].includes(category)) return "ワンピース";
+  if (["デニム"].includes(category)) return "パンツ";
+  if (["ヘアアクセサリー", "帽子", "腕時計", "ストール・マフラー", "ベルト", "サングラス", "レッグウェア", "傘", "財布", "ファッション小物"].includes(category)) return "アクセサリー";
+  if (["インナー", "ランジェリー"].includes(category)) return "トップス";
+  return category;
+}
 
 function generatePremiumCopy(context) {
   const candidates = buildEditorialCandidateContexts(context)
