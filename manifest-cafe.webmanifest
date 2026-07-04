@@ -1,6 +1,6 @@
 {
-  "name": "Hanako Room Ops",
-  "short_name": "Hanako Ops",
+  "name": "Hanako Style Studio",
+  "short_name": "Hanako Studio",
   "description": "楽天ROOMへ誘導するレディースファッションSNS運用ツール",
   "start_url": "./index.html",
   "scope": "./",

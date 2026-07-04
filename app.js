@@ -2097,6 +2097,7 @@ function renderCoordinatePhotoLibrary() {
   if (status && !status.textContent.includes("できません") && !status.textContent.includes("未完了") && !status.textContent.includes("権限")) {
     status.classList.remove("error");
   }
+  renderRoomImagePhotoPreview();
 }
 
 function getSelectedCoordinatePhoto() {
@@ -4111,6 +4112,9 @@ function bindRoomActions() {
     renderRoomProductPreview();
     roomPostOutput.value = "";
     updateRoomCharacterCount();
+    applyRoomImageRecommendations(getSelectedRoomProduct());
+    renderRoomImagePhotoPreview();
+    markRoomImagePromptStale();
   });
   roomPostOutput.addEventListener("input", updateRoomCharacterCount);
   document.querySelector("#generateRoomPost").addEventListener("click", generateRoomPost);
@@ -4118,6 +4122,19 @@ function bindRoomActions() {
   document.querySelector("#copyOpenRoomProduct").addEventListener("click", copyAndOpenRoomProduct);
   document.querySelector("#addRoomQueue").addEventListener("click", addCurrentRoomPostToQueue);
   document.querySelector("#downloadRoomExtension").addEventListener("click", downloadRoomExtension);
+  document.querySelectorAll("[data-room-image-mode]").forEach((button) => {
+    button.addEventListener("click", () => setRoomImageMode(button.dataset.roomImageMode));
+  });
+  document.querySelector("#roomImagePose")?.addEventListener("change", markRoomImagePromptStale);
+  document.querySelector("#roomImageMood")?.addEventListener("change", markRoomImagePromptStale);
+  document.querySelector("#generateRoomImagePrompt")?.addEventListener("click", generateRoomImagePrompt);
+  document.querySelector("#copyRoomImagePrompt")?.addEventListener("click", copyRoomImagePrompt);
+  document.querySelector("#openRoomImageGemini")?.addEventListener("click", openRoomImageGemini);
+  document.querySelector("#roomImagePhotoPreview")?.addEventListener("click", (event) => {
+    if (event.target.closest("#roomChoosePhoto")) activateView("coordinate");
+  });
+  applyRoomImageRecommendations(getSelectedRoomProduct());
+  renderRoomImagePhotoPreview();
 }
 
 function renderRoomProductOptions() {
@@ -4155,6 +4172,185 @@ function renderRoomProductPreview() {
 
 function getSelectedRoomProduct() {
   return state.products.find((product) => product.id === roomProductSelect?.value) || state.products.find((product) => product.category !== "ホテル・旅行") || null;
+}
+
+function setRoomImageMode(mode) {
+  const value = mode === "collection" ? "collection" : "normal";
+  const input = document.querySelector("#roomImageType");
+  if (input) input.value = value;
+  document.querySelectorAll("[data-room-image-mode]").forEach((button) => {
+    const selected = button.dataset.roomImageMode === value;
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  applyRoomImageRecommendations(getSelectedRoomProduct());
+  markRoomImagePromptStale();
+}
+
+function applyRoomImageRecommendations(product) {
+  if (!product) return;
+  const mode = document.querySelector("#roomImageType")?.value || "normal";
+  const poseByCategory = {
+    バッグ: "バッグを自然に持って振り向く",
+    シューズ: "椅子に浅く座って足元を見せる",
+    アクセサリー: "商品へ目線を向けた斜め立ち",
+    ワンピース: "歩き出す瞬間の自然なスナップ",
+    スカート: "歩き出す瞬間の自然なスナップ",
+    パンツ: "全身が見える自然な立ち姿",
+    アウター: "商品へ目線を向けた斜め立ち",
+    トップス: "商品へ目線を向けた斜め立ち",
+  };
+  const pose = mode === "collection"
+    ? "片手を軽く上げた雑誌風ポーズ"
+    : poseByCategory[product.category] || "全身が見える自然な立ち姿";
+  const productText = `${product.name || ""} ${product.details?.color || ""} ${product.hook || ""}`;
+  const mood = mode === "collection"
+    ? "ブランド広告のような洗練"
+    : /ピンク|リボン|フリル|レース|ガーリー/.test(productText)
+      ? "淡いピンクの大人ガーリー"
+      : /黒|ブラック|ネイビー|モノトーン/.test(productText)
+        ? "白背景の上品なファッション誌"
+        : "明るい自然光のきれいめ室内";
+  const poseSelect = document.querySelector("#roomImagePose");
+  const moodSelect = document.querySelector("#roomImageMood");
+  if (poseSelect) poseSelect.value = pose;
+  if (moodSelect) moodSelect.value = mood;
+  const label = document.querySelector("#roomImageRecommendation");
+  if (label) label.textContent = `${product.category}に合わせて「${pose}」×「${mood}」をおすすめ設定しました。`;
+}
+
+function renderRoomImagePhotoPreview() {
+  const target = document.querySelector("#roomImagePhotoPreview");
+  if (!target) return;
+  const photo = getSelectedCoordinatePhoto();
+  if (!photo) {
+    target.innerHTML = `<div><strong>本人写真が未選択です</strong><small>コーデ画面で写真を保存して選んでください。</small></div><button id="roomChoosePhoto" type="button">写真を選ぶ</button>`;
+    return;
+  }
+  target.innerHTML = `<img src="${escapeHtml(photo.signedUrl || "")}" alt="今回使う本人写真"><div><strong>コーデと共通の本人写真</strong><small>${escapeHtml(photo.name || "選択中の写真")}を使います</small></div><button id="roomChoosePhoto" type="button">変更</button>`;
+}
+
+function markRoomImagePromptStale() {
+  const status = document.querySelector("#roomImagePromptStatus");
+  if (status) status.textContent = "設定を変更しました";
+}
+
+async function generateRoomImagePrompt(quiet = false) {
+  const product = getSelectedRoomProduct();
+  if (!product) return showToast("先に商品を選んでください");
+  if (!product.image) return showToast("この商品には商品画像URLがありません");
+  try {
+    const personPhotoUrl = await ensureSelectedCoordinatePhotoUrl();
+    if (!personPhotoUrl) return showToast("コーデ画面で本人写真を保存して選んでください");
+    const mode = document.querySelector("#roomImageType")?.value || "normal";
+    const prompt = buildRoomImagePrompt({
+      product,
+      personPhotoUrl,
+      mode,
+      pose: document.querySelector("#roomImagePose")?.value || "全身が見える自然な立ち姿",
+      mood: document.querySelector("#roomImageMood")?.value || "明るい自然光のきれいめ室内",
+    });
+    const output = document.querySelector("#roomImagePrompt");
+    if (output) output.value = prompt;
+    const status = document.querySelector("#roomImagePromptStatus");
+    if (status) status.textContent = mode === "collection" ? "コレクション表紙用" : "通常投稿用";
+    renderRoomImagePhotoPreview();
+    if (!quiet) showToast("ROOM画像プロンプトを作りました");
+    return prompt;
+  } catch (error) {
+    showToast(error.message || "画像プロンプトを作れませんでした");
+    return "";
+  }
+}
+
+function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood }) {
+  const details = product.details || {};
+  const brand = details.brand || "ブランド名は商品ページで確認";
+  const oneLiner = buildRoomImageOneLiner(product);
+  const sameBrandProducts = state.products
+    .filter((item) => item.id !== product.id && item.image && details.brand && item.details?.brand === details.brand)
+    .slice(0, 4);
+  const collectionItems = [product, ...sameBrandProducts]
+    .map((item, index) => `${index + 1}. ${item.name} / ${item.category}\n   商品画像URL: ${item.image}\n   商品ページURL: ${item.url || "なし"}`)
+    .join("\n");
+  const formatInstruction = mode === "collection"
+    ? `【コレクション表紙】
+・正方形1:1、1536×1536px以上。ブランドの空気感を生かした上質なファッション雑誌の表紙にする
+・本人を大胆で自然な雑誌ポーズで見せ、商品はURLで確認できた同一商品だけを使う
+・表紙の固定文字は上から「ファッションハナコ」「${brand} Collection」「大人かわいい、今の気分。」の3つだけ
+・文字は商品や顔へ重ねず、雑誌らしい文字組みと十分な余白で配置する
+・売上数、レビュー数、価格、割引、効能などの数字は入れない
+・同ブランド候補が1点だけなら商品を水増しせず、その1点を主役にした表紙へ仕上げる`
+    : `【通常投稿画像】
+・正方形1:1、1536×1536px以上。明るく自然で、商品と着用イメージが一目で分かる1枚にする
+・本人が商品を自然に身につけ、商品の色、形、丈、柄、素材感をURL画像と一致させる
+・画像内の文字は、読みやすい場所へ「${oneLiner}」を1回だけ入れる
+・一言以外の見出し、価格、説明、吹き出し、ランキング、数字、ロゴを追加しない
+・一言は黒または濃いブラウンの自然な日本語で、商品や顔に重ねない`;
+  return `画像を生成してください。楽天ROOM投稿用ですが、画像内に「楽天ROOM」「ROOM」の文字は入れません。画像は何も添付しません。下記URLを直接読み込み、完成画像を1枚だけ作ってください。
+
+【URL参照・最優先】
+本人写真URL: ${personPhotoUrl}
+主役商品画像URL: ${product.image}
+主役商品ページURL: ${product.url || "なし"}
+・最初に本人写真URLと商品画像URLを読み込めたことを内部で確認する
+・読めないURLがある場合は、似た人物や似た商品を想像で作らず「読み込めない画像URL: 対象名」とだけ返す
+・本人写真と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
+・本人写真でマスクを着けている場合は、色、形、柄、ひもを変えず必ず同じマスクを残す
+・商品画像の色、輪郭、丈、袖、襟、柄、装飾、バッグの持ち手、靴の形を変えない
+
+【今回の設定】
+商品名: ${product.name}
+カテゴリ: ${product.category}
+ブランド: ${brand}
+色: ${details.color || "商品画像から確認"}
+素材: ${details.material || "商品画像から確認"}
+ポーズ: ${pose}
+雰囲気: ${mood}
+
+${formatInstruction}
+
+【コレクションで使用できる商品・一覧外は禁止】
+${collectionItems}
+
+【品質確認】
+・本人、商品、マスクが各URLと一致している
+・手、指、足、服の重なりが自然
+・日本語に誤字、造語、文字切れがない
+・未確認の人気、効果、使用体験、価格、数字を作っていない
+・外周から6%以上の安全余白を取り、顔、商品、文字を切らない
+
+条件を満たす完成画像だけを返し、説明文や別案は出さないでください。`;
+}
+
+function buildRoomImageOneLiner(product) {
+  const text = `${product.name || ""} ${product.hook || ""} ${product.details?.material || ""}`;
+  const byCategory = {
+    トップス: ["顔まわりが、ふわっと華やぐ。", "この一枚で、甘さが整う。", "袖の表情まで、ちゃんとかわいい。"],
+    ワンピース: ["一枚で、今日のかわいいが決まる。", "揺れるたび、気分まで軽やか。", "迷う朝こそ、頼れる一枚。"],
+    スカート: ["揺れ感ひとつで、いつもの服が新鮮。", "甘さは、きれいな丈感で楽しむ。", "歩くたび、かわいさが動き出す。"],
+    パンツ: ["きれいめも、動きやすさも。", "甘いトップスを、大人っぽく。", "すっきり見えて、気負わない。"],
+    バッグ: ["持つだけで、コーデがきゅっと整う。", "小さなバッグが、今日の主役。", "甘めコーデの、きれいな締め役。"],
+    シューズ: ["足もとから、かわいさを更新。", "歩けるかわいいが、いちばん頼れる。", "最後に選ぶ靴で、全部が整う。"],
+    アクセサリー: ["小さなきらめきが、顔まわりの味方。", "ひとつ足すだけで、ちゃんと華やぐ。", "主役服を邪魔しない、上品な光。"],
+    アウター: ["羽織るだけで、全身がすっと整う。", "かわいさを残して、きちんと見せる。", "脱いだあとまで、ちゃんとかわいい。"],
+  };
+  const options = [...(byCategory[product.category] || ["今日のかわいいに、ちょうどいい。"] )];
+  if (/サテン|光沢/.test(text)) options.unshift("この光沢感が、ちょうど上品。 ");
+  if (/シアー|透け/.test(text)) options.unshift("透け感ひとつで、ぐっと軽やか。 ");
+  return options[hashText(product.id || product.name) % options.length].trim();
+}
+
+async function copyRoomImagePrompt() {
+  const prompt = await generateRoomImagePrompt(true);
+  if (prompt) await copyText(prompt);
+}
+
+async function openRoomImageGemini() {
+  const prompt = await generateRoomImagePrompt(true);
+  if (!prompt) return;
+  await copyText(prompt);
+  openGeminiDestination();
 }
 
 function generateRoomPost() {

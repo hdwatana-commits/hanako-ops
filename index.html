@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Hanako Room Ops</title>
+    <title>Hanako Style Studio</title>
     <meta name="theme-color" content="#fff8f8">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Hanako Ops">
+    <meta name="apple-mobile-web-app-title" content="Hanako Studio">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=113">
+    <link rel="stylesheet" href="styles.css?v=114">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -22,7 +22,7 @@
           <img class="brand-avatar" src="icons/hanako-avatar.jpg" alt="ハナコ" data-app-avatar>
           <div>
             <p class="eyebrow">おしゃれ研究家</p>
-            <h1>Hanako Ops</h1>
+            <h1>Hanako Style Studio</h1>
           </div>
         </div>
 
@@ -1033,6 +1033,50 @@
                 <button id="copyOpenRoomProduct">コピーして商品を開く</button>
                 <button id="addRoomQueue">投稿待ちに追加</button>
               </div>
+
+              <div class="room-image-maker">
+                <div class="room-image-maker-head">
+                  <div><p class="eyebrow">Gemini画像</p><h4>ROOM画像プロンプト</h4></div>
+                  <span id="roomImagePromptStatus">未作成</span>
+                </div>
+                <div class="room-image-mode-switch" role="group" aria-label="作る画像の種類">
+                  <button class="selected" type="button" data-room-image-mode="normal" aria-pressed="true">通常投稿</button>
+                  <button type="button" data-room-image-mode="collection" aria-pressed="false">コレクション表紙</button>
+                  <input id="roomImageType" type="hidden" value="normal">
+                </div>
+                <div class="room-image-photo" id="roomImagePhotoPreview"></div>
+                <div class="coord-style-row room-image-settings">
+                  <div>
+                    <label class="field-label" for="roomImagePose">ポーズ</label>
+                    <select id="roomImagePose">
+                      <option>全身が見える自然な立ち姿</option>
+                      <option>商品へ目線を向けた斜め立ち</option>
+                      <option>バッグを自然に持って振り向く</option>
+                      <option>椅子に浅く座って足元を見せる</option>
+                      <option>片手を軽く上げた雑誌風ポーズ</option>
+                      <option>歩き出す瞬間の自然なスナップ</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label" for="roomImageMood">雰囲気</label>
+                    <select id="roomImageMood">
+                      <option>明るい自然光のきれいめ室内</option>
+                      <option>白背景の上品なファッション誌</option>
+                      <option>淡いピンクの大人ガーリー</option>
+                      <option>カフェで撮った自然なスナップ</option>
+                      <option>ブランド広告のような洗練</option>
+                      <option>余白を生かした静かなモード</option>
+                    </select>
+                  </div>
+                </div>
+                <p class="room-image-recommendation" id="roomImageRecommendation">商品を選ぶと、おすすめを自動設定します。</p>
+                <div class="button-row">
+                  <button class="primary" id="generateRoomImagePrompt" type="button">画像プロンプトを作る</button>
+                  <button id="copyRoomImagePrompt" type="button">コピー</button>
+                  <button id="openRoomImageGemini" type="button">コピーしてGeminiへ</button>
+                </div>
+                <textarea id="roomImagePrompt" class="coord-prompt-output room-image-prompt" spellcheck="false" placeholder="通常投稿またはコレクション表紙を選び、画像プロンプトを作ってください"></textarea>
+              </div>
             </article>
 
             <article class="panel room-guide">
@@ -1167,7 +1211,7 @@
         <ol class="install-steps">
           <li><span>1</span><div><strong>Safariの共有ボタンをタップ</strong><p>画面下部の「四角から上向き矢印」のボタンです。</p></div></li>
           <li><span>2</span><div><strong>「ホーム画面に追加」を選ぶ</strong><p>見つからない場合はメニューを下へスクロールします。</p></div></li>
-          <li><span>3</span><div><strong>右上の「追加」をタップ</strong><p>ホーム画面にHanako Opsのアイコンが表示されます。</p></div></li>
+          <li><span>3</span><div><strong>右上の「追加」をタップ</strong><p>ホーム画面にHanako Studioのアイコンが表示されます。</p></div></li>
         </ol>
         <button class="primary wide" id="shareInstallLink">このページをSafariで開く・共有</button>
       </section>
@@ -1213,6 +1257,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=113"></script>
+    <script src="app.js?v=114"></script>
   </body>
 </html>
