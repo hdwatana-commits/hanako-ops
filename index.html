@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=120">
+    <link rel="stylesheet" href="styles.css?v=121">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -96,6 +96,20 @@
             </div>
             <img src="icons/hanako-avatar.jpg" alt="おしゃれ研究家ハナコ" class="home-avatar" data-app-avatar>
           </div>
+
+          <section class="coord-photo-library home-photo-library" aria-labelledby="homePhotoLibraryTitle">
+            <div class="coord-photo-library-head">
+              <div>
+                <span class="home-kicker">MY MODEL PHOTO</span>
+                <h3 id="homePhotoLibraryTitle">自分の全身写真</h3>
+                <p>AI画像に使う写真を最大5枚保存し、今回使う1枚を選べます。</p>
+              </div>
+              <label class="coord-photo-add" for="homeCoordPhoto">＋ 写真を追加</label>
+              <input id="homeCoordPhoto" type="file" accept="image/*" multiple hidden>
+            </div>
+            <div class="coord-photo-grid" id="homeCoordPhotoLibrary" aria-live="polite"></div>
+            <p class="coord-photo-status" id="homeCoordPhotoStatus">写真の追加にはクラウド同期へのログインが必要です。</p>
+          </section>
 
           <section class="home-avatar-coverflow-picker" aria-labelledby="homeAvatarCoverflowTitle">
             <div class="home-avatar-coverflow-heading">
@@ -1285,6 +1299,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=120"></script>
+    <script src="app.js?v=121"></script>
   </body>
 </html>

@@ -1997,6 +1997,8 @@ function bindCoordinateActions() {
   });
   document.querySelector("#coordPhoto")?.addEventListener("change", uploadCoordinatePhotos);
   document.querySelector("#coordPhotoLibrary")?.addEventListener("click", handleCoordinatePhotoLibraryClick);
+  document.querySelector("#homeCoordPhoto")?.addEventListener("change", uploadCoordinatePhotos);
+  document.querySelector("#homeCoordPhotoLibrary")?.addEventListener("click", handleCoordinatePhotoLibraryClick);
   document.querySelector("#coordMainProduct")?.addEventListener("change", (event) => {
     const product = state.products.find((item) => item.id === event.currentTarget.value);
     if (product) applyRecommendedCoordinateDefaults(product);
@@ -2034,7 +2036,7 @@ async function uploadCoordinatePhotos(event) {
   const files = [...(event.target.files || [])];
   event.target.value = "";
   if (!files.length) return;
-  const status = document.querySelector("#coordPhotoStatus");
+  const status = document.querySelector(event.target.id === "homeCoordPhoto" ? "#homeCoordPhotoStatus" : "#coordPhotoStatus");
   if (!cloudSync.signedIn) {
     const message = "先に画面上の同期設定からログインしてください";
     if (status) {
@@ -2118,30 +2120,27 @@ async function handleCoordinatePhotoLibraryClick(event) {
 }
 
 function renderCoordinatePhotoLibrary() {
-  const target = document.querySelector("#coordPhotoLibrary");
-  const status = document.querySelector("#coordPhotoStatus");
-  if (!target) return;
   state.coordinatePhotos ||= [];
   const selected = getSelectedCoordinatePhoto();
   coordinatePhotoDataUrl = selected ? (coordinatePhotoPreviewCache.get(selected.id) || selected.signedUrl || "") : "";
-  if (!state.coordinatePhotos.length) {
-    target.innerHTML = `<p class="muted">まだ写真がありません</p>`;
-  } else {
-    target.innerHTML = state.coordinatePhotos.map((photo, index) => `
+  const libraryHtml = state.coordinatePhotos.length ? state.coordinatePhotos.map((photo, index) => `
       <div class="coord-photo-card${photo.id === state.selectedCoordinatePhotoId ? " selected" : ""}">
         <button type="button" data-select-coordinate-photo="${escapeHtml(photo.id)}" aria-label="${index + 1}枚目の写真を選ぶ">
           <img src="${escapeHtml(photo.signedUrl || "")}" alt="保存した全身写真${index + 1}">
           <strong>${escapeHtml(photo.name || `写真${index + 1}`)}</strong>
         </button>
         <button class="coord-photo-delete" type="button" data-delete-coordinate-photo="${escapeHtml(photo.id)}" aria-label="この写真を削除">×</button>
-      </div>`).join("");
-  }
-  if (status) status.textContent = cloudSync.signedIn
+      </div>`).join("") : `<p class="muted">まだ写真がありません。「写真を追加」から登録してください。</p>`;
+  document.querySelectorAll("#coordPhotoLibrary, #homeCoordPhotoLibrary").forEach((target) => {
+    target.innerHTML = libraryHtml;
+  });
+  const statusText = cloudSync.signedIn
     ? `${state.coordinatePhotos.length}/5枚保存中。選択写真は生成時に2時間限定URLへ更新します。`
     : "写真を追加・更新するには、クラウド同期へログインしてください。";
-  if (status && !status.textContent.includes("できません") && !status.textContent.includes("未完了") && !status.textContent.includes("権限")) {
+  document.querySelectorAll("#coordPhotoStatus, #homeCoordPhotoStatus").forEach((status) => {
+    status.textContent = statusText;
     status.classList.remove("error");
-  }
+  });
   renderRoomImagePhotoPreview();
 }
 

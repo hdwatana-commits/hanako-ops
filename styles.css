@@ -3291,6 +3291,22 @@ body {
   background: #fffafb;
 }
 
+.home-photo-library {
+  margin: 16px 0;
+  padding: 16px;
+  background: linear-gradient(135deg, #fffafb 0%, #f7fcfb 100%);
+}
+
+.home-photo-library h3 {
+  margin: 2px 0 0;
+  font-size: 19px;
+}
+
+.home-photo-library .coord-photo-grid > .muted {
+  grid-column: 1 / -1;
+  margin: 4px 0;
+}
+
 .coord-photo-library-head {
   display: flex;
   align-items: center;
