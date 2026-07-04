@@ -2995,14 +2995,15 @@ async function drawCoordinateBoard(coordinate, text) {
   }
 
   const products = coordinate.products.slice(0, 6);
+  const compactProductLayout = isHanakoTeacherPattern(coordinate.imagePattern) && products.length > 4;
   for (let index = 0; index < products.length; index += 1) {
     const product = products[index];
     const col = index % 2;
     const row = Math.floor(index / 2);
     const x = 70 + col * 485;
-    const y = 330 + row * 285;
-    await drawProductCard(ctx, product, x, y);
-    if (isHanakoTeacherPattern(coordinate.imagePattern)) drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate);
+    const y = compactProductLayout ? 300 + row * 195 : 330 + row * 285;
+    await drawProductCard(ctx, product, x, y, compactProductLayout);
+    if (isHanakoTeacherPattern(coordinate.imagePattern)) drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate, compactProductLayout);
   }
 
   if (isHanakoTeacherPattern(coordinate.imagePattern)) {
@@ -3244,10 +3245,10 @@ function chooseHanakoTeacherComment(coordinate, force = false) {
   return currentHanakoComment;
 }
 
-function drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate) {
+function drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate, compact = false) {
   const label = teacherPointLabel(product, coordinate);
-  const textX = x + 188;
-  const textY = y + 164;
+  const textX = x + (compact ? 150 : 188);
+  const textY = y + (compact ? 142 : 164);
   ctx.save();
   ctx.strokeStyle = index === 0 ? "#b83f6b" : "#d786a3";
   ctx.fillStyle = index === 0 ? "#a43d64" : "#b65d7d";
@@ -3260,12 +3261,12 @@ function drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate) {
   ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(textX - 8, textY - 4);
-  ctx.quadraticCurveTo(textX - 28, textY - 16, x + 154, y + 145);
+  ctx.quadraticCurveTo(textX - 28, textY - 16, x + (compact ? 122 : 154), y + (compact ? 118 : 145));
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(x + 154, y + 145);
-  ctx.lineTo(x + 163, y + 141);
-  ctx.lineTo(x + 160, y + 151);
+  ctx.moveTo(x + (compact ? 122 : 154), y + (compact ? 118 : 145));
+  ctx.lineTo(x + (compact ? 131 : 163), y + (compact ? 114 : 141));
+  ctx.lineTo(x + (compact ? 128 : 160), y + (compact ? 124 : 151));
   ctx.fill();
   ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText(`${index === 0 ? "主役♡" : "POINT"} ${label}`, textX, textY);
@@ -3276,29 +3277,35 @@ function teacherPointLabel(product, coordinate) {
   return getCoordinateHandwrittenPoint(product, coordinate).copy;
 }
 
-async function drawProductCard(ctx, product, x, y) {
+async function drawProductCard(ctx, product, x, y, compact = false) {
+  const cardHeight = compact ? 170 : 240;
+  const imageSize = compact ? 120 : 150;
+  const imageOffset = compact ? 14 : 18;
+  const textX = x + (compact ? 150 : 188);
   ctx.fillStyle = "#ffffff";
-  roundRect(ctx, x, y, 440, 240, 18);
+  roundRect(ctx, x, y, 440, cardHeight, 18);
   ctx.fill();
   ctx.strokeStyle = "#eadde1";
   ctx.stroke();
   await hydrateCoordinateProductImage(product);
   if (product.image) {
     const image = await loadCoordinateProductImage(product.image);
-    if (image) drawCoverImage(ctx, image, x + 18, y + 18, 150, 150, 12);
-    else drawProductImagePlaceholder(ctx, product.category, x + 18, y + 18, 150, 150);
+    if (image) drawCoverImage(ctx, image, x + imageOffset, y + imageOffset, imageSize, imageSize, 12);
+    else drawProductImagePlaceholder(ctx, product.category, x + imageOffset, y + imageOffset, imageSize, imageSize);
   } else {
-    drawProductImagePlaceholder(ctx, product.category, x + 18, y + 18, 150, 150);
+    drawProductImagePlaceholder(ctx, product.category, x + imageOffset, y + imageOffset, imageSize, imageSize);
   }
   ctx.fillStyle = "#2f292c";
-  ctx.font = "700 25px Yu Gothic UI, Meiryo, sans-serif";
-  wrapCanvasText(ctx, product.name, x + 188, y + 45, 220, 32, 2);
+  ctx.font = `${compact ? "700 22px" : "700 25px"} Yu Gothic UI, Meiryo, sans-serif`;
+  wrapCanvasText(ctx, product.name, textX, y + (compact ? 36 : 45), compact ? 260 : 220, compact ? 27 : 32, 2);
   ctx.fillStyle = "#a43d64";
-  ctx.font = "700 21px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText(product.price || product.category, x + 188, y + 130);
-  ctx.fillStyle = "#796e73";
-  ctx.font = "20px Yu Gothic UI, Meiryo, sans-serif";
-  wrapCanvasText(ctx, product.hook || createCoordinateHook(product), x + 18, y + 196, 390, 28, 1);
+  ctx.font = `${compact ? "700 18px" : "700 21px"} Yu Gothic UI, Meiryo, sans-serif`;
+  ctx.fillText(product.price || product.category, textX, y + (compact ? 105 : 130));
+  if (!compact) {
+    ctx.fillStyle = "#796e73";
+    ctx.font = "20px Yu Gothic UI, Meiryo, sans-serif";
+    wrapCanvasText(ctx, product.hook || createCoordinateHook(product), x + 18, y + 196, 390, 28, 1);
+  }
 }
 
 async function hydrateCoordinateProductImage(product) {
