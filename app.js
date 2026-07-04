@@ -296,6 +296,7 @@ let socialGeminiGeneratedImageDataUrl = "";
 let socialGeminiGeneratedImageExtension = "png";
 let socialGeminiAwaitingReturn = false;
 let socialGeminiPromptNeedsRefresh = false;
+let selectedAiProvider = localStorage.getItem("hanako-ai-provider") === "chatgpt" ? "chatgpt" : "gemini";
 let socialHanakoCoverflowScrollTimer = null;
 let socialHanakoCoverflowIgnoreUntil = 0;
 let hanakoTeacherMode = "random";
@@ -391,6 +392,7 @@ function initialize() {
   hydrateCustomBrandAssets();
   applyAppearance();
   bindAppearancePicker();
+  bindAiProviderSelectors();
   bindHomeAvatarCoverflow();
   registerPwa();
   bindNavigation();
@@ -410,6 +412,30 @@ function initialize() {
   renderLearningHint();
   renderChecks("");
   renderHome();
+}
+
+function getSelectedAiName() {
+  return selectedAiProvider === "chatgpt" ? "ChatGPT" : "Gemini";
+}
+
+function adaptPromptToSelectedAi(value) {
+  return String(value || "").replace(/Gemini|ChatGPT/g, getSelectedAiName());
+}
+
+function bindAiProviderSelectors() {
+  const selectors = document.querySelectorAll(".ai-provider-select");
+  selectors.forEach((select) => {
+    select.value = selectedAiProvider;
+    select.addEventListener("change", () => {
+      selectedAiProvider = select.value === "chatgpt" ? "chatgpt" : "gemini";
+      localStorage.setItem("hanako-ai-provider", selectedAiProvider);
+      selectors.forEach((item) => { item.value = selectedAiProvider; });
+      [coordGeminiPrompt, coordGeminiCaptionPrompt, snsGeminiPrompt, snsGeminiCopyPrompt, document.querySelector("#roomImagePrompt")]
+        .filter(Boolean)
+        .forEach((output) => { output.value = adaptPromptToSelectedAi(output.value); });
+      showToast(`${getSelectedAiName()}を使う設定にしました`);
+    });
+  });
 }
 
 function bindAppearancePicker() {
@@ -1925,7 +1951,7 @@ function renderSocialGeminiProductPreview() {
   if (!target) return;
   const product = state.products.find((item) => item.id === selectedProduct.value) || state.products[0];
   if (!product) {
-    target.innerHTML = `<p class="muted">商品を登録すると、Geminiへ渡す画像と商品情報がここに表示されます。</p>`;
+    target.innerHTML = `<p class="muted">商品を登録すると、選んだAIへ渡す画像と商品情報がここに表示されます。</p>`;
     renderSocialGeminiProgress();
     return;
   }
@@ -2861,8 +2887,8 @@ async function generateCoordinate() {
 }
 
 function setCoordinatePrompts(coordinate) {
-  if (coordGeminiPrompt) coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
-  if (coordGeminiCaptionPrompt) coordGeminiCaptionPrompt.value = buildCoordinateCaptionPrompt(coordinate);
+  if (coordGeminiPrompt) coordGeminiPrompt.value = adaptPromptToSelectedAi(buildOutfitImagePrompt(coordinate));
+  if (coordGeminiCaptionPrompt) coordGeminiCaptionPrompt.value = adaptPromptToSelectedAi(buildCoordinateCaptionPrompt(coordinate));
 }
 
 async function copyCoordinateImagePrompt() {
@@ -3725,7 +3751,7 @@ function generateGeminiCaptionPrompt() {
   const coordinate = getSelectedCoordinate();
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
   if (!document.querySelector("#coordMainProduct")?.value) return showToast("紹介する主役商品を選んでください");
-  coordGeminiCaptionPrompt.value = buildCoordinateCaptionPrompt(coordinate);
+  coordGeminiCaptionPrompt.value = adaptPromptToSelectedAi(buildCoordinateCaptionPrompt(coordinate));
   document.querySelector("#coordStatus").textContent = "紹介文プロンプト作成済み";
   showToast("コーデ紹介文のプロンプトを作りました");
 }
@@ -3956,7 +3982,7 @@ function shareCoordinateToGemini() {
     downloadReferenceFile(boardFile, "hanako-coordinate-reference.png");
     navigator.clipboard?.writeText(coordGeminiPrompt.value).catch(() => {});
     openGeminiDestination();
-    return showToast("参照画像を保存し、プロンプトをコピーしました。Geminiへ画像1枚を添付してください");
+    return showToast(`参照画像を保存しました。${getSelectedAiName()}へ画像1枚を添付してください`);
   }
   const sharePromise = navigator.share({
     title: "Hanako Style Studio・コーデ作成",
@@ -3965,9 +3991,9 @@ function shareCoordinateToGemini() {
   });
   navigator.clipboard?.writeText(coordGeminiPrompt.value).catch(() => {});
   sharePromise
-    .then(() => showToast("Geminiで入力欄を長押しし、コピー済みプロンプトを貼ってください"))
+    .then(() => showToast(`${getSelectedAiName()}で入力欄を長押しし、コピー済みプロンプトを貼ってください`))
     .catch((error) => {
-      if (error?.name !== "AbortError") showToast(error.message || "Geminiへ共有できませんでした");
+      if (error?.name !== "AbortError") showToast(error.message || `${getSelectedAiName()}へ共有できませんでした`);
     });
 }
 
@@ -3994,6 +4020,26 @@ function openGeminiDestination() {
   const isAndroid = /Android/i.test(userAgent);
   const isIos = /iPhone|iPad|iPod/i.test(userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (selectedAiProvider === "chatgpt") {
+    if (isAndroid) {
+      location.href = "intent://chatgpt.com/#Intent;scheme=https;package=com.openai.chatgpt;S.browser_fallback_url=https%3A%2F%2Fchatgpt.com%2F;end";
+      return;
+    }
+    if (isIos) {
+      let appOpened = false;
+      const markOpened = () => { if (document.hidden) appOpened = true; };
+      document.addEventListener("visibilitychange", markOpened, { once: true });
+      location.href = "chatgpt://";
+      window.setTimeout(() => {
+        document.removeEventListener("visibilitychange", markOpened);
+        if (!appOpened && !document.hidden) location.href = "https://chatgpt.com/";
+      }, 1200);
+      return;
+    }
+    window.open("https://chatgpt.com/", "_blank", "noopener,noreferrer");
+    return;
+  }
 
   if (isAndroid) {
     location.href = "intent://gemini.google.com/app#Intent;scheme=https;package=com.google.android.apps.bard;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.google.android.apps.bard;end";
@@ -4025,8 +4071,8 @@ async function previewGeneratedCoordinateImage(event) {
   const dataUrl = await readFileAsDataUrl(file);
   const result = document.querySelector("#coordAiResult");
   result.hidden = false;
-  result.innerHTML = `<img src="${dataUrl}" alt="Geminiで作った着用イメージ"><a class="primary" download="hanako-gemini-outfit.png" href="${dataUrl}">添付画像を保存</a>`;
-  document.querySelector("#coordStatus").textContent = "Gemini画像添付済み";
+  result.innerHTML = `<img src="${dataUrl}" alt="AIで作った着用イメージ"><a class="primary" download="hanako-ai-outfit.png" href="${dataUrl}">添付画像を保存</a>`;
+  document.querySelector("#coordStatus").textContent = "AI画像添付済み";
 }
 
 function downloadCoordinateBoard() {
@@ -4270,13 +4316,13 @@ async function generateRoomImagePrompt(quiet = false) {
     const mode = document.querySelector("#roomImageType")?.value || "normal";
     await loadCoordinatePhotoPreview();
     await drawRoomReferenceBoard(product, mode);
-    const prompt = buildRoomImagePrompt({
+    const prompt = adaptPromptToSelectedAi(buildRoomImagePrompt({
       product,
       personPhotoUrl,
       mode,
       pose: document.querySelector("#roomImagePose")?.value || "全身が見える自然な立ち姿",
       mood: document.querySelector("#roomImageMood")?.value || "明るい自然光のきれいめ室内",
-    });
+    }));
     const output = document.querySelector("#roomImagePrompt");
     if (output) output.value = prompt;
     const status = document.querySelector("#roomImagePromptStatus");
@@ -4450,7 +4496,7 @@ async function openRoomImageGemini() {
         text: prompt,
         files,
       });
-      showToast("Geminiでコピー済みプロンプトを貼ってください");
+      showToast(`${getSelectedAiName()}でコピー済みプロンプトを貼ってください`);
       return;
     } catch (error) {
       if (error?.name === "AbortError") return;
@@ -4459,7 +4505,7 @@ async function openRoomImageGemini() {
   await copyText(prompt);
   downloadReferenceFile(boardFile, "hanako-room-reference.jpg");
   openGeminiDestination();
-  showToast("参照画像を保存し、プロンプトをコピーしました。Geminiへ画像1枚を添付してください");
+  showToast(`参照画像を保存し、プロンプトをコピーしました。${getSelectedAiName()}へ画像1枚を添付してください`);
 }
 
 function generateRoomPost() {
@@ -4790,7 +4836,7 @@ function generateSocialGeminiImagePrompt(quiet = false) {
     data.hanakoComment = chooseSocialHanakoComment(data, true);
     updateSocialHanakoTeacherPreview();
   }
-  snsGeminiPrompt.value = buildSocialGeminiImagePrompt(data);
+  snsGeminiPrompt.value = adaptPromptToSelectedAi(buildSocialGeminiImagePrompt(data));
   socialGeminiPromptNeedsRefresh = false;
   setSocialGeminiMode("image");
   setSocialGeminiStatus(`${activePlatform}画像用`);
@@ -4808,8 +4854,8 @@ function generateBothSocialGeminiPrompts(quiet = false) {
     data.hanakoComment = chooseSocialHanakoComment(data, true);
     updateSocialHanakoTeacherPreview();
   }
-  snsGeminiPrompt.value = buildSocialGeminiImagePrompt(data);
-  snsGeminiCopyPrompt.value = buildSocialGeminiCopyPrompt(data);
+  snsGeminiPrompt.value = adaptPromptToSelectedAi(buildSocialGeminiImagePrompt(data));
+  snsGeminiCopyPrompt.value = adaptPromptToSelectedAi(buildSocialGeminiCopyPrompt(data));
   socialGeminiPromptNeedsRefresh = false;
   setSocialGeminiStatus(`${activePlatform}の画像・投稿文用`);
   if (!quiet) showToast(`${activePlatform}の2つのプロンプトを作りました`);
@@ -4821,7 +4867,7 @@ function generateBothSocialGeminiPrompts(quiet = false) {
 function generateSocialGeminiCopyPrompt(quiet = false) {
   const data = getSocialGeminiPromptData();
   if (!data) return false;
-  snsGeminiCopyPrompt.value = buildSocialGeminiCopyPrompt(data);
+  snsGeminiCopyPrompt.value = adaptPromptToSelectedAi(buildSocialGeminiCopyPrompt(data));
   socialGeminiPromptNeedsRefresh = false;
   setSocialGeminiMode("copy");
   setSocialGeminiStatus(`${activePlatform}投稿文用`);
@@ -4854,7 +4900,7 @@ async function shareSocialReferenceToGemini() {
         text: prompt,
         files,
       });
-      showToast("Geminiでコピー済みプロンプトを貼ってください");
+      showToast(`${getSelectedAiName()}でコピー済みプロンプトを貼ってください`);
       return;
     } catch (error) {
       if (error?.name === "AbortError") return;
@@ -4863,7 +4909,7 @@ async function shareSocialReferenceToGemini() {
   await copyText(prompt);
   downloadReferenceFile(boardFile, `hanako-${activePlatform.toLowerCase()}-reference.jpg`);
   openGeminiDestination();
-  showToast("参照画像を保存し、プロンプトをコピーしました。Geminiへ画像1枚を添付してください");
+  showToast(`参照画像を保存し、プロンプトをコピーしました。${getSelectedAiName()}へ画像1枚を添付してください`);
 }
 
 async function prepareSocialReferenceBoard(existingData = null) {
@@ -5518,7 +5564,7 @@ async function previewSocialGeminiImage(event) {
   socialGeminiGeneratedImageDataUrl = await readOriginalFileAsDataUrl(file);
   socialGeminiGeneratedImageExtension = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
   preview.hidden = false;
-  preview.innerHTML = `<img src="${socialGeminiGeneratedImageDataUrl}" alt="Geminiで作った${escapeHtml(activePlatform)}投稿画像">`;
+  preview.innerHTML = `<img src="${socialGeminiGeneratedImageDataUrl}" alt="AIで作った${escapeHtml(activePlatform)}投稿画像">`;
   downloadButton.disabled = false;
   document.querySelector("#snsGeminiResultDetails").open = true;
   setSocialGeminiStatus("完成画像あり");
@@ -5528,10 +5574,10 @@ async function previewSocialGeminiImage(event) {
 
 function applySocialGeminiCopy() {
   const result = document.querySelector("#snsGeminiResult")?.value.trim();
-  if (!result) return showToast("Geminiの完成投稿文を貼り付けてください");
+  if (!result) return showToast("AIの完成投稿文を貼り付けてください");
   postOutput.value = result;
   lastGenerated = result;
-  document.querySelector("#outputMeta").textContent = `${activePlatform} / Gemini仕上げを反映`;
+  document.querySelector("#outputMeta").textContent = `${activePlatform} / ${getSelectedAiName()}仕上げを反映`;
   renderChecks(result);
   rememberGeneration(result);
   setSocialGeminiStatus("完成文を反映済み");
@@ -5582,9 +5628,9 @@ function renderSocialGeminiProgress() {
     : socialGeminiPromptNeedsRefresh
       ? "条件が変わりました。画像か投稿文をもう一度作ってください"
       : !hasPrompt
-        ? "画像か投稿文を選ぶと、コピーしてGeminiが開きます"
+        ? `画像か投稿文を選ぶと、コピーして${getSelectedAiName()}が開きます`
         : !hasReturnedResult
-          ? "Geminiで作成後、この画面へ戻って結果を貼り付けます"
+          ? `${getSelectedAiName()}で作成後、この画面へ戻って結果を貼り付けます`
           : "結果を確認して、完成稿への反映または画像保存を進めてください";
 }
 

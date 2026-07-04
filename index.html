@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=117">
+    <link rel="stylesheet" href="styles.css?v=118">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -117,7 +117,7 @@
               <span>1</span><strong>商品を登録</strong><small>URLか検索で候補を入れる</small>
             </button>
             <button type="button" data-open-view="coordinate">
-              <span>2</span><strong>コーデ作成</strong><small>組み合わせとGemini文を作る</small>
+              <span>2</span><strong>コーデ作成</strong><small>組み合わせとAI用の文を作る</small>
             </button>
             <button type="button" data-open-view="room">
               <span>3</span><strong>ROOM文作成</strong><small>レビュー文をコピー</small>
@@ -179,7 +179,7 @@
             </button>
             <button class="quick-action quick-coordinate" type="button" data-open-view="coordinate">
               <span class="quick-step">コーデ</span><span class="quick-icon"><img src="icons/nav-coordinate.svg" alt=""></span>
-              <strong>コーデを作る</strong><small>画像ボードとGemini文</small><span class="quick-arrow">›</span>
+              <strong>コーデを作る</strong><small>画像ボードとAI用の文</small><span class="quick-arrow">›</span>
             </button>
             <button class="quick-action quick-room" type="button" data-open-view="room">
               <span class="quick-step">ROOM</span><span class="quick-icon"><img src="icons/nav-room.svg" alt=""></span>
@@ -714,17 +714,18 @@
                 <div class="sns-gemini-heading">
                   <div>
                     <p class="eyebrow">選択内容をそのまま反映</p>
-                    <h4>Geminiで画像と投稿文を仕上げる</h4>
+                    <h4>AIで画像と投稿文を仕上げる</h4>
                   </div>
                   <span id="snsGeminiStatus" aria-live="polite">未作成</span>
                 </div>
-                <div class="sns-gemini-progress" aria-label="Gemini作成の進行状況">
+                <div class="ai-provider-picker"><span>使うAI</span><select class="ai-provider-select" aria-label="SNSで使うAI"><option value="gemini">Gemini</option><option value="chatgpt">ChatGPT</option></select></div>
+                <div class="sns-gemini-progress" aria-label="AI作成の進行状況">
                   <div data-sns-step="product"><span>1</span><strong>商品確認</strong></div>
-                  <div data-sns-step="create"><span>2</span><strong>Geminiで作る</strong></div>
+                  <div data-sns-step="create"><span>2</span><strong>AIで作る</strong></div>
                   <div data-sns-step="return"><span>3</span><strong>結果を戻す</strong></div>
                 </div>
                 <p class="sns-gemini-next" id="snsGeminiNextAction">まず商品を確認してください</p>
-                <p class="sns-gemini-guide">本人写真・商品・ハナコ先生を参照画像1枚にまとめてGeminiへ共有します。複数画像やURLの読み込みは不要です。</p>
+                <p class="sns-gemini-guide">本人写真・商品・ハナコ先生を参照画像1枚にまとめて、選んだAIへ共有します。複数画像やURLの読み込みは不要です。</p>
                 <div class="sns-gemini-product-preview" id="snsGeminiProductPreview"></div>
                 <div class="sns-gemini-quick-actions">
                   <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>参照画像1枚で作る</button>
@@ -740,7 +741,7 @@
                           <button id="copySocialGeminiImagePrompt" type="button">コピー</button>
                         </div>
                         <textarea id="snsGeminiPrompt" class="sns-gemini-output coord-prompt-output" spellcheck="false" placeholder="商品を選ぶと画像用の指示文が表示されます"></textarea>
-                        <button class="primary sns-prompt-open" id="openSocialGeminiImage" type="button">参照画像を共有してGeminiへ</button>
+                        <button class="primary sns-prompt-open" id="openSocialGeminiImage" type="button">参照画像を共有して選んだAIへ</button>
                       </section>
                       <section class="coord-prompt-card">
                         <div class="coord-prompt-heading">
@@ -748,19 +749,19 @@
                           <button id="copySocialGeminiCopyPrompt" type="button">コピー</button>
                         </div>
                         <textarea id="snsGeminiCopyPrompt" class="sns-gemini-output coord-prompt-output" spellcheck="false" placeholder="商品を選ぶと投稿文用の指示文が表示されます"></textarea>
-                        <button class="primary sns-prompt-open" id="openSocialGeminiCopy" type="button">コピーしてGeminiへ</button>
+                        <button class="primary sns-prompt-open" id="openSocialGeminiCopy" type="button">コピーして選んだAIへ</button>
                       </section>
                     </div>
                   </div>
                 </details>
                 <details class="sns-gemini-result-details" id="snsGeminiResultDetails">
-                  <summary><span>Geminiの完成結果を戻す</span><small>画像と投稿文</small></summary>
+                  <summary><span>AIの完成結果を戻す</span><small>画像と投稿文</small></summary>
                 <div class="sns-gemini-result-tools">
                   <label class="field-label" for="snsGeneratedImage">完成画像を添付</label>
                   <input id="snsGeneratedImage" type="file" accept="image/*">
                   <div class="sns-generated-image" id="snsGeneratedImagePreview" hidden></div>
                   <label class="field-label" for="snsGeminiResult">完成した投稿文を貼り付け</label>
-                  <textarea id="snsGeminiResult" class="sns-gemini-result-output" spellcheck="false" placeholder="Geminiが作った投稿文をここへ貼り付けてください"></textarea>
+                  <textarea id="snsGeminiResult" class="sns-gemini-result-output" spellcheck="false" placeholder="AIが作った投稿文をここへ貼り付けてください"></textarea>
                   <div class="button-row">
                     <button class="primary" id="applySocialGeminiCopy" type="button">完成稿へ反映</button>
                     <button id="downloadSocialGeminiImage" type="button" disabled>画像を保存</button>
@@ -811,9 +812,9 @@
                   <input id="coordPhoto" type="file" accept="image/*" multiple hidden>
                 </div>
                 <div class="coord-photo-grid" id="coordPhotoLibrary" aria-live="polite"></div>
-                <p class="coord-photo-status" id="coordPhotoStatus">クラウド同期へログインすると、安全な一時URLでGeminiへ渡せます。</p>
+                <p class="coord-photo-status" id="coordPhotoStatus">クラウド同期へログインすると、安全な参照画像としてAIへ渡せます。</p>
               </div>
-              <p class="coord-note">写真は非公開で保存し、Geminiには2時間だけ有効なURLを渡します。実物の完全再現ではなく、投稿用の「着用イメージ」として作ります。</p>
+              <p class="coord-note">写真は非公開で保存し、選んだAIには参照画像として渡します。実物の完全再現ではなく、投稿用の「着用イメージ」として作ります。</p>
 
               <div class="coord-style-row">
                 <div>
@@ -936,7 +937,7 @@
                 </div>
                 <select id="coordHanakoTeacher" aria-label="画像ボードに表示するハナコ先生" tabindex="-1" hidden></select>
               </div>
-              <p class="coord-note">「オリジナル商品写真で投稿」は、ご本人が撮影した商品写真をGeminiへ添付して使います。</p>
+              <p class="coord-note">「オリジナル商品写真で投稿」は、ご本人が撮影した商品写真を選んだAIへ添付して使います。</p>
 
               <label class="field-label" for="coordMainProduct">主役商品（必ず画像に使う商品）</label>
               <select id="coordMainProduct"></select>
@@ -951,15 +952,16 @@
               </div>
 
               <div class="gemini-mode-guide">
-                <strong>Geminiで本人らしく作る手順</strong>
+                <strong>AIで本人らしく作る手順</strong>
+                <div class="ai-provider-picker"><span>使うAI</span><select class="ai-provider-select" aria-label="コーデで使うAI"><option value="gemini">Gemini</option><option value="chatgpt">ChatGPT</option></select></div>
                 <ol>
                   <li>保存した自分の写真から今回使う1枚を選ぶ</li>
                   <li>「コーデ文と画像ボードを作る」を押す</li>
-                  <li>「本人写真＋画像ボードをGeminiへ」を押し、共有先でGeminiを選ぶ</li>
+                  <li>「参照画像1枚を選んだAIへ」を押し、共有先で選んだAIを開く</li>
                   <li>本人写真と画像ボードが渡されるので、入力欄へコピー済みプロンプトを貼る</li>
                   <li>紹介文プロンプトをコピーして紹介文を作る</li>
                 </ol>
-                <p>URLだけでも試せますが、本人の顔やマスクを確実に反映したい時は「本人写真＋画像ボードをGeminiへ」を使ってください。</p>
+                <p>本人の顔やマスクを確実に反映したい時は、参照画像を選んだAIへ共有してください。</p>
                 <p>AI画像はコーデ検討・SNS素材用です。ROOMのオリジナル写真・ランク対象として投稿する場合は、ご本人が実際に着用して撮影した全身写真を使い、写真に写る商品だけを登録してください。</p>
               </div>
 
@@ -968,8 +970,8 @@
                 <button class="primary" id="generateCoordinate" type="button">コーデ文と画像ボードを作る</button>
               </div>
               <div class="button-row">
-                <button class="primary" id="shareCoordinateToGemini" type="button">参照画像1枚をGeminiへ</button>
-                <button id="openGemini" type="button">Geminiを開く</button>
+                <button class="primary" id="shareCoordinateToGemini" type="button">参照画像1枚を選んだAIへ</button>
+                <button id="openGemini" type="button">選んだAIを開く</button>
                 <button id="copyCoordinateText" type="button">ROOM文コピー</button>
                 <button id="downloadCoordinateBoard" type="button">画像ボード保存</button>
               </div>
@@ -984,7 +986,7 @@
                 <canvas id="coordBoard" width="1080" height="1350" aria-label="コーデ画像ボード"></canvas>
               </div>
               <div class="coord-ai-result" id="coordAiResult" hidden></div>
-              <label class="field-label" for="coordGeneratedImage">Geminiで作った画像を添付</label>
+              <label class="field-label" for="coordGeneratedImage">AIで作った画像を添付</label>
               <input id="coordGeneratedImage" type="file" accept="image/*">
               <div class="coord-prompt-grid">
                 <section class="coord-prompt-card">
@@ -1036,9 +1038,10 @@
 
               <div class="room-image-maker">
                 <div class="room-image-maker-head">
-                  <div><p class="eyebrow">Gemini画像</p><h4>ROOM画像プロンプト</h4></div>
+                  <div><p class="eyebrow">AI画像</p><h4>ROOM画像プロンプト</h4></div>
                   <span id="roomImagePromptStatus">未作成</span>
                 </div>
+                <div class="ai-provider-picker"><span>使うAI</span><select class="ai-provider-select" aria-label="ROOM画像で使うAI"><option value="gemini">Gemini</option><option value="chatgpt">ChatGPT</option></select></div>
                 <div class="room-image-mode-switch" role="group" aria-label="作る画像の種類">
                   <button class="selected" type="button" data-room-image-mode="normal" aria-pressed="true">通常投稿</button>
                   <button type="button" data-room-image-mode="collection" aria-pressed="false">コレクション表紙</button>
@@ -1073,7 +1076,7 @@
                 <div class="button-row">
                   <button class="primary" id="generateRoomImagePrompt" type="button">画像プロンプトを作る</button>
                   <button id="copyRoomImagePrompt" type="button">コピー</button>
-                  <button id="openRoomImageGemini" type="button">参照画像を共有してGeminiへ</button>
+                  <button id="openRoomImageGemini" type="button">参照画像を共有して選んだAIへ</button>
                 </div>
                 <textarea id="roomImagePrompt" class="coord-prompt-output room-image-prompt" spellcheck="false" placeholder="通常投稿またはコレクション表紙を選び、画像プロンプトを作ってください"></textarea>
               </div>
@@ -1257,6 +1260,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=117"></script>
+    <script src="app.js?v=118"></script>
   </body>
 </html>
