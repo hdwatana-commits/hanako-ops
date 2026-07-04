@@ -4333,10 +4333,14 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
   const topicInstruction = c.isTravel
     ? `添付した宿泊施設の写真を主役にし、客室・眺望・アクセスなど確認できる魅力を整理する。写真にない設備や景色を作らない。`
     : `添付した商品画像を主役にし、色・形・素材感を変えず、${labels.fashionOccasion}で使うイメージが自然に伝わるようにする。`;
+  const teacherReference = resolvePublicTeacherReference(hanakoTeacher);
   const hanakoInstruction = includeHanakoTeacher ? `【ハナコ先生の吹き出し・必須】
-・添付した先生画像「${hanakoTeacher.name}」を、丸いアイコンとして完成画像へ入れる
-・先生画像URL: ${new URL(hanakoTeacher.avatar, window.location.href).href}
-・先生の顔、髪型、髪色、服、目の色、表情を添付画像から変えず、別人に描き直さない
+・先生画像は添付されていません。次の公開画像URLを直接読み込み、参照画像として使う
+・先生名: ${teacherReference.teacher.name}
+・先生画像URL: ${teacherReference.url}
+・最初にURLの画像を読み込めたことを内部で確認してから画像生成へ進む
+・URLの画像にある顔、髪型、髪色、服、目の色、表情を変えず、丸いアイコンとして完成画像へ入れる
+・URLを読み込めない場合は、似た人物や別の先生を想像で作らない。「先生画像URLを読み込めません」とだけ返す
 ・先生は商品やモデルとは別の解説キャラクター。画像の左下に、外周から6%以上離して全体の18〜22%の大きさで置く
 ・先生の真上に、白地とくすみピンク線の吹き出しを1個だけ置き、下向きのしっぽで先生へつなぐ
 ・吹き出しの見出しは必ず「ハナコ先生のズバッとひとこと」
@@ -4407,6 +4411,16 @@ ${supportingProducts}
 ・実物の商品や施設を別物へ変えない
 
 完成画像だけを生成し、説明文や投稿文は返さないでください。`;
+}
+
+function resolvePublicTeacherReference(teacher) {
+  const fallback = hanakoTeacherGuides[0];
+  const selected = teacher?.avatar && !/^(?:data:|blob:)/i.test(teacher.avatar) ? teacher : fallback;
+  const publicBase = "https://hdwatana-commits.github.io/hanako-ops/";
+  const url = /^https?:\/\//i.test(selected.avatar)
+    ? selected.avatar
+    : new URL(String(selected.avatar || fallback.avatar).replace(/^\.\//, ""), publicBase).href;
+  return { teacher: selected, url };
 }
 
 function buildSocialImageHeadline(context, labels) {
@@ -4525,7 +4539,6 @@ function bindSocialHanakoTeacher() {
     updateSocialHanakoTeacherPreview();
     markSocialGeminiPromptStale();
   });
-  document.querySelector("#downloadSnsHanakoTeacher")?.addEventListener("click", downloadSocialHanakoTeacher);
   resolveSocialHanakoTeacher(false);
   updateSocialHanakoTeacherPreview();
   syncSocialHanakoTeacherCoverflow(true);
