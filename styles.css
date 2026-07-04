@@ -3184,6 +3184,116 @@ body {
   line-height: 1.7;
 }
 
+.coord-photo-library {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 4px;
+  padding: 12px;
+  border: 1px solid #ead5dc;
+  border-radius: 8px;
+  background: #fffafb;
+}
+
+.coord-photo-library-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.coord-photo-library-head p,
+.coord-photo-status {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.coord-photo-add {
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  border: 1px solid #dca9ba;
+  border-radius: 7px;
+  color: #8f3e5d;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.coord-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.coord-photo-card {
+  position: relative;
+  min-width: 0;
+  padding: 3px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.coord-photo-card.selected {
+  border-color: #c85f84;
+  box-shadow: 0 0 0 2px #f8dce6;
+}
+
+.coord-photo-card > [data-select-coordinate-photo] {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  text-align: left;
+}
+
+.coord-photo-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.coord-photo-card strong {
+  display: block;
+  overflow: hidden;
+  padding: 5px 2px 2px;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coord-photo-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(50, 38, 43, 0.78);
+  font-size: 15px;
+}
+
+@media (max-width: 680px) {
+  .coord-photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .coord-photo-library-head {
+    align-items: flex-start;
+  }
+}
+
 .hanako-teacher-preview {
   display: block;
   margin: 12px 0 14px;

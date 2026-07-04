@@ -41,6 +41,8 @@ const state = loadState();
 state.updatedAt ||= new Date().toISOString();
 state.roomQueue ||= [];
 state.appearance ||= { avatarTheme: "original" };
+state.coordinatePhotos ||= [];
+state.selectedCoordinatePhotoId ||= state.coordinatePhotos[0]?.id || "";
 
 const avatarThemes = {
   custom: {
@@ -397,6 +399,8 @@ function initialize() {
   restoreGeneratorPreferences();
   renderRoomProductOptions();
   renderCoordinateOptions();
+  renderCoordinatePhotoLibrary();
+  refreshCoordinatePhotoLibraryUrls();
   renderRoomQueue();
   renderCalendar();
   renderMetrics();
@@ -1531,12 +1535,16 @@ function applyCloudState(payload) {
   localStorage.setItem("hanako-room-ops", JSON.stringify(state));
   profileText.value = state.profile || defaultProfile;
   state.appearance ||= { avatarTheme: "original" };
+  state.coordinatePhotos ||= [];
+  state.selectedCoordinatePhotoId ||= state.coordinatePhotos[0]?.id || "";
   applyAppearance();
   renderProducts();
   renderProductOptions();
   restoreGeneratorPreferences();
   renderRoomProductOptions();
   renderCoordinateOptions();
+  renderCoordinatePhotoLibrary();
+  refreshCoordinatePhotoLibraryUrls();
   renderRoomQueue();
   renderCalendar();
   renderMetrics();
@@ -1941,12 +1949,8 @@ function bindCoordinateActions() {
       importCoordinateProduct();
     }
   });
-  document.querySelector("#coordPhoto")?.addEventListener("change", async (event) => {
-    const file = event.target.files?.[0];
-    coordinatePhotoDataUrl = file ? await readFileAsDataUrl(file) : "";
-    showToast(coordinatePhotoDataUrl ? "写真を読み込みました" : "写真を解除しました");
-    if (coordinateOutput.value.trim()) drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
-  });
+  document.querySelector("#coordPhoto")?.addEventListener("change", uploadCoordinatePhotos);
+  document.querySelector("#coordPhotoLibrary")?.addEventListener("click", handleCoordinatePhotoLibraryClick);
   document.querySelector("#coordMainProduct")?.addEventListener("change", (event) => {
     const product = state.products.find((item) => item.id === event.currentTarget.value);
     if (product) applyRecommendedCoordinateDefaults(product);
@@ -1966,7 +1970,7 @@ function bindCoordinateActions() {
   document.querySelector("#autoCoordinate")?.addEventListener("click", () => autoSelectCoordinateItems(true, true, true));
   document.querySelector("#generateCoordinate")?.addEventListener("click", generateCoordinate);
   document.querySelector("#copyCoordinateText")?.addEventListener("click", () => copyText(coordinateOutput.value));
-  document.querySelector("#copyGeminiImagePrompt")?.addEventListener("click", () => copyText(coordGeminiPrompt.value));
+  document.querySelector("#copyGeminiImagePrompt")?.addEventListener("click", copyCoordinateImagePrompt);
   document.querySelector("#copyGeminiCaptionPrompt")?.addEventListener("click", () => copyText(coordGeminiCaptionPrompt.value));
   document.querySelector("#openGemini")?.addEventListener("click", openGemini);
   document.querySelector("#downloadCoordinateBoard")?.addEventListener("click", downloadCoordinateBoard);
@@ -1977,6 +1981,131 @@ function bindCoordinateActions() {
 
 function isHanakoTeacherPattern(pattern = document.querySelector("#coordImagePattern")?.value) {
   return pattern === "ハナコ先生の吹き出し解説";
+}
+
+async function uploadCoordinatePhotos(event) {
+  const files = [...(event.target.files || [])];
+  event.target.value = "";
+  if (!files.length) return;
+  if (!cloudSync.signedIn) return showToast("先に同期設定からログインしてください");
+  const available = Math.max(0, 5 - state.coordinatePhotos.length);
+  if (!available) return showToast("写真は5枚までです。入れ替える写真を削除してください");
+  const targets = files.slice(0, available);
+  const status = document.querySelector("#coordPhotoStatus");
+  try {
+    if (status) status.textContent = `${targets.length}枚を安全に保存しています…`;
+    for (const file of targets) {
+      if (!file.type.startsWith("image/")) continue;
+      if (file.size > 10 * 1024 * 1024) throw new Error("写真は1枚10MB以下にしてください");
+      const uploaded = await cloudSync.uploadPrivateImage(file);
+      const photo = {
+        id: createId(),
+        name: file.name || `全身写真${state.coordinatePhotos.length + 1}`,
+        path: uploaded.path,
+        signedUrl: uploaded.signedUrl,
+        expiresAt: uploaded.expiresAt,
+        createdAt: new Date().toISOString(),
+      };
+      state.coordinatePhotos.push(photo);
+      state.selectedCoordinatePhotoId = photo.id;
+    }
+    saveState();
+    renderCoordinatePhotoLibrary();
+    showToast(`${targets.length}枚の写真を保存しました`);
+  } catch (error) {
+    if (status) status.textContent = error.message || "写真を保存できませんでした";
+    showToast(error.message || "写真を保存できませんでした");
+  }
+}
+
+async function handleCoordinatePhotoLibraryClick(event) {
+  const deleteButton = event.target.closest("[data-delete-coordinate-photo]");
+  if (deleteButton) {
+    event.stopPropagation();
+    const photo = state.coordinatePhotos.find((item) => item.id === deleteButton.dataset.deleteCoordinatePhoto);
+    if (!photo) return;
+    try {
+      await cloudSync.removePrivateImage(photo.path);
+      state.coordinatePhotos = state.coordinatePhotos.filter((item) => item.id !== photo.id);
+      if (state.selectedCoordinatePhotoId === photo.id) state.selectedCoordinatePhotoId = state.coordinatePhotos[0]?.id || "";
+      saveState();
+      renderCoordinatePhotoLibrary();
+      showToast("写真を削除しました");
+    } catch (error) {
+      showToast(error.message || "写真を削除できませんでした");
+    }
+    return;
+  }
+  const selectButton = event.target.closest("[data-select-coordinate-photo]");
+  if (!selectButton) return;
+  state.selectedCoordinatePhotoId = selectButton.dataset.selectCoordinatePhoto;
+  try {
+    await ensureSelectedCoordinatePhotoUrl();
+    saveState();
+    renderCoordinatePhotoLibrary();
+    if (coordinateOutput.value.trim()) drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
+    showToast("今回使う写真を選びました");
+  } catch (error) {
+    showToast(error.message || "写真を選べませんでした");
+  }
+}
+
+function renderCoordinatePhotoLibrary() {
+  const target = document.querySelector("#coordPhotoLibrary");
+  const status = document.querySelector("#coordPhotoStatus");
+  if (!target) return;
+  state.coordinatePhotos ||= [];
+  const selected = getSelectedCoordinatePhoto();
+  coordinatePhotoDataUrl = selected?.signedUrl || "";
+  if (!state.coordinatePhotos.length) {
+    target.innerHTML = `<p class="muted">まだ写真がありません</p>`;
+  } else {
+    target.innerHTML = state.coordinatePhotos.map((photo, index) => `
+      <div class="coord-photo-card${photo.id === state.selectedCoordinatePhotoId ? " selected" : ""}">
+        <button type="button" data-select-coordinate-photo="${escapeHtml(photo.id)}" aria-label="${index + 1}枚目の写真を選ぶ">
+          <img src="${escapeHtml(photo.signedUrl || "")}" alt="保存した全身写真${index + 1}">
+          <strong>${escapeHtml(photo.name || `写真${index + 1}`)}</strong>
+        </button>
+        <button class="coord-photo-delete" type="button" data-delete-coordinate-photo="${escapeHtml(photo.id)}" aria-label="この写真を削除">×</button>
+      </div>`).join("");
+  }
+  if (status) status.textContent = cloudSync.signedIn
+    ? `${state.coordinatePhotos.length}/5枚保存中。選択写真は生成時に2時間限定URLへ更新します。`
+    : "写真を追加・更新するには、クラウド同期へログインしてください。";
+}
+
+function getSelectedCoordinatePhoto() {
+  return state.coordinatePhotos?.find((photo) => photo.id === state.selectedCoordinatePhotoId) || state.coordinatePhotos?.[0] || null;
+}
+
+async function ensureSelectedCoordinatePhotoUrl() {
+  const photo = getSelectedCoordinatePhoto();
+  if (!photo) return "";
+  if (photo.signedUrl && Number(photo.expiresAt || 0) - Date.now() > 10 * 60 * 1000) {
+    coordinatePhotoDataUrl = photo.signedUrl;
+    return photo.signedUrl;
+  }
+  if (!cloudSync.signedIn) throw new Error("写真URLの更新にはクラウド同期へのログインが必要です");
+  const signed = await cloudSync.createSignedImageUrl(photo.path);
+  Object.assign(photo, signed);
+  coordinatePhotoDataUrl = photo.signedUrl;
+  return photo.signedUrl;
+}
+
+async function refreshCoordinatePhotoLibraryUrls() {
+  if (!cloudSync.signedIn || !state.coordinatePhotos?.length) return;
+  try {
+    for (const photo of state.coordinatePhotos) {
+      if (!photo.signedUrl || Number(photo.expiresAt || 0) - Date.now() <= 10 * 60 * 1000) {
+        Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
+      }
+    }
+    coordinatePhotoDataUrl = getSelectedCoordinatePhoto()?.signedUrl || "";
+    localStorage.setItem("hanako-room-ops", JSON.stringify(state));
+    renderCoordinatePhotoLibrary();
+  } catch {
+    renderCoordinatePhotoLibrary();
+  }
 }
 
 function chooseRandomHanakoTeacher() {
@@ -2362,6 +2491,7 @@ function getSelectedCoordinate() {
     season: document.querySelector("#coordSeason")?.value || "今の季節",
     hanakoTeacher: currentHanakoTeacher,
     hanakoComment: currentHanakoComment,
+    personPhotoUrl: getSelectedCoordinatePhoto()?.signedUrl || "",
     products: pieces,
     mainProduct: mainProduct || pieces[0] || null,
   };
@@ -2645,7 +2775,14 @@ function chooseCoordinateCompanion(categories, main, selectedIds) {
 }
 
 async function generateCoordinate() {
+  try {
+    await ensureSelectedCoordinatePhotoUrl();
+  } catch (error) {
+    return showToast(error.message || "自分の写真URLを準備できませんでした");
+  }
   let coordinate = getSelectedCoordinate();
+  const originalProductPhotoMode = coordinate.imagePattern === "オリジナル商品写真で投稿";
+  if (!coordinate.personPhotoUrl && !originalProductPhotoMode) return showToast("先に保存した自分の全身写真を選んでください");
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
   if (isHanakoTeacherPattern(coordinate.imagePattern)) {
     applySelectedHanakoTeacher();
@@ -2665,6 +2802,18 @@ async function generateCoordinate() {
 function setCoordinatePrompts(coordinate) {
   if (coordGeminiPrompt) coordGeminiPrompt.value = buildOutfitImagePrompt(coordinate);
   if (coordGeminiCaptionPrompt) coordGeminiCaptionPrompt.value = buildCoordinateCaptionPrompt(coordinate);
+}
+
+async function copyCoordinateImagePrompt() {
+  try {
+    await ensureSelectedCoordinatePhotoUrl();
+    const coordinate = getSelectedCoordinate();
+    setCoordinatePrompts(coordinate);
+    await copyText(coordGeminiPrompt.value);
+    showToast("最新の写真URL入りプロンプトをコピーしました");
+  } catch (error) {
+    showToast(error.message || "プロンプトをコピーできませんでした");
+  }
 }
 
 function buildCoordinateText(coordinate) {
@@ -3190,9 +3339,14 @@ function blobToDataUrl(blob) {
 }
 
 async function generateGeminiPrompt() {
+  try {
+    await ensureSelectedCoordinatePhotoUrl();
+  } catch (error) {
+    return showToast(error.message || "自分の写真URLを準備できませんでした");
+  }
   const coordinate = getSelectedCoordinate();
   const originalProductPhotoMode = coordinate.imagePattern === "オリジナル商品写真で投稿";
-  if (!coordinatePhotoDataUrl && !originalProductPhotoMode) return showToast("先に自分の全身写真を選んでください");
+  if (!coordinate.personPhotoUrl && !originalProductPhotoMode) return showToast("先に保存した自分の全身写真を選んでください");
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
   if (!document.querySelector("#coordMainProduct")?.value) return showToast("必ず画像に使う主役商品を選んでください");
   const coordinateText = coordinateOutput.value.trim() || buildCoordinateText(coordinate);
@@ -3201,7 +3355,7 @@ async function generateGeminiPrompt() {
   await drawCoordinateBoard(coordinate, coordinateText);
   setCoordinatePrompts(coordinate);
   document.querySelector("#coordStatus").textContent = "画像ボード・プロンプト準備済み";
-  showToast("本人写真と保存した画像ボードを一緒にGeminiへ添付してください");
+  showToast("画像添付不要のプロンプトを作りました。そのままGeminiへ貼ってください");
 }
 
 function buildOutfitImagePrompt(coordinate) {
@@ -3209,10 +3363,11 @@ function buildOutfitImagePrompt(coordinate) {
   const stylingPlan = buildCoordinateAnalysis(coordinate);
   const brand = getCoordinateBrand(mainProduct);
   const originalProductPhotoMode = coordinate.imagePattern === "オリジナル商品写真で投稿";
+  const personPhotoUrl = coordinate.personPhotoUrl || "なし";
   const maskLockInstruction = originalProductPhotoMode
     ? ""
     : `【最優先・マスク固定モード】
-・添付した本人写真の人物はマスク着用です。完成画像でも、元写真と同じマスクを必ず着けたままにしてください
+・本人写真URLの人物がマスク着用なら、完成画像でも元写真と同じマスクを必ず着けたままにしてください
 ・服、髪型、ポーズを編集する前に、マスクを本人の顔の一部として固定してください
 ・マスクの色、形、大きさ、柄、ひも、顔を覆う範囲を変えないでください
 ・マスクを外す、薄くする、透明にする、別のマスクへ替える、口や鼻を描き足すことは禁止です
@@ -3240,22 +3395,24 @@ function buildOutfitImagePrompt(coordinate) {
   const productPointNotes = buildHandwrittenProductPoints(coordinate);
   const imagePatternInstruction = getCoordinateImagePatternInstruction(coordinate.imagePattern, coordinate);
   const hanakoTeacher = coordinate.hanakoTeacher || currentHanakoTeacher;
+  const hanakoTeacherReference = resolvePublicTeacherReference(hanakoTeacher);
   const hanakoTeacherComment = coordinate.hanakoComment || chooseHanakoTeacherComment(coordinate);
   const attachmentInstruction = originalProductPhotoMode
-    ? `【添付画像の役割】
-・添付した商品写真だけを素材として使う。画像ボードがある場合は、配置と文字の参考にだけ使う
-・画像ボード内の商品画像を実物写真として再利用せず、必ず添付された元の商品写真を使う`
-    : `【添付画像の役割・最優先】
-・「本人の全身写真」: 顔、髪、体型、肌、ポーズ、マスクを保つための本人基準画像
-・「コーデ画像ボード」: 選ぶ商品、配置、手書きポイント、ハナコ先生のアイコン、吹き出しの見出しと本文を保つためのデザイン基準画像
-・「商品画像」: 服と小物の色、形、丈、柄、素材感を正確に反映するための商品基準画像
-・商品画像は下の「使用許可された商品一覧」と1枚ずつ照合する。選択されていない画像は使わない
-・本人写真と画像ボードは別の役割として両方使う。どちらか一方を無視しない
-・画像ボード右上の小さな本人写真を拡大して使わず、別添付の元の全身写真を人物の基準にする
-・画像ボード自体をそのまま完成画像にせず、本人写真へ選択商品を自然に着せた新しい縦3:4画像を生成する`;
+    ? `【参照方法・画像添付なし】
+・下記の商品画像URLを直接読み込み、URLで確認できた商品だけを使う
+・URLを読めない商品を、似た商品や想像した商品で補わない`
+    : `【参照方法・最優先・画像添付なし】
+・本人写真URL: ${personPhotoUrl}
+・本人写真URLは、顔、髪、体型、肌、ポーズ、マスクを保つための本人基準画像
+・各商品画像URLは、服と小物の色、形、丈、柄、素材感を正確に反映する商品基準画像
+・ハナコ先生画像URLは、先生の顔、髪、服、表情を固定するキャラクター基準画像
+・画像ボードは添付されない。下に指定した見出し、手書きポイント、吹き出し文、配置を文章から再現する
+・生成前にすべてのURLを読み込み、本人1枚、選択商品${coordinate.products.length}点、先生1枚を内部で照合する
+・URLを一つでも読めない場合は似た画像で補わず、「読み込めない画像URL: 対象名」とだけ返して画像を作らない`;
   const hanakoTeacherInstruction = isHanakoTeacherPattern(coordinate.imagePattern)
     ? `【ハナコ先生の吹き出し解説・必須】
-・添付した画像ボードに写っている「${hanakoTeacher.name}」を、完成画像にも小さな先生役として登場させる
+・次の公開URLにある「${hanakoTeacherReference.teacher.name}」を読み込み、完成画像へ小さな先生役として登場させる
+・ハナコ先生画像URL: ${hanakoTeacherReference.url}
 ・ハナコ先生はコーデを着る本人とは別の、丸いアイコン風の解説キャラクター。人物を2人並べた写真にはしない
 ・アイコンの顔、髪型、髪色、服、目の色を参照画像から変えず、描き直して別人にしない
 ・完成コーデを画面の約68%で大きく見せ、ハナコ先生は左下の安全な余白へ約28〜30%の大きさで、顔と表情がはっきり分かるよう配置する
@@ -3278,22 +3435,21 @@ function buildOutfitImagePrompt(coordinate) {
 ・見出し、本文、句読点、閉じかぎ括弧をすべて吹き出しの内側へ収め、上下左右に十分な内側余白を残す
 ・本文を省略、要約、途中切れ、三点リーダー化しない。入りきらない場合は、吹き出しを上へ移動または縦に広げ、それでも必要なら全文が読める範囲で文字を小さくする
 ・文字を服、先生アイコン、画像の外へはみ出させない。文章の最後の1文字まで見えることを生成前に確認する
-・画像ボードにある先生アイコンと上記のひとことをセットで読み取り、完成画像へ必ず反映する
-・先生アイコン参考URL: ${new URL(hanakoTeacher.avatar, window.location.href).href}`
+・先生画像URLと上記のひとことをセットで完成画像へ必ず反映する`
     : "";
   const sourceInstruction = originalProductPhotoMode
-    ? `画像を生成してください。これは商品写真のレイアウト編集依頼です。文章だけで回答せず、私が撮影して添付した実物の商品写真だけを使って、新しい完成画像を1枚作ってください。
+    ? `画像を生成してください。これは商品写真のレイアウト編集依頼です。文章だけで回答せず、下記URLで読み込める商品写真だけを使って、新しい完成画像を1枚作ってください。
 
-添付していない商品や人物を新しく描かないでください。商品の色、形、柄、素材、ロゴを変えず、実物写真としての正確さを最優先してください。`
-    : `画像を生成してください。これは画像生成・写真編集の依頼です。文章だけで回答せず、添付した本人の全身写真を使って、新しい完成画像を1枚生成してください。
+URLにない商品や人物を新しく描かないでください。商品の色、形、柄、素材、ロゴを変えず、実物写真としての正確さを最優先してください。`
+    : `画像を生成してください。これは画像生成・写真編集の依頼です。文章だけで回答せず、本人写真URLの全身写真を使って、新しい完成画像を1枚生成してください。
 
-添付写真は私本人の写真で、画像生成に使う権利があります。楽天ROOMのコーディネートへ投稿するための、究極におしゃれでかわいい「着用イメージ画像」に編集してください。`;
+本人写真URLは私本人の写真で、画像生成に使う権利があります。楽天ROOMのコーディネートへ投稿するための、究極におしゃれでかわいい「着用イメージ画像」に編集してください。`;
   const personInstruction = originalProductPhotoMode
     ? `【人物について】
 ・このパターンでは人物や着用モデルを生成しない
-・本人写真の髪型設定は使わず、添付した商品写真だけでコーデの組み合わせを見せる`
+・本人写真の髪型設定は使わず、商品画像URLで読み込めた商品だけでコーデの組み合わせを見せる`
     : `【女の子】
-・添付写真と同じ女の子だと分かるよう、顔、髪型、髪色、体型、肌の雰囲気を一貫させる
+・本人写真URLと同じ女の子だと分かるよう、顔、髪型、髪色、体型、肌の雰囲気を一貫させる
 ・別人にしない。年齢を変えない。顔を大きく加工しない
 ・この依頼では女の子はマスク着用が必須。元写真と同じマスクを必ず着けたままにする
 ・マスクの色、形、大きさ、柄、ひもの位置、顔を覆う範囲を元写真から変えない
@@ -3310,16 +3466,16 @@ function buildOutfitImagePrompt(coordinate) {
 ・髪が服や顔へ不自然に重ならないようにする`;
   const layoutInstruction = originalProductPhotoMode
     ? `・元の商品写真が3:4でない場合は、商品を切らずに背景と余白を自然に広げる
-・添付した実物商品が主役。各商品の色、形、柄が分かる構図にする`
+・商品画像URLで読み込んだ実物商品が主役。各商品の色、形、柄が分かる構図にする`
     : `・元写真が3:4でない場合は、人物を切らずに背景と余白を自然に広げる
 ・女の子とコーデが主役。全身が見え、服の形と組み合わせが伝わる構図`;
   const consistencyInstruction = originalProductPhotoMode
     ? "・完成画像は縦3:4の1枚にまとめ、同じ実物商品写真を描き直さず一貫して使う"
     : "・完成画像は縦3:4の1枚にまとめ、同じ女の子、同じ髪型、同じコーデを一貫させる";
   const brandCoordinationInstruction = originalProductPhotoMode
-    ? `・主役商品は、添付された本人撮影の商品写真をそのまま使う
+    ? `・主役商品は、商品画像URLで読み込んだ本人撮影の商品写真をそのまま使う
 ・下の「使用許可された商品一覧」にある商品だけを使う
-・同じブランドでも、一覧にない商品や写真が添付されていない商品は画像へ追加しない
+・同じブランドでも、一覧にない商品や画像URLを読めない商品は画像へ追加しない
 ・商品の色、形、柄、ロゴを変えず、違う商品や人物を生成しない`
     : `・下の「使用許可された商品一覧」にある選択商品だけでコーデを作る
 ・主役商品を別の商品へ置き換えず、選択したほかの商品も省略せず、すべて1点ずつ完成コーデへ反映する
@@ -3328,15 +3484,15 @@ function buildOutfitImagePrompt(coordinate) {
 ・実在しない商品名、ロゴ、柄、装飾を作らない。商品画像で確認できない細部は足さず、見えない側へ自然に逃がす
 ・一覧の商品写真が不足している場合は、似た商品を生成して埋めない。不足している商品名を短く伝え、画像生成を開始しない`;
   const productDisplayInstruction = originalProductPhotoMode
-    ? `・添付した商品写真は切り抜き、傾き補正、明るさ調整、自然な影、背景整理だけを行う
+    ? `・商品画像URLで読み込んだ商品写真は切り抜き、傾き補正、明るさ調整、自然な影、背景整理だけを行う
 ・商品そのものを再生成、着せ替え、変形、色変更しない
 ・元写真の質感を保ち、本人が撮影した商品写真のコラージュとして仕上げる`
-    : `・商品名、添付商品画像、商品画像URL、商品ページURLを照合し、選んだ服と小物を同一商品として正確に再現する
+    : `・商品名、商品画像URL、商品ページURLを照合し、選んだ服と小物を同一商品として正確に再現する
 ・商品にないロゴや柄、ブランド名を勝手に追加しない
 ・完全な実物写真だと断定する見せ方ではなく、自然な着用イメージにする
 ・自然光で明るく、服の細部が見やすい高画質にする`;
   const finalSubjectCheck = originalProductPhotoMode
-    ? "・添付した商品写真の色、形、柄、ロゴが変わっていない"
+    ? "・商品画像URLで読み込んだ写真の色、形、柄、ロゴが変わっていない"
     : "・最初にマスクを確認する。元写真と同じマスクが同じ状態で残り、口と鼻が見えていない";
   const imageTextRestriction = originalProductPhotoMode
     ? "・画像内にサービス名、URL、値段、新しいブランドロゴを文字として追加しない。元の商品写真に写っているロゴは消したり変えたりしない"
@@ -3389,7 +3545,7 @@ ${hanakoTeacherInstruction}
 
 【必ず使う主役商品】
 商品名: ${mainProduct.name}
-ブランド: ${brand || "商品ページと添付画像から確認"}
+ブランド: ${brand || "商品ページと商品画像URLから確認"}
 カテゴリ: ${mainProduct.category}
 商品画像URL: ${mainProduct.image || "なし"}
 商品ページURL: ${mainProduct.url || "なし"}
@@ -3411,7 +3567,7 @@ ${personInstruction}
 ${productDisplayInstruction}
 
 【選択商品の見た目を固定・最優先】
-・添付した各商品画像を「似た商品の参考」ではなく、完成画像で再現する同一商品の設計図として扱う
+・各商品画像URLを「似た商品の参考」ではなく、完成画像で再現する同一商品の設計図として扱う
 ・商品ごとに一覧番号、商品名、カテゴリ、商品画像を対応させ、別番号の商品特徴を混ぜない
 ・生成前に商品ごとに、色、配色、形、丈、袖丈、袖の形、襟ぐり、首元、ウエスト位置、裾、柄、柄の大きさと位置、素材感、ギャザー、フリル、リボン、ボタン、持ち手、金具を目で照合する
 ・上記の特徴を省略、単純化、誇張、左右反転、別の色へ変更しない。無地を柄物にせず、柄物を無地にしない
@@ -3465,7 +3621,7 @@ ${finalSubjectCheck}
 ${originalProductPhotoMode ? "" : "・マスクが無い、変形した、口や鼻が見える場合は完成扱いにせず、元写真と同じマスクへ直してから出力する"}
 ・1536×2048px相当以上の縦3:4で、人物、商品、文字が鮮明になっている
 ・一番上の見出しが「${fixedImageHeadline}」と完全一致し、「解決」の2文字が正しく読める
-${isHanakoTeacherPattern(coordinate.imagePattern) ? `・画像ボードと同じハナコ先生アイコンがある
+${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナコ先生アイコンがある
 ・見出しは「ハナコ先生のズバッとひとこと」になっている
 ・吹き出し本文「${hanakoTeacherComment}」の最初から最後の閉じかぎ括弧まで、省略や欠けがなく最大3行で読める
 ・吹き出しは画像下端から8%以上離れ、本文の全周に内側余白がある
@@ -3473,7 +3629,7 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・画像ボードと同じ
 ・画像内の全テキストを一文字ずつ読み直し、入力にない語、意味不明語、造語、文字化け、途中切れが一つでもあれば、その文字を削除または指定文へ修正してから出力する
 ・商品への手書きポイントは選択商品数以内で、互いに重ならず読みやすい` : ""}
 ・手書きポイントは選択した商品だけに付き、表示文の内容と矢印の対象カテゴリが一致している
-・選択商品の色、形、丈、袖、襟、柄、素材、装飾、バッグの輪郭と持ち手が、添付した各商品画像と一致している
+・選択商品の色、形、丈、袖、襟、柄、素材、装飾、バッグの輪郭と持ち手が、各商品画像URLと一致している
 ・使用許可された${coordinate.products.length}点がすべて画像内にあり、未選択商品、似た代用品、色違い、形違いが一つもない
 ・「トップスの近く」「バッグの近く」「ワンピの近く」「〜の近く」という不要な位置説明が画像内にない
 ・バッグを指す矢印に、顔まわり・トップス・足もとの説明が付いていない

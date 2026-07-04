@@ -64,6 +64,49 @@
       if (!response.ok) throw await this.toError(response);
     }
 
+    async uploadPrivateImage(file, bucket = "hanako-private-photos") {
+      if (!this.signedIn) throw new Error("先にクラウド同期へログインしてください");
+      const extension = String(file?.name || "photo.jpg").split(".").pop().replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
+      const path = `${this.user.id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      await this.authorizedFetch(`/storage/v1/object/${bucket}/${this.encodeStoragePath(path)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "x-upsert": "false",
+          "cache-control": "3600",
+        },
+        body: file,
+      });
+      return { path, ...(await this.createSignedImageUrl(path, 7200, bucket)) };
+    }
+
+    async createSignedImageUrl(path, expiresIn = 7200, bucket = "hanako-private-photos") {
+      if (!this.signedIn) throw new Error("先にクラウド同期へログインしてください");
+      const response = await this.authorizedFetch(`/storage/v1/object/sign/${bucket}/${this.encodeStoragePath(path)}`, {
+        method: "POST",
+        body: JSON.stringify({ expiresIn }),
+      });
+      const data = await response.json();
+      const signedPath = data.signedURL || data.signedUrl || data.url || "";
+      if (!signedPath) throw new Error("写真の一時URLを作れませんでした");
+      const signedUrl = /^https?:\/\//i.test(signedPath)
+        ? signedPath
+        : `${this.url}/storage/v1${signedPath.startsWith("/") ? "" : "/"}${signedPath}`;
+      return { signedUrl, expiresAt: Date.now() + expiresIn * 1000 };
+    }
+
+    async removePrivateImage(path, bucket = "hanako-private-photos") {
+      if (!this.signedIn || !path) return;
+      await this.authorizedFetch(`/storage/v1/object/${bucket}`, {
+        method: "DELETE",
+        body: JSON.stringify({ prefixes: [path] }),
+      });
+    }
+
+    encodeStoragePath(path) {
+      return String(path || "").split("/").map(encodeURIComponent).join("/");
+    }
+
     async authorizedFetch(path, options = {}) {
       await this.refreshIfNeeded();
       const response = await fetch(`${this.url}${path}`, {

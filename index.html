@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=107">
+    <link rel="stylesheet" href="styles.css?v=108">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -791,7 +791,7 @@
                   <p class="eyebrow">着用イメージ・コーデ投稿</p>
                   <h3>コーデを作る</h3>
                 </div>
-                <span class="status-pill">本人写真だけ使用</span>
+                <span class="status-pill">画像添付なしで作成</span>
               </div>
               <div class="coord-url-import">
                 <label class="field-label" for="coordProductUrl">楽天ROOM / 楽天市場の商品URLから追加</label>
@@ -801,9 +801,19 @@
                 </div>
                 <p class="coord-import-status" id="coordImportStatus">ROOMページと楽天市場の商品ページの両方に対応しています。</p>
               </div>
-              <label class="field-label" for="coordPhoto">自分の全身写真</label>
-              <input id="coordPhoto" type="file" accept="image/*">
-              <p class="coord-note">実物の完全再現ではなく、投稿用の「着用イメージ」として作ります。</p>
+              <div class="coord-photo-library">
+                <div class="coord-photo-library-head">
+                  <div>
+                    <label class="field-label" for="coordPhoto">自分の全身写真</label>
+                    <p>最大5枚保存できます。今回使う1枚を選んでください。</p>
+                  </div>
+                  <label class="coord-photo-add" for="coordPhoto">＋ 写真を追加</label>
+                  <input id="coordPhoto" type="file" accept="image/*" multiple hidden>
+                </div>
+                <div class="coord-photo-grid" id="coordPhotoLibrary" aria-live="polite"></div>
+                <p class="coord-photo-status" id="coordPhotoStatus">クラウド同期へログインすると、安全な一時URLでGeminiへ渡せます。</p>
+              </div>
+              <p class="coord-note">写真は非公開で保存し、Geminiには2時間だけ有効なURLを渡します。実物の完全再現ではなく、投稿用の「着用イメージ」として作ります。</p>
 
               <div class="coord-style-row">
                 <div>
@@ -941,13 +951,12 @@
               </div>
 
               <div class="gemini-mode-guide">
-                <strong>Geminiで写真を作る手順</strong>
+                <strong>Geminiで写真を作る手順（画像添付なし）</strong>
                 <ol>
-                  <li>「コーデ文と画像ボードを作る」を押し、画像ボードを保存する</li>
-                  <li>Geminiの「＋」から「画像を作成」を選ぶ</li>
-                  <li>本人の全身写真と保存した画像ボードを一緒に添付する</li>
-                  <li>コーデで選択したすべての商品画像を添付する</li>
-                  <li>画像生成プロンプトをコピーして画像を作る</li>
+                  <li>保存した自分の写真から今回使う1枚を選ぶ</li>
+                  <li>「コーデ文と画像ボードを作る」を押す</li>
+                  <li>画像生成プロンプトをコピーしてGeminiへ貼る</li>
+                  <li>写真・商品・ハナコ先生はURLから自動で読み込まれる</li>
                   <li>紹介文プロンプトをコピーして紹介文を作る</li>
                 </ol>
                 <p>AI画像はコーデ検討・SNS素材用です。ROOMのオリジナル写真・ランク対象として投稿する場合は、ご本人が実際に着用して撮影した全身写真を使い、写真に写る商品だけを登録してください。</p>
@@ -1202,6 +1211,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=107"></script>
+    <script src="app.js?v=108"></script>
   </body>
 </html>
