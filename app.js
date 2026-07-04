@@ -294,6 +294,7 @@ let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
 const coordinatePhotoPreviewCache = new Map();
 let coordinateBoardDataUrl = "";
+let coordinateBoardRenderId = 0;
 let roomReferenceBoardDataUrl = "";
 let socialReferenceBoardDataUrl = "";
 const coordinateImageCache = new Map();
@@ -3072,8 +3073,12 @@ function buildCoordinateAnalysis(coordinate) {
 }
 
 async function drawCoordinateBoard(coordinate, text) {
-  const canvas = coordBoard;
-  if (!canvas) return;
+  const targetCanvas = coordBoard;
+  if (!targetCanvas) return;
+  const renderId = ++coordinateBoardRenderId;
+  const canvas = document.createElement("canvas");
+  canvas.width = targetCanvas.width;
+  canvas.height = targetCanvas.height;
   const analysis = buildCoordinateAnalysis(coordinate);
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -3131,6 +3136,10 @@ async function drawCoordinateBoard(coordinate, text) {
     ctx.fillStyle = "#6c555e";
     wrapCanvasText(ctx, `${analysis.solution} 色は${analysis.colorPlan}`, 72, 1260, 930, 34, 2);
   }
+  if (renderId !== coordinateBoardRenderId) return;
+  const targetContext = targetCanvas.getContext("2d");
+  targetContext.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+  targetContext.drawImage(canvas, 0, 0);
   coordinateBoardDataUrl = canvas.toDataURL("image/png");
 }
 
