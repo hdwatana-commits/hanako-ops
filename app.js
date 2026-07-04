@@ -3539,6 +3539,11 @@ ${items}
 ・内部で冒頭3案と構成3案を考え、いちばん自然で保存したくなる完成稿だけを出す
 ・240〜380文字くらいで、短い文と空行を使い、スマホで読みやすくまとめる
 ・話し手は礼儀正しく、ファッションが大好きな女子大生
+・宣伝文を先に作らず、選んだシーンの具体的な一瞬、鏡の前の迷い、着た時に気になる点など、人が実際に考える順番から書く
+・短い一文で気持ちを置き、その次の少し長い文で理由を説明する。全文を同じ長さ、同じ語尾にしない
+・「かわいい」「高見え」「おすすめ」だけで終わらせず、丈、重心、色数、素材、小物のうち商品画像や情報で確認できる具体点へ言い換える
+・同じ段落で「です」「ます」を3回以上続けない。接続詞を毎文入れず、自然な間を作る
+・一か所だけ、礼儀正しい女子大生らしい本音や小さな迷いを入れる。ただし購入・着用していない体験は作らない
 ・ハナコ先生として、自信のあるファッション解説に、愛のある鋭いひと言、くすっとする面白さ、女子大生らしい共感を自然に入れる
 ・「よくある服のなやみ → このコーデでのかいけつ → かわいく見える理由」の順で書く
 ・悩み「${coordinate.concern}」に共感し、選んだ服の形・色・小物がどう解決するかを具体的に書く
@@ -3546,6 +3551,7 @@ ${items}
 ・先生らしい実用アドバイスとして「なぜ似合うか」「選ぶときに見る場所」「手持ち服で再現する方法」のうち2つ以上を必ず入れる
 ・買う前に確認するポイントを1つ入れる。サイズ、丈、透け感、素材、洗濯表示、手持ち服との相性から商品に合うものを選ぶ
 ・抽象的なほめ言葉を続けず、読者が明日の服選びで実際に試せる内容にする
+・読み終えた人が一つ行動できるよう、「手持ち服の何を見るか」「商品ページのどこを確認するか」を具体的に示す
 ・主役商品を必ず具体的に紹介し、選択した商品の組み合わせによる統一感にふれる
 ・商品名を並べるだけにせず、色、形、素材感、全体のバランスがどうかわいく見えるかを書く
 ・選んだシーンで着たくなる一言と、読んだ人が前向きになれる締めを入れる
@@ -3558,6 +3564,7 @@ ${items}
 ・むずかしい漢字、上から目線、乱暴な言い方、わざとらしい若者言葉、誇大表現は使わない
 ・特定の人物や作風を示す言葉、読者への乱暴な呼びかけは絶対に書かない
 ・実際に買った、着た、使ったと確認できない内容は断定しない
+・完成後に、意味の通らない見出し、同じ意味の繰り返し、根拠のない数字、不自然な若者言葉、AIらしい総まとめ表現がないか読み直し、あれば自然な日本語へ直す
 ・画像制作の指示や前置き、解説、見出しは書かない
 
 完成した紹介文だけを出力してください。`;
@@ -4702,17 +4709,23 @@ ${supportingProducts}
 ${currentDraft || "下書きなし。上の情報から新しく作る"}
 
 【作成方法】
-・内部で冒頭フックを18案、構成を6案考え、媒体と目的に最も合う1案を選ぶ
+・内部で冒頭フックを24案、構成を8案考え、媒体と目的に最も合う1案を選ぶ
 ・選んだ理由や検討過程、別案は出力しない
 ・完成後に、媒体の文字量、具体性、共感、信頼、CTA、広告表記、重複の少なさを自己確認する
 ・弱い場合は内部で書き直し、合格した完成稿だけを返す
 
 【文章の絶対条件】
 ・下書きの良い部分は生かすが、そのまま言い換えるだけにしない
+・広告文から始めず、読者が実際に経験する朝、鏡、玄関、移動、授業、仕事、カフェなど、今回の条件に合う具体的な一瞬から始める。ただし無関係な場面は作らない
+・短い文、理由を説明する中くらいの文、余韻を残す一文を混ぜ、全文を同じ長さにしない
+・同じ語尾を3文以上続けない。「おすすめです」「ぴったりです」「要チェック」を便利な結論として使わない
+・抽象的な「かわいい」「高見え」を使う場合は、直後に色、形、丈、素材、小物、サイズなど確認できる理由を添える
+・一投稿に見せ場は一つ。悩み、商品情報、CTAを全部同じ強さで叫ばず、読む順番に強弱をつける
 ・最初の1〜2行で「自分のことかも」と思える具体的な場面か悩みを示す
 ・商品名より先に、読者が止まる情景・違和感・結論のどれかを置く
 ・悩み → 気づき → この商品が候補になる理由 → 次の行動、の流れにする
 ・くすっとする面白さと愛のある鋭いひと言を少しだけ入れる
+・面白さは大げさな比喩や流行語ではなく、服選びで本当に起こる小さな迷いや観察から作る
 ・商品ページで確認できた事実と、話し手の感想・予想を混同しない
 ・同じ意味の言葉、同じCTA、同じ商品名を何度も繰り返さない
 ・絵文字には「感情」「情報の区切り」「次の行動」の役割を持たせ、飾りとして連続させない
@@ -4721,6 +4734,8 @@ ${currentDraft || "下書きなし。上の情報から新しく作る"}
 ・上から目線、乱暴な呼びかけ、煽り、誇大表現、不自然な若者言葉を使わない
 ・購入や使用を確認できない場合は、使ったように断定しない
 ・価格、在庫、サイズ、効果、人気、順位を作らない
+・根拠のない数字、「○選」「○パターン」、意味の曖昧な見出しを作らない。数を書く場合は、実際に本文で同じ数の項目を示す
+・完成後に声に出して読んだつもりで、助詞抜け、語順の不自然さ、意味不明語、同じ意味の反復を直す
 ・「バズる」「AIが作成」「プロンプト」という言葉を投稿文に書かない
 ・商用投稿として「${c.disclosure}」を自然に入れる
 ・リンク導線は次を使う:
@@ -5123,7 +5138,7 @@ function buildEditorialCandidateContexts(context) {
     ...(goalPatterns[context.goal] || []),
     ...(platformPatterns[context.platform] || platformPatterns.X),
   ])];
-  return Array.from({ length: 18 }, (_, index) => ({
+  return Array.from({ length: 36 }, (_, index) => ({
     ...context,
     hookType: hookTypes[index % hookTypes.length],
     viralPattern: patterns[index % patterns.length],
@@ -5209,7 +5224,64 @@ function scorePlatformCopy(text, context) {
     if (emojiCount > 6) score -= (emojiCount - 6) * 5;
   }
   score -= repeatedLinePenalty(text);
+  score += scoreHumanLanguage(text, context);
   return score;
+}
+
+function scoreHumanLanguage(text, context) {
+  let score = 0;
+  const lines = String(text || "").split("\n").map((line) => line.trim()).filter(Boolean);
+  const prose = lines.filter((line) => !/^(?:【|#|※|https?:|[・●✓]|\d+[.．])/.test(line));
+  const sentenceLengths = prose.flatMap((line) => line.split(/[。！？!?]/).map((part) => part.trim()).filter(Boolean).map((part) => part.length));
+  const hasShort = sentenceLengths.some((length) => length >= 4 && length <= 16);
+  const hasMedium = sentenceLengths.some((length) => length >= 17 && length <= 38);
+  const hasLong = sentenceLengths.some((length) => length >= 39 && length <= 62);
+  if (hasShort && hasMedium) score += 10;
+  if (hasMedium && hasLong) score += 5;
+  if (sentenceLengths.length >= 3 && new Set(sentenceLengths).size >= Math.min(4, sentenceLengths.length)) score += 6;
+
+  const concreteSignals = (text.match(/朝|鏡|玄関|電車|授業|講義|通学|通勤|帰り|カフェ|雨|気温|丈|袖|襟|素材|色|重さ|収納|サイズ|足幅|立地|駅|客室|朝食|キャンセル/g) || []).length;
+  score += Math.min(14, concreteSignals * 2);
+  if (/私は|正直|迷|気にな|つい|でも|ただ|だから|実は/.test(text)) score += 8;
+  if (/理由|なぜ|ので|から|ため/.test(text)) score += 5;
+  if (/一方で|ただし|とはいえ|気になる点|確認したい/.test(text)) score += 6;
+
+  const genericPhrases = (text.match(/おすすめです|ぴったりです|魅力的です|素敵です|要チェック|チェックしてみて|間違いなし|大活躍|マストバイ/g) || []).length;
+  score -= genericPhrases * 7;
+  const hype = (text.match(/絶対|神アイテム|優勝|爆売れ|買わないと損|人生変わる|最強|完璧/g) || []).length;
+  score -= hype * 12;
+
+  const endings = prose
+    .flatMap((line) => line.split(/(?<=[。！？!?])/))
+    .map((sentence) => sentence.trim().match(/(です|ます|でした|ました|かも|よね|だと思う|ください|しよう)[。！？!?]?$/)?.[1])
+    .filter(Boolean);
+  const endingCounts = endings.reduce((counts, ending) => ({ ...counts, [ending]: (counts[ending] || 0) + 1 }), {});
+  const repeatedEnding = Math.max(0, ...Object.values(endingCounts)) - 2;
+  score -= Math.max(0, repeatedEnding) * 4;
+
+  const recent = (state.generatorHistory || []).filter((item) => !item.platform || item.platform === context.platform).slice(0, 12);
+  const currentOpening = prose[0] || lines[0] || "";
+  const maxOpeningSimilarity = recent.reduce((max, item) => Math.max(max, characterSimilarity(currentOpening, item.opening || "")), 0);
+  score -= Math.round(maxOpeningSimilarity * 24);
+  const currentExcerpt = String(text || "").slice(0, 500);
+  const maxBodySimilarity = recent.reduce((max, item) => Math.max(max, characterSimilarity(currentExcerpt, item.excerpt || item.opening || "")), 0);
+  score -= Math.round(maxBodySimilarity * 18);
+  return score;
+}
+
+function characterSimilarity(left, right) {
+  const grams = (value) => {
+    const normalized = String(value || "").replace(/[\s。、！？!?「」『』（）()【】#]/g, "");
+    const result = new Set();
+    for (let index = 0; index <= normalized.length - 3; index += 1) result.add(normalized.slice(index, index + 3));
+    return result;
+  };
+  const a = grams(left);
+  const b = grams(right);
+  if (!a.size || !b.size) return 0;
+  let shared = 0;
+  a.forEach((value) => { if (b.has(value)) shared += 1; });
+  return shared / Math.max(a.size, b.size);
 }
 
 function repeatedLinePenalty(text) {
@@ -6213,6 +6285,7 @@ function rememberGeneration(text) {
     at: new Date().toISOString(),
     platform: activePlatform,
     opening: text.split("\n").find(Boolean)?.slice(0, 80) || "",
+    excerpt: String(text || "").replace(/\s+/g, " ").slice(0, 500),
   });
   state.generatorHistory = state.generatorHistory.slice(0, 30);
   localStorage.setItem("hanako-room-ops", JSON.stringify(state));
