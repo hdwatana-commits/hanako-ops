@@ -2108,14 +2108,21 @@ async function handleCoordinatePhotoLibraryClick(event) {
   const selectButton = event.target.closest("[data-select-coordinate-photo]");
   if (!selectButton) return;
   state.selectedCoordinatePhotoId = selectButton.dataset.selectCoordinatePhoto;
+  saveState();
+  renderCoordinatePhotoLibrary();
+  showToast("今回使う写真を選びました");
   try {
     await ensureSelectedCoordinatePhotoUrl();
     saveState();
     renderCoordinatePhotoLibrary();
     if (coordinateOutput.value.trim()) drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
-    showToast("今回使う写真を選びました");
   } catch (error) {
-    showToast(error.message || "写真を選べませんでした");
+    const message = "写真は選択済みです。画像URLは生成時にもう一度更新します。";
+    document.querySelectorAll("#coordPhotoStatus, #homeCoordPhotoStatus").forEach((status) => {
+      status.textContent = message;
+      status.classList.add("error");
+    });
+    showToast(message);
   }
 }
 
@@ -2134,8 +2141,9 @@ function renderCoordinatePhotoLibrary() {
   document.querySelectorAll("#coordPhotoLibrary, #homeCoordPhotoLibrary").forEach((target) => {
     target.innerHTML = libraryHtml;
   });
+  const selectedName = selected?.name || "未選択";
   const statusText = cloudSync.signedIn
-    ? `${state.coordinatePhotos.length}/5枚保存中。選択写真は生成時に2時間限定URLへ更新します。`
+    ? `${state.coordinatePhotos.length}/5枚保存中。今回使う写真：${selectedName}`
     : "写真を追加・更新するには、クラウド同期へログインしてください。";
   document.querySelectorAll("#coordPhotoStatus, #homeCoordPhotoStatus").forEach((status) => {
     status.textContent = statusText;
@@ -4243,7 +4251,10 @@ function bindRoomActions() {
   document.querySelector("#copyRoomImagePrompt")?.addEventListener("click", copyRoomImagePrompt);
   document.querySelector("#openRoomImageGemini")?.addEventListener("click", openRoomImageGemini);
   document.querySelector("#roomImagePhotoPreview")?.addEventListener("click", (event) => {
-    if (event.target.closest("#roomChoosePhoto")) activateView("coordinate");
+    if (event.target.closest("#roomChoosePhoto")) {
+      activateView("brief");
+      window.setTimeout(() => document.querySelector("#homePhotoLibraryTitle")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    }
   });
   applyRoomImageRecommendations(getSelectedRoomProduct());
   renderRoomImagePhotoPreview();
@@ -4336,7 +4347,7 @@ function renderRoomImagePhotoPreview() {
   if (!target) return;
   const photo = getSelectedCoordinatePhoto();
   if (!photo) {
-    target.innerHTML = `<div><strong>本人写真が未選択です</strong><small>コーデ画面で写真を保存して選んでください。</small></div><button id="roomChoosePhoto" type="button">写真を選ぶ</button>`;
+    target.innerHTML = `<div><strong>本人写真が未選択です</strong><small>ホーム画面で全身写真を保存して選んでください。</small></div><button id="roomChoosePhoto" type="button">写真を選ぶ</button>`;
     return;
   }
   target.innerHTML = `<img src="${escapeHtml(photo.signedUrl || "")}" alt="今回使う本人写真"><div><strong>コーデと共通の本人写真</strong><small>${escapeHtml(photo.name || "選択中の写真")}を使います</small></div><button id="roomChoosePhoto" type="button">変更</button>`;
@@ -4354,7 +4365,7 @@ async function generateRoomImagePrompt(quiet = false) {
   if (!product.image) return showToast("この商品には商品画像URLがありません");
   try {
     const personPhotoUrl = await ensureSelectedCoordinatePhotoUrl();
-    if (!personPhotoUrl) return showToast("コーデ画面で本人写真を保存して選んでください");
+    if (!personPhotoUrl) return showToast("ホーム画面で本人写真を保存して選んでください");
     const mode = document.querySelector("#roomImageType")?.value || "normal";
     await loadCoordinatePhotoPreview();
     await drawRoomReferenceBoard(product, mode);
@@ -4392,14 +4403,14 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood }) {
     ? `【コレクション表紙】
 ・正方形1:1、1536×1536px以上。ブランドの空気感を生かした上質なファッション雑誌の表紙にする
 ・本人を大胆で自然な雑誌ポーズで見せ、商品はURLで確認できた同一商品だけを使う
-・表紙の固定文字は上から「ファッションハナコ」「${brand} Collection」「大人かわいい、今の気分。」の3つだけ
+・表紙の固定文字は上から「ファッションハナコ」「${brand} Collection」「${oneLiner}」の3つだけ。一字一句固定し、言い換えない
 ・文字は商品や顔へ重ねず、雑誌らしい文字組みと十分な余白で配置する
 ・売上数、レビュー数、価格、割引、効能などの数字は入れない
 ・同ブランド候補が1点だけなら商品を水増しせず、その1点を主役にした表紙へ仕上げる`
     : `【通常投稿画像】
 ・正方形1:1、1536×1536px以上。明るく自然で、商品と着用イメージが一目で分かる1枚にする
 ・本人が商品を自然に身につけ、商品の色、形、丈、柄、素材感をURL画像と一致させる
-・画像内の文字は、読みやすい場所へ「${oneLiner}」を1回だけ入れる
+・画像内の文字は、読みやすい場所へ「${oneLiner}」を一字一句そのまま1回だけ入れる。言い換え、追記、造語は禁止
 ・一言以外の見出し、価格、説明、吹き出し、ランキング、数字、ロゴを追加しない
 ・一言は黒または濃いブラウンの自然な日本語で、商品や顔に重ねない`;
   return `画像を生成してください。楽天ROOM投稿用ですが、画像内に「楽天ROOM」「ROOM」の文字は入れません。添付した参照画像ボード1枚を使い、完成画像を1枚だけ作ってください。
@@ -4497,21 +4508,44 @@ async function drawRoomReferenceBoard(product, mode) {
 }
 
 function buildRoomImageOneLiner(product) {
-  const text = `${product.name || ""} ${product.hook || ""} ${product.details?.material || ""}`;
-  const byCategory = {
-    トップス: ["顔まわりが、ふわっと華やぐ。", "この一枚で、甘さが整う。", "袖の表情まで、ちゃんとかわいい。"],
-    ワンピース: ["一枚で、今日のかわいいが決まる。", "揺れるたび、気分まで軽やか。", "迷う朝こそ、頼れる一枚。"],
-    スカート: ["揺れ感ひとつで、いつもの服が新鮮。", "甘さは、きれいな丈感で楽しむ。", "歩くたび、かわいさが動き出す。"],
-    パンツ: ["きれいめも、動きやすさも。", "甘いトップスを、大人っぽく。", "すっきり見えて、気負わない。"],
-    バッグ: ["持つだけで、コーデがきゅっと整う。", "小さなバッグが、今日の主役。", "甘めコーデの、きれいな締め役。"],
-    シューズ: ["足もとから、かわいさを更新。", "歩けるかわいいが、いちばん頼れる。", "最後に選ぶ靴で、全部が整う。"],
-    アクセサリー: ["小さなきらめきが、顔まわりの味方。", "ひとつ足すだけで、ちゃんと華やぐ。", "主役服を邪魔しない、上品な光。"],
-    アウター: ["羽織るだけで、全身がすっと整う。", "かわいさを残して、きちんと見せる。", "脱いだあとまで、ちゃんとかわいい。"],
+  const text = `${product.name || ""} ${product.hook || ""} ${product.details?.material || ""} ${product.details?.color || ""}`;
+  const categoryAliases = {
+    ニット: "トップス", カーディガン: "アウター", オールインワン: "ワンピース", セットアップ: "ワンピース",
+    デニム: "パンツ", "スーツ・フォーマル": "フォーマル", ブライダル: "フォーマル", マタニティ: "ワンピース",
+    ヘアアクセサリー: "アクセサリー", 腕時計: "アクセサリー", "ストール・マフラー": "ファッション小物",
+    ベルト: "ファッション小物", サングラス: "ファッション小物", 財布: "ファッション小物", 傘: "ファッション小物",
+    レッグウェア: "ファッション小物", レインウェア: "アウター", スポーツウェア: "ルームウェア",
   };
-  const options = [...(byCategory[product.category] || ["今日のかわいいに、ちょうどいい。"] )];
-  if (/サテン|光沢/.test(text)) options.unshift("この光沢感が、ちょうど上品。 ");
-  if (/シアー|透け/.test(text)) options.unshift("透け感ひとつで、ぐっと軽やか。 ");
-  return options[hashText(product.id || product.name) % options.length].trim();
+  const category = categoryAliases[product.category] || product.category;
+  const byCategory = {
+    トップス: ["顔まわりが、ふわっと華やぐ。", "この一枚で、甘さが整う。", "袖の表情まで、ちゃんとかわいい。", "上半身に、ちょうどいい華やぎ。", "いつものボトムが、少し新鮮。", "着回せるのに、ちゃんと主役。"],
+    ワンピース: ["一枚で、今日のかわいいが決まる。", "揺れるたび、気分まで軽やか。", "迷う朝こそ、頼れる一枚。", "着るだけで、支度がきれいに整う。", "小物を替えて、何度でも新鮮。", "頑張りすぎず、ちゃんと華やか。"],
+    スカート: ["揺れ感ひとつで、いつもの服が新鮮。", "甘さは、きれいな丈感で楽しむ。", "歩くたび、かわいさが動き出す。", "トップスを選ばない、頼れる華やぎ。", "腰まわりはすっきり、気分は軽く。", "座っても歩いても、きれいが続く。"],
+    パンツ: ["きれいめも、動きやすさも。", "甘いトップスを、大人っぽく。", "すっきり見えて、気負わない。", "脚のラインを、きれいに味方につける。", "楽なのに、きちんと見える。", "朝から夜まで、頼れる一本。"],
+    バッグ: ["持つだけで、コーデがきゅっと整う。", "小さなバッグが、今日の主役。", "甘めコーデの、きれいな締め役。", "必要なものと、かわいいをひとまとめ。", "服がシンプルな日ほど、出番です。", "持ち方ひとつで、印象を更新。"],
+    シューズ: ["足もとから、かわいさを更新。", "歩けるかわいいが、いちばん頼れる。", "最後に選ぶ靴で、全部が整う。", "いつもの服を、足もとで新しく。", "きれい見えと歩きやすさを両立。", "玄関で迷わない、頼れる一足。"],
+    アクセサリー: ["小さなきらめきが、顔まわりの味方。", "ひとつ足すだけで、ちゃんと華やぐ。", "主役服を邪魔しない、上品な光。", "さりげないのに、印象に残る。", "シンプル服に、ひとさじの可愛さ。", "今日の気分を、小物で仕上げる。"],
+    アウター: ["羽織るだけで、全身がすっと整う。", "かわいさを残して、きちんと見せる。", "脱いだあとまで、ちゃんとかわいい。", "気温差の日も、おしゃれは軽やか。", "重ねても、すっきり見える。", "外に出たくなる、頼れる羽織り。"],
+    フォーマル: ["特別な日に、上品な華やぎを。", "写真に残る日こそ、きれいに。", "きちんと感に、私らしい可愛さを。", "大切な一日を、服から整える。", "華やかだけど、品よく。", "迷わず選べる、お呼ばれの味方。"],
+    ルームウェア: ["おうち時間にも、かわいいを。", "くつろぐ日こそ、気分よく。", "楽ちんと可愛いを、どちらも。", "眠る前まで、私らしく。", "おうちの自分にも、ときめきを。", "ゆるっと着て、きれいに見える。"],
+    "水着・水際": ["水辺でも、私らしいかわいさを。", "隠したいところは、可愛くカバー。", "夏の一枚を、もっとお気に入りに。", "リゾート気分を、上品にまとう。", "水際コーデも、甘すぎずきれいに。", "写真に残したい、夏の主役。"],
+    浴衣: ["夏の夜に、やさしい華やぎを。", "後ろ姿まで、ちゃんとかわいい。", "帯を結んで、夏の気分が完成。", "涼やかに、大人かわいく。", "花火の日を、もっと特別に。", "和の色で、いつもと違う私へ。"],
+    インナー: ["見えないところから、きれいを支える。", "透け対策も、心地よさも。", "毎日の服を、内側から整える。", "薄手の服にも、頼れる一枚。", "肌になじんで、コーデを邪魔しない。", "着る日の安心を、ひとつ足す。"],
+    ランジェリー: ["心地よさから、きれいを整える。", "服のシルエットを、内側から味方に。", "毎日に寄り添う、やさしい一枚。", "自分のために選ぶ、かわいい。", "響きにくく、気分は華やか。", "無理せず整う、私の定番。"],
+    帽子: ["かぶるだけで、今日の顔が決まる。", "日差し対策も、かわいく。", "いつもの服に、こなれ感を。", "顔まわりへ、軽やかなアクセント。", "髪型に迷う日の、頼れる味方。", "お出かけ気分を、ひとつ足す。"],
+    ファッション小物: ["小物ひとつで、いつもの服が変わる。", "実用的なのに、ちゃんとかわいい。", "さりげなく、今日の気分を足す。", "毎日使うものこそ、お気に入りを。", "コーデの最後に、きれいな答えを。", "持つたび、少しうれしくなる。"],
+  };
+  const options = [...(byCategory[category] || ["今日のかわいいに、ちょうどいい。", "いつもの私を、少しだけ更新。", "迷った日に、頼れるかわいさ。", "着るたび、好きが増えていく。"] )];
+  if (/サテン|光沢/.test(text)) options.push("この光沢感が、ちょうど上品。", "光を味方に、さりげなく華やぐ。");
+  if (/シアー|透け/.test(text)) options.push("透け感ひとつで、ぐっと軽やか。", "重ねるだけで、季節感をひとさじ。");
+  if (/リボン|フリル|レース/.test(text)) options.push("甘いディテールは、品よく楽しむ。", "可愛いは、細部にちゃんと宿る。");
+  if (/撥水|防水|雨/.test(text)) options.push("雨の日だって、かわいく軽やか。", "天気を気にせず、おしゃれを楽しむ。");
+  if (/洗える|ウォッシャブル/.test(text)) options.push("たくさん着たいから、お手入れも気軽に。", "きれいを保ちやすい、頼れる一枚。");
+  if (/通勤|オフィス|仕事/.test(text)) options.push("通勤の日にも、私らしい可愛さを。", "きちんと見えて、堅すぎない。");
+  if (/旅行|トラベル|リゾート/.test(text)) options.push("旅先でも、写真に残したい可愛さ。", "荷物は軽く、気分は華やかに。");
+  const uniqueOptions = [...new Set(options.map((item) => item.trim()))];
+  roomGenerationVariant += 1;
+  return uniqueOptions[hashText(`${product.id || product.name} ${roomGenerationVariant}`) % uniqueOptions.length];
 }
 
 async function copyRoomImagePrompt() {
