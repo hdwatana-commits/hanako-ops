@@ -1,3 +1,11 @@
+const APP_VERSION = (() => {
+  try {
+    return new URL(document.currentScript?.src || location.href).searchParams.get("v") || "開発版";
+  } catch {
+    return "開発版";
+  }
+})();
+
 const defaultProfile = `毎日おしゃれ研究家のハナコです
 大人ガーリー＆甘めきれいめコーデを研究中
 
@@ -389,6 +397,8 @@ let recentSocialHanakoComments = [];
 queueMicrotask(initialize);
 
 function initialize() {
+  const syncAppVersion = document.querySelector("#syncAppVersion");
+  if (syncAppVersion) syncAppVersion.textContent = APP_VERSION === "開発版" ? APP_VERSION : `v${APP_VERSION}`;
   profileText.value = state.profile || defaultProfile;
   document.querySelector('input[name="date"]').valueAsDate = new Date();
   hydrateCustomBrandAssets();

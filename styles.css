@@ -1984,6 +1984,24 @@ textarea {
   line-height: 1.6;
 }
 
+.sync-version {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sync-version strong {
+  padding: 3px 7px;
+  border: 1px solid #ead5dd;
+  border-radius: 999px;
+  color: #8f3e5d;
+  background: #fff8fa;
+  font-size: 11px;
+}
+
 .sync-message {
   margin: 0 0 14px;
   padding: 12px;
