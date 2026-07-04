@@ -4392,8 +4392,9 @@ async function generateRoomImagePrompt(quiet = false) {
 
 function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood }) {
   const details = product.details || {};
-  const brand = details.brand || "ブランド名は商品ページで確認";
+  const brand = details.brand || "HANAKO SELECT";
   const oneLiner = buildRoomImageOneLiner(product);
+  const collectionCopy = buildRoomCollectionCoverCopy(product, brand, oneLiner);
   const sameBrandProducts = state.products
     .filter((item) => item.id !== product.id && item.image && details.brand && item.details?.brand === details.brand)
     .slice(0, 4);
@@ -4404,8 +4405,17 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood }) {
     ? `【コレクション表紙】
 ・正方形1:1、1536×1536px以上。ブランドの空気感を生かした上質なファッション雑誌の表紙にする
 ・本人を大胆で自然な雑誌ポーズで見せ、商品はURLで確認できた同一商品だけを使う
-・表紙の固定文字は上から「ファッションハナコ」「${brand} Collection」「${oneLiner}」の3つだけ。一字一句固定し、言い換えない
-・文字は商品や顔へ重ねず、雑誌らしい文字組みと十分な余白で配置する
+・表紙に入れる文字は次の6つだけ。一字一句固定し、言い換えや追加をしない
+  1. 「ファッションハナコ」
+  2. 「${collectionCopy.collectionTitle}」
+  3. 「${oneLiner}」
+  4. 「${collectionCopy.moodLine}」
+  5. 「${collectionCopy.editLine}」
+  6. 「${collectionCopy.categoryLabel}」
+・1と2を雑誌名・大見出し、3を主役コピー、4と5を小さな編集コピー、6を端正なカテゴリラベルとして強弱をつける
+・${collectionCopy.designDirection}
+・文字は商品や顔へ重ねず、外周8%以上の安全余白へ置く。文字を均等に並べず、雑誌らしいリズムと余白を作る
+・日本語は読みやすい明朝体または端正なゴシック体、英字は細身のセリフ体を基本にする
 ・売上数、レビュー数、価格、割引、効能などの数字は入れない
 ・同ブランド候補が1点だけなら商品を水増しせず、その1点を主役にした表紙へ仕上げる`
     : `【通常投稿画像】
@@ -4547,6 +4557,50 @@ function buildRoomImageOneLiner(product) {
   const uniqueOptions = [...new Set(options.map((item) => item.trim()))];
   roomGenerationVariant += 1;
   return uniqueOptions[hashText(`${product.id || product.name} ${roomGenerationVariant}`) % uniqueOptions.length];
+}
+
+function buildRoomCollectionCoverCopy(product, brand, oneLiner) {
+  const text = `${product.name || ""} ${product.hook || ""} ${product.category || ""} ${product.details?.material || ""} ${product.details?.color || ""}`;
+  const themes = /黒|ブラック|ネイビー|モノトーン|シルバー/.test(text)
+    ? [
+      ["凛とした甘さを、ひとさじ。", "色数をしぼって、品よく。", "白・黒・余白を生かしたモード誌の文字組み"],
+      ["静かな華やかさが、今の気分。", "シンプルな日ほど、形を味方に。", "黒と白を基調に、細い罫線と端正なセリフ体で構成"],
+    ]
+    : /ピンク|リボン|フリル|レース|ガーリー|花柄/.test(text)
+      ? [
+        ["やさしい甘さを、大人っぽく。", "ときめきは、細部に宿る。", "淡いピンク、白、細いリボンモチーフで上品なロマンティック誌にする"],
+        ["可愛いを、きれいに着こなす。", "余白まで、私らしく。", "くすみピンクとアイボリーを使い、小さな花やリボンを控えめに添える"],
+        ["今日の私に、少しの華やぎ。", "甘さは軽く、印象は上品に。", "ミルキーカラーと繊細な明朝体で、透明感のある表紙にする"],
+      ]
+      : /サテン|光沢|パール|ゴールド|ジュエル/.test(text)
+        ? [
+          ["光をまとって、品よく華やぐ。", "特別感は、さりげなく。", "パールホワイトと淡いゴールド、細いセリフ体でラグジュアリーにする"],
+          ["きらめきは、余白と楽しむ。", "上質さを、ひと目で。", "光沢のある白とシャンパンカラーで、ハイファッション誌のように構成"],
+        ]
+        : /水着|水際|リゾート|マリン|ブルー|水色|白/.test(text)
+          ? [
+            ["風まで軽くなる、夏の装い。", "涼やかに、私らしく。", "白とアクアブルー、広い余白で爽やかなリゾート誌にする"],
+            ["光と風をまとう、休日。", "夏の可愛いを、軽やかに。", "明るい空色と白を基調に、細い英字と抜け感のある文字組みにする"],
+          ]
+          : /リネン|麻|コットン|綿|ベージュ|生成り|ナチュラル/.test(text)
+            ? [
+              ["自然体のまま、きれいに。", "素材の表情を、楽しむ。", "生成り、淡いグリーン、紙の質感を生かしたナチュラル誌にする"],
+              ["頑張らない日の、上品服。", "心地よさまで、スタイルに。", "アイボリーと植物色を使い、静かで温かい文字組みにする"],
+            ]
+            : [
+              ["今着たいを、ひとつに。", "毎日に寄り添う、きれいめ服。", "商品の色を主役に、白い余白と端正な文字組みで仕上げる"],
+              ["私らしい可愛いを、更新。", "着る日が楽しみになる一着。", "商品色から2色だけを選び、雑誌らしい強弱のある文字組みにする"],
+              ["いつもの日を、少し素敵に。", "選ぶ時間まで、ときめきに。", "明るい背景と繊細な罫線で、清潔感のあるファッション誌にする"],
+            ];
+  const selected = themes[hashText(`${product.id || product.name} collection ${roomGenerationVariant}`) % themes.length];
+  return {
+    collectionTitle: `${brand} Collection`,
+    moodLine: selected[0],
+    editLine: selected[1],
+    categoryLabel: `STYLE EDIT / ${product.category || "FASHION"}`,
+    designDirection: selected[2],
+    oneLiner,
+  };
 }
 
 async function copyRoomImagePrompt() {
