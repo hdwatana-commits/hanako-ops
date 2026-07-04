@@ -3146,7 +3146,9 @@ async function drawCoordinateBoard(coordinate, text) {
 async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
   const guide = coordinate.hanakoTeacher || currentHanakoTeacher;
   const comment = coordinate.hanakoComment || chooseHanakoTeacherComment(coordinate);
-  let avatar = await loadImage(guide.avatar).catch(() => null);
+  const previewAvatar = document.querySelector("#hanakoTeacherAvatar");
+  let avatar = previewAvatar?.complete && previewAvatar.naturalWidth > 0 ? previewAvatar : null;
+  if (!avatar) avatar = await loadImage(guide.avatar).catch(() => null);
   if (!avatar) avatar = await loadImage("icons/hanako-avatar.jpg").catch(() => null);
   const avatarX = 70;
   const avatarY = 1110;
@@ -4237,10 +4239,19 @@ function readOriginalFileAsDataUrl(file) {
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    image.crossOrigin = "anonymous";
+    let resolvedSrc = String(src || "");
+    try {
+      const url = new URL(resolvedSrc, document.baseURI);
+      resolvedSrc = url.href;
+      if (["http:", "https:"].includes(url.protocol) && url.origin !== location.origin) {
+        image.crossOrigin = "anonymous";
+      }
+    } catch {
+      // data URLや一時URLはそのまま読み込む。
+    }
     image.onload = () => resolve(image);
     image.onerror = reject;
-    image.src = src;
+    image.src = resolvedSrc;
   });
 }
 
