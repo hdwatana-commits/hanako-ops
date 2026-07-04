@@ -228,6 +228,8 @@ const avatarThemes = {
   datestyle: { avatar: "icons/hanako-avatar-datestyle.png", icon: "icons/icon-datestyle-192.png", manifest: "manifest-datestyle.webmanifest", label: "デート服先生" },
   fabriccare: { avatar: "icons/hanako-avatar-fabriccare.png", icon: "icons/icon-fabriccare-192.png", manifest: "manifest-fabriccare.webmanifest", label: "服のお手入れ" },
   trendcheck: { avatar: "icons/hanako-avatar-trendcheck.png", icon: "icons/icon-trendcheck-192.png", manifest: "manifest-trendcheck.webmanifest", label: "トレンド診断" },
+  ribbonresort: { avatar: "icons/hanako-avatar-ribbonresort.png", icon: "icons/hanako-avatar-ribbonresort.png", manifest: "manifest-ribbonresort.webmanifest", label: "リボンリゾート水着" },
+  marineswim: { avatar: "icons/hanako-avatar-marineswim.png", icon: "icons/hanako-avatar-marineswim.png", manifest: "manifest-marineswim.webmanifest", label: "マリン水着" },
 };
 let activePlatform = "Instagram";
 let lastGenerated = "";
@@ -2250,10 +2252,13 @@ function getHanakoTeacherCoverflowItems() {
       avatar: state.appearance.customAvatar,
       tone: "自分で選んだアイコンでコーデを解説",
     } : hanakoTeacherGuides[0]);
+  const featuredIds = new Set(["ribbonresort", "marineswim"]);
+  const featured = hanakoTeacherGuides.filter((guide) => featuredIds.has(guide.id));
+  const remaining = hanakoTeacherGuides.filter((guide) => !featuredIds.has(guide.id));
   return [
     { id: "random", name: "毎回ランダム", shortName: "おまかせ", avatar: currentHanakoTeacher.avatar, badge: "↻" },
     { id: "appearance", name: "選んだアプリアイコン", shortName: "アプリと同じ", avatar: appearanceGuide.avatar, badge: "同じ" },
-    ...hanakoTeacherGuides.map((guide) => ({ ...guide, shortName: guide.name.replace(/の?ハナコ$/, "") })),
+    ...[...featured, ...remaining].map((guide) => ({ ...guide, shortName: guide.name.replace(/の?ハナコ(先生)?$/, "") })),
   ];
 }
 

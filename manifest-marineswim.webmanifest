@@ -1,0 +1,12 @@
+{
+  "name": "Hanako Style Studio",
+  "short_name": "Hanako Studio",
+  "description": "楽天ROOMへ誘導するレディースファッションSNS運用ツール",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4fbff",
+  "theme_color": "#9fd9ea",
+  "orientation": "portrait-primary",
+  "icons": [{ "src": "icons/hanako-avatar-marineswim.png", "sizes": "any", "type": "image/png", "purpose": "any maskable" }]
+}
