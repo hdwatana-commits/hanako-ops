@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=114">
+    <link rel="stylesheet" href="styles.css?v=115">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -968,7 +968,7 @@
                 <button class="primary" id="generateCoordinate" type="button">コーデ文と画像ボードを作る</button>
               </div>
               <div class="button-row">
-                <button class="primary" id="shareCoordinateToGemini" type="button">本人写真＋画像ボードをGeminiへ</button>
+                <button class="primary" id="shareCoordinateToGemini" type="button">参照画像1枚をGeminiへ</button>
                 <button id="openGemini" type="button">Geminiを開く</button>
                 <button id="copyCoordinateText" type="button">ROOM文コピー</button>
                 <button id="downloadCoordinateBoard" type="button">画像ボード保存</button>
@@ -1073,7 +1073,7 @@
                 <div class="button-row">
                   <button class="primary" id="generateRoomImagePrompt" type="button">画像プロンプトを作る</button>
                   <button id="copyRoomImagePrompt" type="button">コピー</button>
-                  <button id="openRoomImageGemini" type="button">コピーしてGeminiへ</button>
+                  <button id="openRoomImageGemini" type="button">参照画像を共有してGeminiへ</button>
                 </div>
                 <textarea id="roomImagePrompt" class="coord-prompt-output room-image-prompt" spellcheck="false" placeholder="通常投稿またはコレクション表紙を選び、画像プロンプトを作ってください"></textarea>
               </div>
@@ -1257,6 +1257,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=114"></script>
+    <script src="app.js?v=115"></script>
   </body>
 </html>

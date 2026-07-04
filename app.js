@@ -284,6 +284,7 @@ let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
 const coordinatePhotoPreviewCache = new Map();
 let coordinateBoardDataUrl = "";
+let roomReferenceBoardDataUrl = "";
 const coordinateImageCache = new Map();
 const coordinateProductHydration = new Map();
 let currentHanakoComment = "";
@@ -3415,7 +3416,7 @@ async function generateGeminiPrompt() {
   await drawCoordinateBoard(coordinate, coordinateText);
   setCoordinatePrompts(coordinate);
   document.querySelector("#coordStatus").textContent = "画像ボード・プロンプト準備済み";
-  showToast("本人写真と画像ボードを使うプロンプトを作りました");
+  showToast("参照画像ボード1枚を使うプロンプトを作りました");
 }
 
 function buildOutfitImagePrompt(coordinate) {
@@ -3426,7 +3427,7 @@ function buildOutfitImagePrompt(coordinate) {
   const maskLockInstruction = originalProductPhotoMode
     ? ""
     : `【最優先・マスク固定モード】
-・添付した本人写真の人物がマスク着用なら、完成画像でも元写真と同じマスクを必ず着けたままにしてください
+・参照画像ボードのPERSON欄がマスク着用なら、完成画像でも同じマスクを必ず着けたままにしてください
 ・服、髪型、ポーズを編集する前に、マスクを本人の顔の一部として固定してください
 ・マスクの色、形、大きさ、柄、ひも、顔を覆う範囲を変えないでください
 ・マスクを外す、薄くする、透明にする、別のマスクへ替える、口や鼻を描き足すことは禁止です
@@ -3458,17 +3459,16 @@ function buildOutfitImagePrompt(coordinate) {
   const hanakoTeacherComment = coordinate.hanakoComment || chooseHanakoTeacherComment(coordinate);
   const attachmentInstruction = originalProductPhotoMode
     ? `【添付画像の役割・最優先】
-・添付された本人写真と画像ボードのうち、画像ボードに写る商品だけを使う
-・商品画像URLは細部確認の補助に限り、URLを読めなくても添付画像を基準に作る
+・添付された参照画像ボードに写る商品だけを使う
+・商品画像URLはアクセスしない。添付画像を基準に作る
 ・添付画像にない商品や人物を、似た画像や想像で補わない`
     : `【添付画像の役割・最優先】
-・添付1「本人の全身写真」: 顔、髪、体型、肌、ポーズ、マスクを固定する本人基準画像
-・添付2「コーデ画像ボード」: 選択商品、商品画像、ハナコ先生、吹き出し、手書きポイント、見出し、配置を固定するデザイン基準画像
-・本人の顔、髪、体型、マスクは添付1を最優先し、画像ボード内の小さな本人写真から描き直さない
-・服と小物、先生アイコン、吹き出し文、手書きポイントは添付2を最優先する
-・商品画像URLと先生画像URLは添付画像で見えにくい細部を確認する補助に限る。URLだけを基準にしない
-・添付画像とURLの内容が違う場合は、必ず添付画像を優先する
-・本人写真または画像ボードのどちらかが届いていない場合は画像を生成せず、「本人写真と画像ボードの2枚を添付してください」とだけ返す`;
+・添付は「コーデ参照画像ボード」1枚だけ。PERSON欄は本人、PRODUCT欄は選択商品、TEACHER欄はハナコ先生の基準画像
+・本人の顔、髪、体型、マスクはPERSON欄を最優先する
+・服と小物は各PRODUCT欄、先生アイコンはTEACHER欄を最優先する
+・画像内の吹き出し文、手書きポイント、見出し、配置も同じ参照ボードから読み取る
+・商品画像URLと先生画像URLにはアクセスしない。URLより添付した参照画像を必ず優先する
+・参照画像ボードが届いていない場合は画像を生成せず、「参照画像を1枚添付してください」とだけ返す`;
   const hanakoTeacherInstruction = isHanakoTeacherPattern(coordinate.imagePattern)
     ? `【ハナコ先生の吹き出し解説・必須】
 ・添付した画像ボードに写っている「${hanakoTeacher.name}」を、完成画像へ小さな先生役として登場させる
@@ -3498,18 +3498,18 @@ function buildOutfitImagePrompt(coordinate) {
 ・画像ボードの先生アイコンと上記のひとことをセットで完成画像へ必ず反映する`
     : "";
   const sourceInstruction = originalProductPhotoMode
-    ? `画像を生成してください。これは商品写真のレイアウト編集依頼です。文章だけで回答せず、添付した本人写真と画像ボードを使って、新しい完成画像を1枚作ってください。
+    ? `画像を生成してください。これは商品写真のレイアウト編集依頼です。文章だけで回答せず、添付した参照画像ボード1枚を使って、新しい完成画像を1枚作ってください。
 
 添付画像にない商品や人物を新しく描かないでください。商品の色、形、柄、素材、ロゴを変えず、添付画像への正確さを最優先してください。`
-    : `画像を生成してください。これは画像生成・写真編集の依頼です。文章だけで回答せず、添付した本人の全身写真とコーデ画像ボードを使って、新しい完成画像を1枚生成してください。
+    : `画像を生成してください。これは画像生成・写真編集の依頼です。文章だけで回答せず、添付した参照画像ボード1枚を使って、新しい完成画像を1枚生成してください。
 
-添付した本人写真は私本人の写真で、画像生成に使う権利があります。楽天ROOMのコーディネートへ投稿するための、究極におしゃれでかわいい「着用イメージ画像」に編集してください。`;
+参照画像ボードのPERSON欄は私本人の写真で、画像生成に使う権利があります。楽天ROOMのコーディネートへ投稿するための、究極におしゃれでかわいい「着用イメージ画像」に編集してください。`;
   const personInstruction = originalProductPhotoMode
     ? `【人物について】
 ・このパターンでは人物や着用モデルを生成しない
-・本人写真の髪型設定は使わず、添付した画像ボードにある商品だけでコーデの組み合わせを見せる`
+・本人写真の髪型設定は使わず、参照画像ボードのPRODUCT欄にある商品だけでコーデの組み合わせを見せる`
     : `【女の子】
-・添付した本人写真と同じ女の子だと分かるよう、顔、髪型、髪色、体型、肌の雰囲気を一貫させる
+・参照画像ボードのPERSON欄と同じ女の子だと分かるよう、顔、髪型、髪色、体型、肌の雰囲気を一貫させる
 ・別人にしない。年齢を変えない。顔を大きく加工しない
 ・この依頼では女の子はマスク着用が必須。元写真と同じマスクを必ず着けたままにする
 ・マスクの色、形、大きさ、柄、ひもの位置、顔を覆う範囲を元写真から変えない
@@ -3931,20 +3931,19 @@ function openGemini() {
 }
 
 function shareCoordinateToGemini() {
-  const photo = getSelectedCoordinatePhoto();
-  if (!photo) return showToast("先に自分の写真を選んでください");
-  const personDataUrl = coordinatePhotoPreviewCache.get(photo.id) || coordinatePhotoDataUrl;
-  if (!personDataUrl || !coordinateBoardDataUrl) return showToast("先にコーデ文と画像ボードを作ってください");
+  if (!coordinateBoardDataUrl) return showToast("先にコーデ文と画像ボードを作ってください");
   const coordinate = getSelectedCoordinate();
   setCoordinatePrompts(coordinate);
-  const personFile = dataUrlToFile(personDataUrl, "01-hanako-person-reference.jpg");
-  const boardFile = dataUrlToFile(coordinateBoardDataUrl, "02-hanako-coordinate-board.png");
-  const files = [personFile, boardFile];
+  const boardFile = dataUrlToFile(coordinateBoardDataUrl, "hanako-coordinate-reference.png");
+  const files = [boardFile];
   if (!navigator.share || !navigator.canShare?.({ files })) {
-    return showToast("この端末は2枚共有に対応していません。画像ボードを保存し、本人写真と一緒にGeminiで選んでください");
+    downloadReferenceFile(boardFile, "hanako-coordinate-reference.png");
+    navigator.clipboard?.writeText(coordGeminiPrompt.value).catch(() => {});
+    openGeminiDestination();
+    return showToast("参照画像を保存し、プロンプトをコピーしました。Geminiへ画像1枚を添付してください");
   }
   const sharePromise = navigator.share({
-    title: "ハナコの可愛いラボ・コーデ作成",
+    title: "Hanako Style Studio・コーデ作成",
     text: coordGeminiPrompt.value,
     files,
   });
@@ -3954,6 +3953,15 @@ function shareCoordinateToGemini() {
     .catch((error) => {
       if (error?.name !== "AbortError") showToast(error.message || "Geminiへ共有できませんでした");
     });
+}
+
+function downloadReferenceFile(file, fileName) {
+  const url = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
 function dataUrlToFile(dataUrl, fileName) {
@@ -4243,6 +4251,8 @@ async function generateRoomImagePrompt(quiet = false) {
     const personPhotoUrl = await ensureSelectedCoordinatePhotoUrl();
     if (!personPhotoUrl) return showToast("コーデ画面で本人写真を保存して選んでください");
     const mode = document.querySelector("#roomImageType")?.value || "normal";
+    await loadCoordinatePhotoPreview();
+    await drawRoomReferenceBoard(product, mode);
     const prompt = buildRoomImagePrompt({
       product,
       personPhotoUrl,
@@ -4287,17 +4297,15 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood }) {
 ・画像内の文字は、読みやすい場所へ「${oneLiner}」を1回だけ入れる
 ・一言以外の見出し、価格、説明、吹き出し、ランキング、数字、ロゴを追加しない
 ・一言は黒または濃いブラウンの自然な日本語で、商品や顔に重ねない`;
-  return `画像を生成してください。楽天ROOM投稿用ですが、画像内に「楽天ROOM」「ROOM」の文字は入れません。画像は何も添付しません。下記URLを直接読み込み、完成画像を1枚だけ作ってください。
+  return `画像を生成してください。楽天ROOM投稿用ですが、画像内に「楽天ROOM」「ROOM」の文字は入れません。添付した参照画像ボード1枚を使い、完成画像を1枚だけ作ってください。
 
-【URL参照・最優先】
-本人写真URL: ${personPhotoUrl}
-主役商品画像URL: ${product.image}
-主役商品ページURL: ${product.url || "なし"}
-・最初に本人写真URLと商品画像URLを読み込めたことを内部で確認する
-・読めないURLがある場合は、似た人物や似た商品を想像で作らず「読み込めない画像URL: 対象名」とだけ返す
-・本人写真と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
-・本人写真でマスクを着けている場合は、色、形、柄、ひもを変えず必ず同じマスクを残す
-・商品画像の色、輪郭、丈、袖、襟、柄、装飾、バッグの持ち手、靴の形を変えない
+【添付した参照画像ボード・最優先】
+・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像
+・本人はPERSON欄と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
+・PERSON欄でマスクを着けている場合は、色、形、柄、ひもを変えず必ず同じマスクを残す
+・商品はPRODUCT欄の色、輪郭、丈、袖、襟、柄、装飾、バッグの持ち手、靴の形を変えない
+・商品ページURLや画像URLへアクセスしない。添付した参照画像ボードだけを画像の基準にする
+・参照画像ボードが届いていない場合は「参照画像を1枚添付してください」とだけ返す
 
 【今回の設定】
 商品名: ${product.name}
@@ -4321,6 +4329,66 @@ ${collectionItems}
 ・外周から6%以上の安全余白を取り、顔、商品、文字を切らない
 
 条件を満たす完成画像だけを返し、説明文や別案は出さないでください。`;
+}
+
+async function drawRoomReferenceBoard(product, mode) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1400;
+  canvas.height = 1000;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fffafb";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#2f2529";
+  ctx.font = "700 34px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("GEMINI REFERENCE BOARD", 56, 62);
+  ctx.fillStyle = "#9b4665";
+  ctx.font = "700 22px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(mode === "collection" ? "COLLECTION COVER" : "ROOM POST", 56, 98);
+
+  const photo = getSelectedCoordinatePhoto();
+  const personSource = photo ? (coordinatePhotoPreviewCache.get(photo.id) || coordinatePhotoDataUrl) : "";
+  const personImage = personSource ? await loadImage(personSource).catch(() => null) : null;
+  ctx.fillStyle = "#fff";
+  roundRect(ctx, 48, 130, 470, 790, 18);
+  ctx.fill();
+  if (personImage) drawCoverImage(ctx, personImage, 66, 184, 434, 708, 12);
+  else drawPlaceholder(ctx, "PERSON", 66, 184, 434, 708);
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "700 20px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("PERSON / 本人の顔・髪・体型・マスク", 66, 166);
+
+  const brand = product.details?.brand || "";
+  const products = mode === "collection"
+    ? [product, ...state.products.filter((item) => item.id !== product.id && item.image && brand && item.details?.brand === brand).slice(0, 3)]
+    : [product];
+  const columns = products.length === 1 ? 1 : 2;
+  const cardWidth = products.length === 1 ? 760 : 372;
+  const cardHeight = products.length === 1 ? 720 : 350;
+  for (let index = 0; index < products.length; index += 1) {
+    const item = products[index];
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+    const x = 566 + col * 388;
+    const y = 130 + row * 382;
+    ctx.fillStyle = "#fff";
+    roundRect(ctx, x, y, cardWidth, cardHeight, 18);
+    ctx.fill();
+    const productImage = await loadCoordinateProductImage(item.image);
+    const imageHeight = cardHeight - 92;
+    if (productImage) drawCoverImage(ctx, productImage, x + 14, y + 42, cardWidth - 28, imageHeight - 12, 10);
+    else drawPlaceholder(ctx, item.category, x + 14, y + 42, cardWidth - 28, imageHeight - 12);
+    ctx.fillStyle = "#a43d64";
+    ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+    ctx.fillText(`PRODUCT ${index + 1} / ${item.category}`, x + 16, y + 29);
+    ctx.fillStyle = "#392f33";
+    ctx.font = "700 17px Yu Gothic UI, Meiryo, sans-serif";
+    wrapCanvasText(ctx, trimText(item.name, 34), x + 16, y + cardHeight - 28, cardWidth - 32, 22, 2);
+  }
+  ctx.fillStyle = "#6d5b62";
+  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("この1枚に写る本人と商品だけを使う / 想像で別商品を足さない", 566, 952);
+  roomReferenceBoardDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+  return roomReferenceBoardDataUrl;
 }
 
 function buildRoomImageOneLiner(product) {
@@ -4348,9 +4416,26 @@ async function copyRoomImagePrompt() {
 
 async function openRoomImageGemini() {
   const prompt = await generateRoomImagePrompt(true);
-  if (!prompt) return;
+  if (!prompt || !roomReferenceBoardDataUrl) return;
   await copyText(prompt);
+  const boardFile = dataUrlToFile(roomReferenceBoardDataUrl, "hanako-room-reference.jpg");
+  const files = [boardFile];
+  if (navigator.share && navigator.canShare?.({ files })) {
+    try {
+      await navigator.share({
+        title: "Hanako Style Studio・ROOM画像",
+        text: prompt,
+        files,
+      });
+      showToast("Geminiでコピー済みプロンプトを貼ってください");
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+  downloadReferenceFile(boardFile, "hanako-room-reference.jpg");
   openGeminiDestination();
+  showToast("参照画像を保存し、プロンプトをコピーしました。Geminiへ画像1枚を添付してください");
 }
 
 function generateRoomPost() {
