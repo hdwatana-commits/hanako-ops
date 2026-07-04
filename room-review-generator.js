@@ -2,14 +2,14 @@
   "use strict";
 
   const MAX_POST_CHARS = 480;
-function generatePostText({ name, shopName, genreName, features, targetTags, catchcopy }) {
+function generatePostText({ name, shopName, genreName, features, targetTags, catchcopy, variationSeed = 0 }) {
   const brand = inferBrand(name, shopName);
   const category = resolveProductCategory(name, genreName, catchcopy);
   const resolvedFeatures = refineFeaturesForCategory(category, features);
   const featureA = resolvedFeatures[0] || "きれいめデザイン";
   const featureB = resolvedFeatures[1] || "着回し力";
   const productLabel = `${brand ? `${brand}の` : ""}${name}`;
-  const seed = `${name} ${catchcopy} ${featureA} ${featureB}`;
+  const seed = `${name} ${catchcopy} ${featureA} ${featureB} variation-${variationSeed}`;
   const worry = inferWorry(category, resolvedFeatures, seed);
   const openingLine = inferOpeningLine(category, worry, seed);
   const lead = inferLead(category, featureA, featureB, seed);
@@ -4939,7 +4939,7 @@ function truncateText(text, maxLength) {
     const genreName = inferCategory(`${name} ${catchcopy}`);
     const features = inferFeatures(`${name} ${catchcopy} ${genreName}`);
     const targetTags = buildTags(name, genreName, features);
-    return generatePostText({ name, shopName, genreName, features, targetTags, catchcopy });
+    return generatePostText({ name, shopName, genreName, features, targetTags, catchcopy, variationSeed: info?.variationSeed || 0 });
   }
 
   window.RoomReviewGenerator = {

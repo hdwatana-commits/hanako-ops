@@ -231,6 +231,7 @@ let activePlatform = "Instagram";
 let lastGenerated = "";
 let lastGenerationContext = null;
 let generationVariant = 0;
+let roomGenerationVariant = 0;
 let suppressCloudSave = false;
 let cloudSaveTimer = null;
 let lastCloudSyncAt = null;
@@ -284,6 +285,7 @@ const coordinateImageCache = new Map();
 const coordinateProductHydration = new Map();
 let currentHanakoComment = "";
 let currentHanakoCommentConcern = "";
+let recentHanakoComments = [];
 let currentCoordinateHandwrittenPoints = new Map();
 let socialGeminiGeneratedImageDataUrl = "";
 let socialGeminiGeneratedImageExtension = "png";
@@ -374,6 +376,7 @@ let currentHanakoTeacher = hanakoTeacherGuides[0];
 let socialHanakoTeacherMode = "random";
 let currentSocialHanakoTeacher = hanakoTeacherGuides[0];
 let currentSocialHanakoComment = "";
+let recentSocialHanakoComments = [];
 
 queueMicrotask(initialize);
 
@@ -3033,8 +3036,9 @@ function chooseHanakoTeacherComment(coordinate, force = false) {
     "おしゃれは我慢大会じゃないの。笑顔で過ごせることまでが完成よ。",
   ];
   if (!force && currentHanakoComment && currentHanakoCommentConcern === coordinate.concern) return currentHanakoComment;
-  const candidates = options.filter((comment) => comment !== currentHanakoComment);
+  const candidates = options.filter((comment) => !recentHanakoComments.includes(comment));
   currentHanakoComment = candidates[Math.floor(Math.random() * candidates.length)] || options[0];
+  recentHanakoComments = [currentHanakoComment, ...recentHanakoComments].slice(0, 12);
   currentHanakoCommentConcern = coordinate.concern;
   return currentHanakoComment;
 }
@@ -3537,6 +3541,7 @@ ${items}
 ・最初の1行は必ず「${greeting}」と一字一句同じにする
 ・「おはファッション〜っ！」の文字は毎回固定し、その直後の絵文字だけを今回指定した組み合わせにする
 ・内部で冒頭3案と構成3案を考え、いちばん自然で保存したくなる完成稿だけを出す
+・実際には内部で「共感から入る案」「結論から入る案」「小さな失敗を避ける案」を各4案作り、商品との一致度が最も高い1案を選ぶ
 ・240〜380文字くらいで、短い文と空行を使い、スマホで読みやすくまとめる
 ・話し手は礼儀正しく、ファッションが大好きな女子大生
 ・宣伝文を先に作らず、選んだシーンの具体的な一瞬、鏡の前の迷い、着た時に気になる点など、人が実際に考える順番から書く
@@ -3565,6 +3570,8 @@ ${items}
 ・特定の人物や作風を示す言葉、読者への乱暴な呼びかけは絶対に書かない
 ・実際に買った、着た、使ったと確認できない内容は断定しない
 ・完成後に、意味の通らない見出し、同じ意味の繰り返し、根拠のない数字、不自然な若者言葉、AIらしい総まとめ表現がないか読み直し、あれば自然な日本語へ直す
+・最後に商品カテゴリごとの整合性を確認し、バッグに顔まわり、靴に収納力、アクセサリーに着丈など、対象と説明が食い違う文を残さない
+・「ご紹介します」「魅力が満載」「いかがでしたか」「ぜひチェック」「間違いなし」を使わず、本人の観察と役立つ助言で読ませる
 ・画像制作の指示や前置き、解説、見出しは書かない
 
 完成した紹介文だけを出力してください。`;
@@ -3908,6 +3915,7 @@ function generateRoomPost() {
     title: product.name,
     description: [product.hook, product.price, product.details?.color, product.details?.material].filter(Boolean).join("。"),
     shopName: product.details?.brand || "",
+    variationSeed: ++roomGenerationVariant,
   };
   roomPostOutput.value = cleanRoomMultilineText(window.RoomReviewGenerator.generateFromInfo(info));
   updateRoomCharacterCount();
@@ -4409,13 +4417,18 @@ function buildSocialImageHeadline(context, labels) {
   const category = context.product.category || "アイテム";
   const priority = labels.fashionPriority || "";
   const headlineByPriority = [
-    [/着回し/, `着回しやすい${category}の選び方`],
-    [/高見え/, `高見えする${category}の選び方`],
-    [/スタイル|バランス/, `すっきり見える${category}選び`],
-    [/動きやすさ/, `一日頼れる${category}の選び方`],
-    [/写真映え/, `写真に映える${category}の選び方`],
+    [/着回し/, [`着回しやすい${category}の選び方`, `${category}を3倍着回すコツ`, `予定が変わっても頼れる${category}`]],
+    [/高見え/, [`高見えする${category}の選び方`, `${category}を上品に見せるコツ`, `大人っぽく整う${category}選び`]],
+    [/スタイル|バランス/, [`すっきり見える${category}選び`, `重心が整う${category}の選び方`, `${category}で全身バランスを整える`]],
+    [/動きやすさ/, [`一日頼れる${category}の選び方`, `動けて可愛い${category}選び`, `長い一日も頼れる${category}`]],
+    [/写真映え/, [`写真に映える${category}の選び方`, `写真で埋もれない${category}選び`, `顔まわりまで整う${category}`]],
   ];
-  return trimText(headlineByPriority.find(([pattern]) => pattern.test(priority))?.[1] || `大人かわいい${category}の選び方`, 20);
+  const candidates = headlineByPriority.find(([pattern]) => pattern.test(priority))?.[1] || [
+    `大人かわいい${category}の選び方`,
+    `${category}で甘さを上品に整える`,
+    `手持ち服になじむ${category}選び`,
+  ];
+  return trimText(pickFresh(candidates, context.seed + generationVariant), 20);
 }
 
 function buildSocialImagePoints(context, labels) {
@@ -4435,7 +4448,18 @@ function buildSocialImagePoints(context, labels) {
     シューズ: ["足幅とヒール高を確認", "歩きやすさを確認", "バッグとの色相性を確認"],
     アクセサリー: ["大きさと重さを確認", "金具の色をそろえる", "主役服とのバランスを確認"],
   };
-  const points = categoryPoints[category] || ["色と形を確認", "サイズと素材を確認", "手持ち服との相性を確認"];
+  const basePoints = categoryPoints[category] || ["色と形を確認", "サイズと素材を確認", "手持ち服との相性を確認"];
+  const alternatePoints = {
+    バッグ: ["服から一色拾って合わせる", "荷物を入れた時の形を見る", "肩掛けした時の長さを見る"],
+    トップス: ["首もとの抜けを確かめる", "インとアウトを比べる", "袖のボリュームを一か所に"],
+    ワンピース: ["重心が上がる位置を探す", "羽織りを重ねても形を保つ", "靴まで含めて丈を見る"],
+    スカート: ["トップスとの面積差を作る", "歩いた時の広がりを見る", "靴と裾の間を重くしない"],
+    パンツ: ["腰位置をぼかさない", "裾と靴のつながりを見る", "上半身に小さな抜けを作る"],
+    シューズ: ["服の甘さを足もとで整える", "長く歩く日の幅を確認", "ボトムと色をつなげる"],
+  };
+  const points = (context.seed + generationVariant) % 2 && alternatePoints[category]
+    ? [...alternatePoints[category]]
+    : [...basePoints];
   if (/写真/.test(labels.fashionPriority || "")) {
     points[2] = category === "アクセサリー" ? "写真で見える位置を確認" : "光の下で色味を確認";
   }
@@ -4640,8 +4664,9 @@ function chooseSocialHanakoComment(data, force = false) {
   if (/白|アイボリー|ベージュ|淡色/.test(productText)) contextual.push("淡色の日こそ、輪郭を一つ締めて。");
   if (/リボン|フリル|レース/.test(productText)) contextual.push("甘い要素は主役だけ。小物は静かに。");
   const options = [...new Set([...contextual, ...(categoryComments[product.category] || common), ...common])];
-  const candidates = options.filter((comment) => comment !== currentSocialHanakoComment);
+  const candidates = options.filter((comment) => !recentSocialHanakoComments.includes(comment));
   currentSocialHanakoComment = candidates[Math.floor(Math.random() * candidates.length)] || options[0];
+  recentSocialHanakoComments = [currentSocialHanakoComment, ...recentSocialHanakoComments].slice(0, 12);
   return currentSocialHanakoComment;
 }
 
@@ -4715,16 +4740,22 @@ ${supportingProducts}
 ${currentDraft || "下書きなし。上の情報から新しく作る"}
 
 【作成方法】
-・内部で冒頭フックを24案、構成を8案考え、媒体と目的に最も合う1案を選ぶ
+・内部で冒頭フックを30案、構成を12案考え、媒体と目的に最も合う1案を選ぶ
 ・選んだ理由や検討過程、別案は出力しない
-・完成後に、媒体の文字量、具体性、共感、信頼、CTA、広告表記、重複の少なさを自己確認する
-・弱い場合は内部で書き直し、合格した完成稿だけを返す
+・第1校正で、商品情報にない使用感・効果・数字・人気・体験をすべて削る
+・第2校正で、意味の通らない言葉、AIらしい総括、同じ語尾、抽象的なほめ言葉、場面と商品の不一致を直す
+・第3校正で、媒体の文字量、冒頭の停止力、具体性、共感、信頼、CTA、広告表記、過去によくある表現との重複を確認する
+・各校正で弱い場合は内部で書き直し、自然に声に出して読める完成稿だけを返す
 
 【文章の絶対条件】
 ・下書きの良い部分は生かすが、そのまま言い換えるだけにしない
 ・広告文から始めず、読者が実際に経験する朝、鏡、玄関、移動、授業、仕事、カフェなど、今回の条件に合う具体的な一瞬から始める。ただし無関係な場面は作らない
 ・短い文、理由を説明する中くらいの文、余韻を残す一文を混ぜ、全文を同じ長さにしない
 ・同じ語尾を3文以上続けない。「おすすめです」「ぴったりです」「要チェック」を便利な結論として使わない
+・「〜をご紹介します」「いかがでしたか」「ぜひチェックしてみてください」「魅力が満載」「間違いなし」など、AIや広告に見えやすい定型文を使わない
+・読者の気持ちを勝手に断定せず、「私はこう見た」「ここは確認したい」のように観察と判断を分ける
+・商品カテゴリと説明対象を一致させる。バッグへ顔まわり、靴へ収納力など、別カテゴリの説明を結びつけない
+・同じ商品でも前回と違う場面、比較軸、言葉のリズムを選び、同じ冒頭やCTAを繰り返さない
 ・抽象的な「かわいい」「高見え」を使う場合は、直後に色、形、丈、素材、小物、サイズなど確認できる理由を添える
 ・一投稿に見せ場は一つ。悩み、商品情報、CTAを全部同じ強さで叫ばず、読む順番に強弱をつける
 ・最初の1〜2行で「自分のことかも」と思える具体的な場面か悩みを示す
@@ -5144,7 +5175,7 @@ function buildEditorialCandidateContexts(context) {
     ...(goalPatterns[context.goal] || []),
     ...(platformPatterns[context.platform] || platformPatterns.X),
   ])];
-  return Array.from({ length: 36 }, (_, index) => ({
+  return Array.from({ length: 72 }, (_, index) => ({
     ...context,
     hookType: hookTypes[index % hookTypes.length],
     viralPattern: patterns[index % patterns.length],
@@ -5168,7 +5199,7 @@ function generatePremiumCopyCandidate(context) {
   if (context.platform === "Threads" && result.length > 320 && !["1日5本セット", "骨格ウェーブ目線"].includes(context.angle)) result = buildCompactThreadsCopy(context);
   result = decorateSocialCopy(result, context);
   if (context.platform === "X" && result.length > 240) result = decorateSocialCopy(buildCompactXCopy(context), context);
-  return cleanGeneratedCopy(result);
+  return polishHumanCopy(cleanGeneratedCopy(result), context);
 }
 
 function scorePlatformCopy(text, context) {
@@ -5187,6 +5218,15 @@ function scorePlatformCopy(text, context) {
   if (/通学|大学|通勤|デート|カフェ|休日|旅行|推し活|イベント/.test(text)) score += 9;
   if (/保存|ROOM|教えて|どちら|コメント|フォロー|見返/.test(text)) score += 10;
   if (!/絶対|100%|最安|誰でも|優勝|爆売れ|買わないと損/.test(text)) score += 10;
+  const cannedPhrases = (text.match(/ご紹介します|魅力が満載|いかがでしたか|ぜひチェック|間違いなし|要チェック/g) || []).length;
+  score -= cannedPhrases * 11;
+  const categoryMismatch = {
+    バッグ: /顔まわり|着丈|袖丈|足幅/,
+    シューズ: /収納力|持ち手|顔まわり|袖/,
+    アクセサリー: /着丈|股下|収納力|歩きやすさ/,
+    トップス: /収納力|持ち手|足幅/,
+  }[context.product.category];
+  if (categoryMismatch?.test(text)) score -= 18;
   if (/PR|広告|アフィリエイト/.test(text)) score += 6;
   if (text.includes(shortName(context.product.name).slice(0, 10))) score += 7;
   if (/正直|ただし|気になる点|確認したい/.test(text) && /サイズ|素材|着丈|価格|レビュー|アクセス|客室/.test(text)) score += 7;
@@ -5317,6 +5357,28 @@ function cleanGeneratedCopy(text) {
     if (trimmed) previous = trimmed;
   });
   return result.join("\n").replace(/\n{4,}/g, "\n\n\n").trim();
+}
+
+function polishHumanCopy(text, context) {
+  let result = String(text || "")
+    .replace(/おすすめです。おすすめです。/g, "候補に入れたいです。")
+    .replace(/ぴったりです。ぴったりです。/g, "合わせやすそうです。")
+    .replace(/ぜひぜひ/g, "よかったら")
+    .replace(/絶対に間違いない/g, "選ぶ理由が分かりやすい")
+    .replace(/誰でも似合う/g, "合わせ方を選びにくい")
+    .replace(/これ一択/g, "有力候補")
+    .replace(/([。！？])\1+/g, "$1")
+    .replace(/([^\n]{4,18})。\n\1。/g, "$1。")
+    .replace(/[ \t]+\n/g, "\n");
+
+  const unsupportedExperience = /(買ってよかった|着てみた|使ってみた|愛用中|リピートした|届きました)/;
+  if (context.ownershipVoice?.status !== "購入済み") {
+    result = result
+      .replace(unsupportedExperience, "商品情報を見て気になった")
+      .replace(/実際に着ると/g, "着用写真を見ると")
+      .replace(/使ってみると/g, "商品情報では");
+  }
+  return cleanGeneratedCopy(result);
 }
 
 function countSocialEmoji(text) {
