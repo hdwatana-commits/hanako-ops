@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=111">
+    <link rel="stylesheet" href="styles.css?v=112">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -955,11 +955,11 @@
                 <ol>
                   <li>保存した自分の写真から今回使う1枚を選ぶ</li>
                   <li>「コーデ文と画像ボードを作る」を押す</li>
-                  <li>「本人写真つきでGeminiへ」を押し、共有先でGeminiを選ぶ</li>
-                  <li>写真と画像生成プロンプトがまとめて渡される</li>
+                  <li>「本人写真＋画像ボードをGeminiへ」を押し、共有先でGeminiを選ぶ</li>
+                  <li>本人写真と画像ボードが渡されるので、入力欄へコピー済みプロンプトを貼る</li>
                   <li>紹介文プロンプトをコピーして紹介文を作る</li>
                 </ol>
-                <p>URLだけでも試せますが、本人の顔やマスクを確実に反映したい時は「本人写真つきでGeminiへ」を使ってください。</p>
+                <p>URLだけでも試せますが、本人の顔やマスクを確実に反映したい時は「本人写真＋画像ボードをGeminiへ」を使ってください。</p>
                 <p>AI画像はコーデ検討・SNS素材用です。ROOMのオリジナル写真・ランク対象として投稿する場合は、ご本人が実際に着用して撮影した全身写真を使い、写真に写る商品だけを登録してください。</p>
               </div>
 
@@ -968,7 +968,7 @@
                 <button class="primary" id="generateCoordinate" type="button">コーデ文と画像ボードを作る</button>
               </div>
               <div class="button-row">
-                <button class="primary" id="shareCoordinateToGemini" type="button">本人写真つきでGeminiへ</button>
+                <button class="primary" id="shareCoordinateToGemini" type="button">本人写真＋画像ボードをGeminiへ</button>
                 <button id="openGemini" type="button">Geminiを開く</button>
                 <button id="copyCoordinateText" type="button">ROOM文コピー</button>
                 <button id="downloadCoordinateBoard" type="button">画像ボード保存</button>
@@ -1213,6 +1213,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=111"></script>
+    <script src="app.js?v=112"></script>
   </body>
 </html>

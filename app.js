@@ -3930,33 +3930,39 @@ function openGemini() {
   openGeminiDestination();
 }
 
-async function shareCoordinateToGemini() {
-  try {
-    const photo = getSelectedCoordinatePhoto();
-    if (!photo) return showToast("先に自分の写真を選んでください");
-    await ensureSelectedCoordinatePhotoUrl();
-    const coordinate = getSelectedCoordinate();
-    setCoordinatePrompts(coordinate);
-    const response = await fetch(photo.signedUrl, { cache: "no-store" });
-    if (!response.ok) throw new Error("本人写真を共有用に読み込めませんでした");
-    const blob = await response.blob();
-    const extension = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
-    const file = new File([blob], `hanako-person-reference.${extension}`, { type: blob.type || "image/jpeg" });
-    const shareData = {
-      title: "ハナコの可愛いラボ・コーデ作成",
-      text: coordGeminiPrompt.value,
-      files: [file],
-    };
-    if (!navigator.share || !navigator.canShare?.({ files: [file] })) {
-      await copyText(coordGeminiPrompt.value);
-      throw new Error("この端末では写真共有を使えないため、プロンプトだけコピーしました");
-    }
-    await navigator.share(shareData);
-    showToast("共有先でGeminiを選んでください");
-  } catch (error) {
-    if (error?.name === "AbortError") return;
-    showToast(error.message || "Geminiへ共有できませんでした");
+function shareCoordinateToGemini() {
+  const photo = getSelectedCoordinatePhoto();
+  if (!photo) return showToast("先に自分の写真を選んでください");
+  const personDataUrl = coordinatePhotoPreviewCache.get(photo.id) || coordinatePhotoDataUrl;
+  if (!personDataUrl || !coordinateBoardDataUrl) return showToast("先にコーデ文と画像ボードを作ってください");
+  const coordinate = getSelectedCoordinate();
+  setCoordinatePrompts(coordinate);
+  const personFile = dataUrlToFile(personDataUrl, "01-hanako-person-reference.jpg");
+  const boardFile = dataUrlToFile(coordinateBoardDataUrl, "02-hanako-coordinate-board.png");
+  const files = [personFile, boardFile];
+  if (!navigator.share || !navigator.canShare?.({ files })) {
+    return showToast("この端末は2枚共有に対応していません。画像ボードを保存し、本人写真と一緒にGeminiで選んでください");
   }
+  const sharePromise = navigator.share({
+    title: "ハナコの可愛いラボ・コーデ作成",
+    text: coordGeminiPrompt.value,
+    files,
+  });
+  navigator.clipboard?.writeText(coordGeminiPrompt.value).catch(() => {});
+  sharePromise
+    .then(() => showToast("Geminiで入力欄を長押しし、コピー済みプロンプトを貼ってください"))
+    .catch((error) => {
+      if (error?.name !== "AbortError") showToast(error.message || "Geminiへ共有できませんでした");
+    });
+}
+
+function dataUrlToFile(dataUrl, fileName) {
+  const [header, payload = ""] = String(dataUrl || "").split(",");
+  const mimeType = header.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+  const binary = header.includes(";base64") ? atob(payload) : decodeURIComponent(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new File([bytes], fileName, { type: mimeType });
 }
 
 function openGeminiDestination() {
