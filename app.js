@@ -4249,6 +4249,7 @@ function bindRoomActions() {
   document.querySelector("#roomImageMood")?.addEventListener("change", markRoomImagePromptStale);
   document.querySelector("#generateRoomImagePrompt")?.addEventListener("click", generateRoomImagePrompt);
   document.querySelector("#copyRoomImagePrompt")?.addEventListener("click", copyRoomImagePrompt);
+  document.querySelector("#openRoomSelectedAi")?.addEventListener("click", openGeminiDestination);
   document.querySelector("#openRoomImageGemini")?.addEventListener("click", openRoomImageGemini);
   document.querySelector("#roomImagePhotoPreview")?.addEventListener("click", (event) => {
     if (event.target.closest("#roomChoosePhoto")) {
