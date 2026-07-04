@@ -282,6 +282,7 @@ const coordBoard = document.querySelector("#coordBoard");
 const toast = document.querySelector("#toast");
 let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
+const coordinatePhotoPreviewCache = new Map();
 let coordinateBoardDataUrl = "";
 const coordinateImageCache = new Map();
 const coordinateProductHydration = new Map();
@@ -1973,6 +1974,7 @@ function bindCoordinateActions() {
   document.querySelector("#copyGeminiImagePrompt")?.addEventListener("click", copyCoordinateImagePrompt);
   document.querySelector("#copyGeminiCaptionPrompt")?.addEventListener("click", () => copyText(coordGeminiCaptionPrompt.value));
   document.querySelector("#openGemini")?.addEventListener("click", openGemini);
+  document.querySelector("#shareCoordinateToGemini")?.addEventListener("click", shareCoordinateToGemini);
   document.querySelector("#downloadCoordinateBoard")?.addEventListener("click", downloadCoordinateBoard);
   document.querySelector("#coordGeneratedImage")?.addEventListener("change", previewGeneratedCoordinateImage);
   bindHanakoTeacherSelector();
@@ -2019,11 +2021,14 @@ async function uploadCoordinatePhotos(event) {
       };
       state.coordinatePhotos.push(photo);
       state.selectedCoordinatePhotoId = photo.id;
+      coordinatePhotoPreviewCache.set(photo.id, await readOriginalFileAsDataUrl(file));
+      coordinatePhotoDataUrl = coordinatePhotoPreviewCache.get(photo.id);
       uploadedCount += 1;
     }
     if (!uploadedCount) throw new Error("写真を読み込めませんでした。写真アプリから画像を選び直してください");
     saveState();
     renderCoordinatePhotoLibrary();
+    if (coordinateOutput.value.trim()) await drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
     showToast(`${uploadedCount}枚の写真を保存しました`);
   } catch (error) {
     const message = error.message || "写真を保存できませんでした";
@@ -2073,7 +2078,7 @@ function renderCoordinatePhotoLibrary() {
   if (!target) return;
   state.coordinatePhotos ||= [];
   const selected = getSelectedCoordinatePhoto();
-  coordinatePhotoDataUrl = selected?.signedUrl || "";
+  coordinatePhotoDataUrl = selected ? (coordinatePhotoPreviewCache.get(selected.id) || selected.signedUrl || "") : "";
   if (!state.coordinatePhotos.length) {
     target.innerHTML = `<p class="muted">まだ写真がありません</p>`;
   } else {
@@ -2102,14 +2107,32 @@ async function ensureSelectedCoordinatePhotoUrl() {
   const photo = getSelectedCoordinatePhoto();
   if (!photo) return "";
   if (photo.signedUrl && Number(photo.expiresAt || 0) - Date.now() > 10 * 60 * 1000) {
-    coordinatePhotoDataUrl = photo.signedUrl;
+    await loadCoordinatePhotoPreview(photo);
     return photo.signedUrl;
   }
   if (!cloudSync.signedIn) throw new Error("写真URLの更新にはクラウド同期へのログインが必要です");
   const signed = await cloudSync.createSignedImageUrl(photo.path);
   Object.assign(photo, signed);
-  coordinatePhotoDataUrl = photo.signedUrl;
+  await loadCoordinatePhotoPreview(photo);
   return photo.signedUrl;
+}
+
+async function loadCoordinatePhotoPreview(photo = getSelectedCoordinatePhoto()) {
+  if (!photo) {
+    coordinatePhotoDataUrl = "";
+    return "";
+  }
+  if (coordinatePhotoPreviewCache.has(photo.id)) {
+    coordinatePhotoDataUrl = coordinatePhotoPreviewCache.get(photo.id);
+    return coordinatePhotoDataUrl;
+  }
+  if (!photo.signedUrl) return "";
+  const response = await fetch(photo.signedUrl, { cache: "no-store" });
+  if (!response.ok) throw new Error("保存した写真を読み込めませんでした");
+  const dataUrl = await readOriginalFileAsDataUrl(await response.blob());
+  coordinatePhotoPreviewCache.set(photo.id, dataUrl);
+  coordinatePhotoDataUrl = dataUrl;
+  return dataUrl;
 }
 
 async function refreshCoordinatePhotoLibraryUrls() {
@@ -2120,7 +2143,7 @@ async function refreshCoordinatePhotoLibraryUrls() {
         Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
       }
     }
-    coordinatePhotoDataUrl = getSelectedCoordinatePhoto()?.signedUrl || "";
+    await loadCoordinatePhotoPreview(getSelectedCoordinatePhoto());
     localStorage.setItem("hanako-room-ops", JSON.stringify(state));
     renderCoordinatePhotoLibrary();
   } catch {
@@ -2957,7 +2980,16 @@ async function drawCoordinateBoard(coordinate, text) {
 
   if (coordinatePhotoDataUrl) {
     const image = await loadImage(coordinatePhotoDataUrl).catch(() => null);
-    if (image) drawCoverImage(ctx, image, 760, 54, 230, 230, 18);
+    if (image) {
+      drawCoverImage(ctx, image, 760, 54, 230, 230, 18);
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.fillRect(778, 234, 194, 34);
+      ctx.fillStyle = "#8f3e5d";
+      ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("選んだ本人写真", 875, 258);
+      ctx.textAlign = "left";
+    }
   } else {
     drawPlaceholder(ctx, "PHOTO", 760, 54, 230, 230);
   }
@@ -3423,6 +3455,7 @@ function buildOutfitImagePrompt(coordinate) {
 ・URLを読めない商品を、似た商品や想像した商品で補わない`
     : `【参照方法・最優先・画像添付なし】
 ・本人写真URL: ${personPhotoUrl}
+・共有機能から本人写真も一緒に届いている場合は、その添付写真を最優先の本人基準画像にする。本人写真URLは照合用に使う
 ・本人写真URLは、顔、髪、体型、肌、ポーズ、マスクを保つための本人基準画像
 ・各商品画像URLは、服と小物の色、形、丈、柄、素材感を正確に反映する商品基準画像
 ・ハナコ先生画像URLは、先生の顔、髪、服、表情を固定するキャラクター基準画像
@@ -3888,6 +3921,35 @@ function chooseCoordinateHandwrittenPoint(product, coordinate, previousCopy = ""
 
 function openGemini() {
   openGeminiDestination();
+}
+
+async function shareCoordinateToGemini() {
+  try {
+    const photo = getSelectedCoordinatePhoto();
+    if (!photo) return showToast("先に自分の写真を選んでください");
+    await ensureSelectedCoordinatePhotoUrl();
+    const coordinate = getSelectedCoordinate();
+    setCoordinatePrompts(coordinate);
+    const response = await fetch(photo.signedUrl, { cache: "no-store" });
+    if (!response.ok) throw new Error("本人写真を共有用に読み込めませんでした");
+    const blob = await response.blob();
+    const extension = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+    const file = new File([blob], `hanako-person-reference.${extension}`, { type: blob.type || "image/jpeg" });
+    const shareData = {
+      title: "ハナコの可愛いラボ・コーデ作成",
+      text: coordGeminiPrompt.value,
+      files: [file],
+    };
+    if (!navigator.share || !navigator.canShare?.({ files: [file] })) {
+      await copyText(coordGeminiPrompt.value);
+      throw new Error("この端末では写真共有を使えないため、プロンプトだけコピーしました");
+    }
+    await navigator.share(shareData);
+    showToast("共有先でGeminiを選んでください");
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+    showToast(error.message || "Geminiへ共有できませんでした");
+  }
 }
 
 function openGeminiDestination() {
