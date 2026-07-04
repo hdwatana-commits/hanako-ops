@@ -285,6 +285,7 @@ let coordinatePhotoDataUrl = "";
 const coordinatePhotoPreviewCache = new Map();
 let coordinateBoardDataUrl = "";
 let roomReferenceBoardDataUrl = "";
+let socialReferenceBoardDataUrl = "";
 const coordinateImageCache = new Map();
 const coordinateProductHydration = new Map();
 let currentHanakoComment = "";
@@ -926,7 +927,7 @@ function bindActions() {
   document.querySelector("#generatePost").addEventListener("click", () => generateEditorialPost(false));
   document.querySelector("#generateVariation").addEventListener("click", () => generateEditorialPost(true));
   document.querySelector("#generateThree").addEventListener("click", generateThreeEditorialPosts);
-  document.querySelector("#sendSocialGeminiImage")?.addEventListener("click", () => sendSocialGeminiToGemini("image"));
+  document.querySelector("#sendSocialGeminiImage")?.addEventListener("click", shareSocialReferenceToGemini);
   document.querySelector("#sendSocialGeminiCopy")?.addEventListener("click", () => sendSocialGeminiToGemini("copy"));
   document.querySelector("#goToSocialGemini")?.addEventListener("click", () => {
     generateBothSocialGeminiPrompts(true);
@@ -935,7 +936,7 @@ function bindActions() {
   });
   document.querySelector("#copySocialGeminiImagePrompt")?.addEventListener("click", () => copyText(snsGeminiPrompt?.value || ""));
   document.querySelector("#copySocialGeminiCopyPrompt")?.addEventListener("click", () => copyText(snsGeminiCopyPrompt?.value || ""));
-  document.querySelector("#openSocialGeminiImage")?.addEventListener("click", () => copyAndOpenSocialGemini("image"));
+  document.querySelector("#openSocialGeminiImage")?.addEventListener("click", shareSocialReferenceToGemini);
   document.querySelector("#openSocialGeminiCopy")?.addEventListener("click", () => copyAndOpenSocialGemini("copy"));
   document.querySelector("#snsGeneratedImage")?.addEventListener("change", previewSocialGeminiImage);
   document.querySelector("#snsGeminiResult")?.addEventListener("input", renderSocialGeminiProgress);
@@ -4809,6 +4810,116 @@ function sendSocialGeminiToGemini(mode) {
   if (generated) copyAndOpenSocialGemini(mode);
 }
 
+async function shareSocialReferenceToGemini() {
+  const generated = generateBothSocialGeminiPrompts(true);
+  if (!generated) return;
+  const data = getSocialGeminiPromptData();
+  if (!data) return;
+  if (!data.context.product.image) return showToast("この商品には参照できる商品画像がありません");
+  const photo = getSelectedCoordinatePhoto();
+  if (!photo) return showToast("コーデ画面で本人写真を保存して選んでください");
+  try {
+    await ensureSelectedCoordinatePhotoUrl();
+    await loadCoordinatePhotoPreview(photo);
+    data.hanakoTeacher = currentSocialHanakoTeacher;
+    data.hanakoComment = currentSocialHanakoComment;
+    await drawSocialReferenceBoard(data);
+    const prompt = snsGeminiPrompt.value.trim();
+    await copyText(prompt);
+    const boardFile = dataUrlToFile(socialReferenceBoardDataUrl, `hanako-${activePlatform.toLowerCase()}-reference.jpg`);
+    const files = [boardFile];
+    if (navigator.share && navigator.canShare?.({ files })) {
+      try {
+        await navigator.share({
+          title: `Hanako Style Studio・${activePlatform}画像`,
+          text: prompt,
+          files,
+        });
+        showToast("Geminiでコピー済みプロンプトを貼ってください");
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
+    }
+    downloadReferenceFile(boardFile, `hanako-${activePlatform.toLowerCase()}-reference.jpg`);
+    openGeminiDestination();
+    showToast("参照画像を保存し、プロンプトをコピーしました。Geminiへ画像1枚を添付してください");
+  } catch (error) {
+    showToast(error.message || "SNS参照画像を作れませんでした");
+  }
+}
+
+async function drawSocialReferenceBoard(data) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1400;
+  canvas.height = 1000;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fffafb";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#2f2529";
+  ctx.font = "700 34px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(`${activePlatform.toUpperCase()} REFERENCE BOARD`, 54, 60);
+  ctx.fillStyle = "#9b4665";
+  ctx.font = "700 20px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("この1枚に写る本人・商品・先生だけを使う", 54, 94);
+
+  const photo = getSelectedCoordinatePhoto();
+  const personSource = photo ? (coordinatePhotoPreviewCache.get(photo.id) || coordinatePhotoDataUrl) : "";
+  const personImage = personSource ? await loadImage(personSource).catch(() => null) : null;
+  ctx.fillStyle = "#fff";
+  roundRect(ctx, 44, 122, 390, 750, 18);
+  ctx.fill();
+  if (personImage) drawCoverImage(ctx, personImage, 60, 172, 358, 674, 12);
+  else drawPlaceholder(ctx, "PERSON", 60, 172, 358, 674);
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("PERSON / 本人", 62, 154);
+
+  const products = [data.context.product, ...data.context.products.filter((item) => item.id !== data.context.product.id)]
+    .filter((item, index, items) => item?.image && items.findIndex((other) => other.id === item.id) === index)
+    .slice(0, 4);
+  const cardWidth = 350;
+  const cardHeight = 330;
+  for (let index = 0; index < products.length; index += 1) {
+    const item = products[index];
+    const x = 470 + (index % 2) * 370;
+    const y = 122 + Math.floor(index / 2) * 356;
+    ctx.fillStyle = "#fff";
+    roundRect(ctx, x, y, cardWidth, cardHeight, 16);
+    ctx.fill();
+    const productImage = await loadCoordinateProductImage(item.image);
+    if (productImage) drawCoverImage(ctx, productImage, x + 12, y + 40, cardWidth - 24, 238, 9);
+    else drawPlaceholder(ctx, item.category, x + 12, y + 40, cardWidth - 24, 238);
+    ctx.fillStyle = "#a43d64";
+    ctx.font = "700 17px Yu Gothic UI, Meiryo, sans-serif";
+    ctx.fillText(`PRODUCT ${index + 1} / ${item.category}`, x + 14, y + 27);
+    ctx.fillStyle = "#392f33";
+    ctx.font = "700 15px Yu Gothic UI, Meiryo, sans-serif";
+    wrapCanvasText(ctx, trimText(item.name, 34), x + 14, y + 300, cardWidth - 28, 20, 2);
+  }
+
+  if (data.includeHanakoTeacher !== false) {
+    const teacher = data.hanakoTeacher || currentSocialHanakoTeacher;
+    const teacherImage = await loadImage(teacher.avatar).catch(() => null);
+    ctx.fillStyle = "#fff";
+    roundRect(ctx, 1210, 122, 150, 210, 16);
+    ctx.fill();
+    if (teacherImage) drawCoverImage(ctx, teacherImage, 1224, 160, 122, 122, 61);
+    else drawPlaceholder(ctx, "先生", 1224, 160, 122, 122);
+    ctx.fillStyle = "#a43d64";
+    ctx.font = "700 16px Yu Gothic UI, Meiryo, sans-serif";
+    ctx.fillText("TEACHER", 1244, 148);
+    ctx.fillStyle = "#392f33";
+    ctx.font = "700 13px Yu Gothic UI, Meiryo, sans-serif";
+    wrapCanvasText(ctx, data.hanakoComment || "ハナコ先生", 1222, 306, 126, 17, 2);
+  }
+  ctx.fillStyle = "#6d5b62";
+  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("PERSON・PRODUCT・TEACHERを別人・別商品へ置き換えない", 470, 930);
+  socialReferenceBoardDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+  return socialReferenceBoardDataUrl;
+}
+
 function getSocialGeminiPromptData() {
   const product = state.products.find((item) => item.id === selectedProduct.value) || state.products[0];
   if (!product) {
@@ -4862,16 +4973,11 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
     X: `横16:9（1600×900px）の一目で内容が分かる情報画像を1枚作る。比較・ランキング・速報・チェック項目が3秒で読める構成にし、見出しは短く強くする。`,
   }[c.platform];
   const topicInstruction = c.isTravel
-    ? `添付した宿泊施設の写真を主役にし、客室・眺望・アクセスなど確認できる魅力を整理する。写真にない設備や景色を作らない。`
-    : `添付した商品画像を主役にし、色・形・素材感を変えず、${labels.fashionOccasion}で使うイメージが自然に伝わるようにする。`;
-  const teacherReference = resolvePublicTeacherReference(hanakoTeacher);
+    ? `参照画像ボードのPRODUCT欄にある宿泊施設の写真を主役にし、確認できる魅力だけを整理する。写真にない設備や景色を作らない。`
+    : `参照画像ボードのPRODUCT欄にある商品を主役にし、色・形・素材感を変えず、${labels.fashionOccasion}で使うイメージが自然に伝わるようにする。`;
   const hanakoInstruction = includeHanakoTeacher ? `【ハナコ先生の吹き出し・必須】
-・先生画像は添付されていません。次の公開画像URLを直接読み込み、参照画像として使う
-・先生名: ${teacherReference.teacher.name}
-・先生画像URL: ${teacherReference.url}
-・最初にURLの画像を読み込めたことを内部で確認してから画像生成へ進む
-・URLの画像にある顔、髪型、髪色、服、目の色、表情を変えず、丸いアイコンとして完成画像へ入れる
-・URLを読み込めない場合は、似た人物や別の先生を想像で作らない。「先生画像URLを読み込めません」とだけ返す
+・参照画像ボードのTEACHER欄にある「${hanakoTeacher.name}」を、丸いアイコンとして完成画像へ入れる
+・TEACHER欄の顔、髪型、髪色、服、目の色、表情を変えず、別人に描き直さない
 ・先生は商品やモデルとは別の解説キャラクター。画像の左下に、外周から6%以上離して全体の18〜22%の大きさで置く
 ・先生の真上に、白地とくすみピンク線の吹き出しを1個だけ置き、下向きのしっぽで先生へつなぐ
 ・吹き出しの見出しは必ず「ハナコ先生のズバッとひとこと」
@@ -4880,7 +4986,13 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
 ・吹き出しと先生を商品、人物、重要な文字へ重ねず、本文の最後まで枠内へ収める
 ・${c.platform === "X" ? "横長画像でも先生と吹き出しを左下の安全域へまとめ、比較情報を隠さない" : "縦長画像の下端から8%以上離し、先生と吹き出しを縦に並べる"}` : `【ハナコ先生】
 ・今回は先生アイコンと吹き出しを入れない`;
-  return `画像を生成してください。これは${c.platform}投稿用の画像生成依頼です。文章だけで回答せず、添付した商品画像または施設画像を使って完成画像を1枚生成してください。
+  return `画像を生成してください。これは${c.platform}投稿用の画像生成依頼です。文章だけで回答せず、添付した参照画像ボード1枚を使って完成画像を1枚生成してください。
+
+【参照画像ボード・最優先】
+・PERSON欄は本人、PRODUCT欄は使用できる商品、TEACHER欄はハナコ先生の基準画像
+・商品画像URLや先生画像URLへアクセスしない。添付した参照画像だけを画像の基準にする
+・PERSON、PRODUCT、TEACHERを別人、別商品、別キャラクターへ置き換えない
+・参照画像が届いていない場合は「参照画像を1枚添付してください」とだけ返し、画像を生成しない
 
 【投稿先】
 ${c.platform}

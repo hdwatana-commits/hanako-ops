@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=115">
+    <link rel="stylesheet" href="styles.css?v=116">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -724,10 +724,10 @@
                   <div data-sns-step="return"><span>3</span><strong>結果を戻す</strong></div>
                 </div>
                 <p class="sns-gemini-next" id="snsGeminiNextAction">まず商品を確認してください</p>
-                <p class="sns-gemini-guide">ハナコ先生はプロンプト内の公開URLから読み込みます。先生画像の添付は不要です。商品画像だけGeminiへ添付してください。</p>
+                <p class="sns-gemini-guide">本人写真・商品・ハナコ先生を参照画像1枚にまとめてGeminiへ共有します。複数画像やURLの読み込みは不要です。</p>
                 <div class="sns-gemini-product-preview" id="snsGeminiProductPreview"></div>
                 <div class="sns-gemini-quick-actions">
-                  <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>画像を作りに行く</button>
+                  <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>参照画像1枚で作る</button>
                   <button id="sendSocialGeminiCopy" type="button"><span>2</span>投稿文を作りに行く</button>
                 </div>
                 <details class="sns-gemini-prompt-details">
@@ -740,7 +740,7 @@
                           <button id="copySocialGeminiImagePrompt" type="button">コピー</button>
                         </div>
                         <textarea id="snsGeminiPrompt" class="sns-gemini-output coord-prompt-output" spellcheck="false" placeholder="商品を選ぶと画像用の指示文が表示されます"></textarea>
-                        <button class="primary sns-prompt-open" id="openSocialGeminiImage" type="button">コピーしてGeminiへ</button>
+                        <button class="primary sns-prompt-open" id="openSocialGeminiImage" type="button">参照画像を共有してGeminiへ</button>
                       </section>
                       <section class="coord-prompt-card">
                         <div class="coord-prompt-heading">
@@ -1257,6 +1257,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=115"></script>
+    <script src="app.js?v=116"></script>
   </body>
 </html>
