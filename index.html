@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=133">
+    <link rel="stylesheet" href="styles.css?v=134">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -1059,6 +1059,14 @@
                 </div>
                 <span class="status-pill">改行保持</span>
               </div>
+              <div class="coord-url-import room-url-import">
+                <label class="field-label" for="roomProductUrl">楽天ROOM / 楽天市場の商品URLから直接作成</label>
+                <div class="coord-url-row">
+                  <input id="roomProductUrl" type="url" inputmode="url" placeholder="ROOMまたは item.rakuten.co.jp のURL">
+                  <button class="primary" id="roomImportAndGenerate" type="button">投稿・画像を作る</button>
+                </div>
+                <p class="coord-import-status" id="roomImportStatus">URLを貼るだけで、商品を読み込みROOM文と画像プロンプトを作ります。</p>
+              </div>
               <label class="field-label" for="roomProductSelect">投稿する商品</label>
               <select id="roomProductSelect"></select>
               <div class="room-product-preview" id="roomProductPreview"></div>
@@ -1301,6 +1309,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=133"></script>
+    <script src="app.js?v=134"></script>
   </body>
 </html>

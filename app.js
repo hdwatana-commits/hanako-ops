@@ -4311,6 +4311,16 @@ function roundRect(ctx, x, y, width, height, radius) {
 
 function bindRoomActions() {
   if (!roomProductSelect || !roomPostOutput) return;
+  const roomProductUrl = document.querySelector("#roomProductUrl");
+  const roomImportButton = document.querySelector("#roomImportAndGenerate");
+  const importAndGenerate = () => importProductForRoom(roomProductUrl, roomImportButton);
+  roomImportButton?.addEventListener("click", importAndGenerate);
+  roomProductUrl?.addEventListener("paste", () => window.setTimeout(importAndGenerate, 0));
+  roomProductUrl?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    importAndGenerate();
+  });
   roomProductSelect.addEventListener("change", () => {
     renderRoomProductPreview();
     roomPostOutput.value = "";
@@ -4342,6 +4352,80 @@ function bindRoomActions() {
   });
   applyRoomImageRecommendations(getSelectedRoomProduct());
   renderRoomImagePhotoPreview();
+}
+
+async function importProductForRoom(urlInput, button) {
+  const url = urlInput?.value.trim();
+  if (!url) {
+    showRoomImportStatus("楽天ROOMまたは楽天市場の商品URLを入力してください", true);
+    urlInput?.focus();
+    return;
+  }
+  if (!cloudSync.configured) return showRoomImportStatus("先にクラウド同期を設定してください", true);
+  if (!cloudSync.signedIn) return showRoomImportStatus("画面上部の「同期」からログインしてください", true);
+
+  const originalLabel = button?.textContent || "投稿・画像を作る";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "読込中...";
+  }
+  showRoomImportStatus("商品情報を読み込んでいます...");
+  try {
+    const imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
+    if (isDefiniteTravelProduct(imported, url)) throw new Error("ROOM投稿では楽天市場のファッション商品URLを入力してください");
+    let product = state.products.find((item) => item.url === url || item.url === imported.sourceUrl || item.url === imported.resolvedUrl);
+    if (product) {
+      Object.assign(product, {
+        name: imported.name || product.name,
+        url,
+        image: imported.image || product.image,
+        details: { ...(product.details || {}), ...(imported.details || {}) },
+        category: imported.category || product.category,
+        price: imported.price || product.price,
+        hook: imported.hook || product.hook,
+      });
+    } else {
+      product = {
+        id: createId(),
+        name: imported.name || "楽天の商品",
+        url,
+        image: imported.image || "",
+        details: imported.details || {},
+        category: imported.category || "その他",
+        price: imported.price || "",
+        hook: imported.hook || "毎日のコーデに取り入れやすいアイテム",
+      };
+      state.products.unshift(product);
+    }
+    saveState();
+    renderProducts();
+    renderProductOptions();
+    renderRoomProductOptions();
+    renderCoordinateOptions();
+    renderAngleOptions();
+    roomProductSelect.value = product.id;
+    renderRoomProductPreview();
+    applyRoomImageRecommendations(product);
+    renderRoomImagePhotoPreview();
+    generateRoomPost();
+    await generateRoomImagePrompt(true);
+    showRoomImportStatus(`「${product.name}」のROOM文と画像プロンプトを作りました`);
+    showToast("URLからROOM投稿と画像プロンプトを作りました");
+  } catch (error) {
+    showRoomImportStatus(error.message || "商品情報を読み込めませんでした", true);
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  }
+}
+
+function showRoomImportStatus(message, isError = false) {
+  const status = document.querySelector("#roomImportStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle("error", isError);
 }
 
 function renderRoomProductOptions() {
