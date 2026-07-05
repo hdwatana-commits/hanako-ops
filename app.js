@@ -296,6 +296,7 @@ const coordinatePhotoPreviewCache = new Map();
 let coordinateBoardDataUrl = "";
 let coordinateBoardRenderId = 0;
 let roomReferenceBoardDataUrl = "";
+let roomReferenceBoardHasPerson = false;
 let socialReferenceBoardDataUrl = "";
 const coordinateImageCache = new Map();
 const coordinateProductHydration = new Map();
@@ -2099,6 +2100,7 @@ async function uploadCoordinatePhotos(event) {
     }
     if (!uploadedCount) throw new Error("写真を読み込めませんでした。写真アプリから画像を選び直してください");
     saveState();
+    markRoomImagePromptStale();
     renderCoordinatePhotoLibrary();
     if (coordinateOutput.value.trim()) await drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
     showToast(`${uploadedCount}枚の写真を保存しました`);
@@ -2123,6 +2125,7 @@ async function handleCoordinatePhotoLibraryClick(event) {
       state.coordinatePhotos = state.coordinatePhotos.filter((item) => item.id !== photo.id);
       if (state.selectedCoordinatePhotoId === photo.id) state.selectedCoordinatePhotoId = state.coordinatePhotos[0]?.id || "";
       saveState();
+      markRoomImagePromptStale();
       renderCoordinatePhotoLibrary();
       showToast("写真を削除しました");
     } catch (error) {
@@ -2134,6 +2137,7 @@ async function handleCoordinatePhotoLibraryClick(event) {
   if (!selectButton) return;
   state.selectedCoordinatePhotoId = selectButton.dataset.selectCoordinatePhoto;
   saveState();
+  markRoomImagePromptStale();
   renderCoordinatePhotoLibrary();
   showToast("今回使う写真を選びました");
   try {
@@ -4678,6 +4682,7 @@ function renderRoomImagePhotoPreview() {
 
 function markRoomImagePromptStale() {
   roomReferenceBoardDataUrl = "";
+  roomReferenceBoardHasPerson = false;
   const status = document.querySelector("#roomImagePromptStatus");
   if (status) status.textContent = "設定を変更しました";
 }
@@ -4687,20 +4692,23 @@ async function generateRoomImagePrompt(quiet = false) {
   if (!product) return showToast("先に商品を選んでください");
   const warnings = [];
   let personPhotoUrl = "";
+  let personPhotoSource = "";
   let boardReady = false;
   try {
     personPhotoUrl = await ensureSelectedCoordinatePhotoUrl();
     if (!personPhotoUrl) warnings.push("本人写真が未選択");
+    personPhotoSource = await loadCoordinatePhotoPreview(getSelectedCoordinatePhoto());
   } catch {
     warnings.push("本人写真の更新待ち");
   }
   const mode = document.querySelector("#roomImageType")?.value || "normal";
   try {
-    await loadCoordinatePhotoPreview().catch(() => "");
-    await drawRoomReferenceBoard(product, mode);
+    await drawRoomReferenceBoard(product, mode, personPhotoSource || personPhotoUrl);
     boardReady = Boolean(roomReferenceBoardDataUrl);
+    if (getSelectedCoordinatePhoto() && !roomReferenceBoardHasPerson) warnings.push("本人写真をボードへ反映できませんでした");
   } catch {
     roomReferenceBoardDataUrl = "";
+    roomReferenceBoardHasPerson = false;
     warnings.push("参照画像ボードを再作成してください");
   }
   if (!product.image) warnings.push("商品画像が未登録");
@@ -4825,7 +4833,7 @@ ${collectionItems}
 条件を満たす完成画像だけを返し、説明文や別案は出さないでください。`;
 }
 
-async function drawRoomReferenceBoard(product, mode) {
+async function drawRoomReferenceBoard(product, mode, selectedPersonSource = "") {
   const canvas = document.createElement("canvas");
   canvas.width = 1400;
   canvas.height = 1000;
@@ -4840,8 +4848,11 @@ async function drawRoomReferenceBoard(product, mode) {
   ctx.fillText(mode === "collection" ? "COLLECTION COVER" : "ROOM POST", 56, 98);
 
   const photo = getSelectedCoordinatePhoto();
-  const personSource = photo ? (coordinatePhotoPreviewCache.get(photo.id) || coordinatePhotoDataUrl) : "";
+  const personSource = photo
+    ? selectedPersonSource || coordinatePhotoPreviewCache.get(photo.id) || photo.signedUrl || ""
+    : "";
   const personImage = personSource ? await loadImage(personSource).catch(() => null) : null;
+  roomReferenceBoardHasPerson = Boolean(personImage);
   ctx.fillStyle = "#fff";
   roundRect(ctx, 48, 130, 470, 790, 18);
   ctx.fill();
@@ -4985,8 +4996,13 @@ async function copyRoomImagePrompt() {
 
 async function openRoomImageGemini() {
   const prompt = document.querySelector("#roomImagePrompt")?.value.trim();
-  if (!prompt || !roomReferenceBoardDataUrl) {
+  const selectedPhoto = getSelectedCoordinatePhoto();
+  if (!prompt || !roomReferenceBoardDataUrl || (selectedPhoto && !roomReferenceBoardHasPerson)) {
     const prepared = await generateRoomImagePrompt(true);
+    if (selectedPhoto && !roomReferenceBoardHasPerson) {
+      showToast("本人写真を参照画像へ入れられませんでした。ホームで写真を選び直してください");
+      return;
+    }
     if (prepared && roomReferenceBoardDataUrl) {
       showToast("参照画像を準備しました。もう一度このボタンを押してください");
     }
