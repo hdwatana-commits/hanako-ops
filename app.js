@@ -3322,7 +3322,7 @@ async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
 
   ctx.fillStyle = "#a43d64";
   ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("ハナコ先生のズバッとひとこと", bubbleX + 28, bubbleY + 42);
+  ctx.fillText("ハナコ先生の今日のひとこと", bubbleX + 28, bubbleY + 42);
   ctx.fillStyle = "#4d3d43";
   ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
   wrapCanvasText(ctx, `「${comment}」`, bubbleX + 28, bubbleY + 86, bubbleWidth - 56, 34, 2);
@@ -3359,7 +3359,7 @@ function drawHanakoTeacherFallbackPanel(ctx, coordinate) {
   ctx.stroke();
   ctx.fillStyle = "#a43d64";
   ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("ハナコ先生のズバッとひとこと", bubbleX + 28, bubbleY + 42);
+  ctx.fillText("ハナコ先生の今日のひとこと", bubbleX + 28, bubbleY + 42);
   ctx.fillStyle = "#4d3d43";
   wrapCanvasText(ctx, `「${comment}」`, bubbleX + 28, bubbleY + 86, bubbleWidth - 56, 34, 2);
   ctx.fillStyle = "#f4cad7";
@@ -3798,7 +3798,7 @@ function buildOutfitImagePrompt(coordinate) {
 ・手書きポイントは商品ごとに具体的にし、同じ文を繰り返さない。服の色、形、重心、着回し、小物の役割を解説する
 ・先生の吹き出しは短い辛口総評、手書きポイントは各商品の解説として役割を分ける
 ・手書き文字は、くすみピンクとこげ茶の細いペンで丁寧に書いたファッションノート風にする
-・吹き出しの見出しは必ず「ハナコ先生のズバッとひとこと」。アイコンの種類名や「ラベンダーの」は見出しへ入れない
+・吹き出しの見出しは必ず「ハナコ先生の今日のひとこと」。アイコンの種類名や「ラベンダーの」は見出しへ入れない
 ・吹き出し本文はこの1文だけ: 「${hanakoTeacherComment}」
 ・吹き出し内へ上記の見出しと本文以外を書かない。愛称、肩書き、掛け声、造語、擬音、補足、飾り文字を勝手に追加しない
 ・「なるんバー」のように意味を説明できない語、日本語として成立しない語、入力にない語を生成しない
@@ -3996,7 +3996,7 @@ ${originalProductPhotoMode ? "" : "・マスクが無い、変形した、口や
 ・1536×2048px相当以上の縦3:4で、人物、商品、文字が鮮明になっている
 ・一番上の見出しが「${fixedImageHeadline}」と完全一致し、「解決」の2文字が正しく読める
 ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナコ先生アイコンがある
-・見出しは「ハナコ先生のズバッとひとこと」になっている
+・見出しは「ハナコ先生の今日のひとこと」になっている
 ・吹き出し本文「${hanakoTeacherComment}」の最初から最後の閉じかぎ括弧まで、省略や欠けがなく最大3行で読める
 ・吹き出しは画像下端から8%以上離れ、本文の全周に内側余白がある
 ・先生の吹き出しは1個だけで、先生付近に別の小さい吹き出しや飾り文がない
