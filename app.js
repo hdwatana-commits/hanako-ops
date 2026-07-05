@@ -4311,6 +4311,7 @@ function roundRect(ctx, x, y, width, height, radius) {
 
 function bindRoomActions() {
   if (!roomProductSelect || !roomPostOutput) return;
+  populateRoomOverseasCities();
   const roomProductUrl = document.querySelector("#roomProductUrl");
   const roomImportButton = document.querySelector("#roomImportAndGenerate");
   const importAndGenerate = () => importProductForRoom(roomProductUrl, roomImportButton);
@@ -4340,6 +4341,11 @@ function bindRoomActions() {
   });
   document.querySelector("#roomImagePose")?.addEventListener("change", markRoomImagePromptStale);
   document.querySelector("#roomImageMood")?.addEventListener("change", markRoomImagePromptStale);
+  document.querySelector("#roomImageLocation")?.addEventListener("change", () => {
+    updateRoomCityVisibility();
+    markRoomImagePromptStale();
+  });
+  document.querySelector("#roomImageCity")?.addEventListener("change", markRoomImagePromptStale);
   document.querySelector("#generateRoomImagePrompt")?.addEventListener("click", () => generateRoomImagePrompt(false));
   document.querySelector("#copyRoomImagePrompt")?.addEventListener("click", copyRoomImagePrompt);
   document.querySelector("#openRoomSelectedAi")?.addEventListener("click", openGeminiDestination);
@@ -4465,6 +4471,50 @@ function getSelectedRoomProduct() {
   return state.products.find((product) => product.id === roomProductSelect?.value) || state.products.find((product) => product.category !== "ホテル・旅行") || null;
 }
 
+function getRoomOverseasCities() {
+  return [
+    ["パリ", "エッフェル塔"], ["ロンドン", "ビッグ・ベン"], ["ニューヨーク", "ブルックリン橋"],
+    ["ローマ", "コロッセオ"], ["ミラノ", "ドゥオーモ"], ["ベネチア", "運河とゴンドラ"],
+    ["フィレンツェ", "サンタ・マリア・デル・フィオーレ大聖堂"], ["バルセロナ", "サグラダ・ファミリア"],
+    ["マドリード", "マヨール広場"], ["リスボン", "黄色い路面電車"], ["アムステルダム", "運河沿いの街並み"],
+    ["コペンハーゲン", "ニューハウン"], ["ウィーン", "シェーンブルン宮殿"], ["プラハ", "カレル橋"],
+    ["ブダペスト", "国会議事堂"], ["アテネ", "アクロポリス"], ["イスタンブール", "ガラタ塔とボスポラス海峡"],
+    ["ドバイ", "ブルジュ・ハリファ"], ["マラケシュ", "クトゥビーヤ・モスク"], ["シンガポール", "マリーナベイ"],
+    ["ソウル", "Nソウルタワー"], ["台北", "台北101"], ["バンコク", "ワット・アルン"],
+    ["ハノイ", "ホアンキエム湖"], ["ホーチミン", "中央郵便局"], ["シドニー", "オペラハウス"],
+    ["メルボルン", "フリンダース・ストリート駅"], ["ホノルル", "ダイヤモンドヘッド"],
+    ["ロサンゼルス", "ハリウッドサインとヤシ並木"], ["サンフランシスコ", "ゴールデンゲートブリッジ"],
+  ];
+}
+
+function populateRoomOverseasCities() {
+  const select = document.querySelector("#roomImageCity");
+  if (!select || select.options.length) return;
+  getRoomOverseasCities().forEach(([city, landmark]) => {
+    const option = document.createElement("option");
+    option.value = city;
+    option.textContent = `${city}（${landmark}）`;
+    option.dataset.landmark = landmark;
+    select.appendChild(option);
+  });
+}
+
+function updateRoomCityVisibility() {
+  const isOverseas = document.querySelector("#roomImageLocation")?.value === "overseas";
+  const field = document.querySelector("#roomImageCityField");
+  if (field) field.hidden = !isOverseas;
+}
+
+function recommendRoomOverseasCity(product) {
+  const text = `${product?.name || ""} ${product?.category || ""} ${product?.hook || ""} ${product?.details?.color || ""}`;
+  if (/水着|リゾート|マリン|夏|ブルー|水色/.test(text)) return "ホノルル";
+  if (/黒|ブラック|モノトーン|モード|レザー/.test(text)) return "ミラノ";
+  if (/ナチュラル|リネン|麻|生成り/.test(text)) return "コペンハーゲン";
+  if (/カジュアル|デニム|スニーカー/.test(text)) return "ニューヨーク";
+  if (/韓国|オルチャン/.test(text)) return "ソウル";
+  return "パリ";
+}
+
 function setRoomImageMode(mode) {
   const value = mode === "collection" ? "collection" : "normal";
   const input = document.querySelector("#roomImageType");
@@ -4504,10 +4554,18 @@ function applyRoomImageRecommendations(product) {
         : "明るい自然光のきれいめ室内";
   const poseSelect = document.querySelector("#roomImagePose");
   const moodSelect = document.querySelector("#roomImageMood");
+  const locationSelect = document.querySelector("#roomImageLocation");
+  const citySelect = document.querySelector("#roomImageCity");
+  const location = mode === "collection" ? "my-room" : "overseas";
+  const city = recommendRoomOverseasCity(product);
   if (poseSelect) poseSelect.value = pose;
   if (moodSelect) moodSelect.value = mood;
+  if (locationSelect) locationSelect.value = location;
+  if (citySelect) citySelect.value = city;
+  updateRoomCityVisibility();
   const label = document.querySelector("#roomImageRecommendation");
-  if (label) label.textContent = `${product.category}に合わせて「${pose}」×「${mood}」をおすすめ設定しました。`;
+  const locationLabel = location === "overseas" ? `海外・${city}` : "自分のへや";
+  if (label) label.textContent = `${product.category}に合わせて「${pose}」×「${mood}」×「${locationLabel}」をおすすめ設定しました。`;
 }
 
 function renderRoomImagePhotoPreview() {
@@ -4555,6 +4613,8 @@ async function generateRoomImagePrompt(quiet = false) {
     mode,
     pose: document.querySelector("#roomImagePose")?.value || "全身が見える自然な立ち姿",
     mood: document.querySelector("#roomImageMood")?.value || "明るい自然光のきれいめ室内",
+    location: document.querySelector("#roomImageLocation")?.value || (mode === "collection" ? "my-room" : "overseas"),
+    city: document.querySelector("#roomImageCity")?.value || "パリ",
   }));
   const output = document.querySelector("#roomImagePrompt");
   if (output) output.value = prompt;
@@ -4566,7 +4626,7 @@ async function generateRoomImagePrompt(quiet = false) {
   return prompt;
 }
 
-function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood }) {
+function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood, location, city }) {
   const details = product.details || {};
   const brand = details.brand || "HANAKO SELECT";
   const oneLiner = buildRoomImageOneLiner(product);
@@ -4577,6 +4637,26 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood }) {
   const collectionItems = [product, ...sameBrandProducts]
     .map((item, index) => `${index + 1}. ${item.name} / ${item.category}\n   商品画像URL: ${item.image}\n   商品ページURL: ${item.url || "なし"}`)
     .join("\n");
+  const overseasCities = getRoomOverseasCities();
+  const cityOption = overseasCities.find(([name]) => name === city) || overseasCities[0];
+  const locationInstruction = location === "overseas"
+    ? `【場所・海外都市】
+・舞台は${cityOption[0]}。背景に「${cityOption[1]}」を、その都市だと自然に分かる大きさで少しだけ入れる
+・ランドマークは背景全体の15〜25%を目安にし、人物と商品より目立たせない。観光ポスターのように巨大化しない
+・${cityOption[0]}の実際の街並み、建築、光、季節感と矛盾しない構図にする。別都市の名所を混ぜない
+・人物は旅行中に自然に撮った上品なファッションスナップとして見せ、合成写真のような不自然さを避ける`
+    : location === "my-room"
+      ? `【場所・自分のへや】
+・舞台は本人が暮らすような、明るく清潔でかわいい自分のへや
+・白を基調に、木の家具、小さな鏡、花や本を控えめに置き、生活感は整える
+・高級ホテルや巨大な邸宅にはせず、親しみやすく真似したくなる部屋にする`
+      : location === "stylish-cafe"
+        ? `【場所・おしゃれなカフェ】
+・舞台は自然光の入る上品なカフェ。木、白、ガラスを使った落ち着く内装にする
+・店名、企業ロゴ、メニュー価格、読めない看板文字は入れない`
+        : `【場所・おしゃれな屋外】
+・舞台は緑と洗練された建物が調和する、おしゃれな屋外の小道やテラス
+・場所を特定する看板や海外ランドマークは入れず、日常のお出かけスナップとして自然にする`;
   const formatInstruction = mode === "collection"
     ? `【コレクション表紙】
 ・正方形1:1、1536×1536px以上。ブランドの空気感を生かした上質なファッション雑誌の表紙にする
@@ -4618,6 +4698,8 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood }) {
 素材: ${details.material || "商品画像から確認"}
 ポーズ: ${pose}
 雰囲気: ${mood}
+
+${locationInstruction}
 
 ${formatInstruction}
 
