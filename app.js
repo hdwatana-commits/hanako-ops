@@ -1995,6 +1995,8 @@ function safeHttpUrl(value) {
 
 function bindCoordinateActions() {
   if (!coordinateOutput || !coordBoard) return;
+  populateCoordinateOverseasCities();
+  applyRandomCoordinateLocation();
   const coordinateImportUrl = document.querySelector("#coordProductUrl");
   const coordinateImportButton = document.querySelector("#coordImportProduct");
   const importCoordinateProduct = () => importProductForCoordinate(coordinateImportUrl, coordinateImportButton);
@@ -2023,6 +2025,11 @@ function bindCoordinateActions() {
       drawCoordinateBoard(coordinate, coordinateOutput.value);
     }
   });
+  document.querySelector("#coordLocation")?.addEventListener("change", () => {
+    updateCoordinateCityVisibility();
+    refreshCoordinatePromptsAfterSettingChange();
+  });
+  document.querySelector("#coordCity")?.addEventListener("change", refreshCoordinatePromptsAfterSettingChange);
   document.querySelector("#rerollHanakoTeacher")?.addEventListener("click", () => {
     activateHanakoTeacherMode("random", true, true);
   });
@@ -2642,12 +2649,53 @@ function getSelectedCoordinate() {
     priority: document.querySelector("#coordPriority")?.value || "着回しやすさ",
     colorMood: document.querySelector("#coordColorMood")?.value || "商品から自動で整える",
     season: document.querySelector("#coordSeason")?.value || "今の季節",
+    location: document.querySelector("#coordLocation")?.value || "overseas",
+    city: document.querySelector("#coordCity")?.value || "パリ",
+    landmark: getCoordinateSelectedLandmark(),
     hanakoTeacher: currentHanakoTeacher,
     hanakoComment: currentHanakoComment,
     personPhotoUrl: getSelectedCoordinatePhoto()?.signedUrl || "",
     products: pieces,
     mainProduct: mainProduct || pieces[0] || null,
   };
+}
+
+function populateCoordinateOverseasCities() {
+  const select = document.querySelector("#coordCity");
+  if (!select || select.options.length) return;
+  getRoomOverseasCities().forEach(([city, landmark]) => {
+    const option = document.createElement("option");
+    option.value = city;
+    option.textContent = `${city}（${landmark}）`;
+    option.dataset.landmark = landmark;
+    select.appendChild(option);
+  });
+}
+
+function applyRandomCoordinateLocation() {
+  const location = document.querySelector("#coordLocation");
+  const city = document.querySelector("#coordCity");
+  const cities = getRoomOverseasCities();
+  if (location) location.value = "overseas";
+  if (city && cities.length) city.value = cities[Math.floor(Math.random() * cities.length)][0];
+  updateCoordinateCityVisibility();
+}
+
+function updateCoordinateCityVisibility() {
+  const field = document.querySelector("#coordCityField");
+  if (field) field.hidden = document.querySelector("#coordLocation")?.value !== "overseas";
+}
+
+function getCoordinateSelectedLandmark() {
+  const city = document.querySelector("#coordCity")?.value || "パリ";
+  return getRoomOverseasCities().find(([name]) => name === city)?.[1] || "エッフェル塔";
+}
+
+function refreshCoordinatePromptsAfterSettingChange() {
+  if (!coordinateOutput?.value.trim()) return;
+  const coordinate = getSelectedCoordinate();
+  setCoordinatePrompts(coordinate);
+  void drawCoordinateBoard(coordinate, coordinateOutput.value);
 }
 
 async function autoSelectCoordinateItems(generateAfter = true, notify = true, searchRakuten = true) {
@@ -2850,6 +2898,7 @@ function applyRecommendedCoordinateDefaults(product, notify = true) {
   setSelect("coordSeason", season);
   setSelect("coordImagePattern", imagePattern);
   setSelect("coordHairStyle", hairStyle);
+  applyRandomCoordinateLocation();
   setSelect("coordMainProduct", product.id);
   autoSelectCoordinateItems(false, false, true);
   if (notify) showToast(`おすすめを自動選択｜${style}・${occasion}・${concern}・${priority}`);
@@ -3586,6 +3635,7 @@ function buildOutfitImagePrompt(coordinate) {
   const stylingPlan = buildCoordinateAnalysis(coordinate);
   const brand = getCoordinateBrand(mainProduct);
   const originalProductPhotoMode = coordinate.imagePattern === "オリジナル商品写真で投稿";
+  const coordinateLocationInstruction = buildCoordinateLocationInstruction(coordinate, originalProductPhotoMode);
   const maskLockInstruction = originalProductPhotoMode
     ? ""
     : `【最優先・マスク固定モード】
@@ -3737,6 +3787,8 @@ ${layoutInstruction}
 ・右下の端は、背景から自然につながる完全な白にする
 ・右下の白い部分には、文字、服、小物、かざり、影を置かない
 
+${coordinateLocationInstruction}
+
 【利用上の区分】
 ・この生成画像はコーデ検討・SNS用の着用イメージとして作る
 ・実際に本人が着用して撮影した事実や、ROOMのオリジナル写真であるかのように見せない
@@ -3871,6 +3923,25 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナ
 以上の条件をすべて守り、文章による説明や紹介文は返さず、完成画像だけを生成してください。`;
 }
 
+function buildCoordinateLocationInstruction(coordinate, originalProductPhotoMode) {
+  if (originalProductPhotoMode) return `【場所】
+・このパターンは本人撮影の商品写真が主役なので、新しい部屋、屋外、海外都市、ランドマークを生成しない`;
+  if (coordinate.location === "overseas") return `【場所・海外都市】
+・舞台は${coordinate.city}。背景に「${coordinate.landmark}」を、その都市だと自然に分かる大きさで少しだけ入れる
+・ランドマークは背景全体の15〜25%を目安にし、女の子と選択商品より目立たせない。観光ポスターのように巨大化しない
+・${coordinate.city}の実際の街並み、建築、光、季節感と矛盾しない構図にし、別都市の名所を混ぜない
+・旅行中に自然に撮った上品なファッションスナップのように見せ、人物や商品と背景の光、遠近、影をなじませる`;
+  if (coordinate.location === "my-room") return `【場所・自分のへや】
+・舞台は明るく清潔でかわいい自分のへや。白、木の家具、小さな鏡、花や本を控えめに使う
+・高級ホテルや巨大な邸宅にはせず、親しみやすく真似したくなる部屋にする`;
+  if (coordinate.location === "stylish-cafe") return `【場所・おしゃれなカフェ】
+・舞台は自然光の入る上品なカフェ。木、白、ガラスを使った落ち着く内装にする
+・店名、企業ロゴ、メニュー価格、読めない看板文字は入れない`;
+  return `【場所・おしゃれな屋外】
+・舞台は緑と洗練された建物が調和する、おしゃれな屋外の小道やテラス
+・特定できない看板や海外ランドマークは足さず、日常のお出かけスナップとして自然にする`;
+}
+
 function generateGeminiCaptionPrompt() {
   const coordinate = getSelectedCoordinate();
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
@@ -3893,6 +3964,15 @@ function buildCoordinateCaptionPrompt(coordinate) {
   const brandItems = brandProducts.length
     ? brandProducts.map((product) => `・${product.category}: ${product.name}\n  推しポイント: ${product.hook || createCoordinateHook(product)}`).join("\n")
     : "追加候補なし";
+  const locationLabel = coordinate.location === "overseas"
+    ? `${coordinate.city}（背景のランドマーク: ${coordinate.landmark}）`
+    : { "my-room": "自分のへや", "stylish-outdoor": "おしゃれな屋外", "stylish-cafe": "おしゃれなカフェ" }[coordinate.location] || "おしゃれな屋外";
+  const overseasEpisodeInstruction = coordinate.location === "overseas"
+    ? `・本文の中に「${coordinate.city}」と「${coordinate.landmark}」の空気感をコーデへ結びつけた、短い海外エピソードコメントをちょうど3行入れる
+・3行は、1行目で街の景色、2行目でその景色と服の色・形・素材のつながり、3行目でその場所を歩きたくなる気持ちを書く
+・実際に${coordinate.city}へ行った、そこで着た、撮影したとは断定しない。「${coordinate.city}を歩くなら」「${coordinate.landmark}を背景にした気分で」のような想像として自然に書く`
+    : `・選んだ場所「${locationLabel}」がコーデの雰囲気とどう合うかを、本文へ短く1文だけ入れる`;
+  const captionLength = coordinate.location === "overseas" ? "320〜480文字くらい" : "240〜380文字くらい";
   return `次の完成コーデを読者へ紹介する、短くてかわいい文章を1案作ってください。商品の一覧説明ではなく、コーデ画面で選択した商品だけをどう組み合わせたのかが伝わる文章にしてください。
 
 雰囲気: ${coordinate.style}
@@ -3903,6 +3983,7 @@ function buildCoordinateCaptionPrompt(coordinate) {
 一番優先すること: ${coordinate.priority}
 色バランス: ${coordinate.colorMood}
 季節: ${coordinate.season}
+画像の場所: ${locationLabel}
 主役商品: ${mainProduct.name}
 主役ブランド: ${brand || "商品ページで確認"}
 
@@ -3924,7 +4005,8 @@ ${items}
 ・「おはファッション〜っ！」の文字は毎回固定し、その直後の絵文字だけを今回指定した組み合わせにする
 ・内部で冒頭3案と構成3案を考え、いちばん自然で保存したくなる完成稿だけを出す
 ・実際には内部で「共感から入る案」「結論から入る案」「小さな失敗を避ける案」を各4案作り、商品との一致度が最も高い1案を選ぶ
-・240〜380文字くらいで、短い文と空行を使い、スマホで読みやすくまとめる
+・${captionLength}で、短い文と空行を使い、スマホで読みやすくまとめる
+${overseasEpisodeInstruction}
 ・話し手は礼儀正しく、ファッションが大好きな女子大生
 ・宣伝文を先に作らず、選んだシーンの具体的な一瞬、鏡の前の迷い、着た時に気になる点など、人が実際に考える順番から書く
 ・短い一文で気持ちを置き、その次の少し長い文で理由を説明する。全文を同じ長さ、同じ語尾にしない

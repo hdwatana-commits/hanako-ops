@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=135">
+    <link rel="stylesheet" href="styles.css?v=136">
     <script src="config.js"></script>
     <script src="cloud-sync.js"></script>
   </head>
@@ -930,6 +930,22 @@
 
               <div class="coord-style-row">
                 <div>
+                  <label class="field-label" for="coordLocation">画像の場所</label>
+                  <select id="coordLocation">
+                    <option value="overseas" selected>海外の街（ランダム）</option>
+                    <option value="my-room">自分のへや</option>
+                    <option value="stylish-outdoor">おしゃれな屋外</option>
+                    <option value="stylish-cafe">おしゃれなカフェ</option>
+                  </select>
+                </div>
+                <div id="coordCityField">
+                  <label class="field-label" for="coordCity">海外都市</label>
+                  <select id="coordCity"></select>
+                </div>
+              </div>
+
+              <div class="coord-style-row">
+                <div>
                   <label class="field-label" for="coordHairStyle">女の子の髪型</label>
                   <select id="coordHairStyle">
                     <option>元写真の髪型を保つ</option>
@@ -1324,6 +1340,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js"></script>
-    <script src="app.js?v=135"></script>
+    <script src="app.js?v=136"></script>
   </body>
 </html>
