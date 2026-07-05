@@ -293,6 +293,7 @@ const toast = document.querySelector("#toast");
 let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
 const coordinatePhotoPreviewCache = new Map();
+const COORDINATE_PHOTO_CACHE = "hanako-private-photo-previews-v1";
 let coordinateBoardDataUrl = "";
 let coordinateBoardHasPerson = false;
 let coordinateBoardRenderId = 0;
@@ -2097,8 +2098,7 @@ async function uploadCoordinatePhotos(event) {
       };
       state.coordinatePhotos.push(photo);
       state.selectedCoordinatePhotoId = photo.id;
-      coordinatePhotoPreviewCache.set(photo.id, await readOriginalFileAsDataUrl(file));
-      coordinatePhotoDataUrl = coordinatePhotoPreviewCache.get(photo.id);
+      coordinatePhotoDataUrl = await persistCoordinatePhotoPreview(photo.id, file);
       uploadedCount += 1;
     }
     if (!uploadedCount) throw new Error("写真を読み込めませんでした。写真アプリから画像を選び直してください");
@@ -2127,6 +2127,7 @@ async function handleCoordinatePhotoLibraryClick(event) {
     if (!photo) return;
     try {
       await cloudSync.removePrivateImage(photo.path);
+      await removeCoordinatePhotoPreview(photo.id);
       state.coordinatePhotos = state.coordinatePhotos.filter((item) => item.id !== photo.id);
       if (state.selectedCoordinatePhotoId === photo.id) state.selectedCoordinatePhotoId = state.coordinatePhotos[0]?.id || "";
       saveState();
@@ -2217,13 +2218,73 @@ async function loadCoordinatePhotoPreview(photo = getSelectedCoordinatePhoto()) 
     coordinatePhotoDataUrl = coordinatePhotoPreviewCache.get(photo.id);
     return coordinatePhotoDataUrl;
   }
+  const localPreview = await readPersistedCoordinatePhotoPreview(photo.id);
+  if (localPreview) {
+    coordinatePhotoPreviewCache.set(photo.id, localPreview);
+    coordinatePhotoDataUrl = localPreview;
+    return localPreview;
+  }
   if (!photo.signedUrl) return "";
   const response = await fetch(photo.signedUrl, { cache: "no-store" });
   if (!response.ok) throw new Error("保存した写真を読み込めませんでした");
-  const dataUrl = await readOriginalFileAsDataUrl(await response.blob());
+  const dataUrl = await persistCoordinatePhotoPreview(photo.id, await response.blob());
   coordinatePhotoPreviewCache.set(photo.id, dataUrl);
   coordinatePhotoDataUrl = dataUrl;
   return dataUrl;
+}
+
+async function persistCoordinatePhotoPreview(photoId, sourceBlob) {
+  const dataUrl = await createCanvasCompatiblePhotoPreview(sourceBlob);
+  coordinatePhotoPreviewCache.set(photoId, dataUrl);
+  if ("caches" in window) {
+    try {
+      const cache = await caches.open(COORDINATE_PHOTO_CACHE);
+      const file = dataUrlToFile(dataUrl, `${photoId}.jpg`);
+      await cache.put(coordinatePhotoCacheKey(photoId), new Response(file, { headers: { "Content-Type": file.type || "image/jpeg" } }));
+    } catch {
+      // メモリ上のプレビューは使えるため、端末保存だけ失敗しても続行する。
+    }
+  }
+  return dataUrl;
+}
+
+async function readPersistedCoordinatePhotoPreview(photoId) {
+  if (!("caches" in window)) return "";
+  try {
+    const cache = await caches.open(COORDINATE_PHOTO_CACHE);
+    const response = await cache.match(coordinatePhotoCacheKey(photoId));
+    return response ? await readOriginalFileAsDataUrl(await response.blob()) : "";
+  } catch {
+    return "";
+  }
+}
+
+async function removeCoordinatePhotoPreview(photoId) {
+  coordinatePhotoPreviewCache.delete(photoId);
+  if (!("caches" in window)) return;
+  try {
+    const cache = await caches.open(COORDINATE_PHOTO_CACHE);
+    await cache.delete(coordinatePhotoCacheKey(photoId));
+  } catch {
+    // 端末側キャッシュが既に無い場合は何もしない。
+  }
+}
+
+function coordinatePhotoCacheKey(photoId) {
+  return new URL(`./__photo_preview__/${encodeURIComponent(photoId)}`, location.href).href;
+}
+
+async function createCanvasCompatiblePhotoPreview(sourceBlob) {
+  const original = await readOriginalFileAsDataUrl(sourceBlob);
+  const image = await loadImage(original).catch(() => null);
+  if (!image) return original;
+  const maxSide = 1800;
+  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+  canvas.height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.9);
 }
 
 async function refreshCoordinatePhotoLibraryUrls() {
@@ -2996,6 +3057,7 @@ function chooseCoordinateCompanion(categories, main, selectedIds) {
 
 async function generateCoordinate() {
   let photoWarning = "";
+  if (!getSelectedCoordinatePhoto()) photoWarning = "本人写真が未選択です。ホーム画面で今回使う写真を選んでください";
   try {
     await ensureSelectedCoordinatePhotoUrl();
   } catch (error) {

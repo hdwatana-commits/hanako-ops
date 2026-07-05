@@ -1,11 +1,12 @@
-const CACHE_NAME = "hanako-room-ops-v144";
+const CACHE_NAME = "hanako-room-ops-v145";
+const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=144",
-  "./app.js?v=144",
-  "./cloud-sync.js?v=144",
-  "./room-review-generator.js?v=144",
+  "./styles.css?v=145",
+  "./app.js?v=145",
+  "./cloud-sync.js?v=145",
+  "./room-review-generator.js?v=145",
   "./version.json",
   "./update.html",
   "./covers/rakuten-room-cover-hanako-v5.jpg",
@@ -397,10 +398,10 @@ const APP_SHELL = [
 const CORE_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=144",
-  "./app.js?v=144",
-  "./cloud-sync.js?v=144",
-  "./room-review-generator.js?v=144",
+  "./styles.css?v=145",
+  "./app.js?v=145",
+  "./cloud-sync.js?v=145",
+  "./room-review-generator.js?v=145",
 ];
 
 self.addEventListener("install", (event) => {
@@ -418,7 +419,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))),
+      .then((keys) => Promise.all(keys.filter((key) => !PERSISTENT_CACHES.has(key)).map((key) => caches.delete(key)))),
   );
   self.clients.claim();
 });
