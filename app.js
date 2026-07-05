@@ -11,7 +11,7 @@ const defaultProfile = `毎日おしゃれ研究家のハナコです
 
 👗 きれいめ可愛い着回し
 🛍 楽天ROOMで高見えアイテム発掘
-🍛 渋谷グルメも開拓中
+🌍 海外旅行好き｜95か国を旅して世界の可愛いを発掘
 🎀 気分が上がる可愛いもの記録
 
 ※ROOMリンクはアフィリエイトを含みます
@@ -713,7 +713,7 @@ function normalizeState(value) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   return {
     ...source,
-    profile: typeof source.profile === "string" ? source.profile : defaultProfile,
+    profile: typeof source.profile === "string" ? migrateProfileText(source.profile) : defaultProfile,
     products: Array.isArray(source.products) ? source.products.filter((item) => item && typeof item === "object") : [],
     drafts: Array.isArray(source.drafts) ? source.drafts : [],
     calendar: Array.isArray(source.calendar) ? source.calendar : [],
@@ -722,6 +722,11 @@ function normalizeState(value) {
     coordinatePhotos: Array.isArray(source.coordinatePhotos) ? source.coordinatePhotos : [],
     appearance: source.appearance && typeof source.appearance === "object" ? source.appearance : { avatarTheme: "original" },
   };
+}
+
+function migrateProfileText(profile) {
+  return String(profile || "")
+    .replace(/^🍛[^\n]*渋谷[^\n]*グルメ[^\n]*$/gm, "🌍 海外旅行好き｜95か国を旅して世界の可愛いを発掘");
 }
 
 function saveState() {
