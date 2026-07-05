@@ -1,11 +1,13 @@
-const CACHE_NAME = "hanako-room-ops-v143";
+const CACHE_NAME = "hanako-room-ops-v144";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=143",
-  "./app.js?v=143",
-  "./cloud-sync.js?v=143",
-  "./room-review-generator.js?v=143",
+  "./styles.css?v=144",
+  "./app.js?v=144",
+  "./cloud-sync.js?v=144",
+  "./room-review-generator.js?v=144",
+  "./version.json",
+  "./update.html",
   "./covers/rakuten-room-cover-hanako-v5.jpg",
   "./manifest.webmanifest",
   "./manifest-cafe.webmanifest",
@@ -395,10 +397,10 @@ const APP_SHELL = [
 const CORE_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=143",
-  "./app.js?v=143",
-  "./cloud-sync.js?v=143",
-  "./room-review-generator.js?v=143",
+  "./styles.css?v=144",
+  "./app.js?v=144",
+  "./cloud-sync.js?v=144",
+  "./room-review-generator.js?v=144",
 ];
 
 self.addEventListener("install", (event) => {
@@ -425,7 +427,7 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   const url = new URL(event.request.url);
-  if (url.pathname.endsWith("/config.js")) {
+  if (url.pathname.endsWith("/config.js") || url.pathname.endsWith("/version.json") || url.pathname.endsWith("/update.html")) {
     event.respondWith(fetch(event.request));
     return;
   }

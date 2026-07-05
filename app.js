@@ -402,6 +402,7 @@ queueMicrotask(initialize);
 function initialize() {
   const syncAppVersion = document.querySelector("#syncAppVersion");
   if (syncAppVersion) syncAppVersion.textContent = APP_VERSION === "開発版" ? APP_VERSION : `v${APP_VERSION}`;
+  document.querySelector("#forceAppUpdate")?.addEventListener("click", forceAppUpdate);
   profileText.value = state.profile || defaultProfile;
   document.querySelector('input[name="date"]').valueAsDate = new Date();
   hydrateCustomBrandAssets();
@@ -410,6 +411,7 @@ function initialize() {
   bindAiProviderSelectors();
   bindHomeAvatarCoverflow();
   registerPwa();
+  checkPublishedAppVersion();
   bindNavigation();
   bindForms();
   bindActions();
@@ -8586,7 +8588,7 @@ function registerPwa() {
 
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register(`./sw.js?v=${APP_VERSION}`, { updateViaCache: "none" })
+      .register("./sw.js", { updateViaCache: "none" })
       .then((registration) => {
         registration.update();
         document.addEventListener("visibilitychange", () => {
@@ -8598,6 +8600,32 @@ function registerPwa() {
         // PWA登録はHTTPS配信時だけ成功すればよいので、ローカル表示では静かに無視する。
       });
   });
+}
+
+async function checkPublishedAppVersion() {
+  if (APP_VERSION === "開発版") return;
+  try {
+    const response = await fetch(`./version.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const latest = String((await response.json()).version || "");
+    const button = document.querySelector("#forceAppUpdate");
+    if (button && latest && latest !== APP_VERSION) button.textContent = `v${latest}へ更新`;
+    if (latest && latest !== APP_VERSION) {
+      const attemptKey = `hanako-update-attempt-${latest}`;
+      if (!sessionStorage.getItem(attemptKey)) {
+        sessionStorage.setItem(attemptKey, "1");
+        forceAppUpdate();
+      }
+    }
+  } catch {
+    // オフライン時は現在の版をそのまま使う。
+  }
+}
+
+function forceAppUpdate() {
+  const updateUrl = new URL("./update.html", location.href);
+  updateUrl.searchParams.set("t", Date.now());
+  location.href = updateUrl.href;
 }
 
 function showToast(message) {
