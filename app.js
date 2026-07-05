@@ -8562,8 +8562,14 @@ function registerPwa() {
 
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js", { updateViaCache: "none" })
-      .then((registration) => registration.update())
+      .register(`./sw.js?v=${APP_VERSION}`, { updateViaCache: "none" })
+      .then((registration) => {
+        registration.update();
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") registration.update();
+        });
+        window.setInterval(() => registration.update(), 5 * 60 * 1000);
+      })
       .catch(() => {
         // PWA登録はHTTPS配信時だけ成功すればよいので、ローカル表示では静かに無視する。
       });

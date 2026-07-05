@@ -1,11 +1,11 @@
-const CACHE_NAME = "hanako-room-ops-v141";
+const CACHE_NAME = "hanako-room-ops-v142";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=141",
-  "./app.js?v=141",
-  "./cloud-sync.js",
-  "./room-review-generator.js",
+  "./styles.css?v=142",
+  "./app.js?v=142",
+  "./cloud-sync.js?v=142",
+  "./room-review-generator.js?v=142",
   "./covers/rakuten-room-cover-hanako-v5.jpg",
   "./manifest.webmanifest",
   "./manifest-cafe.webmanifest",
@@ -395,10 +395,10 @@ const APP_SHELL = [
 const CORE_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=104",
-  "./app.js?v=104",
-  "./cloud-sync.js",
-  "./room-review-generator.js",
+  "./styles.css?v=142",
+  "./app.js?v=142",
+  "./cloud-sync.js?v=142",
+  "./room-review-generator.js?v=142",
 ];
 
 self.addEventListener("install", (event) => {
@@ -435,6 +435,9 @@ self.addEventListener("fetch", (event) => {
     || url.pathname.endsWith("/index.html")
     || url.pathname.endsWith("/app.js")
     || url.pathname.endsWith("/styles.css")
+    || url.pathname.endsWith("/cloud-sync.js")
+    || url.pathname.endsWith("/room-review-generator.js")
+    || url.pathname.endsWith("/sw.js")
   );
 
   if (isAppCode) {
