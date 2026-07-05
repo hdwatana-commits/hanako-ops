@@ -4704,15 +4704,7 @@ async function generateRoomImagePrompt(quiet = false) {
     warnings.push("参照画像ボードを再作成してください");
   }
   if (!product.image) warnings.push("商品画像が未登録");
-  const prompt = adaptPromptToSelectedAi(buildRoomImagePrompt({
-    product,
-    personPhotoUrl,
-    mode,
-    pose: document.querySelector("#roomImagePose")?.value || "全身が見える自然な立ち姿",
-    mood: document.querySelector("#roomImageMood")?.value || "明るい自然光のきれいめ室内",
-    location: document.querySelector("#roomImageLocation")?.value || (mode === "collection" ? "my-room" : "overseas"),
-    city: document.querySelector("#roomImageCity")?.value || "パリ",
-  }));
+  const prompt = buildCurrentRoomImagePrompt(product, mode, personPhotoUrl);
   const output = document.querySelector("#roomImagePrompt");
   if (output) output.value = prompt;
   const status = document.querySelector("#roomImagePromptStatus");
@@ -4721,6 +4713,19 @@ async function generateRoomImagePrompt(quiet = false) {
   renderRoomImagePhotoPreview();
   if (!quiet) showToast(boardReady ? "ROOM画像プロンプトを作りました" : "プロンプトを作りました。参照画像を確認してください");
   return prompt;
+}
+
+function buildCurrentRoomImagePrompt(product = getSelectedRoomProduct(), mode = document.querySelector("#roomImageType")?.value || "normal", personPhotoUrl = "") {
+  if (!product) return "";
+  return adaptPromptToSelectedAi(buildRoomImagePrompt({
+    product,
+    personPhotoUrl,
+    mode,
+    pose: document.querySelector("#roomImagePose")?.value || "全身が見える自然な立ち姿",
+    mood: document.querySelector("#roomImageMood")?.value || "明るい自然光のきれいめ室内",
+    location: document.querySelector("#roomImageLocation")?.value || (mode === "collection" ? "my-room" : "overseas"),
+    city: document.querySelector("#roomImageCity")?.value || "パリ",
+  }));
 }
 
 function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood, location, city }) {
@@ -4962,8 +4967,16 @@ function buildRoomCollectionCoverCopy(product, brand, oneLiner) {
 }
 
 async function copyRoomImagePrompt() {
-  const prompt = await generateRoomImagePrompt(true);
-  if (prompt) await copyText(prompt);
+  const output = document.querySelector("#roomImagePrompt");
+  const product = getSelectedRoomProduct();
+  if (!product) return showToast("先に商品を選んでください");
+  const prompt = buildCurrentRoomImagePrompt(product);
+  if (output) output.value = prompt;
+  const copied = await copyText(prompt, output);
+  if (copied) {
+    const status = document.querySelector("#roomImagePromptStatus");
+    if (status) status.textContent = "コピー済み";
+  }
 }
 
 async function openRoomImageGemini() {
@@ -8447,12 +8460,23 @@ function openView(viewName) {
   document.querySelector(`.nav-tab[data-view="${viewName}"]`).click();
 }
 
-async function copyText(text) {
-  if (!text.trim()) return showToast("コピーする内容がありません");
+async function copyText(text, visibleFallback = null) {
+  const value = String(text || "");
+  if (!value.trim()) return showToast("コピーする内容がありません");
   let copied = false;
-  if (navigator.clipboard && window.isSecureContext) {
+  if (visibleFallback && typeof visibleFallback.select === "function") {
     try {
-      await navigator.clipboard.writeText(text);
+      visibleFallback.focus({ preventScroll: true });
+      visibleFallback.select();
+      visibleFallback.setSelectionRange?.(0, value.length);
+      copied = document.execCommand("copy");
+    } catch {
+      copied = false;
+    }
+  }
+  if (!copied && navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(value);
       copied = true;
     } catch {
       copied = false;
@@ -8460,12 +8484,16 @@ async function copyText(text) {
   }
   if (!copied) {
     const helper = document.createElement("textarea");
-    helper.value = text;
+    helper.value = value;
     helper.setAttribute("readonly", "");
     helper.style.position = "fixed";
-    helper.style.opacity = "0";
+    helper.style.left = "-9999px";
+    helper.style.top = "0";
+    helper.style.fontSize = "16px";
     document.body.appendChild(helper);
+    helper.focus({ preventScroll: true });
     helper.select();
+    helper.setSelectionRange(0, value.length);
     copied = document.execCommand("copy");
     helper.remove();
   }
