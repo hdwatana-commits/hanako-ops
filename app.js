@@ -4694,14 +4694,13 @@ function updateRoomCityVisibility() {
   if (field) field.hidden = !isOverseas;
 }
 
-function recommendRoomOverseasCity(product) {
-  const text = `${product?.name || ""} ${product?.category || ""} ${product?.hook || ""} ${product?.details?.color || ""}`;
-  if (/水着|リゾート|マリン|夏|ブルー|水色/.test(text)) return "ホノルル";
-  if (/黒|ブラック|モノトーン|モード|レザー/.test(text)) return "ミラノ";
-  if (/ナチュラル|リネン|麻|生成り/.test(text)) return "コペンハーゲン";
-  if (/カジュアル|デニム|スニーカー/.test(text)) return "ニューヨーク";
-  if (/韓国|オルチャン/.test(text)) return "ソウル";
-  return "パリ";
+function chooseRandomRoomOverseasCity() {
+  const cities = getRoomOverseasCities().map(([city]) => city);
+  const previous = chooseRandomRoomOverseasCity.previous || "";
+  const candidates = cities.filter((city) => city !== previous);
+  const selected = candidates[Math.floor(Math.random() * candidates.length)] || cities[0] || "パリ";
+  chooseRandomRoomOverseasCity.previous = selected;
+  return selected;
 }
 
 function setRoomImageMode(mode) {
@@ -4746,7 +4745,9 @@ function applyRoomImageRecommendations(product) {
   const locationSelect = document.querySelector("#roomImageLocation");
   const citySelect = document.querySelector("#roomImageCity");
   const location = mode === "collection" ? "my-room" : "overseas";
-  const city = recommendRoomOverseasCity(product);
+  const city = mode === "collection"
+    ? citySelect?.value || "パリ"
+    : chooseRandomRoomOverseasCity();
   if (poseSelect) poseSelect.value = pose;
   if (moodSelect) moodSelect.value = mood;
   if (locationSelect) locationSelect.value = location;
