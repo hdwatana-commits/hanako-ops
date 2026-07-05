@@ -4733,7 +4733,15 @@ function generateRoomPost() {
   if (!window.RoomReviewGenerator?.generateFromInfo) return showToast("ROOM生成エンジンを読み込めませんでした");
   const info = {
     title: product.name,
-    description: [product.hook, product.price, product.details?.color, product.details?.material].filter(Boolean).join("。"),
+    description: [
+      product.hook,
+      product.price,
+      product.details?.color,
+      product.details?.material,
+      product.details?.description,
+      product.details?.coupon,
+      product.details?.sale,
+    ].filter(Boolean).join("。"),
     shopName: product.details?.brand || "",
     variationSeed: ++roomGenerationVariant,
   };

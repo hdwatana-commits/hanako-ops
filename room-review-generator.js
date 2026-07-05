@@ -20,7 +20,8 @@ function generatePostText({ name, shopName, genreName, features, targetTags, cat
   const finalPushLine = inferFinalPushLine(category, seed);
   const humanLine = inferReaderEmpathyLine(category, featureA, featureB, seed);
   const focusedCategory = isFocusedCategory(category) || category.includes("ランジェリー");
-  const buyerLine = pickByHash(focusedCategory ? [salesLine, clickLine] : [salesLine, clickLine, trustLine, finalPushLine], `${seed} buyer`);
+  const concreteCouponLine = inferConcreteCouponLine(seed);
+  const buyerLine = concreteCouponLine || pickByHash(focusedCategory ? [salesLine, clickLine] : [salesLine, clickLine, trustLine, finalPushLine], `${seed} buyer`);
   const points = inferPoints(category, resolvedFeatures, seed);
   const coords = inferCoords(category, resolvedFeatures, seed);
   const tags = targetTags.slice(0, 8);
@@ -126,7 +127,23 @@ function polishPostText(text) {
     .replace(/！！+/g, "！")
     .replace(/です！([🔍◎])/g, "です$1")
     .replace(/ます！([🔍◎])/g, "ます$1");
-  return `${next}${tagBlock}`;
+  return `${benefitizeRoomCopy(next)}${tagBlock}`;
+}
+
+function benefitizeRoomCopy(text) {
+  const replacements = [
+    [/袖丈を確認したい/g, "袖のバランスで華奢見えを狙える"],
+    [/袖まわりを確認したい/g, "袖まわりがすっきり見えやすい"],
+    [/丈感を確認したい/g, "バランスよく着こなしやすい丈感"],
+    [/サイズ感を確認したい/g, "自分に合うサイズを選びやすい"],
+    [/収納力を確認したい/g, "必要な荷物をすっきりまとめやすい"],
+    [/素材(?:感)?を確認したい/g, "素材感で上品に見せやすい"],
+    [/セット内容を確認したい/g, "セットでコーデをまとめやすい"],
+    [/裏地を確認したい/g, "透けを気にせず着こなしやすい"],
+    [/袖丈や首元の開きで印象が変わるので、商品ページで着用写真を見たいです/g, "袖と首元のバランスで、顔まわりをすっきり見せやすいです"],
+    [/クーポンや在庫状況でお得感が変わるので、気になったタイミングで確認しておくのがおすすめです✨/g, "手持ち服に合う色を選ぶと、着回しの幅がぐっと広がります✨"],
+  ];
+  return replacements.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), String(text || ""));
 }
 
 function fitPostText(post, parts) {
@@ -344,6 +361,21 @@ function inferSaleSignal(seed) {
   if (/期間限定|数量限定|在庫限り|残りわずか|ラスト|先着|早割/i.test(text)) return { type: "limited", label: "期間限定" };
   if (/送料無料|送料込|送料込み|メール便無料/i.test(text)) return { type: "shipping", label: "送料無料" };
   return null;
+}
+
+function inferConcreteCouponLine(seed) {
+  const text = String(seed || "");
+  const yenMatch = text.match(/(?:クーポン[^\d]{0,12})?(\d{1,3}(?:,\d{3})+|\d+)\s*円\s*(?:OFF|オフ|引き)(?:クーポン)?/i)
+    || text.match(/(\d{1,3}(?:,\d{3})+|\d+)\s*円\s*(?:OFF|オフ|引き)[^\n]{0,12}クーポン/i);
+  const percentMatch = text.match(/(?:クーポン[^\d]{0,12})?([1-9]\d?)\s*%\s*(?:OFF|オフ|割引)(?:クーポン)?/i)
+    || text.match(/([1-9]\d?)\s*%\s*(?:OFF|オフ|割引)[^\n]{0,12}クーポン/i);
+  const limited = /期間限定|先着|数量限定|本日限定|なくなり次第/.test(text);
+  const suffix = limited
+    ? "条件が合ううちにチェック✨"
+    : "利用条件と期限を商品ページでチェック✨";
+  if (yenMatch) return `今なら${yenMatch[1]}円OFFクーポン対象！${suffix}`;
+  if (percentMatch) return `今なら${percentMatch[1]}%OFFクーポン対象！${suffix}`;
+  return "";
 }
 
 function truncateSaleOpeningLine(line, max = 56) {

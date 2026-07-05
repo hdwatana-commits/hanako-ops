@@ -80,6 +80,7 @@ Deno.serve(async (request) => {
         brand: product.brand || "",
         color: product.color || "",
         material: product.material || "",
+        description: cleanTitle(String(product.description || "")),
         rating: product.rating || "",
         reviewCount: product.reviewCount || "",
       },
@@ -368,6 +369,7 @@ function normalizeSearchItem(item: Record<string, any>) {
     shopName: String(item?.shopName || ""),
     details: {
       brand: String(item?.shopName || ""),
+      description: cleanTitle(String(item?.caption || "")),
       rating: String(item?.reviewAverage || ""),
       reviewCount: String(item?.reviewCount || ""),
     },
