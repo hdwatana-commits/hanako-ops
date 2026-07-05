@@ -294,6 +294,7 @@ let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
 const coordinatePhotoPreviewCache = new Map();
 let coordinateBoardDataUrl = "";
+let coordinateBoardHasPerson = false;
 let coordinateBoardRenderId = 0;
 let roomReferenceBoardDataUrl = "";
 let roomReferenceBoardHasPerson = false;
@@ -2101,6 +2102,8 @@ async function uploadCoordinatePhotos(event) {
     if (!uploadedCount) throw new Error("写真を読み込めませんでした。写真アプリから画像を選び直してください");
     saveState();
     markRoomImagePromptStale();
+    coordinateBoardDataUrl = "";
+    coordinateBoardHasPerson = false;
     renderCoordinatePhotoLibrary();
     if (coordinateOutput.value.trim()) await drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
     showToast(`${uploadedCount}枚の写真を保存しました`);
@@ -2126,6 +2129,8 @@ async function handleCoordinatePhotoLibraryClick(event) {
       if (state.selectedCoordinatePhotoId === photo.id) state.selectedCoordinatePhotoId = state.coordinatePhotos[0]?.id || "";
       saveState();
       markRoomImagePromptStale();
+      coordinateBoardDataUrl = "";
+      coordinateBoardHasPerson = false;
       renderCoordinatePhotoLibrary();
       showToast("写真を削除しました");
     } catch (error) {
@@ -2138,6 +2143,8 @@ async function handleCoordinatePhotoLibraryClick(event) {
   state.selectedCoordinatePhotoId = selectButton.dataset.selectCoordinatePhoto;
   saveState();
   markRoomImagePromptStale();
+  coordinateBoardDataUrl = "";
+  coordinateBoardHasPerson = false;
   renderCoordinatePhotoLibrary();
   showToast("今回使う写真を選びました");
   try {
@@ -3008,6 +3015,10 @@ async function generateCoordinate() {
     ? "作成済み：本人写真を再確認"
     : analysis.roomReady ? "投稿条件を確認済み" : "要確認：商品を追加";
   await drawCoordinateBoard(coordinate, text);
+  if (getSelectedCoordinatePhoto() && !coordinateBoardHasPerson) {
+    document.querySelector("#coordStatus").textContent = "要確認：本人写真を選び直してください";
+    return showToast("本人写真を画像ボードへ入れられませんでした。ホームで写真を選び直してください");
+  }
   showToast(photoWarning || (analysis.roomReady ? "コーデ・画像ボード・2つのプロンプトを作りました" : "コーデと2つのプロンプトを作りました。ROOM投稿には商品を2点以上選んでください"));
 }
 
@@ -3151,18 +3162,30 @@ async function drawCoordinateBoard(coordinate, text) {
   ctx.fillStyle = "#795c50";
   ctx.fillText(`${coordinate.priority} / ${coordinate.colorMood}`, 72, 206);
 
-  if (coordinatePhotoDataUrl) {
-    const image = await loadImage(coordinatePhotoDataUrl).catch(() => null);
-    if (image) {
-      drawCoverImage(ctx, image, 760, 54, 230, 230, 18);
-      ctx.fillStyle = "rgba(255,255,255,0.92)";
-      ctx.fillRect(778, 234, 194, 34);
-      ctx.fillStyle = "#8f3e5d";
-      ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("選んだ本人写真", 875, 258);
-      ctx.textAlign = "left";
+  const selectedPhoto = getSelectedCoordinatePhoto();
+  let selectedPhotoSource = "";
+  if (selectedPhoto) {
+    try {
+      await ensureSelectedCoordinatePhotoUrl();
+      selectedPhotoSource = coordinatePhotoPreviewCache.get(selectedPhoto.id)
+        || await loadCoordinatePhotoPreview(selectedPhoto)
+        || selectedPhoto.signedUrl
+        || "";
+    } catch {
+      selectedPhotoSource = coordinatePhotoPreviewCache.get(selectedPhoto.id) || selectedPhoto.signedUrl || "";
     }
+  }
+  const personImage = selectedPhotoSource ? await loadImage(selectedPhotoSource).catch(() => null) : null;
+  coordinateBoardHasPerson = Boolean(personImage);
+  if (personImage) {
+    drawCoverImage(ctx, personImage, 760, 54, 230, 230, 18);
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.fillRect(778, 234, 194, 34);
+    ctx.fillStyle = "#8f3e5d";
+    ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("選んだ本人写真", 875, 258);
+    ctx.textAlign = "left";
   } else {
     drawPlaceholder(ctx, "PHOTO", 760, 54, 230, 230);
   }
@@ -4189,6 +4212,7 @@ function openGemini() {
 
 function shareCoordinateToGemini() {
   if (!coordinateBoardDataUrl) return showToast("先にコーデ文と画像ボードを作ってください");
+  if (getSelectedCoordinatePhoto() && !coordinateBoardHasPerson) return showToast("本人写真が画像ボードに入っていません。写真を選び直して、もう一度コーデを作ってください");
   const coordinate = getSelectedCoordinate();
   setCoordinatePrompts(coordinate);
   const boardFile = dataUrlToFile(coordinateBoardDataUrl, "hanako-coordinate-reference.png");
