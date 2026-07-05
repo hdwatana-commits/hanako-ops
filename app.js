@@ -4326,7 +4326,7 @@ function bindRoomActions() {
   });
   document.querySelector("#roomImagePose")?.addEventListener("change", markRoomImagePromptStale);
   document.querySelector("#roomImageMood")?.addEventListener("change", markRoomImagePromptStale);
-  document.querySelector("#generateRoomImagePrompt")?.addEventListener("click", generateRoomImagePrompt);
+  document.querySelector("#generateRoomImagePrompt")?.addEventListener("click", () => generateRoomImagePrompt(false));
   document.querySelector("#copyRoomImagePrompt")?.addEventListener("click", copyRoomImagePrompt);
   document.querySelector("#openRoomSelectedAi")?.addEventListener("click", openGeminiDestination);
   document.querySelector("#openRoomImageGemini")?.addEventListener("click", openRoomImageGemini);
@@ -4442,31 +4442,40 @@ function markRoomImagePromptStale() {
 async function generateRoomImagePrompt(quiet = false) {
   const product = getSelectedRoomProduct();
   if (!product) return showToast("先に商品を選んでください");
-  if (!product.image) return showToast("この商品には商品画像URLがありません");
+  const warnings = [];
+  let personPhotoUrl = "";
+  let boardReady = false;
   try {
-    const personPhotoUrl = await ensureSelectedCoordinatePhotoUrl();
-    if (!personPhotoUrl) return showToast("ホーム画面で本人写真を保存して選んでください");
-    const mode = document.querySelector("#roomImageType")?.value || "normal";
-    await loadCoordinatePhotoPreview();
-    await drawRoomReferenceBoard(product, mode);
-    const prompt = adaptPromptToSelectedAi(buildRoomImagePrompt({
-      product,
-      personPhotoUrl,
-      mode,
-      pose: document.querySelector("#roomImagePose")?.value || "全身が見える自然な立ち姿",
-      mood: document.querySelector("#roomImageMood")?.value || "明るい自然光のきれいめ室内",
-    }));
-    const output = document.querySelector("#roomImagePrompt");
-    if (output) output.value = prompt;
-    const status = document.querySelector("#roomImagePromptStatus");
-    if (status) status.textContent = mode === "collection" ? "コレクション表紙用" : "通常投稿用";
-    renderRoomImagePhotoPreview();
-    if (!quiet) showToast("ROOM画像プロンプトを作りました");
-    return prompt;
-  } catch (error) {
-    showToast(error.message || "画像プロンプトを作れませんでした");
-    return "";
+    personPhotoUrl = await ensureSelectedCoordinatePhotoUrl();
+    if (!personPhotoUrl) warnings.push("本人写真が未選択");
+  } catch {
+    warnings.push("本人写真の更新待ち");
   }
+  const mode = document.querySelector("#roomImageType")?.value || "normal";
+  try {
+    await loadCoordinatePhotoPreview().catch(() => "");
+    await drawRoomReferenceBoard(product, mode);
+    boardReady = Boolean(roomReferenceBoardDataUrl);
+  } catch {
+    roomReferenceBoardDataUrl = "";
+    warnings.push("参照画像ボードを再作成してください");
+  }
+  if (!product.image) warnings.push("商品画像が未登録");
+  const prompt = adaptPromptToSelectedAi(buildRoomImagePrompt({
+    product,
+    personPhotoUrl,
+    mode,
+    pose: document.querySelector("#roomImagePose")?.value || "全身が見える自然な立ち姿",
+    mood: document.querySelector("#roomImageMood")?.value || "明るい自然光のきれいめ室内",
+  }));
+  const output = document.querySelector("#roomImagePrompt");
+  if (output) output.value = prompt;
+  const status = document.querySelector("#roomImagePromptStatus");
+  const baseStatus = mode === "collection" ? "コレクション表紙用" : "通常投稿用";
+  if (status) status.textContent = warnings.length ? `${baseStatus}・画像要確認` : baseStatus;
+  renderRoomImagePhotoPreview();
+  if (!quiet) showToast(boardReady ? "ROOM画像プロンプトを作りました" : "プロンプトを作りました。参照画像を確認してください");
+  return prompt;
 }
 
 function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood }) {
