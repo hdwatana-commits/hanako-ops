@@ -4702,11 +4702,40 @@ function updateRoomCityVisibility() {
 
 function chooseRandomRoomOverseasCity() {
   const cities = getRoomOverseasCities().map(([city]) => city);
-  const previous = chooseRandomRoomOverseasCity.previous || "";
-  const candidates = cities.filter((city) => city !== previous);
-  const selected = candidates[Math.floor(Math.random() * candidates.length)] || cities[0] || "パリ";
-  chooseRandomRoomOverseasCity.previous = selected;
+  const storageKey = "hanako-room-overseas-city-deck";
+  let deckState = { remaining: [], last: "" };
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+    const validCities = new Set(cities);
+    const remaining = Array.isArray(saved.remaining)
+      ? saved.remaining.filter((city, index, items) => validCities.has(city) && items.indexOf(city) === index)
+      : [];
+    deckState = { remaining, last: validCities.has(saved.last) ? saved.last : "" };
+  } catch {
+    deckState = { remaining: [], last: "" };
+  }
+  if (!deckState.remaining.length) {
+    deckState.remaining = shuffleCityDeck([...cities]);
+    if (deckState.remaining.length > 1 && deckState.remaining[0] === deckState.last) {
+      [deckState.remaining[0], deckState.remaining[1]] = [deckState.remaining[1], deckState.remaining[0]];
+    }
+  }
+  const selected = deckState.remaining.shift() || cities[0] || "パリ";
+  deckState.last = selected;
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(deckState));
+  } catch {
+    // 保存できない環境でも、その回のランダム選択は続行する。
+  }
   return selected;
+}
+
+function shuffleCityDeck(cities) {
+  for (let index = cities.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [cities[index], cities[randomIndex]] = [cities[randomIndex], cities[index]];
+  }
+  return cities;
 }
 
 function setRoomImageMode(mode) {
