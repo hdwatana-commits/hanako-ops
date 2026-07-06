@@ -3659,6 +3659,15 @@ body {
   white-space: nowrap;
 }
 
+.room-url-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.room-url-actions #roomClearProductUrl {
+  min-width: 82px;
+}
+
 .coord-import-status {
   margin: 8px 0 0;
   color: var(--muted);
@@ -4091,6 +4100,11 @@ body {
 
   .coord-url-row button {
     width: 100%;
+  }
+
+  .room-url-actions > button {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .coord-layout {

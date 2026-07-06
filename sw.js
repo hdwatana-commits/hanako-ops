@@ -1,12 +1,12 @@
-const CACHE_NAME = "hanako-room-ops-v147";
+const CACHE_NAME = "hanako-room-ops-v148";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=147",
-  "./app.js?v=147",
-  "./cloud-sync.js?v=147",
-  "./room-review-generator.js?v=147",
+  "./styles.css?v=148",
+  "./app.js?v=148",
+  "./cloud-sync.js?v=148",
+  "./room-review-generator.js?v=148",
   "./version.json",
   "./update.html",
   "./covers/rakuten-room-cover-hanako-v5.jpg",
@@ -398,10 +398,10 @@ const APP_SHELL = [
 const CORE_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=147",
-  "./app.js?v=147",
-  "./cloud-sync.js?v=147",
-  "./room-review-generator.js?v=147",
+  "./styles.css?v=148",
+  "./app.js?v=148",
+  "./cloud-sync.js?v=148",
+  "./room-review-generator.js?v=148",
 ];
 
 self.addEventListener("install", (event) => {

@@ -4493,8 +4493,14 @@ function bindRoomActions() {
   populateRoomOverseasCities();
   const roomProductUrl = document.querySelector("#roomProductUrl");
   const roomImportButton = document.querySelector("#roomImportAndGenerate");
+  const roomClearButton = document.querySelector("#roomClearProductUrl");
   const importAndGenerate = () => importProductForRoom(roomProductUrl, roomImportButton);
   roomImportButton?.addEventListener("click", importAndGenerate);
+  roomClearButton?.addEventListener("click", () => {
+    roomProductUrl.value = "";
+    showRoomImportStatus("URLをクリアしました。次の商品URLを貼り付けられます。");
+    roomProductUrl.focus();
+  });
   roomProductUrl?.addEventListener("paste", () => window.setTimeout(importAndGenerate, 0));
   roomProductUrl?.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
