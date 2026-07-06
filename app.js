@@ -2754,9 +2754,8 @@ function populateCoordinateOverseasCities() {
 function applyRandomCoordinateLocation() {
   const location = document.querySelector("#coordLocation");
   const city = document.querySelector("#coordCity");
-  const cities = getRoomOverseasCities();
   if (location) location.value = "overseas";
-  if (city && cities.length) city.value = cities[Math.floor(Math.random() * cities.length)][0];
+  if (city) city.value = chooseBalancedOverseasCity("coordinate");
   updateCoordinateCityVisibility();
 }
 
@@ -4679,6 +4678,31 @@ function getRoomOverseasCities() {
     ["リオデジャネイロ", "コルコバードの丘"], ["ブエノスアイレス", "カミニート"],
     ["メキシコシティ", "ベジャス・アルテス宮殿"], ["バンクーバー", "カナダプレイスと山並み"],
     ["ケベックシティ", "シャトー・フロンテナック"], ["オークランド", "スカイタワー"],
+    ["レイキャビク", "ハットルグリムス教会"], ["タリン", "塔の広場と旧市街"],
+    ["リガ", "ブラックヘッド会館"], ["ビリニュス", "ゲディミナス塔"],
+    ["ワルシャワ", "旧市街広場"], ["クラクフ", "ヴァヴェル城"],
+    ["ザルツブルク", "ホーエンザルツブルク城"], ["インスブルック", "黄金の小屋根とアルプス"],
+    ["ルツェルン", "カペル橋"], ["ベルン", "時計塔と旧市街"],
+    ["リヨン", "フルヴィエール大聖堂"], ["ニース", "プロムナード・デ・ザングレ"],
+    ["マルセイユ", "旧港"], ["ボルドー", "ブルス広場と水鏡"],
+    ["セビリア", "スペイン広場"], ["グラナダ", "アルハンブラ宮殿"],
+    ["バレンシア", "芸術科学都市"], ["ポルト", "ドン・ルイス1世橋"],
+    ["ナポリ", "ナポリ湾とヴェスヴィオ山"], ["ボローニャ", "二本の塔"],
+    ["スプリト", "ディオクレティアヌス宮殿"], ["リュブリャナ", "三本橋とリュブリャニツァ川"],
+    ["ブラチスラバ", "ブラチスラバ城"], ["ソフィア", "アレクサンドル・ネフスキー大聖堂"],
+    ["ブカレスト", "ルーマニア国立アテネ音楽堂"], ["ベオグラード", "要塞とドナウ川"],
+    ["サラエボ", "ラテン橋"], ["スコピエ", "石橋"],
+    ["トビリシ", "ナリカラ要塞と旧市街"], ["エレバン", "カスカードとアララト山"],
+    ["ドーハ", "イスラム美術館と海岸線"], ["アブダビ", "シェイク・ザイード・グランド・モスク"],
+    ["マスカット", "スルタン・カブース・グランド・モスク"], ["アンマン", "アンマン城塞"],
+    ["ムンバイ", "インド門"], ["ジャイプール", "風の宮殿"],
+    ["ニューデリー", "インド門と並木道"], ["クアラルンプール", "ペトロナスツインタワー"],
+    ["ペナン", "ジョージタウンの街並み"], ["香港", "ビクトリア・ハーバー"],
+    ["マカオ", "聖ポール天主堂跡"], ["上海", "外灘と浦東の街並み"],
+    ["北京", "故宮の城門"], ["ウブド", "棚田と緑の小道"],
+    ["クイーンズタウン", "ワカティプ湖とリマーカブルズ山脈"], ["トロント", "CNタワー"],
+    ["モントリオール", "ノートルダム大聖堂と旧市街"], ["シカゴ", "クラウド・ゲートと高層街"],
+    ["マイアミ", "サウスビーチのアールデコ街"], ["カルタヘナ", "カラフルな旧市街と時計塔"],
   ];
 }
 
@@ -4701,13 +4725,17 @@ function updateRoomCityVisibility() {
 }
 
 function chooseRandomRoomOverseasCity() {
+  return chooseBalancedOverseasCity("room");
+}
+
+function chooseBalancedOverseasCity(deckName) {
   const cities = getRoomOverseasCities().map(([city]) => city);
-  const storageKey = "hanako-room-overseas-city-deck";
+  const storageKey = `hanako-${deckName}-overseas-city-deck`;
   let deckState = { remaining: [], last: "" };
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
     const validCities = new Set(cities);
-    const remaining = Array.isArray(saved.remaining)
+    const remaining = saved.total === cities.length && Array.isArray(saved.remaining)
       ? saved.remaining.filter((city, index, items) => validCities.has(city) && items.indexOf(city) === index)
       : [];
     deckState = { remaining, last: validCities.has(saved.last) ? saved.last : "" };
@@ -4722,6 +4750,7 @@ function chooseRandomRoomOverseasCity() {
   }
   const selected = deckState.remaining.shift() || cities[0] || "パリ";
   deckState.last = selected;
+  deckState.total = cities.length;
   try {
     localStorage.setItem(storageKey, JSON.stringify(deckState));
   } catch {
