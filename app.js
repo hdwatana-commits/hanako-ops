@@ -6,6 +6,8 @@ const APP_VERSION = (() => {
   }
 })();
 
+const COORDINATE_PHOTO_LIMIT = 6;
+
 const defaultProfile = `毎日おしゃれ研究家のハナコです
 大人ガーリー＆甘めきれいめコーデを研究中
 
@@ -2075,8 +2077,8 @@ async function uploadCoordinatePhotos(event) {
     }
     return showToast(message);
   }
-  const available = Math.max(0, 5 - state.coordinatePhotos.length);
-  if (!available) return showToast("写真は5枚までです。入れ替える写真を削除してください");
+  const available = Math.max(0, COORDINATE_PHOTO_LIMIT - state.coordinatePhotos.length);
+  if (!available) return showToast(`写真は${COORDINATE_PHOTO_LIMIT}枚までです。入れ替える写真を削除してください`);
   const targets = files.slice(0, available);
   try {
     status?.classList.remove("error");
@@ -2182,7 +2184,7 @@ function renderCoordinatePhotoLibrary() {
   });
   const selectedName = selected?.name || "未選択";
   const statusText = cloudSync.signedIn
-    ? `${state.coordinatePhotos.length}/5枚保存中。今回使う写真：${selectedName}`
+    ? `${state.coordinatePhotos.length}/${COORDINATE_PHOTO_LIMIT}枚保存中。今回使う写真：${selectedName}`
     : "写真を追加・更新するには、クラウド同期へログインしてください。";
   document.querySelectorAll("#coordPhotoStatus, #homeCoordPhotoStatus").forEach((status) => {
     status.textContent = statusText;
