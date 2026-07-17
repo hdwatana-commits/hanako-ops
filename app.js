@@ -8751,8 +8751,9 @@ async function checkPublishedAppVersion() {
 
 function forceAppUpdate() {
   const updateUrl = new URL("./update.html", location.href);
+  updateUrl.searchParams.set("v", APP_VERSION === "開発版" ? Date.now() : APP_VERSION);
   updateUrl.searchParams.set("t", Date.now());
-  location.href = updateUrl.href;
+  location.replace(updateUrl.href);
 }
 
 function showToast(message) {

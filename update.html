@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <title>Hanako Style Studioを更新中</title>
+    <title>最新版へ更新中</title>
     <style>
       body { margin: 0; min-height: 100vh; display: grid; place-items: center; color: #382b31; background: #fff7fa; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; }
       main { width: min(88vw, 420px); padding: 28px 22px; text-align: center; background: #fff; border: 1px solid #f0d9e2; border-radius: 8px; box-shadow: 0 12px 30px rgba(122, 53, 80, .1); }
@@ -13,7 +13,10 @@
     </style>
   </head>
   <body>
-    <main><h1>最新版へ更新しています</h1><p>この画面は自動でアプリへ戻ります。</p></main>
+    <main>
+      <h1>最新版へ更新中</h1>
+      <p>古いデータを整理して、アプリを開き直しています。</p>
+    </main>
     <script>
       (async () => {
         try {
@@ -23,10 +26,15 @@
           }
           if ("caches" in window) {
             const keys = await caches.keys();
-            await Promise.all(keys.filter((key) => key.startsWith("hanako-room-ops-")).map((key) => caches.delete(key)));
+            await Promise.all(
+              keys
+                .filter((key) => key.startsWith("hanako-room-ops-"))
+                .map((key) => caches.delete(key)),
+            );
           }
         } finally {
           const destination = new URL("./", location.href);
+          destination.searchParams.set("v", new URL(location.href).searchParams.get("v") || "151");
           destination.searchParams.set("updated", Date.now());
           location.replace(destination.href);
         }
