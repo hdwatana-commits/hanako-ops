@@ -4327,11 +4327,12 @@ function buildCoordinateCaptionPrompt(coordinate) {
     ? `${coordinate.city}（背景のランドマーク: ${coordinate.landmark}）`
     : { "my-room": "自分のへや", "stylish-outdoor": "おしゃれな屋外", "stylish-cafe": "おしゃれなカフェ" }[coordinate.location] || "おしゃれな屋外";
   const overseasEpisodeInstruction = coordinate.location === "overseas"
-    ? `・本文の中に「${coordinate.city}」と「${coordinate.landmark}」の空気感をコーデへ結びつけた、短い海外エピソードコメントをちょうど3行入れる
-・3行は、1行目で街の景色、2行目でその景色と服の色・形・素材のつながり、3行目でその場所を歩きたくなる気持ちを書く
+    ? `・本文の中に、選んだ海外都市「${coordinate.city}」のミニ情報をかわいく自然に入れる
+・ミニ情報は「${coordinate.landmark}」、街の色や空気感、コーデとの相性を2〜3文でまとめる
+・観光ガイドの丸写しにせず、ファッション投稿として「${coordinate.city}を歩くならこのバランスが似合いそう」と感じる一言にする
 ・実際に${coordinate.city}へ行った、そこで着た、撮影したとは断定しない。「${coordinate.city}を歩くなら」「${coordinate.landmark}を背景にした気分で」のような想像として自然に書く`
     : `・選んだ場所「${locationLabel}」がコーデの雰囲気とどう合うかを、本文へ短く1文だけ入れる`;
-  const captionLength = coordinate.location === "overseas" ? "320〜480文字くらい" : "240〜380文字くらい";
+  const captionLength = "430〜470文字くらい、目安は約450文字";
   return `次の完成コーデを読者へ紹介する、短くてかわいい文章を1案作ってください。商品の一覧説明ではなく、コーデ画面で選択した商品だけをどう組み合わせたのかが伝わる文章にしてください。
 
 雰囲気: ${coordinate.style}
@@ -4365,6 +4366,9 @@ ${items}
 ・「おはファッション〜っ！」の文字は毎回固定し、その直後の絵文字だけを今回指定した組み合わせにする
 ・内部で冒頭3案と構成3案を考え、いちばん自然で保存したくなる完成稿だけを出す
 ・実際には内部で「共感から入る案」「結論から入る案」「小さな失敗を避ける案」を各4案作り、商品との一致度が最も高い1案を選ぶ
+・冒頭は「${greeting}」の後、最初の100文字程度でコーデの結論をいったんまとめる
+・最初の100文字程度には、誰向けか、主役商品、解決できる悩み、かわいく見える理由を短く入れる
+・100文字前後で一度改行し、その後に着こなしの理由、場所の話、買う前チェック、保存したくなる締めへ自然につなげる
 ・${captionLength}で、短い文と空行を使い、スマホで読みやすくまとめる
 ${overseasEpisodeInstruction}
 ・話し手は礼儀正しく、ファッションが大好きな女子大生
