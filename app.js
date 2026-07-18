@@ -3257,11 +3257,11 @@ function buildCoordinateFashionScore(coordinate) {
   const hasBag = categories.has("バッグ");
   const hasShoes = categories.has("シューズ");
   const hasAccessory = categories.has("アクセサリー");
-  const categoryBalance = Math.min(92, 40 + Math.min(products.length, 5) * 9 + (hasMainWear ? 10 : 0) + (hasBottom ? 8 : 0) + (hasBag ? 6 : 0) + (hasShoes ? 6 : 0));
-  const colorHarmony = Math.max(58, Math.min(93, 88 - Math.max(0, uniqueColors.size - 3) * 8 + (coordinate.colorMood === "商品から自動で整える" ? 1 : 4)));
-  const sceneFit = Math.min(92, 62 + (coordinate.occasion ? 9 : 0) + (coordinate.priority ? 7 : 0) + (coordinate.season ? 5 : 0) + (coordinate.location ? 4 : 0));
-  const solutionPower = Math.min(92, 60 + (coordinate.concern ? 10 : 0) + (coordinate.priority ? 8 : 0) + (products.some((product) => product.hook) ? 4 : 0));
-  const trendMood = Math.min(91, 58 + (/(ガーリー|きれいめ|高見え|甘め|淡色|韓国|フェミニン|上品)/.test(`${coordinate.style} ${products.map((product) => product.name).join(" ")}`) ? 13 : 6) + (hasAccessory ? 4 : 0) + (hasBag ? 4 : 0));
+  const categoryBalance = Math.min(86, 34 + Math.min(products.length, 5) * 8 + (hasMainWear ? 9 : 0) + (hasBottom ? 7 : 0) + (hasBag ? 5 : 0) + (hasShoes ? 5 : 0));
+  const colorHarmony = Math.max(52, Math.min(88, 82 - Math.max(0, uniqueColors.size - 3) * 8 + (coordinate.colorMood === "商品から自動で整える" ? 0 : 3)));
+  const sceneFit = Math.min(87, 56 + (coordinate.occasion ? 8 : 0) + (coordinate.priority ? 6 : 0) + (coordinate.season ? 4 : 0) + (coordinate.location ? 3 : 0));
+  const solutionPower = Math.min(86, 54 + (coordinate.concern ? 9 : 0) + (coordinate.priority ? 7 : 0) + (products.some((product) => product.hook) ? 3 : 0));
+  const trendMood = Math.min(86, 52 + (/(ガーリー|きれいめ|高見え|甘め|淡色|韓国|フェミニン|上品)/.test(`${coordinate.style} ${products.map((product) => product.name).join(" ")}`) ? 11 : 5) + (hasAccessory ? 3 : 0) + (hasBag ? 3 : 0));
   const metrics = [
     { label: "まとまり", value: Math.round(categoryBalance) },
     { label: "配色", value: Math.round(colorHarmony) },
@@ -3269,8 +3269,8 @@ function buildCoordinateFashionScore(coordinate) {
     { label: "悩み解決", value: Math.round(solutionPower) },
     { label: "抜け感", value: Math.round(trendMood) },
   ];
-  const power = Math.max(48, Math.min(94, Math.round(metrics.reduce((sum, metric) => sum + metric.value, 0) / metrics.length) - 3));
-  const rank = power >= 92 ? "S" : power >= 86 ? "A" : power >= 78 ? "B" : power >= 70 ? "C" : power >= 62 ? "D" : "E";
+  const power = Math.max(42, Math.min(89, Math.round(metrics.reduce((sum, metric) => sum + metric.value, 0) / metrics.length) - 6));
+  const rank = power >= 88 ? "S" : power >= 82 ? "A" : power >= 74 ? "B" : power >= 66 ? "C" : power >= 58 ? "D" : "E";
   const rankLabels = {
     S: "神コーデ級",
     A: "かなり優秀",
@@ -4285,6 +4285,7 @@ function buildCoordinateFashionScorePrompt(fashionScore) {
   2. レーダーチャート: 5軸で表示する。軸名は ${fashionScore.metrics.map((metric) => metric.label).join(" / ")}。数値は内部評価として使い、チャート周囲へ単独の数字を散らさない
   3. ファッションパワー: 「${fashionScore.power}pt」と1回だけかわいく表示する
 ・レーダーチャートの評価値は ${fashionScore.metrics.map((metric) => `${metric.label}:${metric.value}`).join(" / ")} を使う。高すぎる満点感を出さず、少し辛口の自己判定に見せる
+・この診断では80点台でも十分高評価。チャートを盛って90点台や満点のように見せない
 ・スコアカードの見出しは「FASHION SCORE」または「おしゃれ診断」にする
 ・右下カードは主役の服、顔、ハナコ先生の吹き出し、商品ポイントに重ねない。必要なら少し小さくしてもよい
 ・ランク、チャート、点数はこの指定から変えない。別の点数や別ランクを作らない
