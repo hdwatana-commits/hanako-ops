@@ -11,9 +11,9 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=154">
+    <link rel="stylesheet" href="styles.css?v=155">
     <script src="config.js"></script>
-    <script src="cloud-sync.js?v=154"></script>
+    <script src="cloud-sync.js?v=155"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -958,6 +958,24 @@
                   </select>
                 </div>
                 <div>
+                  <label class="field-label" for="coordPose">ポーズ</label>
+                  <select id="coordPose">
+                    <option>全身が見える自然な立ち姿</option>
+                    <option>片足を少し前に出したきれいめ立ち</option>
+                    <option>バッグを持って軽く振り向く</option>
+                    <option>歩き出す瞬間のファッションスナップ</option>
+                    <option>カフェ前で片手を添える上品ポーズ</option>
+                    <option>スカートや裾をふわっと見せるポーズ</option>
+                    <option>鏡を見るような自然な横向き</option>
+                    <option>椅子に浅く座って足元を見せる</option>
+                    <option>階段や街角で重心をきれいに見せる立ち姿</option>
+                    <option>小物を見せながら首元をすっきり見せる</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="coord-style-row">
+                <div>
                   <label class="field-label" for="coordImagePattern">画像パターン</label>
                   <select id="coordImagePattern">
                     <option selected>ハナコ先生の吹き出し解説</option>
@@ -971,6 +989,7 @@
                     <option>オリジナル商品写真で投稿</option>
                   </select>
                 </div>
+                <div></div>
               </div>
               <div class="hanako-teacher-preview" id="hanakoTeacherPreview" hidden>
                 <div class="teacher-selected-summary">
@@ -1119,21 +1138,31 @@
                     <label class="field-label" for="roomImagePose">ポーズ</label>
                     <select id="roomImagePose">
                       <option>全身が見える自然な立ち姿</option>
+                      <option>片足を少し前に出したきれいめ立ち</option>
                       <option>商品へ目線を向けた斜め立ち</option>
                       <option>バッグを自然に持って振り向く</option>
                       <option>椅子に浅く座って足元を見せる</option>
                       <option>片手を軽く上げた雑誌風ポーズ</option>
                       <option>歩き出す瞬間の自然なスナップ</option>
+                      <option>ショーウィンドウ前の洗練スナップ</option>
+                      <option>カフェ前で片手を添える上品ポーズ</option>
+                      <option>小物を胸元で見せる広告風ポーズ</option>
+                      <option>横向きでシルエットを見せるポーズ</option>
+                      <option>スカートや裾をふわっと見せるポーズ</option>
+                      <option>階段や街角で重心をきれいに見せる立ち姿</option>
+                      <option>鏡を見るような自然な横向き</option>
+                      <option>ブランド広告のような静かな正面立ち</option>
+                      <option>片手を髪に添えた大人ガーリーポーズ</option>
                     </select>
                   </div>
                   <div>
                     <label class="field-label" for="roomImageMood">雰囲気</label>
                     <select id="roomImageMood">
+                      <option selected>ブランド広告のような洗練</option>
                       <option>明るい自然光のきれいめ室内</option>
                       <option>白背景の上品なファッション誌</option>
                       <option>淡いピンクの大人ガーリー</option>
                       <option>カフェで撮った自然なスナップ</option>
-                      <option>ブランド広告のような洗練</option>
                       <option>余白を生かした静かなモード</option>
                     </select>
                   </div>
@@ -1342,7 +1371,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=154"></script>
-    <script src="app.js?v=154"></script>
+    <script src="room-review-generator.js?v=155"></script>
+    <script src="app.js?v=155"></script>
   </body>
 </html>

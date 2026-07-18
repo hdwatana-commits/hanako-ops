@@ -2042,6 +2042,8 @@ function bindCoordinateActions() {
     refreshCoordinatePromptsAfterSettingChange();
   });
   document.querySelector("#coordCity")?.addEventListener("change", refreshCoordinatePromptsAfterSettingChange);
+  document.querySelector("#coordPose")?.addEventListener("change", refreshCoordinatePromptsAfterSettingChange);
+  applyRandomCoordinatePose();
   document.querySelector("#rerollHanakoTeacher")?.addEventListener("click", () => {
     activateHanakoTeacherMode("random", true, true);
   });
@@ -2725,6 +2727,7 @@ function getSelectedCoordinate() {
     style: document.querySelector("#coordStyle")?.value || "大人ガーリー",
     occasion: document.querySelector("#coordOccasion")?.value || "友達とカフェ",
     hairStyle: document.querySelector("#coordHairStyle")?.value || "元写真の髪型を保つ",
+    pose: document.querySelector("#coordPose")?.value || "全身が見える自然な立ち姿",
     imagePattern: document.querySelector("#coordImagePattern")?.value || "ハナコ先生の吹き出し解説",
     concern: document.querySelector("#coordConcern")?.value || "朝、服が決まらない",
     priority: document.querySelector("#coordPriority")?.value || "着回しやすさ",
@@ -2759,6 +2762,42 @@ function applyRandomCoordinateLocation() {
   if (location) location.value = "overseas";
   if (city) city.value = chooseBalancedOverseasCity("coordinate");
   updateCoordinateCityVisibility();
+}
+
+function coordinatePoseOptions() {
+  const select = document.querySelector("#coordPose");
+  return select ? [...select.options].map((option) => option.value).filter(Boolean) : [
+    "全身が見える自然な立ち姿",
+    "片足を少し前に出したきれいめ立ち",
+    "バッグを持って軽く振り向く",
+    "歩き出す瞬間のファッションスナップ",
+  ];
+}
+
+function chooseRandomCoordinatePose(product = null) {
+  const options = coordinatePoseOptions();
+  const category = product?.category || "";
+  const preferred = {
+    ワンピース: ["歩き出す瞬間のファッションスナップ", "スカートや裾をふわっと見せるポーズ", "片足を少し前に出したきれいめ立ち"],
+    スカート: ["スカートや裾をふわっと見せるポーズ", "歩き出す瞬間のファッションスナップ", "階段や街角で重心をきれいに見せる立ち姿"],
+    パンツ: ["片足を少し前に出したきれいめ立ち", "歩き出す瞬間のファッションスナップ", "鏡を見るような自然な横向き"],
+    バッグ: ["バッグを持って軽く振り向く", "小物を見せながら首元をすっきり見せる", "カフェ前で片手を添える上品ポーズ"],
+    シューズ: ["椅子に浅く座って足元を見せる", "階段や街角で重心をきれいに見せる立ち姿", "歩き出す瞬間のファッションスナップ"],
+    アクセサリー: ["小物を見せながら首元をすっきり見せる", "カフェ前で片手を添える上品ポーズ", "鏡を見るような自然な横向き"],
+    アウター: ["バッグを持って軽く振り向く", "歩き出す瞬間のファッションスナップ", "片足を少し前に出したきれいめ立ち"],
+    トップス: ["小物を見せながら首元をすっきり見せる", "片足を少し前に出したきれいめ立ち", "カフェ前で片手を添える上品ポーズ"],
+  }[category] || options;
+  const available = preferred.filter((pose) => options.includes(pose));
+  const pool = available.length ? available : options;
+  return pool[Math.floor(Math.random() * pool.length)] || "全身が見える自然な立ち姿";
+}
+
+function applyRandomCoordinatePose(product = null) {
+  const select = document.querySelector("#coordPose");
+  if (!select) return "";
+  const pose = chooseRandomCoordinatePose(product);
+  select.value = pose;
+  return pose;
 }
 
 function updateCoordinateCityVisibility() {
@@ -2978,10 +3017,11 @@ function applyRecommendedCoordinateDefaults(product, notify = true) {
   setSelect("coordSeason", season);
   setSelect("coordImagePattern", imagePattern);
   setSelect("coordHairStyle", hairStyle);
+  const pose = applyRandomCoordinatePose(product);
   applyRandomCoordinateLocation();
   setSelect("coordMainProduct", product.id);
   autoSelectCoordinateItems(false, false, true);
-  if (notify) showToast(`おすすめを自動選択｜${style}・${occasion}・${concern}・${priority}`);
+  if (notify) showToast(`おすすめを自動選択｜${style}・${occasion}・${concern}・${priority}・${pose}`);
 }
 
 function recommendCoordinateSettings(product, sourceText = "") {
@@ -4034,6 +4074,7 @@ function buildOutfitImagePrompt(coordinate) {
 ・マスクを外す、別のマスクへ交換する、透明にする、口や鼻を見せる加工をしない
 ・元写真でマスクを着けていない場合は、新しくマスクを追加しない
 ・ポーズは元写真を生かしつつ、手元や足元を自然でかわいくアレンジする
+・選んだポーズは「${coordinate.pose}」。本人らしさとマスクを保ちながら、このポーズの雰囲気へ自然に寄せる
 ・指、手足、顔、服の重なりを不自然にしない
 ・過度な露出や不自然な体型変更はしない`;
   const hairInstruction = originalProductPhotoMode
@@ -4098,6 +4139,7 @@ ${coordinateLocationInstruction}
 【コーデの雰囲気】
 ${coordinate.style}
 シーン: ${coordinate.occasion}
+ポーズ: ${coordinate.pose}
 全体は明るく、清潔感があり、大人ガーリーで甘めきれいめ。かわいいだけでなく、まねしたくなる洗練されたファッション投稿にする。
 
 【スタイリストの設計図】
@@ -4294,6 +4336,7 @@ function buildCoordinateCaptionPrompt(coordinate) {
 雰囲気: ${coordinate.style}
 シーン: ${coordinate.occasion}
 髪型: ${coordinate.hairStyle}
+ポーズ: ${coordinate.pose}
 画像パターン: ${coordinate.imagePattern}
 解決したい悩み: ${coordinate.concern}
 一番優先すること: ${coordinate.priority}
@@ -5007,24 +5050,17 @@ function applyRoomImageRecommendations(product) {
   const poseByCategory = {
     バッグ: "バッグを自然に持って振り向く",
     シューズ: "椅子に浅く座って足元を見せる",
-    アクセサリー: "商品へ目線を向けた斜め立ち",
-    ワンピース: "歩き出す瞬間の自然なスナップ",
-    スカート: "歩き出す瞬間の自然なスナップ",
-    パンツ: "全身が見える自然な立ち姿",
+    アクセサリー: "小物を胸元で見せる広告風ポーズ",
+    ワンピース: "ブランド広告のような静かな正面立ち",
+    スカート: "スカートや裾をふわっと見せるポーズ",
+    パンツ: "片足を少し前に出したきれいめ立ち",
     アウター: "商品へ目線を向けた斜め立ち",
-    トップス: "商品へ目線を向けた斜め立ち",
+    トップス: "片手を髪に添えた大人ガーリーポーズ",
   };
   const pose = mode === "collection"
-    ? "片手を軽く上げた雑誌風ポーズ"
+    ? "ブランド広告のような静かな正面立ち"
     : poseByCategory[product.category] || "全身が見える自然な立ち姿";
-  const productText = `${product.name || ""} ${product.details?.color || ""} ${product.hook || ""}`;
-  const mood = mode === "collection"
-    ? "ブランド広告のような洗練"
-    : /ピンク|リボン|フリル|レース|ガーリー/.test(productText)
-      ? "淡いピンクの大人ガーリー"
-      : /黒|ブラック|ネイビー|モノトーン/.test(productText)
-        ? "白背景の上品なファッション誌"
-        : "明るい自然光のきれいめ室内";
+  const mood = "ブランド広告のような洗練";
   const poseSelect = document.querySelector("#roomImagePose");
   const moodSelect = document.querySelector("#roomImageMood");
   const locationSelect = document.querySelector("#roomImageLocation");
@@ -5104,7 +5140,7 @@ function buildCurrentRoomImagePrompt(product = getSelectedRoomProduct(), mode = 
     personPhotoUrl,
     mode,
     pose: document.querySelector("#roomImagePose")?.value || "全身が見える自然な立ち姿",
-    mood: document.querySelector("#roomImageMood")?.value || "明るい自然光のきれいめ室内",
+    mood: document.querySelector("#roomImageMood")?.value || "ブランド広告のような洗練",
     location: document.querySelector("#roomImageLocation")?.value || (mode === "collection" ? "my-room" : "overseas"),
     city: document.querySelector("#roomImageCity")?.value || "パリ",
   }));
