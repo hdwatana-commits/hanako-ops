@@ -4754,14 +4754,14 @@ function drawContainImage(ctx, image, x, y, width, height) {
 
 function drawFashionHanakoLogoText(ctx, x, y, width, height) {
   ctx.save();
-  ctx.fillStyle = "#fff8fb";
+  ctx.fillStyle = "rgba(255, 250, 252, 0.84)";
   roundRect(ctx, x, y, width, height, height / 2);
   ctx.fill();
-  ctx.strokeStyle = "#e9bbca";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(154, 102, 118, 0.34)";
+  ctx.lineWidth = 1.6;
   ctx.stroke();
-  ctx.strokeStyle = "#bf5579";
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(122, 82, 94, 0.72)";
+  ctx.lineWidth = 2.3;
   ctx.beginPath();
   ctx.arc(x + 38, y + height / 2 - 2, 15, 0, Math.PI * 2);
   ctx.stroke();
@@ -4769,15 +4769,15 @@ function drawFashionHanakoLogoText(ctx, x, y, width, height) {
   ctx.moveTo(x + 50, y + height / 2 + 10);
   ctx.lineTo(x + 66, y + height / 2 + 26);
   ctx.stroke();
-  ctx.fillStyle = "#9d3f62";
-  ctx.font = "800 19px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillStyle = "#7d5864";
+  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText("検索", x + 88, y + 32);
-  ctx.fillStyle = "#3f2f35";
-  ctx.font = "800 25px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillStyle = "#4f3a41";
+  ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText("ファッションハナコ", x + 142, y + 32);
-  ctx.font = "900 29px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.font = "800 28px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText("可愛さラボ", x + 142, y + 64);
-  ctx.fillStyle = "#c36c8c";
+  ctx.fillStyle = "#9a6676";
   ctx.font = "italic 15px Georgia, serif";
   ctx.fillText("Kawaisa Lab", x + width - 112, y + 66);
   ctx.restore();
@@ -5233,9 +5233,10 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood, locat
   const signatureLogoInstruction = mode !== "collection"
     ? `【検索窓ロゴ・通常投稿だけ必須】
 ・参照画像ボードの「SEARCH LOGO」欄にあるロゴを、完成画像の左上へ小さく上品に入れる
-・ロゴは、おしゃれな検索窓デザイン。虫眼鏡アイコン、白い角丸検索バー、くすみピンクの細線、「検索」「ファッションハナコ」「可愛さラボ」を入れる
-・可能なら小さく「Kawaisa Lab」も添える。文字は濃いブラウン、くすみピンク、白で読みやすくする
-・商品、人物、顔、手書き一言、海外都市の場所表記に重ねない。主役にならないサイズで、左上へ自然に置く
+・ロゴは目立たない、落ち着いたおしゃれな検索窓デザイン。虫眼鏡アイコン、半透明の白い角丸検索バー、細いグレイッシュピンク線、「検索」「ファッションハナコ」「可愛さラボ」を入れる
+・可能なら小さく「Kawaisa Lab」も添える。文字は濃すぎないブラウン、くすみピンク、白で、読めるけれど主張しすぎない濃さにする
+・派手なハート、大きな装飾、太い縁取り、濃いピンク、強い影、巨大なロゴは禁止
+・商品、人物、顔、手書き一言、海外都市の場所表記に重ねない。主役にならない小さめサイズで、左上へ自然に置く
 ・文字化け、誤字、似た文字、別名は禁止。正確に書けない場合は、ロゴ欄の見た目をそのまま小さく写す
 ・コレクション表紙ではないので、この通常投稿画像には検索窓ロゴを入れる`
     : `【署名ロゴ】
