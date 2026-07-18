@@ -5120,7 +5120,7 @@ function applyRoomImageRecommendations(product) {
   if (!product) return;
   const mode = document.querySelector("#roomImageType")?.value || "normal";
   const pose = chooseRandomRoomImagePose(product, mode);
-  const hairStyle = chooseRandomRoomImageHairStyle();
+  const hairStyle = chooseRandomRoomImageHairStyle(pose);
   const mood = "ブランド広告のような洗練";
   const poseSelect = document.querySelector("#roomImagePose");
   const hairSelect = document.querySelector("#roomImageHairStyle");
@@ -5161,9 +5161,16 @@ function chooseRandomRoomImagePose(product, mode = "normal") {
   return pickRandomOption(pool.length ? pool : options, "全身が見える自然な立ち姿");
 }
 
-function chooseRandomRoomImageHairStyle() {
+function chooseRandomRoomImageHairStyle(pose = "") {
   const options = getSelectOptions("#roomImageHairStyle");
-  const pool = options.filter((hairStyle) => hairStyle && hairStyle !== "元写真の髪型を保つ");
+  const poseText = String(pose);
+  const avoid = [];
+  if (/髪に添え|胸元|小物/.test(poseText)) avoid.push("上品なおだんごヘア", "低めポニーテール");
+  if (/振り向く|横向き|歩き出す/.test(poseText)) avoid.push("上品なおだんごヘア");
+  if (/椅子|足元|階段/.test(poseText)) avoid.push("ゆるい三つ編みアレンジ");
+  const pool = options.filter((hairStyle) => hairStyle
+    && hairStyle !== "元写真の髪型を保つ"
+    && !avoid.includes(hairStyle));
   return pickRandomOption(pool.length ? pool : options, "元写真の髪型を保つ");
 }
 
@@ -5174,6 +5181,29 @@ function getSelectOptions(selector) {
 
 function pickRandomOption(options, fallback) {
   return options[Math.floor(Math.random() * options.length)] || fallback;
+}
+
+function buildRoomPoseHairNaturalInstruction(pose, hairStyle) {
+  const notes = [
+    `【ポーズと髪型の自然さ】`,
+    `・指定ポーズ「${pose}」と髪型「${hairStyle}」を、実際の人物写真として自然に見える範囲で合わせる`,
+    "・髪は重力、肩、首、手の位置に自然に沿わせる。髪だけが宙に浮いたり、服や手に溶け込んだりしない",
+    "・手、指、髪、耳、マスクの境界をはっきり分ける。手が髪を貫通したり、指が増えたり、髪飾りのように変形しない",
+    "・写真を見た人がAI生成だと気づくような過剰なツヤ、左右非対称すぎる髪量、不自然な毛束、硬いポーズを避ける",
+  ];
+  if (/髪に添え|胸元|小物/.test(pose)) {
+    notes.push("・手を髪に添える場合は、指先を髪の表面へ軽く置くだけにし、髪を握り込ませない。まとめ髪なら顔まわりの後れ毛に軽く触れる程度にする");
+  }
+  if (/振り向く|横向き|歩き出す/.test(pose)) {
+    notes.push("・動きのあるポーズでは、髪の流れを体の向きと風に合わせる。後頭部や肩の髪が急に切れたり、左右で別の髪型にならないようにする");
+  }
+  if (/椅子|足元|階段/.test(pose)) {
+    notes.push("・座る、足元を見せる、階段のポーズでは、髪が顔と首に自然に落ちるようにし、足元や商品を隠す長い毛束を作らない");
+  }
+  if (/おだんご|ポニーテール|三つ編み|まとめ髪/.test(hairStyle)) {
+    notes.push("・まとめ髪は後頭部の位置、結び目、後れ毛を自然にし、頭から浮いた飾りのように見せない");
+  }
+  return notes.join("\n");
 }
 
 function renderRoomImagePhotoPreview() {
@@ -5257,10 +5287,12 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
     .join("\n");
   const overseasCities = getRoomOverseasCities();
   const cityOption = overseasCities.find(([name]) => name === city) || overseasCities[0];
+  const poseHairInstruction = buildRoomPoseHairNaturalInstruction(pose, hairStyle);
   const signatureLogoInstruction = mode !== "collection"
-    ? `【検索窓ロゴ・通常投稿だけ必須】
-・参照画像ボードの「SEARCH LOGO」欄にあるロゴを、完成画像の左上へ小さく上品に入れる
-・ロゴは目立たない、落ち着いたおしゃれな検索窓デザイン。虫眼鏡アイコン、半透明の白い角丸検索バー、細いグレイッシュピンク線、「検索」「ファッションハナコ」「可愛さラボ」を入れる
+    ? `【検索窓ロゴ画像・通常投稿だけ必須】
+・参照画像ボードの「SEARCH LOGO」欄にあるロゴ画像を、完成画像の左上へ小さく上品に入れる
+・ロゴを新しくデザインし直さない。SEARCH LOGO欄を画像素材として扱い、その見た目、配色、文字、虫眼鏡、角丸バーをできるだけそのまま小さく写す
+・ロゴは目立たない、落ち着いたおしゃれな検索窓デザイン。半透明の白い角丸検索バー、細いグレイッシュピンク線、「検索」「ファッションハナコ」「可愛さラボ」を読める範囲で入れる
 ・可能なら小さく「Kawaisa Lab」も添える。文字は濃すぎないブラウン、くすみピンク、白で、読めるけれど主張しすぎない濃さにする
 ・派手なハート、大きな装飾、太い縁取り、濃いピンク、強い影、巨大なロゴは禁止
 ・商品、人物、顔、手書き一言、海外都市の場所表記に重ねない。主役にならない小さめサイズで、左上へ自然に置く
@@ -5352,6 +5384,8 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・本人はPERSON欄と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
 ・髪型は下の「髪型」設定に自然に合わせる。ただし顔、髪色、本人らしい雰囲気は変えない
 ・髪型が「元写真の髪型を保つ」の場合は、長さ、前髪、分け目、髪の流れを変えない
+・ポーズと髪型の組み合わせが不自然に見える場合は、顔と髪色を保ったまま、髪の流れ、手の位置、首の角度だけを自然に調整する
+・AIで作ったような不自然な髪の固まり、浮いた毛束、手と髪の融合、顔に食い込む髪、左右で長さが破綻した髪を出さない
 ・PERSON欄でマスクを着けている場合は、色、形、柄、ひもを変えず必ず同じマスクを残す
 ・選んだ主役商品はPRODUCT欄の色、輪郭、丈、袖、襟、柄、装飾、バッグの持ち手、靴の形を変えない
 ・商品ページURLや画像URLへアクセスしない。添付した参照画像ボードだけを画像の基準にする
@@ -5366,6 +5400,8 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ポーズ: ${pose}
 髪型: ${hairStyle}
 雰囲気: ${mood}
+
+${poseHairInstruction}
 
 ${locationInstruction}
 
@@ -5475,7 +5511,7 @@ async function drawRoomSignatureLogoReference(ctx) {
   ctx.stroke();
   ctx.fillStyle = "#a43d64";
   ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("SEARCH LOGO / 通常投稿だけ左上へ入れる", logoX, logoY - 10);
+  ctx.fillText("SEARCH LOGO IMAGE / この画像を左上へ小さく写す", logoX, logoY - 10);
   const logo = await loadImage(ROOM_SIGNATURE_LOGO_PATH).catch(() => null);
   if (logo) {
     drawContainImage(ctx, logo, logoX, logoY, logoWidth, logoHeight);
