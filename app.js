@@ -4859,6 +4859,7 @@ function bindRoomActions() {
     button.addEventListener("click", () => setRoomImageMode(button.dataset.roomImageMode));
   });
   document.querySelector("#roomImagePose")?.addEventListener("change", markRoomImagePromptStale);
+  document.querySelector("#roomImageHairStyle")?.addEventListener("change", markRoomImagePromptStale);
   document.querySelector("#roomImageMood")?.addEventListener("change", markRoomImagePromptStale);
   document.querySelector("#roomImageLocation")?.addEventListener("change", () => {
     updateRoomCityVisibility();
@@ -5118,21 +5119,11 @@ function setRoomImageMode(mode) {
 function applyRoomImageRecommendations(product) {
   if (!product) return;
   const mode = document.querySelector("#roomImageType")?.value || "normal";
-  const poseByCategory = {
-    バッグ: "バッグを自然に持って振り向く",
-    シューズ: "椅子に浅く座って足元を見せる",
-    アクセサリー: "小物を胸元で見せる広告風ポーズ",
-    ワンピース: "ブランド広告のような静かな正面立ち",
-    スカート: "スカートや裾をふわっと見せるポーズ",
-    パンツ: "片足を少し前に出したきれいめ立ち",
-    アウター: "商品へ目線を向けた斜め立ち",
-    トップス: "片手を髪に添えた大人ガーリーポーズ",
-  };
-  const pose = mode === "collection"
-    ? "ブランド広告のような静かな正面立ち"
-    : poseByCategory[product.category] || "全身が見える自然な立ち姿";
+  const pose = chooseRandomRoomImagePose(product, mode);
+  const hairStyle = chooseRandomRoomImageHairStyle();
   const mood = "ブランド広告のような洗練";
   const poseSelect = document.querySelector("#roomImagePose");
+  const hairSelect = document.querySelector("#roomImageHairStyle");
   const moodSelect = document.querySelector("#roomImageMood");
   const locationSelect = document.querySelector("#roomImageLocation");
   const citySelect = document.querySelector("#roomImageCity");
@@ -5141,13 +5132,48 @@ function applyRoomImageRecommendations(product) {
     ? citySelect?.value || "パリ"
     : chooseRandomRoomOverseasCity();
   if (poseSelect) poseSelect.value = pose;
+  if (hairSelect) hairSelect.value = hairStyle;
   if (moodSelect) moodSelect.value = mood;
   if (locationSelect) locationSelect.value = location;
   if (citySelect) citySelect.value = city;
   updateRoomCityVisibility();
   const label = document.querySelector("#roomImageRecommendation");
   const locationLabel = location === "overseas" ? `海外・${city}` : "自分のへや";
-  if (label) label.textContent = `${product.category}に合わせて「${pose}」×「${mood}」×「${locationLabel}」をおすすめ設定しました。`;
+  if (label) label.textContent = `${product.category}に合わせて「${pose}」×「${hairStyle}」×「${mood}」×「${locationLabel}」をランダム設定しました。`;
+}
+
+function chooseRandomRoomImagePose(product, mode = "normal") {
+  const options = getSelectOptions("#roomImagePose");
+  const category = product?.category || "";
+  const preferred = mode === "collection"
+    ? ["ブランド広告のような静かな正面立ち", "片手を軽く上げた雑誌風ポーズ", "横向きでシルエットを見せるポーズ", "ショーウィンドウ前の洗練スナップ"]
+    : {
+      バッグ: ["バッグを自然に持って振り向く", "商品へ目線を向けた斜め立ち", "カフェ前で片手を添える上品ポーズ"],
+      シューズ: ["椅子に浅く座って足元を見せる", "階段や街角で重心をきれいに見せる立ち姿", "歩き出す瞬間の自然なスナップ"],
+      アクセサリー: ["小物を胸元で見せる広告風ポーズ", "片手を髪に添えた大人ガーリーポーズ", "商品へ目線を向けた斜め立ち"],
+      ワンピース: ["ブランド広告のような静かな正面立ち", "歩き出す瞬間の自然なスナップ", "スカートや裾をふわっと見せるポーズ"],
+      スカート: ["スカートや裾をふわっと見せるポーズ", "片足を少し前に出したきれいめ立ち", "階段や街角で重心をきれいに見せる立ち姿"],
+      パンツ: ["片足を少し前に出したきれいめ立ち", "横向きでシルエットを見せるポーズ", "歩き出す瞬間の自然なスナップ"],
+      アウター: ["商品へ目線を向けた斜め立ち", "ショーウィンドウ前の洗練スナップ", "バッグを自然に持って振り向く"],
+      トップス: ["片手を髪に添えた大人ガーリーポーズ", "商品へ目線を向けた斜め立ち", "小物を胸元で見せる広告風ポーズ"],
+    }[category] || options;
+  const pool = preferred.filter((pose) => options.includes(pose));
+  return pickRandomOption(pool.length ? pool : options, "全身が見える自然な立ち姿");
+}
+
+function chooseRandomRoomImageHairStyle() {
+  const options = getSelectOptions("#roomImageHairStyle");
+  const pool = options.filter((hairStyle) => hairStyle && hairStyle !== "元写真の髪型を保つ");
+  return pickRandomOption(pool.length ? pool : options, "元写真の髪型を保つ");
+}
+
+function getSelectOptions(selector) {
+  const select = document.querySelector(selector);
+  return select ? [...select.options].map((option) => option.value || option.textContent).filter(Boolean) : [];
+}
+
+function pickRandomOption(options, fallback) {
+  return options[Math.floor(Math.random() * options.length)] || fallback;
 }
 
 function renderRoomImagePhotoPreview() {
@@ -5211,13 +5237,14 @@ function buildCurrentRoomImagePrompt(product = getSelectedRoomProduct(), mode = 
     personPhotoUrl,
     mode,
     pose: document.querySelector("#roomImagePose")?.value || "全身が見える自然な立ち姿",
+    hairStyle: document.querySelector("#roomImageHairStyle")?.value || "元写真の髪型を保つ",
     mood: document.querySelector("#roomImageMood")?.value || "ブランド広告のような洗練",
     location: document.querySelector("#roomImageLocation")?.value || (mode === "collection" ? "my-room" : "overseas"),
     city: document.querySelector("#roomImageCity")?.value || "パリ",
   }));
 }
 
-function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood, location, city }) {
+function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, mood, location, city }) {
   const details = product.details || {};
   const brand = details.brand || "HANAKO SELECT";
   const oneLiner = buildRoomImageOneLiner(product);
@@ -5323,6 +5350,8 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood, locat
 【添付した参照画像ボード・最優先】
 ・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像
 ・本人はPERSON欄と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
+・髪型は下の「髪型」設定に自然に合わせる。ただし顔、髪色、本人らしい雰囲気は変えない
+・髪型が「元写真の髪型を保つ」の場合は、長さ、前髪、分け目、髪の流れを変えない
 ・PERSON欄でマスクを着けている場合は、色、形、柄、ひもを変えず必ず同じマスクを残す
 ・選んだ主役商品はPRODUCT欄の色、輪郭、丈、袖、襟、柄、装飾、バッグの持ち手、靴の形を変えない
 ・商品ページURLや画像URLへアクセスしない。添付した参照画像ボードだけを画像の基準にする
@@ -5335,6 +5364,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood, locat
 色: ${details.color || "商品画像から確認"}
 素材: ${details.material || "商品画像から確認"}
 ポーズ: ${pose}
+髪型: ${hairStyle}
 雰囲気: ${mood}
 
 ${locationInstruction}
