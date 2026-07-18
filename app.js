@@ -7,6 +7,7 @@ const APP_VERSION = (() => {
 })();
 
 const COORDINATE_PHOTO_LIMIT = 6;
+const ROOM_SIGNATURE_LOGO_PATH = "icons/fashion-hanako-kawaisa-lab-logo.svg";
 
 const defaultProfile = `毎日おしゃれ研究家のハナコです
 大人ガーリー＆甘めきれいめコーデを研究中
@@ -4712,6 +4713,30 @@ function drawCoverImage(ctx, image, x, y, width, height, radius) {
   ctx.restore();
 }
 
+function drawContainImage(ctx, image, x, y, width, height) {
+  const scale = Math.min(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function drawFashionHanakoLogoText(ctx, x, y, width, height) {
+  ctx.save();
+  ctx.fillStyle = "#fff7fb";
+  roundRect(ctx, x, y, width, height, 18);
+  ctx.fill();
+  ctx.fillStyle = "#9d3f62";
+  ctx.font = "700 20px Yu Mincho, Yu Gothic UI, Meiryo, serif";
+  ctx.fillText("ファッションハナコ", x + 26, y + 32);
+  ctx.fillStyle = "#3f2f35";
+  ctx.font = "800 34px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("可愛さラボ", x + 26, y + 68);
+  ctx.fillStyle = "#c36c8c";
+  ctx.font = "italic 17px Georgia, serif";
+  ctx.fillText("Kawaisa Lab", x + width - 122, y + 70);
+  ctx.restore();
+}
+
 function drawPlaceholder(ctx, label, x, y, width, height) {
   ctx.fillStyle = "#fff0f4";
   roundRect(ctx, x, y, width, height, 14);
@@ -5159,6 +5184,16 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood, locat
     .join("\n");
   const overseasCities = getRoomOverseasCities();
   const cityOption = overseasCities.find(([name]) => name === city) || overseasCities[0];
+  const signatureLogoInstruction = mode !== "collection"
+    ? `【署名ロゴ・通常投稿だけ必須】
+・参照画像ボードの「SIGNATURE LOGO」欄にあるロゴを、完成画像の右下へ小さく上品に入れる
+・ロゴの文字は必ず「ファッションハナコ」と「可愛さラボ」。可能なら小さく「Kawaisa Lab」も添える
+・ロゴは超絶おしゃれな署名ロゴとして、濃いブラウン、くすみピンク、白を使い、ブランド広告のサインのように仕上げる
+・商品、人物、顔、手書き一言、海外都市の場所表記に重ねない。主役にならないサイズで、右下の余白へ置く
+・文字化け、誤字、似た文字、別名は禁止。正確に書けない場合は、ロゴ欄の見た目をそのまま小さく写す
+・コレクション表紙ではないので、この通常投稿画像には署名ロゴを入れる`
+    : `【署名ロゴ】
+・コレクション表紙には「ファッションハナコ 可愛さラボ」の署名ロゴを入れない`;
   const locationStampInstruction = location === "overseas" && mode !== "collection"
     ? `【右下ロケーション表記】
 ・画像の右下へ、場所の情報をさりげなく小さく入れる
@@ -5243,6 +5278,8 @@ ${locationInstruction}
 
 ${locationStampInstruction}
 
+${signatureLogoInstruction}
+
 ${formatInstruction}
 
 【コレクションで使用できる商品・一覧外は禁止】
@@ -5316,11 +5353,38 @@ async function drawRoomReferenceBoard(product, mode, selectedPersonSource = "") 
     ctx.font = "700 17px Yu Gothic UI, Meiryo, sans-serif";
     wrapCanvasText(ctx, trimText(item.name, 34), x + 16, y + cardHeight - 28, cardWidth - 32, 22, 2);
   }
+  if (mode !== "collection") {
+    await drawRoomSignatureLogoReference(ctx);
+  }
   ctx.fillStyle = "#6d5b62";
   ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText("この1枚に写る本人と商品だけを使う / 想像で別商品を足さない", 566, 952);
   roomReferenceBoardDataUrl = canvas.toDataURL("image/jpeg", 0.92);
   return roomReferenceBoardDataUrl;
+}
+
+async function drawRoomSignatureLogoReference(ctx) {
+  const logoX = 956;
+  const logoY = 862;
+  const logoWidth = 370;
+  const logoHeight = 86;
+  ctx.save();
+  ctx.fillStyle = "#fff";
+  roundRect(ctx, logoX - 14, logoY - 34, logoWidth + 28, logoHeight + 52, 18);
+  ctx.fill();
+  ctx.strokeStyle = "#efd4de";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("SIGNATURE LOGO / 通常投稿だけ右下へ入れる", logoX, logoY - 10);
+  const logo = await loadImage(ROOM_SIGNATURE_LOGO_PATH).catch(() => null);
+  if (logo) {
+    drawContainImage(ctx, logo, logoX, logoY, logoWidth, logoHeight);
+  } else {
+    drawFashionHanakoLogoText(ctx, logoX, logoY + 2, logoWidth, logoHeight);
+  }
+  ctx.restore();
 }
 
 function buildRoomImageOneLiner(product) {
