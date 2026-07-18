@@ -5202,6 +5202,19 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood, locat
 ・商品、人物、顔、手書き一言、表紙コピーに重ねない。読めるけれど主役にならないサイズにする
 ・場所表記以外の住所、国名の長文、観光案内、地図風の文字は入れない`
     : "";
+  const outfitStylingInstruction = mode !== "collection"
+    ? `【通常投稿の全身着せ替え・重要】
+・選んだ商品を主役として必ず身につける。色、形、丈、柄、素材感、ロゴ、特徴はPRODUCT欄から変えない
+・選んだ商品以外に本人が身につけている服、靴、バッグ、アクセサリーも、元写真のまま残さず、主役商品に合う全身コーデへ自然に着せ替える
+・主役商品がスカートなら、トップスはできれば同じブランド「${brand}」または同ブランド風の色・素材・世界観に合うものを合わせる
+・主役商品がトップスなら、ボトム、靴、バッグを同じブランド感または同系統のきれいめアイテムで統一する
+・主役商品がバッグや靴やアクセサリーなら、服全体をその小物が引き立つ色数少なめのコーデに整える
+・選んだ商品以外の補助アイテムは、実在商品だと断定できるロゴ、商品名、価格、ランキング、ブランド名を新しく入れない。あくまで統一感を出すための自然なスタイリングとして描く
+・補助アイテムは主役商品より目立たせない。主役商品の可愛さと素材感が一番伝わる全身バランスにする
+・本人の顔、髪色、体型、マスクはPERSON欄を保つが、服装全体は主役商品に合わせて上品に着せ替える
+・全身で見た時に、色数は3色以内を目安にし、ブランド広告のように洗練された統一感を出す`
+    : `【コレクション表紙の商品ルール】
+・コレクション表紙では、下の使用できる商品一覧を中心に見せる。商品を水増しせず、ブランドの空気感を表紙デザインで表現する`;
   const locationInstruction = location === "overseas"
     ? `【場所・海外都市】
 ・舞台は${cityOption[0]}。背景に「${cityOption[1]}」を、その都市だと自然に分かる大きさで少しだけ入れる
@@ -5261,7 +5274,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood, locat
 ・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像
 ・本人はPERSON欄と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
 ・PERSON欄でマスクを着けている場合は、色、形、柄、ひもを変えず必ず同じマスクを残す
-・商品はPRODUCT欄の色、輪郭、丈、袖、襟、柄、装飾、バッグの持ち手、靴の形を変えない
+・選んだ主役商品はPRODUCT欄の色、輪郭、丈、袖、襟、柄、装飾、バッグの持ち手、靴の形を変えない
 ・商品ページURLや画像URLへアクセスしない。添付した参照画像ボードだけを画像の基準にする
 ・参照画像ボードが届いていない場合は「参照画像を1枚添付してください」とだけ返す
 
@@ -5280,9 +5293,11 @@ ${locationStampInstruction}
 
 ${signatureLogoInstruction}
 
+${outfitStylingInstruction}
+
 ${formatInstruction}
 
-【コレクションで使用できる商品・一覧外は禁止】
+【使用できる商品】
 ${collectionItems}
 
 【品質確認】
@@ -5358,7 +5373,9 @@ async function drawRoomReferenceBoard(product, mode, selectedPersonSource = "") 
   }
   ctx.fillStyle = "#6d5b62";
   ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("この1枚に写る本人と商品だけを使う / 想像で別商品を足さない", 566, 952);
+  ctx.fillText(mode === "collection"
+    ? "この1枚に写る本人と商品だけを使う / 想像で別商品を足さない"
+    : "主役商品は固定 / 他の服や小物は統一感ある全身コーデへ着せ替えOK", 566, 952);
   roomReferenceBoardDataUrl = canvas.toDataURL("image/jpeg", 0.92);
   return roomReferenceBoardDataUrl;
 }
