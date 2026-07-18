@@ -3383,9 +3383,9 @@ async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
   const avatarY = 1110;
   const avatarSize = 210;
   const bubbleX = 70;
-  const bubbleY = 900;
+  const bubbleY = 910;
   const bubbleWidth = 940;
-  const bubbleHeight = 184;
+  const bubbleHeight = 164;
 
   ctx.save();
   ctx.fillStyle = "#fff";
@@ -3405,11 +3405,11 @@ async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
   ctx.stroke();
 
   ctx.fillStyle = "#a43d64";
-  ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("ハナコ先生の今日のひとこと", bubbleX + 28, bubbleY + 42);
+  ctx.font = "800 23px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("ハナコ先生の今日のひとこと", bubbleX + 22, bubbleY + 34);
   ctx.fillStyle = "#4d3d43";
-  ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
-  wrapCanvasText(ctx, `「${comment}」`, bubbleX + 28, bubbleY + 86, bubbleWidth - 56, 34, 2);
+  ctx.font = "800 25px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, `「${comment}」`, bubbleX + 22, bubbleY + 76, bubbleWidth - 44, 32, 3);
 
   ctx.fillStyle = "#f4cad7";
   ctx.beginPath();
@@ -3423,9 +3423,9 @@ async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
 function drawHanakoTeacherFallbackPanel(ctx, coordinate) {
   const comment = coordinate.hanakoComment || chooseHanakoTeacherComment(coordinate);
   const bubbleX = 70;
-  const bubbleY = 900;
+  const bubbleY = 910;
   const bubbleWidth = 940;
-  const bubbleHeight = 184;
+  const bubbleHeight = 164;
   ctx.save();
   ctx.fillStyle = "#fff";
   roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 24);
@@ -3442,10 +3442,11 @@ function drawHanakoTeacherFallbackPanel(ctx, coordinate) {
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#a43d64";
-  ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("ハナコ先生の今日のひとこと", bubbleX + 28, bubbleY + 42);
+  ctx.font = "800 23px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("ハナコ先生の今日のひとこと", bubbleX + 22, bubbleY + 34);
   ctx.fillStyle = "#4d3d43";
-  wrapCanvasText(ctx, `「${comment}」`, bubbleX + 28, bubbleY + 86, bubbleWidth - 56, 34, 2);
+  ctx.font = "800 25px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, `「${comment}」`, bubbleX + 22, bubbleY + 76, bubbleWidth - 44, 32, 3);
   ctx.fillStyle = "#f4cad7";
   ctx.beginPath();
   ctx.arc(175, 1215, 111, 0, Math.PI * 2);
@@ -4053,8 +4054,10 @@ function buildOutfitImagePrompt(coordinate) {
 ・吹き出し内へ上記の見出しと本文以外を書かない。愛称、肩書き、掛け声、造語、擬音、補足、飾り文字を勝手に追加しない
 ・「なるんバー」のように意味を説明できない語、日本語として成立しない語、入力にない語を生成しない
 ・吹き出し全体を画像の左右端から8%以上、下端から8%以上離した安全域に置く。画像の最下端へ接触させない
-・本文は1行14〜18文字を目安に自然な位置で改行し、最大3行まで使ってよい
-・見出し、本文、句読点、閉じかぎ括弧をすべて吹き出しの内側へ収め、上下左右に十分な内側余白を残す
+・吹き出しの内側余白は少なめでよい。左右と上下に最低限の余白を残し、空白だらけの大きなカードにしない
+・本文は1行16〜22文字を目安に自然な位置で改行し、最大3行まで使ってよい
+・見出しは少し小さめ、本文は見出しより太く濃くして、スマホでも読みやすい文字サイズにする
+・見出し、本文、句読点、閉じかぎ括弧をすべて吹き出しの内側へ収め、文字の周囲に必要十分な内側余白を残す
 ・本文を省略、要約、途中切れ、三点リーダー化しない。入りきらない場合は、吹き出しを上へ移動または縦に広げ、それでも必要なら全文が読める範囲で文字を小さくする
 ・文字を服、先生アイコン、画像の外へはみ出させない。文章の最後の1文字まで見えることを生成前に確認する
 ・画像ボードの先生アイコンと上記のひとことをセットで完成画像へ必ず反映する`
@@ -4252,7 +4255,7 @@ ${originalProductPhotoMode ? "" : "・マスクが無い、変形した、口や
 ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナコ先生アイコンがある
 ・見出しは「ハナコ先生の今日のひとこと」になっている
 ・吹き出し本文「${hanakoTeacherComment}」の最初から最後の閉じかぎ括弧まで、省略や欠けがなく最大3行で読める
-・吹き出しは画像下端から8%以上離れ、本文の全周に内側余白がある
+・吹き出しは画像下端から8%以上離れ、余白が多すぎない。本文は太く濃く、スマホで読みやすい
 ・先生の吹き出しは1個だけで、先生付近に別の小さい吹き出しや飾り文がない
 ・画像内の全テキストを一文字ずつ読み直し、入力にない語、意味不明語、造語、文字化け、途中切れが一つでもあれば、その文字を削除または指定文へ修正してから出力する
 ・商品への手書きポイントは選択商品数以内で、互いに重ならず読みやすい` : ""}
