@@ -3206,6 +3206,47 @@ function buildCoordinateAnalysis(coordinate) {
   };
 }
 
+function buildCoordinateFashionScore(coordinate) {
+  const products = coordinate.products || [];
+  const categories = new Set(products.map((product) => product.category));
+  const colors = products.map((product) => product.details?.color).filter(Boolean);
+  const uniqueColors = new Set(colors);
+  const hasMainWear = products.some((product) => ["ワンピース", "トップス", "アウター", "スカート", "パンツ"].includes(product.category));
+  const hasBottom = products.some((product) => ["ワンピース", "スカート", "パンツ"].includes(product.category));
+  const hasBag = categories.has("バッグ");
+  const hasShoes = categories.has("シューズ");
+  const hasAccessory = categories.has("アクセサリー");
+  const categoryBalance = Math.min(100, 44 + Math.min(products.length, 5) * 10 + (hasMainWear ? 12 : 0) + (hasBottom ? 10 : 0) + (hasBag ? 8 : 0) + (hasShoes ? 8 : 0));
+  const colorHarmony = Math.max(62, Math.min(98, 96 - Math.max(0, uniqueColors.size - 3) * 9 + (coordinate.colorMood === "商品から自動で整える" ? 2 : 5)));
+  const sceneFit = Math.min(100, 70 + (coordinate.occasion ? 10 : 0) + (coordinate.priority ? 8 : 0) + (coordinate.season ? 6 : 0) + (coordinate.location ? 4 : 0));
+  const solutionPower = Math.min(100, 68 + (coordinate.concern ? 12 : 0) + (coordinate.priority ? 10 : 0) + (products.some((product) => product.hook) ? 5 : 0));
+  const trendMood = Math.min(100, 64 + (/(ガーリー|きれいめ|高見え|甘め|淡色|韓国|フェミニン|上品)/.test(`${coordinate.style} ${products.map((product) => product.name).join(" ")}`) ? 16 : 8) + (hasAccessory ? 5 : 0) + (hasBag ? 5 : 0));
+  const metrics = [
+    { label: "まとまり", value: Math.round(categoryBalance) },
+    { label: "色バランス", value: Math.round(colorHarmony) },
+    { label: "シーン", value: Math.round(sceneFit) },
+    { label: "解決力", value: Math.round(solutionPower) },
+    { label: "映え感", value: Math.round(trendMood) },
+  ];
+  const power = Math.round(metrics.reduce((sum, metric) => sum + metric.value, 0) / metrics.length);
+  const rank = power >= 92 ? "S" : power >= 84 ? "A" : power >= 74 ? "B" : power >= 64 ? "C" : power >= 54 ? "D" : "E";
+  const rankLabels = {
+    S: "神コーデ級",
+    A: "かなりおしゃれ",
+    B: "きれいにまとまる",
+    C: "あと一歩",
+    D: "見直し推奨",
+    E: "組み直し",
+  };
+  return {
+    rank,
+    rankLabel: rankLabels[rank],
+    power,
+    metrics,
+    summary: `${rank}ランク / ${power}pt / ${rankLabels[rank]}`,
+  };
+}
+
 async function drawCoordinateBoard(coordinate, text) {
   const targetCanvas = coordBoard;
   if (!targetCanvas) return;
@@ -3282,6 +3323,7 @@ async function drawCoordinateBoard(coordinate, text) {
     ctx.fillStyle = "#6c555e";
     wrapCanvasText(ctx, `${analysis.solution} 色は${analysis.colorPlan}`, 72, 1260, 930, 34, 2);
   }
+  drawFashionScorePanel(ctx, buildCoordinateFashionScore(coordinate), 720, 1110, 290, 236);
   if (renderId !== coordinateBoardRenderId) return;
   const targetContext = targetCanvas.getContext("2d");
   targetContext.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
@@ -3371,6 +3413,115 @@ function drawHanakoTeacherFallbackPanel(ctx, coordinate) {
   ctx.font = "700 28px Yu Gothic UI, Meiryo, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("ハナコ先生", 175, 1225);
+  ctx.textAlign = "left";
+  ctx.restore();
+}
+
+function drawFashionScorePanel(ctx, fashionScore, x, y, width, height) {
+  if (!fashionScore) return;
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
+  roundRect(ctx, x, y, width, height, 24);
+  ctx.fill();
+  ctx.strokeStyle = "#e5b9c8";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.fillStyle = "#8f3e5d";
+  ctx.font = "800 20px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("FASHION SCORE", x + 22, y + 34);
+  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillStyle = "#7c6870";
+  ctx.fillText("おしゃれ自己判定", x + 22, y + 60);
+
+  const badgeX = x + 22;
+  const badgeY = y + 78;
+  const badgeSize = 82;
+  const gradient = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeSize, badgeY + badgeSize);
+  gradient.addColorStop(0, "#f8c6d7");
+  gradient.addColorStop(1, "#c65a82");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(badgeX + badgeSize / 2, badgeY + badgeSize / 2, badgeSize / 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 5;
+  ctx.stroke();
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.font = "900 44px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(fashionScore.rank, badgeX + badgeSize / 2, badgeY + 55);
+  ctx.font = "700 15px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("RANK", badgeX + badgeSize / 2, badgeY + 74);
+  ctx.textAlign = "left";
+
+  ctx.fillStyle = "#3d3036";
+  ctx.font = "900 30px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(`${fashionScore.power}pt`, x + 118, y + 105);
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("ファッションパワー", x + 118, y + 132);
+  ctx.fillStyle = "#6c555e";
+  ctx.font = "700 16px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, fashionScore.rankLabel, x + 118, y + 158, 140, 22, 2);
+
+  drawFashionRadarChart(ctx, fashionScore.metrics, x + 116, y + 176, 62);
+  ctx.restore();
+}
+
+function drawFashionRadarChart(ctx, metrics, centerX, centerY, radius) {
+  const count = metrics.length;
+  const angleOffset = -Math.PI / 2;
+  ctx.save();
+  for (let ring = 1; ring <= 3; ring += 1) {
+    ctx.beginPath();
+    const ringRadius = radius * (ring / 3);
+    for (let index = 0; index < count; index += 1) {
+      const angle = angleOffset + (Math.PI * 2 * index) / count;
+      const px = centerX + Math.cos(angle) * ringRadius;
+      const py = centerY + Math.sin(angle) * ringRadius;
+      if (index === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = ring === 3 ? "#e4b9c8" : "#f2d7e0";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  for (let index = 0; index < count; index += 1) {
+    const angle = angleOffset + (Math.PI * 2 * index) / count;
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
+  }
+  ctx.strokeStyle = "#efd2dc";
+  ctx.stroke();
+
+  ctx.beginPath();
+  metrics.forEach((metric, index) => {
+    const angle = angleOffset + (Math.PI * 2 * index) / count;
+    const metricRadius = radius * Math.max(0.18, Math.min(1, metric.value / 100));
+    const px = centerX + Math.cos(angle) * metricRadius;
+    const py = centerY + Math.sin(angle) * metricRadius;
+    if (index === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  });
+  ctx.closePath();
+  ctx.fillStyle = "rgba(196, 77, 118, 0.28)";
+  ctx.fill();
+  ctx.strokeStyle = "#c44d76";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.fillStyle = "#6c555e";
+  ctx.font = "700 12px Yu Gothic UI, Meiryo, sans-serif";
+  metrics.forEach((metric, index) => {
+    const angle = angleOffset + (Math.PI * 2 * index) / count;
+    const labelX = centerX + Math.cos(angle) * (radius + 30);
+    const labelY = centerY + Math.sin(angle) * (radius + 22);
+    ctx.textAlign = labelX < centerX - 4 ? "right" : labelX > centerX + 4 ? "left" : "center";
+    ctx.fillText(metric.label, labelX, labelY + 4);
+  });
   ctx.textAlign = "left";
   ctx.restore();
 }
@@ -3548,6 +3699,60 @@ function chooseHanakoTeacherComment(coordinate, force = false) {
     "おしゃれは我慢大会じゃないの。笑顔で過ごせることまでが完成よ。",
   ];
   if (!force && currentHanakoComment && currentHanakoCommentConcern === coordinate.concern) return currentHanakoComment;
+  const mainCategory = coordinate.mainProduct?.category || coordinate.products?.[0]?.category || "";
+  const score = buildCoordinateFashionScore(coordinate);
+  const categoryOptions = {
+    トップス: [
+      "顔まわりが主役の日は、下半身を静かに。目線が上がれば勝ちよ。",
+      "トップスを褒められたいなら、ボトムは支え役。張り合わないで。",
+      "袖と襟に見せ場があるなら、アクセは小さく。欲張ると印象が散るわ。",
+    ],
+    ワンピース: [
+      "ワンピが主役の日は、小物で説明しすぎない。余裕まで着こなしよ。",
+      "一枚で決まる服ほど、靴とバッグで品を決めなさい。",
+      "ワンピは楽だけど油断は禁物。丈と足もとで大人度が決まるわ。",
+    ],
+    スカート: [
+      "揺れるスカートには、上半身をすっきり。甘さに軸を作りなさい。",
+      "スカートの可愛さを守るなら、靴で少しだけ現実に戻して。",
+      "ふわっと見せたい日は、色を増やさない。軽さは整理から生まれるわ。",
+    ],
+    パンツ: [
+      "パンツで締めた日は、顔まわりに可愛げを一滴。強すぎず整うわ。",
+      "直線があると甘さは大人になるの。パンツを味方にしなさい。",
+      "動きやすいだけで終わらせないで。小物でちゃんときれいめに戻すのよ。",
+    ],
+    バッグ: [
+      "バッグは脇役じゃないわ。色をつなぐ司会者として働かせなさい。",
+      "小さめバッグの日は、服の面積を整えて。全身が軽く見えるわ。",
+      "バッグで締めるなら、ほかの小物は静かに。仕上げ役は一人で十分よ。",
+    ],
+    シューズ: [
+      "足もとは最後じゃないの。靴が決まると、コーデの性格まで決まるわ。",
+      "歩ける可愛さを選びなさい。痛い靴では表情まで曇るのよ。",
+      "靴の色を拾えば全身がつながる。足もとだけ浮かせないで。",
+    ],
+    アクセサリー: [
+      "光らせる場所は一つ。小さなきらめきほど、品よく効くわ。",
+      "アクセは飾りじゃなく視線誘導。顔まわりへそっと仕事をさせて。",
+      "主役服が強い日は、アクセは囁くくらいでちょうどいいわ。",
+    ],
+  };
+  const rankOptions = {
+    S: ["これは主役がはっきりしてる。あとは堂々と歩けば完成よ。", "盛っているのに散らかっていないわ。今日は写真を残しなさい。"],
+    A: ["かなり整ってるわ。最後は靴かバッグの色を一つ拾えばもっと強い。", "ちゃんと可愛い。あと一つ引けば、大人の余裕まで出るわ。"],
+    B: ["方向性はいいわ。主役をもう一段だけ目立たせると化けるわよ。", "まとまりは合格。次は素材感をそろえて高見えを狙いなさい。"],
+    C: ["悪くないけど、見せ場が少し多いわ。一つだけ主役に戻して。", "惜しいわ。色か形、どちらか一つを減らすと急に整うの。"],
+    D: ["今日は足し算しすぎ。まず色を減らして、コーデを落ち着かせなさい。", "全部を頑張らないで。主役以外を普通に戻す勇気よ。"],
+    E: ["組み直しましょう。主役、支え役、締め色を一つずつ決めるの。", "可愛い素材はあるわ。並べ方を変えれば、ちゃんと光るのよ。"],
+  };
+  const dynamicOptions = [
+    ...(categoryOptions[mainCategory] || []),
+    ...(rankOptions[score.rank] || []),
+    `${score.rank}ランクなら、見せ場は十分。あとは${score.metrics.sort((a, b) => a.value - b.value)[0]?.label || "バランス"}を少し整えて。`,
+    `ファッションパワー${score.power}点。今日は主役を信じて、余計な説明を減らしなさい。`,
+  ];
+  options.push(...dynamicOptions);
   const candidates = options.filter((comment) => !recentHanakoComments.includes(comment));
   currentHanakoComment = candidates[Math.floor(Math.random() * candidates.length)] || options[0];
   recentHanakoComments = [currentHanakoComment, ...recentHanakoComments].slice(0, 12);
@@ -3768,6 +3973,8 @@ function buildOutfitImagePrompt(coordinate) {
   const hanakoTeacher = coordinate.hanakoTeacher || currentHanakoTeacher;
   const hanakoTeacherReference = resolvePublicTeacherReference(hanakoTeacher);
   const hanakoTeacherComment = coordinate.hanakoComment || chooseHanakoTeacherComment(coordinate);
+  const fashionScore = buildCoordinateFashionScore(coordinate);
+  const fashionScoreInstruction = buildCoordinateFashionScorePrompt(fashionScore);
   const attachmentInstruction = originalProductPhotoMode
     ? `【添付画像の役割・最優先】
 ・添付された参照画像ボードに写る商品だけを使う
@@ -3904,6 +4111,8 @@ ${coordinate.style}
 ${stylingPlan.itemRoles.map((item) => `・${item.name}: ${item.role}`).join("\n")}
 この設計を見た目で伝える。商品をただ並べず、主役・引き立て役・締め色の関係が一目で分かる完成コーデにする。
 
+${fashionScoreInstruction}
+
 【選んだ髪型】
 ${hairInstruction}
 
@@ -4011,8 +4220,23 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナ
 ・画像にない商品を、実際に着用した商品として説明していない
 ・余白の日本語が読みやすく、課題解決風でかわいい
 ・画像内に楽天ROOMを示す文字が入っていない
+・右下にファッションランク、レーダーチャート、ファッションパワーの小さなスコアカードがあり、コーデや商品を隠していない
 
 以上の条件をすべて守り、文章による説明や紹介文は返さず、完成画像だけを生成してください。`;
+}
+
+function buildCoordinateFashionScorePrompt(fashionScore) {
+  return `【右下スコアカード・必須】
+・完成画像の右下へ、コーデや商品を隠さない小さな情報カードを1個だけ入れる
+・カードは白または淡いピンクの半透明ベースで、ファッション誌の小さな診断欄のように上品にまとめる
+・カード内に必ず次の3要素を入れる
+  1. ファッションランク: 楽天ROOMのランクアイコン風の丸いバッジで「${fashionScore.rank}」を大きく表示する。ラベルは「${fashionScore.rankLabel}」
+  2. レーダーチャート: 5軸で表示する。軸名と数値は ${fashionScore.metrics.map((metric) => `${metric.label}${metric.value}`).join(" / ")}
+  3. ファッションパワー: 「${fashionScore.power}pt」とかわいく表示する
+・スコアカードの見出しは「FASHION SCORE」または「おしゃれ診断」にする
+・右下カードは主役の服、顔、ハナコ先生の吹き出し、商品ポイントに重ねない。必要なら少し小さくしてもよい
+・ランク、チャート、点数はこの指定から変えない。別の点数や別ランクを作らない
+・レーダーチャートはピンク系の線と淡い塗りで、文字は小さくても読める濃さにする`;
 }
 
 function buildCoordinateLocationInstruction(coordinate, originalProductPhotoMode) {
