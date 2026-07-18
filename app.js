@@ -4754,32 +4754,20 @@ function drawContainImage(ctx, image, x, y, width, height) {
 
 function drawFashionHanakoLogoText(ctx, x, y, width, height) {
   ctx.save();
-  ctx.fillStyle = "rgba(255, 252, 247, 0.84)";
-  roundRect(ctx, x, y, width, height, height / 2);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(125, 99, 80, 0.30)";
-  ctx.lineWidth = 1.6;
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(92, 70, 55, 0.66)";
-  ctx.lineWidth = 2.3;
-  ctx.beginPath();
-  ctx.arc(x + 38, y + height / 2 - 2, 15, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x + 50, y + height / 2 + 10);
-  ctx.lineTo(x + 66, y + height / 2 + 26);
-  ctx.stroke();
-  ctx.fillStyle = "#6b584b";
-  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("検索", x + 88, y + 32);
   ctx.fillStyle = "#4d3a31";
-  ctx.font = "700 24px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("ファッションハナコ", x + 142, y + 32);
-  ctx.font = "800 28px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("可愛さラボ", x + 142, y + 64);
+  ctx.font = "700 21px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("ファッションハナコ", x + 2, y + 28);
+  ctx.strokeStyle = "rgba(169, 148, 130, 0.42)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 42);
+  ctx.lineTo(x + Math.min(width - 20, 250), y + 42);
+  ctx.stroke();
+  ctx.font = "800 25px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("可愛さラボ", x + 2, y + 72);
   ctx.fillStyle = "#7b6658";
-  ctx.font = "italic 15px Georgia, serif";
-  ctx.fillText("Kawaisa Lab", x + width - 112, y + 66);
+  ctx.font = "italic 13px Georgia, serif";
+  ctx.fillText("Kawaisa Lab", x + 214, y + 72);
   ctx.restore();
 }
 
@@ -5289,15 +5277,16 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
   const cityOption = overseasCities.find(([name]) => name === city) || overseasCities[0];
   const poseHairInstruction = buildRoomPoseHairNaturalInstruction(pose, hairStyle);
   const signatureLogoInstruction = mode !== "collection"
-    ? `【検索窓ロゴ画像・通常投稿だけ必須】
-・参照画像ボードの「SEARCH LOGO」欄にあるロゴ画像を、完成画像の左上へ小さく上品に入れる
-・ロゴを新しくデザインし直さない。SEARCH LOGO欄を画像素材として扱い、その見た目、配色、文字、虫眼鏡、角丸バーをできるだけそのまま小さく写す
-・ロゴは目立たない、落ち着いたおしゃれな検索窓デザイン。半透明の白い角丸検索バー、細いグレイッシュブラウン線、「検索」「ファッションハナコ」「可愛さラボ」を読める範囲で入れる
-・可能なら小さく「Kawaisa Lab」も添える。文字は濃すぎないモカブラウン、こげ茶、ミルクベージュ、白で、読めるけれど主張しすぎない濃さにする
-・派手なハート、大きな装飾、太い縁取り、濃いピンク、強い影、巨大なロゴ、ポップすぎる配色は禁止
-・商品、人物、顔、手書き一言、海外都市の場所表記に重ねない。主役にならない小さめサイズで、左上へ自然に置く
-・文字化け、誤字、似た文字、別名は禁止。正確に書けない場合は、ロゴ欄の見た目をそのまま小さく写す
-・コレクション表紙ではないので、この通常投稿画像には検索窓ロゴを入れる`
+    ? `【透明ミニロゴ画像・通常投稿だけ必須】
+・参照画像ボードの「SIGNATURE LOGO」欄にあるロゴ画像を、完成画像の左上へとても小さく上品に入れる
+・ロゴを新しくデザインし直さない。SIGNATURE LOGO欄を透明背景の画像素材として扱い、その見た目、配色、文字をできるだけそのまま小さく写す
+・ロゴは余白なし、背景なし、検索窓なし、虫眼鏡なし。「検索」の文字は絶対に入れない
+・文字は「ファッションハナコ」「可愛さラボ」を中心に、濃すぎないモカブラウン、こげ茶、ミルクベージュでさりげなく読める濃さにする
+・画像幅の8〜12%くらいの小さめサイズで、透け感のある署名ロゴとして左上へ自然に置く
+・派手なハート、大きな装飾、太い縁取り、濃いピンク、強い影、巨大なロゴ、白い囲み、ポップすぎる配色は禁止
+・商品、人物、顔、手書き一言、海外都市の場所表記に重ねない。主役にならない
+・文字化け、誤字、似た文字、別名は禁止。正確に書けない場合は、SIGNATURE LOGO欄の見た目をそのまま小さく写す
+・コレクション表紙ではないので、この通常投稿画像には透明ミニロゴを入れる`
     : `【署名ロゴ】
 ・コレクション表紙には「ファッションハナコ 可愛さラボ」の署名ロゴを入れない`;
   const locationStampInstruction = location === "overseas" && mode !== "collection"
@@ -5500,18 +5489,12 @@ async function drawRoomReferenceBoard(product, mode, selectedPersonSource = "") 
 async function drawRoomSignatureLogoReference(ctx) {
   const logoX = 566;
   const logoY = 850;
-  const logoWidth = 370;
-  const logoHeight = 86;
+  const logoWidth = 250;
+  const logoHeight = 58;
   ctx.save();
-  ctx.fillStyle = "#fff";
-  roundRect(ctx, logoX - 14, logoY - 34, logoWidth + 28, logoHeight + 52, 18);
-  ctx.fill();
-  ctx.strokeStyle = "#ded0c2";
-  ctx.lineWidth = 2;
-  ctx.stroke();
   ctx.fillStyle = "#6b584b";
-  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("SEARCH LOGO IMAGE / 茶色系で左上へ小さく写す", logoX, logoY - 10);
+  ctx.font = "700 16px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("SIGNATURE LOGO / 透明・小さく左上へ", logoX, logoY - 10);
   const logo = await loadImage(ROOM_SIGNATURE_LOGO_PATH).catch(() => null);
   if (logo) {
     drawContainImage(ctx, logo, logoX, logoY, logoWidth, logoHeight);
