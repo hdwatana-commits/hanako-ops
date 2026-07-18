@@ -3257,25 +3257,25 @@ function buildCoordinateFashionScore(coordinate) {
   const hasBag = categories.has("バッグ");
   const hasShoes = categories.has("シューズ");
   const hasAccessory = categories.has("アクセサリー");
-  const categoryBalance = Math.min(100, 44 + Math.min(products.length, 5) * 10 + (hasMainWear ? 12 : 0) + (hasBottom ? 10 : 0) + (hasBag ? 8 : 0) + (hasShoes ? 8 : 0));
-  const colorHarmony = Math.max(62, Math.min(98, 96 - Math.max(0, uniqueColors.size - 3) * 9 + (coordinate.colorMood === "商品から自動で整える" ? 2 : 5)));
-  const sceneFit = Math.min(100, 70 + (coordinate.occasion ? 10 : 0) + (coordinate.priority ? 8 : 0) + (coordinate.season ? 6 : 0) + (coordinate.location ? 4 : 0));
-  const solutionPower = Math.min(100, 68 + (coordinate.concern ? 12 : 0) + (coordinate.priority ? 10 : 0) + (products.some((product) => product.hook) ? 5 : 0));
-  const trendMood = Math.min(100, 64 + (/(ガーリー|きれいめ|高見え|甘め|淡色|韓国|フェミニン|上品)/.test(`${coordinate.style} ${products.map((product) => product.name).join(" ")}`) ? 16 : 8) + (hasAccessory ? 5 : 0) + (hasBag ? 5 : 0));
+  const categoryBalance = Math.min(92, 40 + Math.min(products.length, 5) * 9 + (hasMainWear ? 10 : 0) + (hasBottom ? 8 : 0) + (hasBag ? 6 : 0) + (hasShoes ? 6 : 0));
+  const colorHarmony = Math.max(58, Math.min(93, 88 - Math.max(0, uniqueColors.size - 3) * 8 + (coordinate.colorMood === "商品から自動で整える" ? 1 : 4)));
+  const sceneFit = Math.min(92, 62 + (coordinate.occasion ? 9 : 0) + (coordinate.priority ? 7 : 0) + (coordinate.season ? 5 : 0) + (coordinate.location ? 4 : 0));
+  const solutionPower = Math.min(92, 60 + (coordinate.concern ? 10 : 0) + (coordinate.priority ? 8 : 0) + (products.some((product) => product.hook) ? 4 : 0));
+  const trendMood = Math.min(91, 58 + (/(ガーリー|きれいめ|高見え|甘め|淡色|韓国|フェミニン|上品)/.test(`${coordinate.style} ${products.map((product) => product.name).join(" ")}`) ? 13 : 6) + (hasAccessory ? 4 : 0) + (hasBag ? 4 : 0));
   const metrics = [
     { label: "まとまり", value: Math.round(categoryBalance) },
-    { label: "色バランス", value: Math.round(colorHarmony) },
-    { label: "シーン", value: Math.round(sceneFit) },
-    { label: "解決力", value: Math.round(solutionPower) },
-    { label: "映え感", value: Math.round(trendMood) },
+    { label: "配色", value: Math.round(colorHarmony) },
+    { label: "着回し", value: Math.round(sceneFit) },
+    { label: "悩み解決", value: Math.round(solutionPower) },
+    { label: "抜け感", value: Math.round(trendMood) },
   ];
-  const power = Math.round(metrics.reduce((sum, metric) => sum + metric.value, 0) / metrics.length);
-  const rank = power >= 92 ? "S" : power >= 84 ? "A" : power >= 74 ? "B" : power >= 64 ? "C" : power >= 54 ? "D" : "E";
+  const power = Math.max(48, Math.min(94, Math.round(metrics.reduce((sum, metric) => sum + metric.value, 0) / metrics.length) - 3));
+  const rank = power >= 92 ? "S" : power >= 86 ? "A" : power >= 78 ? "B" : power >= 70 ? "C" : power >= 62 ? "D" : "E";
   const rankLabels = {
     S: "神コーデ級",
-    A: "かなりおしゃれ",
-    B: "きれいにまとまる",
-    C: "あと一歩",
+    A: "かなり優秀",
+    B: "好印象",
+    C: "あと一工夫",
     D: "見直し推奨",
     E: "組み直し",
   };
@@ -3461,23 +3461,23 @@ function drawHanakoTeacherFallbackPanel(ctx, coordinate) {
 function drawFashionScorePanel(ctx, fashionScore, x, y, width, height) {
   if (!fashionScore) return;
   ctx.save();
-  ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
-  roundRect(ctx, x, y, width, height, 24);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+  roundRect(ctx, x, y, width, height, 20);
   ctx.fill();
-  ctx.strokeStyle = "#e5b9c8";
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(196, 77, 118, 0.34)";
+  ctx.lineWidth = 2;
   ctx.stroke();
 
   ctx.fillStyle = "#8f3e5d";
-  ctx.font = "800 20px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("FASHION SCORE", x + 22, y + 34);
-  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.font = "800 17px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("FASHION SCORE", x + 16, y + 28);
+  ctx.font = "700 14px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillStyle = "#7c6870";
-  ctx.fillText("おしゃれ自己判定", x + 22, y + 60);
+  ctx.fillText("おしゃれ自己判定", x + 16, y + 48);
 
-  const badgeX = x + 22;
-  const badgeY = y + 78;
-  const badgeSize = 82;
+  const badgeX = x + 16;
+  const badgeY = y + 64;
+  const badgeSize = 72;
   const gradient = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeSize, badgeY + badgeSize);
   gradient.addColorStop(0, "#f8c6d7");
   gradient.addColorStop(1, "#c65a82");
@@ -3490,23 +3490,26 @@ function drawFashionScorePanel(ctx, fashionScore, x, y, width, height) {
   ctx.stroke();
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
-  ctx.font = "900 44px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText(fashionScore.rank, badgeX + badgeSize / 2, badgeY + 55);
-  ctx.font = "700 15px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("RANK", badgeX + badgeSize / 2, badgeY + 74);
+  ctx.font = "900 38px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(fashionScore.rank, badgeX + badgeSize / 2, badgeY + 48);
+  ctx.font = "700 13px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("RANK", badgeX + badgeSize / 2, badgeY + 66);
   ctx.textAlign = "left";
 
   ctx.fillStyle = "#3d3036";
-  ctx.font = "900 30px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText(`${fashionScore.power}pt`, x + 118, y + 105);
+  ctx.font = "900 26px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(`${fashionScore.power}pt`, x + 102, y + 88);
   ctx.fillStyle = "#a43d64";
-  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("ファッションパワー", x + 118, y + 132);
-  ctx.fillStyle = "#6c555e";
   ctx.font = "700 16px Yu Gothic UI, Meiryo, sans-serif";
-  wrapCanvasText(ctx, fashionScore.rankLabel, x + 118, y + 158, 140, 22, 2);
+  ctx.fillText("ファッションパワー", x + 102, y + 112);
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, x + 102, y + 124, 120, 28, 14);
+  ctx.fill();
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "800 16px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(fashionScore.rankLabel, x + 116, y + 144);
 
-  drawFashionRadarChart(ctx, fashionScore.metrics, x + 116, y + 176, 62);
+  drawFashionRadarChart(ctx, fashionScore.metrics, x + 142, y + 168, 44);
   ctx.restore();
 }
 
@@ -4207,6 +4210,8 @@ ${productDisplayInstruction}
 文字は大きすぎず、人物や服に重ねない。むずかしい漢字は使わず、読みやすい日本語にする。
 次の文章は書き換えず、そのまま使う。語尾の変更、要約、言い換え、単語の追加をしない:
 ${imageCopy.map((line) => `・${line}`).join("\n")}
+・上の3文は必ず全文が読める余白へ配置する。入りきらない場合は文字を小さくする、2行に分ける、または配置を変える。途中を「…」で省略しない
+・画像内に「色数を抑…」「素材感…」のような途中切れの文を残さない。文末まで表示できない文字要素は入れない
 ・画像の一番上の見出しは必ず「${fixedImageHeadline}」と一字一句同じにする
 ・見出しの「解決」は必ずこの2文字で書く。「いけつ」「かいけつ」の一部欠け、別の漢字、似た字へ変えない
 ・一番上の見出しはコピー用の完成文であり、助詞を削除したり、語順を変えたり、新しい言葉を足したりしない
@@ -4261,9 +4266,10 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナ
 ・季節とシーンに合わない厚着、薄着、靴、小物になっていない
 ・主役以外の商品が主張しすぎず、コーデ全体に一つの視線の流れがある
 ・画像にない商品を、実際に着用した商品として説明していない
-・余白の日本語が読みやすく、課題解決風でかわいい
+・余白の日本語が読みやすく、課題解決風でかわいい。途中で切れた文章や「…」で省略した文章がない
 ・画像内に楽天ROOMを示す文字が入っていない
-・右下にファッションランク、レーダーチャート、ファッションパワーの小さなスコアカードがあり、コーデや商品を隠していない
+・右下に半透明で小さなファッションランク、レーダーチャート、ファッションパワーのスコアカードがあり、コーデや商品を隠していない
+・レーダーチャートの周囲に意味のない単独数字がなく、軸名と形だけで特徴が伝わる
 
 以上の条件をすべて守り、文章による説明や紹介文は返さず、完成画像だけを生成してください。`;
 }
@@ -4271,15 +4277,21 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナ
 function buildCoordinateFashionScorePrompt(fashionScore) {
   return `【右下スコアカード・必須】
 ・完成画像の右下へ、コーデや商品を隠さない小さな情報カードを1個だけ入れる
-・カードは白または淡いピンクの半透明ベースで、ファッション誌の小さな診断欄のように上品にまとめる
+・カードは画像幅の20〜24%以内、高さは画像高さの13〜16%以内。余白を詰め、右下に軽く重なる透明ステッカーのように小さくまとめる
+・カード背景は白または淡いピンクの半透明ベース。不透明な大きい白カードにしない
+・角丸、細いピンク線、少量の小さなハートやリボンで上品に飾る。装飾は文字より目立たせない
 ・カード内に必ず次の3要素を入れる
-  1. ファッションランク: 楽天ROOMのランクアイコン風の丸いバッジで「${fashionScore.rank}」を大きく表示する。ラベルは「${fashionScore.rankLabel}」
-  2. レーダーチャート: 5軸で表示する。軸名と数値は ${fashionScore.metrics.map((metric) => `${metric.label}${metric.value}`).join(" / ")}
-  3. ファッションパワー: 「${fashionScore.power}pt」とかわいく表示する
+  1. ファッションランク: 楽天ROOMのランクアイコン風の丸いバッジで「${fashionScore.rank}」を大きく表示する。横に小さなリボンラベルで「${fashionScore.rankLabel}」をかわいく入れる
+  2. レーダーチャート: 5軸で表示する。軸名は ${fashionScore.metrics.map((metric) => metric.label).join(" / ")}。数値は内部評価として使い、チャート周囲へ単独の数字を散らさない
+  3. ファッションパワー: 「${fashionScore.power}pt」と1回だけかわいく表示する
+・レーダーチャートの評価値は ${fashionScore.metrics.map((metric) => `${metric.label}:${metric.value}`).join(" / ")} を使う。高すぎる満点感を出さず、少し辛口の自己判定に見せる
 ・スコアカードの見出しは「FASHION SCORE」または「おしゃれ診断」にする
 ・右下カードは主役の服、顔、ハナコ先生の吹き出し、商品ポイントに重ねない。必要なら少し小さくしてもよい
 ・ランク、チャート、点数はこの指定から変えない。別の点数や別ランクを作らない
-・レーダーチャートはピンク系の線と淡い塗りで、文字は小さくても読める濃さにする`;
+・レーダーチャートは「配色が強い」「抜け感が少し弱い」などが形で分かる納得感のあるバランスにする。正五角形の満点チャートにしない
+・チャート外側に「95」「100」など意味不明な数字を単独表示しない。数字を書くのはファッションパワーの「${fashionScore.power}pt」だけ
+・「神コーデ級」などのランクラベルは、小さなリボン帯、シール、ハート囲みのどれかでかわいくデザインし、ただの黒文字にしない
+・レーダーチャートはピンク系の線と淡い塗りで、軸名は小さくても読める濃さにする`;
 }
 
 function buildCoordinateLocationInstruction(coordinate, originalProductPhotoMode) {
@@ -4451,9 +4463,21 @@ function buildCoordinateImageCopy(coordinate) {
   const analysis = buildCoordinateAnalysis(coordinate);
   return [
     `「${coordinate.concern}」をかわいく解決♡`,
-    trimText(analysis.solution, 30),
+    buildShortCoordinateSolutionLine(coordinate, analysis),
     `${coordinate.occasion}×${coordinate.priority}に、ちょうどいい♡`,
   ];
+}
+
+function buildShortCoordinateSolutionLine(coordinate, analysis) {
+  const text = `${coordinate.concern || ""} ${coordinate.priority || ""} ${analysis.solution || ""}`;
+  if (/気温差|温度|寒暖|羽織|重ね/.test(text)) return "重ねて脱げるから温度調整しやすい";
+  if (/色数|配色|まとまり/.test(text)) return "色数をしぼってすっきり見せる";
+  if (/体型|バランス|重心|脚長|すっきり/.test(text)) return "重心を上げてすっきり見せる";
+  if (/甘すぎ|幼く|大人|上品/.test(text)) return "甘さを一点にしぼって大人顔に";
+  if (/高見え|素材|きれいめ/.test(text)) return "素材感をそろえて高見えに";
+  if (/写真映え|映え|華や/.test(text)) return "見せ場を一つ作って写真映え";
+  if (/頑張り|抜け感|こなれ/.test(text)) return "主役を決めて抜け感を残す";
+  return "主役を決めて全体をきれいに整える";
 }
 
 function buildHandwrittenProductPoints(coordinate) {
