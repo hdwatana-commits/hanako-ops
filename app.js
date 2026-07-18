@@ -5200,6 +5200,8 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, mood, locat
 ・1の「ファッションハナコ」は小さな雑誌名・署名のように扱い、コレクション名より絶対に大きくしない
 ・3を主役コピー、4と5を小さな編集コピー、6を端正なカテゴリラベルとして強弱をつける
 ・${collectionCopy.designDirection}
+・上記のブランド/商品イメージ判定を最優先し、ブランドの空気感と合わない配色、フォント、装飾、背景にしない
+・たとえばミニマル系なら余白と直線、ロマンティック系なら低彩度ピンクと曲線、ラグジュアリー系なら光沢と余白、カジュアル系ならZINE風コラージュ、ナチュラル系なら紙質感と自然光を使う
 ・毎回、既視感のない新しい表紙にする。前回と同じテンプレート、同じ文字位置、同じ飾り、同じ余白比率、同じ写真配置にしない
 ・雑誌の表紙、ブランド広告、セレクトショップのルックブック、ファッションZINEのどれかを混ぜたように、文字組み・余白・写真の切り取り方を変える
 ・商品とブランドの雰囲気に合わせ、非対称レイアウト、縦書きアクセント、斜めの小見出し、細い罫線、余白多め、商品コラージュなどから自然に選んで変化を出す
@@ -5387,6 +5389,7 @@ function buildRoomImageOneLiner(product) {
 
 function buildRoomCollectionCoverCopy(product, brand, oneLiner) {
   const text = `${product.name || ""} ${product.hook || ""} ${product.category || ""} ${product.details?.material || ""} ${product.details?.color || ""}`;
+  const brandDesign = buildRoomCollectionBrandDesign(product, brand, text);
   const themes = /黒|ブラック|ネイビー|モノトーン|シルバー/.test(text)
     ? [
       ["凛とした甘さを、ひとさじ。", "色数をしぼって、品よく。", "白・黒・余白を生かしたモード誌の文字組み"],
@@ -5437,9 +5440,73 @@ function buildRoomCollectionCoverCopy(product, brand, oneLiner) {
     moodLine: selected[0],
     editLine: selected[1],
     categoryLabel: `${product.category || "FASHION"} COLLECTION`,
-    designDirection: selected[2],
+    designDirection: `${selected[2]}\n・ブランド/商品イメージ判定: ${brandDesign.profile}\n・表紙のデザイン方針: ${brandDesign.direction}\n・配色: ${brandDesign.palette}\n・文字組み: ${brandDesign.typography}\n・装飾: ${brandDesign.decoration}`,
     oneLiner,
   };
+}
+
+function buildRoomCollectionBrandDesign(product, brand, sourceText = "") {
+  const text = `${brand || ""} ${sourceText || ""}`.toLocaleLowerCase("ja-JP");
+  const category = product.category || "ファッション";
+  const has = (pattern) => pattern.test(text);
+  const profiles = [
+    {
+      match: has(/snidel|fray|mila owen|celford|lily brown|リリーブラウン|スナイデル|フレイ|セルフォード|リボン|フリル|レース|花柄|ガーリー/),
+      profile: "大人ロマンティック / 甘めきれいめ",
+      direction: "柔らかな余白、曲線的な写真トリミング、上品なリボン線で女性誌の特集表紙のように見せる",
+      palette: "くすみピンク、アイボリー、ローズブラウンを中心に、甘すぎない低彩度でまとめる",
+      typography: "コレクション名は大きな明朝体、サブコピーは細いゴシック体で余白に流す",
+      decoration: "小さなリボン、花びら、細い点線を少量だけ使い、子どもっぽい装飾は避ける",
+    },
+    {
+      match: has(/uniqlo|gu|無印|muji|zara|hm|h&m|global work|グローバルワーク|シンプル|ベーシック|無地|白|黒|ネイビー|グレー/),
+      profile: "ミニマル / ベーシック高見え",
+      direction: "余白を広く取り、商品を端正に一列または非対称に配置したルックブック表紙にする",
+      palette: "白、黒、グレー、ベージュを軸に、商品色を差し色として一点だけ使う",
+      typography: "太すぎないゴシック体でコレクション名を大きく、英字は小さく整える",
+      decoration: "装飾は細い罫線と小さな余白マーク程度に抑え、情報を盛りすぎない",
+    },
+    {
+      match: has(/chanel|dior|celine|miumiu|miu miu|prada|loewe|hermes|fendi|gucci|パール|ゴールド|サテン|光沢|ビジュー|ジュエル/),
+      profile: "ラグジュアリー / 上質モード",
+      direction: "中央に強い主役写真を置き、余白と細い文字だけで高級ブランド広告のように見せる",
+      palette: "パールホワイト、シャンパン、黒、深いブラウンを使い、光沢感を上品に出す",
+      typography: "大きな明朝体または細身セリフ体で、文字間をゆったり取る",
+      decoration: "装飾は極小の光、細線、紙面の余白だけ。派手な星や大量のハートは禁止",
+    },
+    {
+      match: has(/shein|wego|grl|韓国|ストリート|デニム|カーゴ|スニーカー|キャップ|スポーティ|カジュアル/),
+      profile: "カジュアル / ストリートMIX",
+      direction: "商品写真をコラージュ風に重ね、タイトルを大胆にずらしたファッションZINE風にする",
+      palette: "白、黒、デニムブルー、淡いピンクを使い、抜け感のある明るさにする",
+      typography: "太めゴシックと手書き風の小文字を少し混ぜ、動きのある紙面にする",
+      decoration: "マスキングテープ風、細い矢印、手書き線を少量使う。雑に見える切り貼りは禁止",
+    },
+    {
+      match: has(/リネン|麻|コットン|綿|生成り|ナチュラル|カゴ|かご|麦わら|ベージュ|ブラウン|木|カフェ/),
+      profile: "ナチュラル / やさしい日常服",
+      direction: "紙の質感と自然光を感じるセレクトショップのカタログ表紙にする",
+      palette: "アイボリー、生成り、淡いグリーン、木のブラウンを中心にする",
+      typography: "やさしい明朝体と細いゴシック体を組み合わせ、読みやすく落ち着かせる",
+      decoration: "植物線画、細い囲み線、余白を活かし、花や小物を増やしすぎない",
+    },
+    {
+      match: has(/水着|水際|リゾート|マリン|サンダル|ブルー|水色|アクア|uv|紫外線/),
+      profile: "リゾート / 透明感サマー",
+      direction: "光と風を感じるリゾート誌の表紙にし、爽やかな余白で商品をきれいに見せる",
+      palette: "白、アクアブルー、淡い砂色、透明感のある影色を使う",
+      typography: "大きなタイトルは軽やかに、サブコピーは細く涼しげに配置する",
+      decoration: "波線、光の粒、薄い布のような形を控えめに使い、海っぽさを上品に留める",
+    },
+  ];
+  const selected = profiles.find((profile) => profile.match) || {
+    profile: `${category}に合わせた上品なブランド広告風`,
+    direction: "商品の色、素材、形を主役にして、表紙ごとに写真配置と文字位置を変える",
+    palette: "商品画像から主色を2色だけ拾い、白または淡い背景でまとめる",
+    typography: "コレクション名を最も大きく、サブコピーは小さく端正に配置する",
+    decoration: "細い罫線、余白、控えめな手書きアクセントだけを使い、既視感のあるテンプレ装飾を避ける",
+  };
+  return selected;
 }
 
 async function copyRoomImagePrompt() {

@@ -34,7 +34,7 @@
           }
         } finally {
           const destination = new URL("./", location.href);
-          destination.searchParams.set("v", new URL(location.href).searchParams.get("v") || "157");
+          destination.searchParams.set("v", new URL(location.href).searchParams.get("v") || "158");
           destination.searchParams.set("updated", Date.now());
           location.replace(destination.href);
         }
