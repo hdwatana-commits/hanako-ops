@@ -1,33 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" role="img" aria-label="ファッションハナコ 可愛さラボ">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="240" viewBox="0 0 960 240" role="img" aria-label="ファッションハナコ 可愛さラボ">
   <defs>
-    <linearGradient id="roseInk" x1="120" y1="40" x2="820" y2="260" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#b13f69"/>
-      <stop offset=".45" stop-color="#7b3d4f"/>
-      <stop offset="1" stop-color="#d77798"/>
+    <linearGradient id="searchBg" x1="72" y1="44" x2="884" y2="198" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff8fb"/>
+      <stop offset=".55" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ffe9f1"/>
     </linearGradient>
-    <linearGradient id="softRibbon" x1="160" y1="210" x2="820" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f7c9d8" stop-opacity=".25"/>
-      <stop offset=".5" stop-color="#f0aeca" stop-opacity=".72"/>
-      <stop offset="1" stop-color="#f8dfe8" stop-opacity=".25"/>
+    <linearGradient id="roseInk" x1="160" y1="66" x2="820" y2="178" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8d3a55"/>
+      <stop offset=".48" stop-color="#c24d76"/>
+      <stop offset="1" stop-color="#e08aa8"/>
     </linearGradient>
-    <filter id="paperShadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#7c3d50" flood-opacity=".15"/>
+    <filter id="softShadow" x="-8%" y="-18%" width="116%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#7c3d50" flood-opacity=".16"/>
     </filter>
   </defs>
-  <rect x="28" y="36" width="904" height="228" rx="44" fill="#fffafd" opacity=".92" filter="url(#paperShadow)"/>
-  <path d="M117 219c160-29 330-28 506-5 77 10 143 8 221-17" fill="none" stroke="url(#softRibbon)" stroke-width="28" stroke-linecap="round"/>
-  <g fill="none" stroke="#d77798" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".85">
-    <path d="M84 99c31-34 62-34 92 0"/>
-    <path d="M130 98c-18 28-34 47-61 55 28 12 62-2 77-28"/>
-    <path d="M130 98c18 28 34 47 61 55-28 12-62-2-77-28"/>
-  </g>
-  <text x="216" y="127" fill="url(#roseInk)" font-family="'Yu Mincho','Hiragino Mincho ProN','Yu Gothic',serif" font-size="54" font-weight="700" letter-spacing="5">ファッションハナコ</text>
-  <text x="240" y="202" fill="#4e3740" font-family="'Yu Gothic','Hiragino Sans',sans-serif" font-size="78" font-weight="800" letter-spacing="7">可愛さラボ</text>
-  <text x="652" y="238" fill="#b45b78" font-family="Georgia,'Times New Roman',serif" font-size="31" font-style="italic" letter-spacing="2">Kawaisa Lab</text>
-  <g fill="#d77798" opacity=".9">
-    <path d="M837 83c11-22 41-12 35 13-4 16-22 27-35 39-13-12-31-23-35-39-6-25 24-35 35-13z"/>
-    <circle cx="872" cy="199" r="8"/>
-    <circle cx="897" cy="183" r="5"/>
-    <path d="M101 206l8 18 19 4-16 12 3 19-16-10-17 9 5-19-15-13 19-2z"/>
+  <rect x="36" y="38" width="888" height="164" rx="82" fill="url(#searchBg)" filter="url(#softShadow)"/>
+  <rect x="47" y="49" width="866" height="142" rx="71" fill="none" stroke="#e9bbca" stroke-width="4"/>
+  <circle cx="124" cy="120" r="34" fill="none" stroke="#bf5579" stroke-width="8"/>
+  <path d="M149 145l31 31" fill="none" stroke="#bf5579" stroke-width="9" stroke-linecap="round"/>
+  <path d="M221 122h430" fill="none" stroke="#f2c4d4" stroke-width="14" stroke-linecap="round" opacity=".58"/>
+  <text x="218" y="112" fill="#4b343b" font-family="'Yu Gothic','Hiragino Sans',Meiryo,sans-serif" font-size="34" font-weight="800" letter-spacing="2">検索</text>
+  <text x="324" y="113" fill="url(#roseInk)" font-family="'Yu Mincho','Hiragino Mincho ProN','Yu Gothic',serif" font-size="50" font-weight="800" letter-spacing="4">ファッションハナコ</text>
+  <text x="318" y="166" fill="#5a3a43" font-family="'Yu Gothic','Hiragino Sans',Meiryo,sans-serif" font-size="44" font-weight="900" letter-spacing="5">可愛さラボ</text>
+  <text x="664" y="166" fill="#b45b78" font-family="Georgia,'Times New Roman',serif" font-size="24" font-style="italic" letter-spacing="2">Kawaisa Lab</text>
+  <g fill="#d77798">
+    <path d="M827 91c9-18 34-10 29 11-3 13-18 22-29 32-11-10-26-19-29-32-5-21 20-29 29-11z"/>
+    <circle cx="860" cy="143" r="7"/>
+    <circle cx="883" cy="125" r="4.5"/>
   </g>
 </svg>
