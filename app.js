@@ -7932,8 +7932,7 @@ async function copyAndOpenRoomProduct() {
   if (!roomPostOutput.value.trim()) generateRoomPost();
   if (!roomPostOutput.value.trim()) return;
   const copyPromise = copyRoomText(roomPostOutput.value);
-  if (product.url) window.open(product.url, "_blank", "noopener");
-  else showToast("コピーしました。商品URLが未登録です");
+  openRakutenRoomPostScreen(product, product.url || product.sourceUrl || "");
   await copyPromise;
 }
 
