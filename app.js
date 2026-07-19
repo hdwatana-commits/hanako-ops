@@ -3446,7 +3446,7 @@ function renderProducts() {
       </div>
       <div class="product-card-actions">
         <button class="primary" data-use="${product.id}">SNS投稿へ</button>
-        ${product.category !== "ホテル・旅行" ? `<button data-room-use="${product.id}">ROOM文へ</button><button data-room-open-product="${product.id}">ROOMを開く</button>` : ""}
+        ${product.category !== "ホテル・旅行" ? `<button data-room-use="${product.id}">ROOM文へ</button><button data-room-copy-open-product="${product.id}">コピーしてROOM投稿画面</button><button data-room-open-product="${product.id}">ROOMを開く</button>` : ""}
         <button data-delete="${product.id}">削除</button>
       </div>
     `;
@@ -3488,6 +3488,10 @@ function renderProducts() {
       const product = state.products.find((item) => item.id === button.dataset.roomOpenProduct);
       openRakutenRoomPostScreen(product, product?.url || "");
     });
+  });
+
+  productGrid.querySelectorAll("[data-room-copy-open-product]").forEach((button) => {
+    button.addEventListener("click", () => copyProductRoomPostAndOpen(button.dataset.roomCopyOpenProduct));
   });
 
   productGrid.querySelectorAll("[data-schedule-plan]").forEach((button) => {
@@ -7934,6 +7938,17 @@ async function copyAndOpenRoomProduct() {
   const copyPromise = copyRoomText(roomPostOutput.value);
   openRakutenRoomPostScreen(product, product.url || product.sourceUrl || "");
   await copyPromise;
+}
+
+async function copyProductRoomPostAndOpen(productId) {
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) return showToast("商品を選んでください");
+  const text = buildRoomPostText(product);
+  if (!text) return;
+  const copyPromise = copyRoomText(text);
+  openRakutenRoomPostScreen(product, product.url || product.sourceUrl || "");
+  await copyPromise;
+  showToast("ROOM投稿文をコピーして投稿画面を開きました");
 }
 
 function downloadRoomExtension() {
