@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Hanako OPS Engine Tests</title>
+<pre id="out">running...</pre>
+<script src="../ops-engine.js"></script>
+<script>
+const out = document.querySelector("#out");
+const assert = (name, ok) => {
+  if (!ok) throw new Error(name);
+  return `OK ${name}`;
+};
+const p1 = { id: "1", name: "SALE 新色追加 高見えフリルブラウス 送料無料 Mサイズ", url: "https://item.rakuten.co.jp/shop-a/blouse-001/?scid=af", category: "トップス", price: "3280円", details: { shopCode: "shop-a", itemCode: "blouse-001", color: "アイボリー", reviewCount: "120", rating: "4.5" }, image: "https://example.com/a.jpg" };
+const p2 = { id: "2", name: "高見えフリルブラウス ブラック", url: "https://item.rakuten.co.jp/shop-a/blouse-001/?variant=black", category: "トップス", price: "3280円", details: { shopCode: "shop-a", itemCode: "blouse-001", color: "ブラック", reviewCount: "120", rating: "4.5" }, image: "https://example.com/a.jpg" };
+const oldPost = { id: "post1", productId: "1", canonicalProductId: "rakuten:shop-a:blouse-001", color: "アイボリー", postedAt: new Date(Date.now() - 10 * 86400000).toISOString(), sales: 0 };
+const soldPost = { id: "post2", productId: "1", canonicalProductId: "rakuten:shop-a:blouse-001", color: "アイボリー", postedAt: new Date(Date.now() - 80 * 86400000).toISOString(), sales: 1 };
+const collections = window.HanakoOpsEngine.defaultCollections();
+const selection = window.HanakoOpsEngine.buildDailySelection({ products: [p1, p2], posts: [oldPost, soldPost], metrics: [{ sales: 1, clicks: 8, post: "Hanako Select", pattern: "トップス" }], collections, today: new Date() });
+const first = selection.items[0];
+const lines = [];
+lines.push(assert("URL表記が異なる同一商品の統合", selection.items.length === 1));
+lines.push(assert("色違い判定", first.duplicateSummary.variantCount >= 1));
+lines.push(assert("販促語正規化", !first.normalizedProductName.includes("SALE") && !first.normalizedProductName.includes("新色")));
+lines.push(assert("60日以内再投稿ブロック", first.repost.status === "再投稿不可"));
+lines.push(assert("売上実績あり再投稿候補化", window.HanakoOpsEngine.evaluateRepostWindow(p1, [soldPost], new Date()).status === "再投稿推奨"));
+lines.push(assert("コレクション最大3件", first.recommendedCollections.length <= 3 && first.recommendedCollections.length > 0));
+const rerun = window.HanakoOpsEngine.buildDailySelection({ products: [p1, p2], posts: [oldPost, soldPost], metrics: [], collections, today: new Date() });
+lines.push(assert("バッチ再実行時の冪等性", rerun.items.map(i => i.canonicalProductId).join(",") === selection.items.map(i => i.canonicalProductId).join(",")));
+lines.push(assert("カテゴリ偏り調整", selection.visibleItems.length <= 30));
+lines.push(assert("API失敗時フォールバック", window.HanakoOpsEngine.buildDailySelection({ products: [p1], posts: [], metrics: [], collections, sourceFailed: true }).job.status === "fallback"));
+out.textContent = lines.join("\n");
+</script>

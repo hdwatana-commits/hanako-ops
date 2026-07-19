@@ -11,9 +11,10 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=172">
+    <link rel="stylesheet" href="styles.css?v=173">
     <script src="config.js"></script>
-    <script src="cloud-sync.js?v=172"></script>
+    <script src="cloud-sync.js?v=173"></script>
+    <script src="ops-engine.js?v=173"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -455,6 +456,37 @@
         </section>
 
         <section class="view" id="products">
+          <div class="ops-command panel">
+            <div class="ops-hero">
+              <div>
+                <p class="eyebrow">MORNING SELECTION</p>
+                <h3>今朝のおすすめ</h3>
+                <p>登録済み候補から重複・再投稿リスク・準備不足を自動判定して、最初に見る商品をSランク30件以内へ絞ります。</p>
+              </div>
+              <div class="ops-hero-actions">
+                <button class="primary" id="runDailySelection" type="button">今朝のおすすめを作る</button>
+                <button id="showAllDailyCandidates" type="button">候補200を見る</button>
+              </div>
+            </div>
+            <div class="ops-kpi-grid" id="opsKpiGrid"></div>
+            <div class="ops-bulk-bar">
+              <label><input id="selectAllDailyVisible" type="checkbox"> 表示中を選択</label>
+              <button id="bulkAdoptDaily" type="button">一括採用</button>
+              <button id="bulkExcludeDaily" type="button">一括除外</button>
+              <button id="bulkSendImageQueue" type="button">画像生成キューへ</button>
+              <button id="bulkSendRoomQueue" type="button">ROOM文生成へ</button>
+            </div>
+            <div class="daily-selection-grid" id="dailySelectionGrid"></div>
+          </div>
+
+          <div class="ops-pipeline panel">
+            <div class="panel-heading">
+              <h3>投稿パイプライン</h3>
+              <span class="muted">候補から投稿済みまでを一括管理</span>
+            </div>
+            <div class="pipeline-board" id="opsPipelineBoard"></div>
+          </div>
+
           <div class="panel">
             <div class="panel-heading">
               <h3>商品を登録</h3>
@@ -1387,7 +1419,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=172"></script>
-    <script src="app.js?v=172"></script>
+    <script src="room-review-generator.js?v=173"></script>
+    <script src="app.js?v=173"></script>
   </body>
 </html>

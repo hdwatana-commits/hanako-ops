@@ -2933,6 +2933,270 @@ textarea:focus {
   gap: 6px;
 }
 
+.ops-command,
+.ops-pipeline {
+  margin-bottom: 18px;
+}
+
+.ops-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.ops-hero h3,
+.ops-hero p {
+  margin: 0;
+}
+
+.ops-hero h3 {
+  font-size: 26px;
+}
+
+.ops-hero p {
+  max-width: 760px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.ops-hero-actions,
+.ops-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ops-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.ops-kpi-grid > div {
+  padding: 12px;
+  border: 1px solid #eadde2;
+  border-radius: 8px;
+  background: #fffafb;
+}
+
+.ops-kpi-grid span,
+.ops-kpi-grid strong {
+  display: block;
+}
+
+.ops-kpi-grid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ops-kpi-grid strong {
+  margin-top: 4px;
+  color: #2f292b;
+  font-size: 20px;
+}
+
+.ops-bulk-bar {
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #eadde2;
+  border-radius: 8px;
+  background: #fbf7f8;
+}
+
+.daily-selection-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.daily-card {
+  display: grid;
+  grid-template-columns: auto 118px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid #eadde2;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(44, 35, 39, 0.05);
+}
+
+.daily-card.rank-S {
+  border-color: #d7ad64;
+  background: linear-gradient(180deg, #fffdfa 0%, #fff 64%);
+}
+
+.daily-card > img,
+.daily-placeholder {
+  width: 118px;
+  height: 118px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.daily-placeholder,
+.ops-empty {
+  display: grid;
+  place-items: center;
+  background: #fff0f4;
+  color: var(--rose-dark);
+  font-weight: 900;
+}
+
+.ops-empty {
+  min-height: 140px;
+  padding: 20px;
+  border: 1px dashed #e6beca;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.daily-card-check {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.daily-card-check span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #2f292b;
+  color: #fff;
+  font-weight: 900;
+}
+
+.rank-S .daily-card-check span {
+  background: #b98225;
+}
+
+.daily-title-row,
+.daily-score-row,
+.daily-actions,
+.daily-collections {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.daily-title-row {
+  justify-content: space-between;
+}
+
+.daily-card h4 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.daily-card p {
+  margin: 5px 0;
+  color: var(--muted);
+}
+
+.daily-score-row span,
+.daily-collections span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #f7f2f4;
+  color: #5d5055;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.daily-score-row strong {
+  color: #2f292b;
+}
+
+.daily-score-row .repost-state {
+  color: var(--rose-dark);
+  background: #fff0f4;
+}
+
+.daily-reasons {
+  margin: 8px 0;
+}
+
+.daily-reasons summary {
+  cursor: pointer;
+  color: var(--rose-dark);
+  font-weight: 800;
+}
+
+.daily-reason-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.daily-reason-columns div {
+  padding: 10px;
+  border-radius: 8px;
+  background: #fbfbfb;
+}
+
+.daily-actions button {
+  min-height: 34px;
+}
+
+.pipeline-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.pipeline-column {
+  min-height: 160px;
+  padding: 10px;
+  border: 1px solid #eadde2;
+  border-radius: 8px;
+  background: #fbf8f9;
+}
+
+.pipeline-column h4 {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 10px;
+}
+
+.pipeline-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.pipeline-card img {
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.pipeline-card strong,
+.pipeline-card small {
+  display: block;
+  grid-column: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipeline-card img + strong {
+  grid-row: 1;
+}
+
 @media (max-width: 1120px) {
   .room-workspace {
     grid-template-columns: 1fr;

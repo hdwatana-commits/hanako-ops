@@ -1,0 +1,26 @@
+[
+  {
+    "name": "SALE 新色追加 高見えフリルブラウス 送料無料",
+    "url": "https://item.rakuten.co.jp/sample-shop/blouse-001/?scid=af_pc_etc",
+    "category": "トップス",
+    "price": "3280円",
+    "hook": "絶妙な袖丈で華奢に見える",
+    "details": { "brand": "Hanako Select", "color": "アイボリー", "reviewCount": "128", "rating": "4.56", "itemCode": "blouse-001", "shopCode": "sample-shop" }
+  },
+  {
+    "name": "高見えフリルブラウス ブラック Mサイズ",
+    "url": "https://item.rakuten.co.jp/sample-shop/blouse-001-black/",
+    "category": "トップス",
+    "price": "3280円",
+    "hook": "甘さを抑えて通勤にも使いやすい",
+    "details": { "brand": "Hanako Select", "color": "ブラック", "size": "M", "reviewCount": "128", "rating": "4.56", "itemCode": "blouse-001", "shopCode": "sample-shop" }
+  },
+  {
+    "name": "細見えマーメイドスカート",
+    "url": "https://item.rakuten.co.jp/sample-shop/skirt-002/",
+    "category": "スカート",
+    "price": "4980円",
+    "hook": "腰まわりをすっきり見せやすい",
+    "details": { "brand": "Relume Mood", "color": "ネイビー", "reviewCount": "72", "rating": "4.42", "itemCode": "skirt-002", "shopCode": "sample-shop" }
+  }
+]

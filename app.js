@@ -54,6 +54,7 @@ state.roomQueue ||= [];
 state.appearance ||= { avatarTheme: "original" };
 state.coordinatePhotos ||= [];
 state.selectedCoordinatePhotoId ||= state.coordinatePhotos[0]?.id || "";
+ensureOpsState(state);
 
 const avatarThemes = {
   custom: {
@@ -421,6 +422,8 @@ function initialize() {
   bindActions();
   bindCloudSync();
   renderProducts();
+  renderDailySelection();
+  renderOpsPipeline();
   renderProductOptions();
   restoreGeneratorPreferences();
   renderRoomProductOptions();
@@ -729,6 +732,52 @@ function normalizeState(value) {
     roomQueue: Array.isArray(source.roomQueue) ? source.roomQueue : [],
     coordinatePhotos: Array.isArray(source.coordinatePhotos) ? source.coordinatePhotos : [],
     appearance: source.appearance && typeof source.appearance === "object" ? source.appearance : { avatarTheme: "original" },
+    collections: Array.isArray(source.collections) ? source.collections : [],
+    dailySelections: Array.isArray(source.dailySelections) ? source.dailySelections : [],
+    postPlans: Array.isArray(source.postPlans) ? source.postPlans : [],
+    posts: Array.isArray(source.posts) ? source.posts : [],
+    userDecisions: Array.isArray(source.userDecisions) ? source.userDecisions : [],
+    duplicateMatches: Array.isArray(source.duplicateMatches) ? source.duplicateMatches : [],
+  };
+}
+
+function ensureOpsState(target = state) {
+  target.collections ||= window.HanakoOpsEngine?.defaultCollections?.() || [];
+  target.dailySelections ||= [];
+  target.postPlans ||= [];
+  target.posts ||= [];
+  target.userDecisions ||= [];
+  target.duplicateMatches ||= [];
+  target.products = (target.products || []).map((product) => enrichProductForOps(product));
+  return target;
+}
+
+function enrichProductForOps(product) {
+  if (!product || !window.HanakoOpsEngine?.enrichProduct) return product;
+  const enriched = window.HanakoOpsEngine.enrichProduct(product);
+  return {
+    ...product,
+    ops: {
+      ...(product.ops || {}),
+      source: enriched.source,
+      shopCode: enriched.shopCode,
+      itemCode: enriched.itemCode,
+      normalizedUrl: enriched.normalizedUrl,
+      canonicalProductId: enriched.canonicalProductId,
+      productFamilyId: enriched.productFamilyId,
+      normalizedProductName: enriched.normalizedProductName,
+      modelNumber: enriched.modelNumber,
+      janCode: enriched.janCode,
+      color: enriched.color,
+      size: enriched.size,
+      canonicalConfidence: enriched.canonicalConfidence,
+    },
+    details: {
+      ...(product.details || {}),
+      brand: enriched.brand || product.details?.brand || "",
+      color: enriched.color || product.details?.color || "",
+      size: enriched.size || product.details?.size || "",
+    },
   };
 }
 
@@ -789,6 +838,311 @@ function renderHome() {
   if (queueNode) queueNode.textContent = queueCount;
   if (calendarNode) calendarNode.textContent = calendarCount;
   renderHomeCommandCenter();
+}
+
+function getLatestDailySelection() {
+  state.dailySelections ||= [];
+  return state.dailySelections[0] || null;
+}
+
+function runDailySelection({ sourceFailed = false } = {}) {
+  ensureOpsState();
+  const selection = window.HanakoOpsEngine.buildDailySelection({
+    products: state.products,
+    posts: buildOpsPostHistory(),
+    metrics: state.metrics,
+    collections: state.collections,
+    today: new Date(),
+    sourceFailed,
+  });
+  state.dailySelections = [
+    selection,
+    ...(state.dailySelections || []).filter((item) => item.selectionDate !== selection.selectionDate),
+  ].slice(0, 14);
+  saveUserDecision("DailySelection", selection.id, "run", null, {
+    sourceCount: selection.sourceCount,
+    candidateCount: selection.candidateCount,
+    visibleCount: selection.visibleCount,
+  }, sourceFailed ? "API失敗時フォールバック" : "手動実行");
+  saveState();
+  renderDailySelection();
+  renderOpsPipeline();
+  showToast(`Sランク${selection.visibleCount}件に絞りました`);
+}
+
+function buildOpsPostHistory() {
+  const explicitPosts = (state.posts || []).map((post) => ({ ...post }));
+  const roomPosts = (state.roomQueue || [])
+    .filter((item) => item.done)
+    .map((item) => {
+      const product = state.products.find((entry) => entry.id === item.productId);
+      return {
+        id: item.id,
+        productId: item.productId,
+        canonicalProductId: product?.ops?.canonicalProductId || item.productId,
+        brand: product?.details?.brand || "",
+        category: product?.category || "",
+        color: product?.details?.color || product?.ops?.color || "",
+        copyText: item.copy || "",
+        collectionIds: item.collectionIds || [],
+        postedAt: item.postedAt || item.createdAt || item.updatedAt || new Date().toISOString(),
+        sales: item.sales || 0,
+      };
+    });
+  const calendarPosts = (state.calendar || [])
+    .filter((item) => item.done && item.productId)
+    .map((item) => {
+      const product = state.products.find((entry) => entry.id === item.productId);
+      return {
+        id: item.id,
+        productId: item.productId,
+        canonicalProductId: product?.ops?.canonicalProductId || item.productId,
+        brand: product?.details?.brand || "",
+        category: product?.category || "",
+        color: product?.details?.color || product?.ops?.color || "",
+        copyText: item.copy || "",
+        postedAt: item.date ? `${item.date}T00:00:00.000Z` : new Date().toISOString(),
+        sales: 0,
+      };
+    });
+  return [...explicitPosts, ...roomPosts, ...calendarPosts];
+}
+
+function renderDailySelection(showAll = false) {
+  const grid = document.querySelector("#dailySelectionGrid");
+  const kpiGrid = document.querySelector("#opsKpiGrid");
+  if (!grid || !kpiGrid) return;
+  const selection = getLatestDailySelection();
+  if (!selection) {
+    kpiGrid.innerHTML = [
+      ["候補", state.products.length],
+      ["初期表示", "未作成"],
+      ["重複防止", "未計測"],
+      ["削減率", "未計測"],
+    ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+    grid.innerHTML = `<div class="ops-empty"><strong>今朝のおすすめは未作成です</strong><p>「今朝のおすすめを作る」を押すと、登録済み商品からSランクだけを表示します。</p></div>`;
+    return;
+  }
+  const items = (showAll ? selection.items : selection.visibleItems)
+    .filter((item) => item.decision !== "excluded")
+    .slice(0, showAll ? 200 : 30);
+  kpiGrid.innerHTML = [
+    ["収集候補", selection.sourceCount],
+    ["保存候補", selection.candidateCount],
+    ["確認対象", items.length],
+    ["削減率", `${selection.kpis?.expectedReviewReductionRate || 0}%`],
+    ["重複防止", selection.kpis?.duplicatePrevented || 0],
+    ["状態", selection.job?.status === "fallback" ? "前回/手動データ" : "最新"],
+  ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+  if (!items.length) {
+    grid.innerHTML = `<div class="ops-empty"><strong>表示できる候補がありません</strong><p>商品を登録するか、候補200表示で除外済み商品を確認してください。</p></div>`;
+    return;
+  }
+  grid.innerHTML = items.map((item) => renderDailySelectionCard(item)).join("");
+  bindDailySelectionCardActions(grid);
+}
+
+function renderDailySelectionCard(item) {
+  const saleReasons = item.salePotentialBreakdown?.factors || [];
+  const operationReasons = item.operationPriorityBreakdown?.factors || [];
+  const collections = item.recommendedCollections || [];
+  const missing = item.missingItems || [];
+  return `
+    <article class="daily-card rank-${escapeHtml(item.rank)}" data-daily-product="${escapeHtml(item.id)}" data-canonical="${escapeHtml(item.canonicalProductId)}">
+      <label class="daily-card-check"><input type="checkbox" data-daily-select="${escapeHtml(item.id)}"><span>${escapeHtml(item.rank)}</span></label>
+      ${item.mainImageUrl ? `<img src="${escapeHtml(item.mainImageUrl)}" alt="">` : `<div class="daily-placeholder">品</div>`}
+      <div class="daily-card-body">
+        <div class="daily-title-row">
+          <h4>${escapeHtml(item.name || "商品名未設定")}</h4>
+          <button type="button" data-daily-detail="${escapeHtml(item.id)}">理由</button>
+        </div>
+        <p>${escapeHtml([item.brand, item.category, item.price].filter(Boolean).join(" / "))}</p>
+        <div class="daily-score-row">
+          <span>売れやすさ <strong>${item.salePotentialScore}</strong></span>
+          <span>運用優先 <strong>${item.operationPriorityScore}</strong></span>
+          <span class="repost-state">${escapeHtml(item.repost?.status || "投稿可能")}</span>
+        </div>
+        <div class="daily-collections">
+          ${collections.map((collection) => `<span>${escapeHtml(collection.name)} ${collection.score}</span>`).join("") || "<span>未分類</span>"}
+        </div>
+        <details class="daily-reasons">
+          <summary>加点・注意理由を見る</summary>
+          <div class="daily-reason-columns">
+            <div><strong>加点</strong>${saleReasons.slice(0, 4).map((reason) => `<p>+${reason.points} ${escapeHtml(reason.label)}</p>`).join("")}</div>
+            <div><strong>運用</strong>${operationReasons.slice(0, 4).map((reason) => `<p>+${reason.points} ${escapeHtml(reason.label)}</p>`).join("")}</div>
+            <div><strong>注意</strong><p>${escapeHtml(item.repost?.reason || "問題なし")}</p><p>${escapeHtml(missing.length ? `不足: ${missing.join(" / ")}` : "不足なし")}</p></div>
+          </div>
+        </details>
+        <div class="daily-actions">
+          <button class="primary" type="button" data-daily-adopt="${escapeHtml(item.id)}">採用</button>
+          <button type="button" data-daily-image="${escapeHtml(item.id)}">画像生成へ</button>
+          <button type="button" data-daily-room="${escapeHtml(item.id)}">ROOM文へ</button>
+          <button type="button" data-daily-hold="${escapeHtml(item.id)}">保留</button>
+          <button type="button" data-daily-exclude="${escapeHtml(item.id)}">除外</button>
+        </div>
+      </div>
+    </article>`;
+}
+
+function bindDailySelectionCardActions(root) {
+  root.querySelectorAll("[data-daily-adopt]").forEach((button) => button.addEventListener("click", () => setDailyDecision(button.dataset.dailyAdopt, "adopted")));
+  root.querySelectorAll("[data-daily-exclude]").forEach((button) => button.addEventListener("click", () => setDailyDecision(button.dataset.dailyExclude, "excluded")));
+  root.querySelectorAll("[data-daily-hold]").forEach((button) => button.addEventListener("click", () => setDailyDecision(button.dataset.dailyHold, "held")));
+  root.querySelectorAll("[data-daily-image]").forEach((button) => button.addEventListener("click", () => sendProductToPipeline(button.dataset.dailyImage, "画像待ち")));
+  root.querySelectorAll("[data-daily-room]").forEach((button) => button.addEventListener("click", () => sendProductToRoomQueue(button.dataset.dailyRoom)));
+  root.querySelectorAll("[data-daily-detail]").forEach((button) => button.addEventListener("click", () => showDailyDetail(button.dataset.dailyDetail)));
+}
+
+function bindOpsActions() {
+  if (document.body.dataset.opsBound === "true") return;
+  document.body.dataset.opsBound = "true";
+  document.querySelector("#runDailySelection")?.addEventListener("click", () => runDailySelection());
+  document.querySelector("#showAllDailyCandidates")?.addEventListener("click", () => renderDailySelection(true));
+  document.querySelector("#selectAllDailyVisible")?.addEventListener("change", (event) => {
+    document.querySelectorAll("#dailySelectionGrid [data-daily-select]").forEach((input) => { input.checked = event.target.checked; });
+  });
+  document.querySelector("#bulkAdoptDaily")?.addEventListener("click", () => bulkDailyAction((id) => setDailyDecision(id, "adopted", false), "採用しました"));
+  document.querySelector("#bulkExcludeDaily")?.addEventListener("click", () => bulkDailyAction((id) => setDailyDecision(id, "excluded", false), "除外しました"));
+  document.querySelector("#bulkSendImageQueue")?.addEventListener("click", () => bulkDailyAction((id) => sendProductToPipeline(id, "画像待ち", false), "画像生成キューへ送りました"));
+  document.querySelector("#bulkSendRoomQueue")?.addEventListener("click", () => bulkDailyAction((id) => sendProductToRoomQueue(id, false), "ROOM文生成へ送りました"));
+}
+
+function selectedDailyIds() {
+  return [...document.querySelectorAll("#dailySelectionGrid [data-daily-select]:checked")].map((input) => input.dataset.dailySelect);
+}
+
+function bulkDailyAction(callback, message) {
+  const ids = selectedDailyIds();
+  if (!ids.length) return showToast("先に商品を選択してください");
+  ids.forEach(callback);
+  saveState();
+  renderDailySelection();
+  renderOpsPipeline();
+  renderRoomQueue();
+  showToast(`${ids.length}件を${message}`);
+}
+
+function setDailyDecision(productId, decision, shouldSave = true) {
+  const selection = getLatestDailySelection();
+  const product = state.products.find((item) => item.id === productId);
+  if (!selection || !product) return;
+  [selection.items, selection.visibleItems].forEach((list) => {
+    (list || []).forEach((item) => {
+      if (item.id === productId) item.decision = decision;
+    });
+  });
+  product.opsDecision = decision;
+  if (decision === "adopted") sendProductToPipeline(productId, "採用", false);
+  saveUserDecision("Product", productId, decision, product.opsDecision, { decision }, "今日のおすすめから変更");
+  if (shouldSave) {
+    saveState();
+    renderDailySelection();
+    renderOpsPipeline();
+    showToast(decision === "excluded" ? "除外しました" : decision === "held" ? "保留にしました" : "採用しました");
+  }
+}
+
+function sendProductToPipeline(productId, status = "採用", shouldSave = true) {
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) return;
+  state.postPlans ||= [];
+  const existing = state.postPlans.find((plan) => plan.productId === productId && !["投稿済み", "成果確認済み"].includes(plan.status));
+  const collections = getDailyItem(productId)?.recommendedCollections || window.HanakoOpsEngine.recommendCollections(enrichProductForOps(product), state.collections);
+  if (existing) {
+    existing.status = status;
+    existing.updatedAt = new Date().toISOString();
+  } else {
+    state.postPlans.unshift({
+      id: createId(),
+      productId,
+      productName: product.name,
+      image: product.image || "",
+      status,
+      collectionIds: collections.slice(0, 3).map((item) => item.collectionId),
+      recommendedCollections: collections.slice(0, 3),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  if (shouldSave) {
+    saveState();
+    renderOpsPipeline();
+    showToast(`${product.name}を${status}へ移動しました`);
+  }
+}
+
+function sendProductToRoomQueue(productId, shouldSave = true) {
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) return;
+  sendProductToPipeline(productId, "文章完成", false);
+  if (!state.roomQueue.some((item) => item.productId === productId && !item.done)) {
+    state.roomQueue.unshift({
+      id: createId(),
+      productId,
+      productName: product.name,
+      productUrl: product.url || "",
+      image: product.image || "",
+      copy: "",
+      done: false,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  if (shouldSave) {
+    saveState();
+    renderRoomQueue();
+    renderOpsPipeline();
+    showToast("ROOM文生成キューへ送りました");
+  }
+}
+
+function getDailyItem(productId) {
+  const selection = getLatestDailySelection();
+  return selection?.items?.find((item) => item.id === productId) || null;
+}
+
+function showDailyDetail(productId) {
+  const item = getDailyItem(productId);
+  if (!item) return;
+  const collections = (item.recommendedCollections || []).map((collection, index) => `${index + 1}. ${collection.name} 適合度${collection.score}`).join("\n");
+  const saleReasons = (item.salePotentialBreakdown?.factors || []).map((reason) => `+${reason.points} ${reason.label}`).join("\n");
+  const opReasons = (item.operationPriorityBreakdown?.factors || []).map((reason) => `+${reason.points} ${reason.label}`).join("\n");
+  alert(`総合ランク: ${item.rank}\n売れやすさ: ${item.salePotentialScore}\n運用優先度: ${item.operationPriorityScore}\n\n推奨コレクション\n${collections || "なし"}\n\n売れやすさ理由\n${saleReasons}\n\n運用理由\n${opReasons}\n\n重複/再投稿\n${item.repost?.status} / ${item.repost?.reason}`);
+}
+
+function renderOpsPipeline() {
+  const board = document.querySelector("#opsPipelineBoard");
+  if (!board) return;
+  state.postPlans ||= [];
+  const statuses = ["候補", "採用", "画像待ち", "画像完成", "文章完成", "投稿予約", "投稿済み", "成果確認済み"];
+  board.innerHTML = statuses.map((status) => {
+    const plans = state.postPlans.filter((plan) => plan.status === status).slice(0, 20);
+    return `<section class="pipeline-column"><h4>${status}<span>${plans.length}</span></h4>${plans.map(renderPipelineCard).join("") || "<p>なし</p>"}</section>`;
+  }).join("");
+}
+
+function renderPipelineCard(plan) {
+  const product = state.products.find((item) => item.id === plan.productId);
+  const collections = plan.recommendedCollections || [];
+  return `<article class="pipeline-card">
+    ${plan.image ? `<img src="${escapeHtml(plan.image)}" alt="">` : ""}
+    <strong>${escapeHtml(plan.productName || product?.name || "商品")}</strong>
+    <small>${escapeHtml(collections[0]?.name || "コレクション未確定")}</small>
+  </article>`;
+}
+
+function saveUserDecision(entityType, entityId, decision, beforeValue, afterValue, reason = "") {
+  state.userDecisions ||= [];
+  state.userDecisions.unshift({
+    id: createId(),
+    entityType,
+    entityId,
+    decision,
+    beforeValue,
+    afterValue,
+    reason,
+    createdAt: new Date().toISOString(),
+  });
+  state.userDecisions = state.userDecisions.slice(0, 500);
 }
 
 function renderHomeCommandCenter() {
@@ -916,7 +1270,7 @@ function bindForms() {
   document.querySelector("#productForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    state.products.unshift({
+    state.products.unshift(enrichProductForOps({
       id: createId(),
       name: form.get("name").trim(),
       url: form.get("url").trim(),
@@ -925,10 +1279,12 @@ function bindForms() {
       category: form.get("category"),
       price: form.get("price").trim(),
       hook: form.get("hook").trim(),
-    });
+    }));
     event.currentTarget.reset();
     saveState();
     renderProducts();
+    renderDailySelection();
+    renderOpsPipeline();
     renderProductOptions();
     renderRoomProductOptions();
     renderCoordinateOptions();
@@ -964,6 +1320,7 @@ function bindActions() {
   profileText.addEventListener("input", saveState);
   bindInstallButton();
   bindProductImporter();
+  bindOpsActions();
 
   document.querySelector("#copyProfile").addEventListener("click", () => copyText(profileText.value));
   document.querySelector("#resetProfile").addEventListener("click", () => {
@@ -1601,6 +1958,7 @@ function applyCloudState(payload) {
   suppressCloudSave = true;
   Object.keys(state).forEach((key) => delete state[key]);
   Object.assign(state, payload);
+  ensureOpsState(state);
   hasMeaningfulLocalData = true;
   localStorage.setItem("hanako-room-ops", JSON.stringify(state));
   profileText.value = state.profile || defaultProfile;
@@ -1609,6 +1967,8 @@ function applyCloudState(payload) {
   state.selectedCoordinatePhotoId ||= state.coordinatePhotos[0]?.id || "";
   applyAppearance();
   renderProducts();
+  renderDailySelection();
+  renderOpsPipeline();
   renderProductOptions();
   restoreGeneratorPreferences();
   renderRoomProductOptions();
@@ -1725,6 +2085,8 @@ function renderProducts() {
       state.products = state.products.filter((item) => item.id !== button.dataset.delete);
       saveState();
       renderProducts();
+      renderDailySelection();
+      renderOpsPipeline();
       renderProductOptions();
       renderRoomProductOptions();
       renderCoordinateOptions();
@@ -2502,8 +2864,9 @@ async function importProductForCoordinate(urlInput, button) {
         price: imported.price || product.price,
         hook: imported.hook || product.hook,
       });
+      Object.assign(product, enrichProductForOps(product));
     } else {
-      product = {
+      product = enrichProductForOps({
         id: createId(),
         name: imported.name || "楽天ROOMの商品",
         url,
@@ -2512,7 +2875,7 @@ async function importProductForCoordinate(urlInput, button) {
         category: imported.category || "その他",
         price: imported.price || "",
         hook: imported.hook || "コーデの雰囲気を整えやすい",
-      };
+      });
       state.products.unshift(product);
     }
     saveState();
