@@ -5283,16 +5283,18 @@ body {
   width: 46px;
   height: 46px;
   border-radius: 14px;
-  background: rgba(223, 111, 150, 0.14);
-  color: var(--rose-dark);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .primary-card .home-action-icon {
   background: rgba(255, 255, 255, 0.17);
-  color: #fff;
+}
+
+.home-action-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .home-action-card strong {
@@ -5320,6 +5322,63 @@ body {
   background:
     linear-gradient(135deg, rgba(255, 246, 249, 0.95), rgba(248, 255, 252, 0.84)),
     var(--panel);
+}
+
+.home-ai-collapsible {
+  padding: 0;
+}
+
+.home-ai-collapsible > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 18px;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 8px;
+  color: #31282c;
+  font-weight: 900;
+}
+
+.home-ai-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.home-ai-collapsible > summary::after {
+  content: "開く";
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--rose-dark);
+  font-size: 12px;
+  box-shadow: 0 3px 10px rgba(81, 54, 65, 0.08);
+}
+
+.home-ai-collapsible[open] > summary::after {
+  content: "閉じる";
+}
+
+.home-ai-collapsible > summary small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.home-ai-collapsible > .panel-heading,
+.home-ai-collapsible > .ai-agent-summary,
+.home-ai-collapsible > .ai-agent-layout,
+.home-ai-collapsible > .ai-plan-list {
+  margin-right: 18px;
+  margin-left: 18px;
+}
+
+.home-ai-collapsible > .panel-heading {
+  padding-top: 4px;
+}
+
+.home-ai-collapsible > .ai-plan-list {
+  padding-bottom: 18px;
 }
 
 .ai-agent-summary {
@@ -5605,6 +5664,266 @@ body {
   .ai-learning-summary,
   .ai-learning-grid,
   .ai-learning-question {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Products page usability refresh */
+.product-workflow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.product-workflow article {
+  padding: 12px 14px;
+  border: 1px solid rgba(223, 111, 150, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.product-workflow strong,
+.product-workflow span {
+  display: block;
+}
+
+.product-workflow strong {
+  color: #31282c;
+  font-size: 14px;
+}
+
+.product-workflow span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ops-hero-actions button,
+.ops-bulk-bar button,
+.daily-actions button,
+.recommendation-actions button,
+.product-card-actions button {
+  cursor: pointer;
+}
+
+.ops-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ops-bulk-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(164, 61, 100, 0.12);
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 800;
+}
+
+.ops-bulk-bar button,
+.daily-actions button,
+.product-card-actions button,
+.recommendation-actions button {
+  min-height: 40px;
+  border-color: rgba(164, 61, 100, 0.16);
+  background: #fff;
+  font-weight: 900;
+}
+
+.ops-bulk-bar button:hover,
+.daily-actions button:hover,
+.product-card-actions button:hover,
+.recommendation-actions button:hover {
+  border-color: rgba(223, 111, 150, 0.55);
+  background: #fff7fa;
+}
+
+.daily-card {
+  position: relative;
+}
+
+.daily-title-row button {
+  min-height: 34px;
+  border-color: rgba(223, 111, 150, 0.22);
+  background: #fff7fa;
+  color: var(--rose-dark);
+  font-weight: 900;
+}
+
+.daily-card-check input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--rose);
+}
+
+.daily-actions .primary {
+  min-width: 92px;
+}
+
+.product-register-panel {
+  margin-top: 18px;
+  border-color: rgba(223, 111, 150, 0.18);
+  background: linear-gradient(135deg, rgba(255, 248, 250, 0.98), rgba(255, 255, 255, 0.94));
+}
+
+.product-importer,
+.product-search-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid rgba(223, 111, 150, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.product-importer input,
+.product-search-box input {
+  min-height: 46px;
+  background: #fff;
+}
+
+.product-form {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(121, 92, 80, 0.13);
+  border-radius: 12px;
+  background: rgba(245, 238, 233, 0.52);
+}
+
+.product-list-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-end;
+  margin: 22px 0 10px;
+}
+
+.product-list-heading h3 {
+  margin: 0;
+}
+
+.product-list-heading span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.product-grid {
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  align-items: start;
+}
+
+.product-card {
+  display: grid;
+  min-width: 0;
+}
+
+.product-card-main {
+  display: grid;
+  gap: 7px;
+}
+
+.product-card-main .eyebrow {
+  margin: 0 0 3px;
+}
+
+.product-image {
+  width: 100%;
+  min-height: 190px;
+  background: #fff0f4;
+}
+
+.product-image-placeholder {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  color: var(--rose-dark);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.product-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.recommendation-list {
+  display: grid;
+}
+
+.recommendation-item {
+  min-width: 0;
+}
+
+.recommendation-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.recommendation-head span {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff0f4;
+  color: var(--rose-dark);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.recommendation-actions,
+.product-card-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.product-card-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.product-card-actions .primary {
+  background: #2f292c;
+}
+
+@media (max-width: 860px) {
+  .product-workflow,
+  .product-importer,
+  .product-search-box,
+  .recommendation-actions,
+  .product-card-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .product-list-heading,
+  .recommendation-head {
+    display: grid;
+    align-items: start;
+  }
+
+  .daily-card {
+    grid-template-columns: auto 86px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .daily-card > img,
+  .daily-placeholder {
+    width: 86px;
+    height: 86px;
+  }
+
+  .daily-reason-columns {
     grid-template-columns: 1fr;
   }
 }

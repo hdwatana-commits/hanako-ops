@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="コーディネート作成">
+  <rect x="8" y="8" width="80" height="80" rx="24" fill="#f9f0ff"/>
+  <path d="M47 20c-11 0-20 8-20 18v35h42V38c0-10-9-18-22-18Z" fill="#fff" stroke="#9b6bb2" stroke-width="3"/>
+  <path d="M36 42c8 6 17 6 25 0M37 55h23M36 68h24" stroke="#6f4a55" stroke-width="4" stroke-linecap="round"/>
+  <path d="M28 25l8-7 8 7-8 8-8-8ZM58 25l8-7 8 7-8 8-8-8Z" fill="#f3bfd3" stroke="#b85d83" stroke-width="2"/>
+</svg>

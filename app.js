@@ -917,10 +917,10 @@ function bindHomeActionHub() {
     if (runButton) runButton.click();
   });
   document.querySelector("#homeOpenRoom")?.addEventListener("click", () => activateView("room"));
-  document.querySelector("#homeOpenCollectionMaker")?.addEventListener("click", () => {
-    activateView("room");
+  document.querySelector("#homeOpenCoordinateMaker")?.addEventListener("click", () => {
+    activateView("coordinate");
     window.setTimeout(() => {
-      document.querySelector(".room-collection-maker")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelector("#coordinate")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 120);
   });
   document.querySelector("#homeRunLearningCycle")?.addEventListener("click", () => {
@@ -2961,9 +2961,12 @@ function renderProducts() {
     const card = document.createElement("article");
     card.className = "product-card";
     card.innerHTML = `
-      ${product.image ? `<img class="product-image" src="${escapeHtml(product.image)}" alt="" loading="lazy">` : ""}
-      <div>
-        <h4>${escapeHtml(product.name)}</h4>
+      ${product.image ? `<img class="product-image" src="${escapeHtml(product.image)}" alt="" loading="lazy">` : `<div class="product-image product-image-placeholder">PHOTO</div>`}
+      <div class="product-card-main">
+        <div>
+          <p class="eyebrow">${escapeHtml(product.category || "PRODUCT")}</p>
+          <h4>${escapeHtml(product.name)}</h4>
+        </div>
         <p class="muted">${escapeHtml(product.hook || "推しポイント未設定")}</p>
         ${cardFacts ? `<p class="muted">${escapeHtml(cardFacts)}</p>` : ""}
       </div>
@@ -2987,9 +2990,9 @@ function renderProducts() {
           </article>
         `).join("")}
       </div>
-      <div class="button-row">
-        <button data-use="${product.id}">投稿に使う</button>
-        ${product.category !== "ホテル・旅行" ? `<button data-room-use="${product.id}">ROOM文を作る</button>` : ""}
+      <div class="product-card-actions">
+        <button class="primary" data-use="${product.id}">SNS投稿へ</button>
+        ${product.category !== "ホテル・旅行" ? `<button data-room-use="${product.id}">ROOM文へ</button>` : ""}
         <button data-delete="${product.id}">削除</button>
       </div>
     `;

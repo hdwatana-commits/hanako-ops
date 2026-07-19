@@ -11,13 +11,13 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=178">
+    <link rel="stylesheet" href="styles.css?v=179">
     <script src="config.js"></script>
-    <script src="cloud-sync.js?v=178"></script>
-    <script src="ops-engine.js?v=178"></script>
-    <script src="ops-phase2-engine.js?v=178"></script>
-    <script src="ops-phase3-engine.js?v=178"></script>
-    <script src="ops-phase4-engine.js?v=178"></script>
+    <script src="cloud-sync.js?v=179"></script>
+    <script src="ops-engine.js?v=179"></script>
+    <script src="ops-phase2-engine.js?v=179"></script>
+    <script src="ops-phase3-engine.js?v=179"></script>
+    <script src="ops-phase4-engine.js?v=179"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -111,29 +111,33 @@
             </div>
             <div class="home-action-grid">
               <button class="home-action-card primary-card" id="homeRunAiAgent" type="button">
-                <span class="home-action-icon">AI</span>
+                <span class="home-action-icon"><img src="icons/home-action-ai.svg" alt=""></span>
                 <strong>今日の投稿準備</strong>
                 <small>商品選定・投稿文・画像プロンプトをまとめて作る</small>
               </button>
               <button class="home-action-card" id="homeOpenRoom" type="button">
-                <span class="home-action-icon">ROOM</span>
-                <strong>ROOM投稿を作る</strong>
+                <span class="home-action-icon"><img src="icons/home-action-room.svg" alt=""></span>
+                <strong>ROOM画像を作る</strong>
                 <small>URLからレビュー文と画像プロンプトを作成</small>
               </button>
-              <button class="home-action-card" id="homeOpenCollectionMaker" type="button">
-                <span class="home-action-icon">COL</span>
-                <strong>新規コレクション</strong>
-                <small>件名・本文・表紙画像プロンプトを作る</small>
+              <button class="home-action-card" id="homeOpenCoordinateMaker" type="button">
+                <span class="home-action-icon"><img src="icons/home-action-coordinate.svg" alt=""></span>
+                <strong>新規コーディネート作成</strong>
+                <small>商品を選んでコーデ文と画像プロンプトを作る</small>
               </button>
               <button class="home-action-card" id="homeRunLearningCycle" type="button">
-                <span class="home-action-icon">UP</span>
+                <span class="home-action-icon"><img src="icons/home-action-learning.svg" alt=""></span>
                 <strong>AI反省会</strong>
                 <small>売れた理由と明日の改善案を確認</small>
               </button>
             </div>
           </section>
 
-          <section class="ai-agent-dashboard panel" aria-labelledby="aiAgentTitle">
+          <details class="ai-agent-dashboard panel home-ai-collapsible" open>
+            <summary>
+              <span>AIが今日の投稿準備を作る</span>
+              <small>クリックで開閉</small>
+            </summary>
             <div class="panel-heading">
               <div>
                 <p class="eyebrow">AI ROOM AGENT</p>
@@ -157,7 +161,7 @@
               </div>
             </div>
             <div class="ai-plan-list" id="aiPlanList"></div>
-          </section>
+          </details>
 
           <section class="ai-learning-dashboard panel" aria-labelledby="aiLearningTitle">
             <div class="panel-heading">
@@ -566,6 +570,20 @@
                 <button id="showAllDailyCandidates" type="button">候補200を見る</button>
               </div>
             </div>
+            <div class="product-workflow">
+              <article>
+                <strong>1. おすすめ作成</strong>
+                <span>登録済み商品からSランクだけを表示</span>
+              </article>
+              <article>
+                <strong>2. 採用・除外</strong>
+                <span>迷う商品だけ保留。不要なら除外</span>
+              </article>
+              <article>
+                <strong>3. 画像/ROOMへ送る</strong>
+                <span>採用商品をまとめて投稿準備へ</span>
+              </article>
+            </div>
             <div class="ops-kpi-grid" id="opsKpiGrid"></div>
             <div class="ops-bulk-bar">
               <label><input id="selectAllDailyVisible" type="checkbox"> 表示中を選択</label>
@@ -623,10 +641,13 @@
             </section>
           </div>
 
-          <div class="panel">
+          <div class="panel product-register-panel">
             <div class="panel-heading">
-              <h3>商品を登録</h3>
-              <span class="muted">楽天ROOMに載せたい候補を貯める</span>
+              <div>
+                <p class="eyebrow">PRODUCT SOURCE</p>
+                <h3>商品を登録・検索</h3>
+              </div>
+              <span class="muted">URLか検索から候補を貯める</span>
             </div>
             <div class="product-importer">
               <div>
@@ -689,6 +710,13 @@
               <input name="hook" placeholder="推しポイント 例: 甘めだけど通勤にも使える">
               <button class="primary" type="submit">追加</button>
             </form>
+          </div>
+          <div class="product-list-heading">
+            <div>
+              <p class="eyebrow">SAVED PRODUCTS</p>
+              <h3>登録済み商品</h3>
+            </div>
+            <span>カード内のボタンからSNS・ROOMへすぐ送れます</span>
           </div>
           <div class="product-grid" id="productGrid"></div>
         </section>
@@ -1656,7 +1684,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=178"></script>
-    <script src="app.js?v=178"></script>
+    <script src="room-review-generator.js?v=179"></script>
+    <script src="app.js?v=179"></script>
   </body>
 </html>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="AI投稿準備">
+  <defs>
+    <linearGradient id="g" x1="18" y1="10" x2="78" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffe4ef"/>
+      <stop offset="1" stop-color="#f2fff8"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="80" height="80" rx="24" fill="url(#g)"/>
+  <path d="M29 30h38a8 8 0 0 1 8 8v24a8 8 0 0 1-8 8H37L24 78V38a8 8 0 0 1 5-8Z" fill="#fff" stroke="#d76f96" stroke-width="3"/>
+  <path d="M35 55c8-13 17-13 26 0M39 39h18M39 48h10" fill="none" stroke="#6f4a55" stroke-width="5" stroke-linecap="round"/>
+  <path d="M69 22l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z" fill="#d76f96"/>
+</svg>
