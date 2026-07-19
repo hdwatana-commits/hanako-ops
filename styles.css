@@ -5381,7 +5381,11 @@ body {
 .home-ai-collapsible > .panel-heading,
 .home-ai-collapsible > .ai-agent-summary,
 .home-ai-collapsible > .ai-agent-layout,
-.home-ai-collapsible > .ai-plan-list {
+.home-ai-collapsible > .ai-plan-list,
+.home-ai-collapsible > .ai-learning-summary,
+.home-ai-collapsible > .ai-learning-grid,
+.home-ai-collapsible > .ai-learning-question,
+.home-ai-collapsible > .ai-learning-answer {
   margin-right: 18px;
   margin-left: 18px;
 }
@@ -5392,6 +5396,10 @@ body {
 
 .home-ai-collapsible > .ai-plan-list {
   padding-bottom: 18px;
+}
+
+.home-ai-collapsible > .ai-learning-answer {
+  margin-bottom: 18px;
 }
 
 .ai-agent-summary {

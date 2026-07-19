@@ -11,13 +11,13 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=180">
+    <link rel="stylesheet" href="styles.css?v=181">
     <script src="config.js"></script>
-    <script src="cloud-sync.js?v=180"></script>
-    <script src="ops-engine.js?v=180"></script>
-    <script src="ops-phase2-engine.js?v=180"></script>
-    <script src="ops-phase3-engine.js?v=180"></script>
-    <script src="ops-phase4-engine.js?v=180"></script>
+    <script src="cloud-sync.js?v=181"></script>
+    <script src="ops-engine.js?v=181"></script>
+    <script src="ops-phase2-engine.js?v=181"></script>
+    <script src="ops-phase3-engine.js?v=181"></script>
+    <script src="ops-phase4-engine.js?v=181"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -163,7 +163,11 @@
             <div class="ai-plan-list" id="aiPlanList"></div>
           </details>
 
-          <section class="ai-learning-dashboard panel" aria-labelledby="aiLearningTitle">
+          <details class="ai-learning-dashboard panel home-ai-collapsible home-learning-collapsible">
+            <summary>
+              <span>AIセルフラーニング</span>
+              <small>クリックで開閉</small>
+            </summary>
             <div class="panel-heading">
               <div>
                 <p class="eyebrow">AI SELF LEARNING</p>
@@ -198,7 +202,7 @@
               <button type="submit">Knowledge DBに聞く</button>
             </form>
             <div class="ai-learning-answer" id="aiLearningAnswer"></div>
-          </section>
+          </details>
 
           <section class="home-avatar-coverflow-picker" aria-labelledby="homeAvatarCoverflowTitle">
             <div class="home-avatar-coverflow-heading">
@@ -1684,7 +1688,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=180"></script>
-    <script src="app.js?v=180"></script>
+    <script src="room-review-generator.js?v=181"></script>
+    <script src="app.js?v=181"></script>
   </body>
 </html>
