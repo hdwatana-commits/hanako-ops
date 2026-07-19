@@ -10,21 +10,24 @@ function generatePostText({ name, shopName, genreName, features, targetTags, cat
   const featureB = resolvedFeatures[1] || "着回し力";
   const productLabel = `${brand ? `${brand}の` : ""}${name}`;
   const seed = `${name} ${catchcopy} ${featureA} ${featureB} variation-${variationSeed}`;
-  const worry = inferWorry(category, resolvedFeatures, seed);
-  const openingLine = inferOpeningLine(category, worry, seed);
-  const lead = inferLead(category, featureA, featureB, seed);
-  const detail = inferDetail(category, featureA, featureB, seed);
-  const salesLine = inferSalesLine(category, featureA, featureB, seed);
-  const clickLine = inferClickLine(category, featureA, featureB, seed);
-  const trustLine = inferTrustLine(category, featureA, featureB, seed);
-  const finalPushLine = inferFinalPushLine(category, seed);
-  const humanLine = inferReaderEmpathyLine(category, featureA, featureB, seed);
+  const copySeed = buildReviewCopySeed(category, seed);
+  const openingEmojiSeed = nextOpeningEmojiSeed(copySeed);
+  const worry = inferWorry(category, resolvedFeatures, copySeed);
+  const openingLine = applyOpeningEmoji(inferOpeningLine(category, worry, copySeed, featureA, featureB), category, openingEmojiSeed);
+  const lead = inferLead(category, featureA, featureB, copySeed);
+  const detail = inferDetail(category, featureA, featureB, copySeed);
+  const salesLine = inferSalesLine(category, featureA, featureB, copySeed);
+  const clickLine = inferClickLine(category, featureA, featureB, copySeed);
+  const trustLine = inferTrustLine(category, featureA, featureB, copySeed);
+  const finalPushLine = inferFinalPushLine(category, copySeed);
+  const humanLine = inferReaderEmpathyLine(category, featureA, featureB, copySeed);
   const focusedCategory = isFocusedCategory(category) || category.includes("ランジェリー");
-  const concreteCouponLine = inferConcreteCouponLine(seed);
-  const buyerLine = concreteCouponLine || pickByHash(focusedCategory ? [salesLine, clickLine] : [salesLine, clickLine, trustLine, finalPushLine], `${seed} buyer`);
-  const points = inferPoints(category, resolvedFeatures, seed);
-  const coords = inferCoords(category, resolvedFeatures, seed);
-  const tags = targetTags.slice(0, 8);
+  const buyerLine = pickByHash(focusedCategory ? [salesLine, clickLine] : [salesLine, clickLine, trustLine, finalPushLine], `${copySeed} buyer`);
+  const points = inferPoints(category, resolvedFeatures, copySeed)
+    .map((point) => convertCheckPointToBenefit(point, category, copySeed));
+  const coords = inferCoords(category, resolvedFeatures, copySeed);
+  const tags = targetTags.slice(0, 12);
+  const usageHeading = isNonFashionCategory(category) ? "💫おすすめの楽しみ方" : "💫コーデ＆使い方";
 
   const post = `${openingLine}
 
@@ -38,7 +41,7 @@ ${buyerLine}
 ・${decoratePoint(points[1], 1, category, seed)}
 ・${decoratePoint(points[2], 2, category, seed)}
 
-💫コーデ＆使い方
+${usageHeading}
 ${coordEmoji(category, seed, 0)}${coords[0]}${endingEmoji(category, seed, "coord-1")}
 ${coordEmoji(category, seed, 1)}${coords[1]}${endingEmoji(category, seed, "coord-2")}
 
@@ -57,7 +60,7 @@ ${tags.join(" ")}`;
     worry,
     openingLine,
     tags,
-    seed,
+    seed: copySeed,
     lead,
     detail,
     humanLine,
@@ -127,23 +130,53 @@ function polishPostText(text) {
     .replace(/！！+/g, "！")
     .replace(/です！([🔍◎])/g, "です$1")
     .replace(/ます！([🔍◎])/g, "ます$1");
-  return `${benefitizeRoomCopy(next)}${tagBlock}`;
+  return `${next}${tagBlock}`;
 }
 
-function benefitizeRoomCopy(text) {
-  const replacements = [
-    [/袖丈を確認したい/g, "袖のバランスで華奢見えを狙える"],
-    [/袖まわりを確認したい/g, "袖まわりがすっきり見えやすい"],
-    [/丈感を確認したい/g, "バランスよく着こなしやすい丈感"],
-    [/サイズ感を確認したい/g, "自分に合うサイズを選びやすい"],
-    [/収納力を確認したい/g, "必要な荷物をすっきりまとめやすい"],
-    [/素材(?:感)?を確認したい/g, "素材感で上品に見せやすい"],
-    [/セット内容を確認したい/g, "セットでコーデをまとめやすい"],
-    [/裏地を確認したい/g, "透けを気にせず着こなしやすい"],
-    [/袖丈や首元の開きで印象が変わるので、商品ページで着用写真を見たいです/g, "袖と首元のバランスで、顔まわりをすっきり見せやすいです"],
-    [/クーポンや在庫状況でお得感が変わるので、気になったタイミングで確認しておくのがおすすめです✨/g, "手持ち服に合う色を選ぶと、着回しの幅がぐっと広がります✨"],
+let openingEmojiRotation = 0;
+const OPENING_EMOJI_SOURCE = "(?:☁️|👗|🎀|👜|👟|💍|🧢|🕶️|🌂|🧸|🍰|🍫|☕|🍵|🥤|🍽️|🍚|🥣|🍳|🧴|💄|✨|🏠|🧺|🌿|🐾|🎁|📝|🎮|🔌|💫)";
+const OPENING_EMOJI_PATTERN = new RegExp(`^${OPENING_EMOJI_SOURCE}`, "u");
+
+function nextOpeningEmojiSeed(seed) {
+  openingEmojiRotation = (openingEmojiRotation + 1) % 997;
+  return `${seed} opening emoji ${openingEmojiRotation}`;
+}
+
+function openingEmojiForCategory(category, seed) {
+  const text = String(category || "");
+  const groups = [
+    [/ワンピ|トップス|パンツ|スカート|カーディガン|アウター|セットアップ|オールインワン|デニム|ニット|スーツ|レッグウェア|水際ファッション|フォーマル|ルームウェア|浴衣|マタニティ|インナー|ランジェリー|スポーツウェア|レインウェア|ブライダル/, ["👗", "🎀", "✨", "💫"]],
+    [/バッグ|財布|ファッション小物/, ["👜", "🎀", "✨"]],
+    [/シューズ/, ["👟", "✨", "💫"]],
+    [/アクセサリー|腕時計|ヘアアクセサリー|ベルト/, ["💍", "✨", "🎀"]],
+    [/帽子|サングラス|手袋|アームカバー|傘|ストール/, ["🧢", "🕶️", "🌂", "✨"]],
+    [/スイーツ/, ["🍰", "🍫", "🎁", "✨"]],
+    [/食品/, ["🍽️", "🍚", "🥣", "✨"]],
+    [/飲料/, ["☕", "🍵", "🥤", "✨"]],
+    [/キッチン用品/, ["🍳", "🥣", "✨"]],
+    [/日用品|収納|インテリア/, ["🏠", "🧺", "🌿", "✨"]],
+    [/コスメ|スキンケア|美容家電/, ["💄", "🧴", "✨"]],
+    [/家電/, ["🔌", "🏠", "✨"]],
+    [/ベビー・キッズ|おもちゃ/, ["🧸", "🎁", "✨"]],
+    [/ペット用品/, ["🐾", "🌿", "✨"]],
+    [/健康|スポーツ・アウトドア/, ["🌿", "✨", "💫"]],
+    [/文房具/, ["📝", "✨", "🎀"]],
   ];
-  return replacements.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), String(text || ""));
+  const matched = groups.find(([pattern]) => pattern.test(text));
+  return pickByHash(matched ? matched[1] : ["✨", "💫", "🎀", "☁️"], `${seed} opening emoji`);
+}
+
+function openingEmojiFromLine(line, fallback = "☁️") {
+  const match = String(line || "").match(OPENING_EMOJI_PATTERN);
+  return match ? match[0] : fallback;
+}
+
+function removeOpeningEmoji(line) {
+  return String(line || "").replace(OPENING_EMOJI_PATTERN, "");
+}
+
+function applyOpeningEmoji(line, category, seed) {
+  return `${openingEmojiForCategory(category, seed)}${removeOpeningEmoji(line)}`;
 }
 
 function fitPostText(post, parts) {
@@ -159,9 +192,10 @@ function fitPostText(post, parts) {
   }
 
   const shortWorry = truncateText(parts.worry, 58);
+  const fallbackOpeningEmoji = openingEmojiFromLine(parts.openingLine, openingEmojiForCategory(parts.category, parts.seed));
   const shortOpeningLine = parts.openingLine && parts.openingLine.includes("今")
     ? truncateSaleOpeningLine(parts.openingLine)
-    : `☁️“${shortWorry}”を解決♡`;
+    : `${fallbackOpeningEmoji}“${shortWorry}”を解決♡`;
   const shortTags = parts.tags.slice(0, 6);
   const post2 = `${shortOpeningLine}
 
@@ -188,7 +222,7 @@ ${shortTags.join(" ")}`;
 
   const compactOpeningLine = parts.openingLine && parts.openingLine.includes("今")
     ? truncateSaleOpeningLine(parts.openingLine, 46)
-    : `☁️“${truncateText(parts.worry, 42)}”を解決♡`;
+    : `${fallbackOpeningEmoji}“${truncateText(parts.worry, 42)}”を解決♡`;
   const post3 = `${compactOpeningLine}
 
 ${truncateText(parts.lead, 58)}
@@ -215,14 +249,78 @@ ${shortTags.slice(0, 5).join(" ")}`;
   return trimToLimit(post3, MAX_POST_CHARS);
 }
 
-function inferOpeningLine(category, worry, seed) {
+function inferOpeningLine(category, worry, seed, featureA = "", featureB = "") {
   const sale = inferSaleSignal(seed);
-  if (!sale) return `☁️“${worry}”を解決♡`;
-
   const item = inferSaleItemLabel(category, seed);
   const concern = summarizeConcernForSale(worry, category);
+  const feature = truncateText(cleanText(featureA) || cleanText(featureB) || "使いやすさ", 18);
+  const nonFashion = isNonFashionCategory(category);
+  const accessoryOpening = /サングラス|帽子|財布|ファッション小物|腕時計|ストール|ベルト|手袋|アームカバー|傘|ヘアアクセサリー/.test(String(category || ""));
+  const curiosityChoices = nonFashion ? [
+    `☁️“${item}選びで迷っている人へ。${feature}、ここは見逃せない…”♡`,
+    `☁️“便利そうで終わらない？${feature}なら中身まで確認したい…”♡`,
+    `☁️“${concern}…でも${feature}なら、選ぶ候補が変わるかも”♡`,
+    `☁️“これ本当に使う？と迷ったら、${feature}をまず見てほしい…”♡`,
+    `☁️“毎日の小さな不満、${feature}で変わるなら詳しく見たい…”♡`,
+    `☁️“${item}は結局どれがいい？${feature}が選ぶヒントになりそう”♡`,
+    `☁️“買ってから後悔したくない${item}。気になる答えは${feature}…”♡`,
+    `☁️“今の暮らしに合う？${feature}まで分かると判断しやすい”♡`,
+  ] : accessoryOpening ? [
+    `☁️“かけた時の印象、${feature}ならレビューまで見たい…”♡`,
+    `☁️“小物で失敗したくない人へ。${feature}が選ぶ決め手になりそう”♡`,
+    `☁️“顔まわりが変わるかも。秘密は${feature}…”♡`,
+    `☁️“買ってから使わないを避けたい。${feature}なら出番が増えそう”♡`,
+    `☁️“写真で気になった人へ。${feature}は実物感まで見たい…”♡`,
+    `☁️“普段使いで浮かない？${feature}なら合わせやすそう”♡`,
+    `☁️“${concern}…その迷い、${feature}で変わるかも”♡`,
+    `☁️“手持ち服に合う？${feature}なら小物選びの答えが見つかりそう”♡`,
+  ] : [
+    `☁️“可愛いだけじゃない。${feature}まで叶うなら詳しく見たい…”♡`,
+    `☁️“${concern}なら見て。${feature}が選ぶ決め手になりそう”♡`,
+    `☁️“いつものコーデが変わるかも。秘密は${feature}…”♡`,
+    `☁️“買ってから着ないを避けたい。${feature}なら出番が増えそう”♡`,
+    `☁️“写真で気になった人へ。${feature}はレビューまで見たい…”♡`,
+    `☁️“これ、着た時の印象が気になる。${feature}に注目です”♡`,
+    `☁️“${concern}…その迷い、${feature}で変わるかも”♡`,
+    `☁️“手持ち服に合う？${feature}ならコーデの答えが見つかりそう”♡`,
+  ];
+
+  if (!sale) {
+    return pickByHash(
+      dedupeText(curiosityChoices).filter((line) => countChars(line) <= 64),
+      `${seed} curiosity opening`
+    );
+  }
+
+  if (sale.type === "coupon") {
+    const couponDiscount = sale.amount
+      ? (/%$/.test(sale.amount) ? `${sale.amount}OFF` : `${sale.amount}円OFF`)
+      : "";
+    const couponText = sale.amount
+      ? `今なら${couponDiscount}クーポン配布中！なくなる前に急いで✨`
+      : `今ならクーポン配布中！${feature}が気になる方は終了前にチェック✨`;
+    const couponChoices = sale.amount ? [
+      `☁️“${couponText}”♡`,
+      `☁️“${couponDiscount}は見逃せない！${feature}も今すぐチェック✨”♡`,
+      `☁️“迷っていた${item}、今なら${couponDiscount}！終了前に見ておきたい”♡`,
+    ] : [
+      `☁️“${couponText}”♡`,
+      `☁️“迷っていた${item}にクーポン！${feature}まで今すぐ見たい✨”♡`,
+      `☁️“クーポンが使える今、${feature}なら候補から外せない…”♡`,
+    ];
+    return pickByHash(
+      couponChoices.filter((line) => countChars(line) <= 64),
+      `${seed} coupon opening`
+    );
+  }
+
   const saleScene = inferSaleScene(seed);
   const choices = [
+    `☁️“${feature}が気になる${item}、${sale.label}の今に中身を見たい…”♡`,
+    `☁️“迷っていた${item}が${sale.label}。${feature}まで確認したい…”♡`,
+    `☁️“${sale.label}でも、お得なだけで選ばない。${feature}ならレビューも見たくなる”♡`,
+    `☁️“${sale.label}を逃す前に、${feature}が本当に合うか見ておきたい”♡`,
+    ...curiosityChoices,
     `☁️“${concern}…でも${sale.label}中なら試しやすいかも”を解決♡`,
     `☁️“${concern}なら、${sale.label}の今こそ候補に入れたい…”♡`,
     `☁️“${item}選びで${concern}。${sale.label}なら今チェックしたい…”♡`,
@@ -234,6 +332,7 @@ function inferOpeningLine(category, worry, seed) {
     `☁️“${sale.label}対象の${item}、${concern}なら早めに確認したい…”♡`,
     `☁️“${saleScene}用の${item}が欲しい。${concern}なら今が見どき…”♡`,
   ];
+  const highIntentChoiceCount = 4;
 
   if (sale.type === "coupon") {
     choices.push(
@@ -283,13 +382,15 @@ function inferOpeningLine(category, worry, seed) {
   }
 
   return pickByHash(
-    dedupeText(choices).filter((line) => countChars(line) <= 64),
+    dedupeText(choices.slice(0, highIntentChoiceCount)).filter((line) => countChars(line) <= 64),
     `${seed} sale opening`
   );
 }
 
 function inferSaleItemLabel(category, seed) {
   const text = String(seed || "");
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return nonFashion.label;
   if (category.includes("シューズ")) {
     if (/サンダル/.test(text)) return "サンダル";
     if (/パンプス/.test(text)) return "パンプス";
@@ -309,6 +410,9 @@ function inferSaleItemLabel(category, seed) {
 
 function summarizeConcernForSale(worry, category = "") {
   const source = String(worry || "");
+  if (isNonFashionCategory(category)) {
+    return truncateText(source.replace(/[…。]+$/g, ""), 28);
+  }
   if (category.includes("シューズ")) return "歩きやすさやサイズ感が気になる";
   if (category.includes("バッグ")) return "荷物の収まりや持ちやすさが気になる";
   if (category.includes("ランジェリー") || category.includes("インナー")) return "ラクさときれい見えを両方選びたい";
@@ -347,6 +451,16 @@ function inferSaleScene(seed) {
 
 function inferSaleSignal(seed) {
   const text = String(seed || "");
+  const yenCoupon = text.match(/(?:クーポン[^\d]{0,16})?([1-9]\d{0,2}(?:,\d{3})+|[1-9]\d{0,5})\s*円\s*(?:OFF|オフ|引き|割引)?[^\n]{0,12}クーポン|クーポン[^\d]{0,16}([1-9]\d{0,2}(?:,\d{3})+|[1-9]\d{0,5})\s*円\s*(?:OFF|オフ|引き|割引)?/i);
+  if (yenCoupon) {
+    const amount = String(yenCoupon[1] || yenCoupon[2] || "").replace(/,/g, "");
+    return { type: "coupon", label: `${Number(amount).toLocaleString("ja-JP")}円OFFクーポン`, amount: Number(amount).toLocaleString("ja-JP") };
+  }
+  const percentCoupon = text.match(/([1-9]\d?)\s*%\s*(?:OFF|オフ|割引)?[^\n]{0,12}クーポン|クーポン[^\d]{0,16}([1-9]\d?)\s*%\s*(?:OFF|オフ|割引)?/i);
+  if (percentCoupon) {
+    const amount = `${percentCoupon[1] || percentCoupon[2]}%`;
+    return { type: "coupon", label: `${amount}OFFクーポン`, amount: `${amount}` };
+  }
   const percent = text.match(/([1-9]\d?)\s?%[ 　]*(OFF|オフ|割引|還元)/i);
   const points = text.match(/(ポイント|P)[ 　]*([2-9]|[1-9]\d)倍/i);
   if (/半額|50\s?%[ 　]*(OFF|オフ|割引)/i.test(text)) return { type: "discount", label: "半額級セール" };
@@ -363,28 +477,16 @@ function inferSaleSignal(seed) {
   return null;
 }
 
-function inferConcreteCouponLine(seed) {
-  const text = String(seed || "");
-  const yenMatch = text.match(/(?:クーポン[^\d]{0,12})?(\d{1,3}(?:,\d{3})+|\d+)\s*円\s*(?:OFF|オフ|引き)(?:クーポン)?/i)
-    || text.match(/(\d{1,3}(?:,\d{3})+|\d+)\s*円\s*(?:OFF|オフ|引き)[^\n]{0,12}クーポン/i);
-  const percentMatch = text.match(/(?:クーポン[^\d]{0,12})?([1-9]\d?)\s*%\s*(?:OFF|オフ|割引)(?:クーポン)?/i)
-    || text.match(/([1-9]\d?)\s*%\s*(?:OFF|オフ|割引)[^\n]{0,12}クーポン/i);
-  const limited = /期間限定|先着|数量限定|本日限定|なくなり次第/.test(text);
-  const suffix = limited
-    ? "条件が合ううちにチェック✨"
-    : "利用条件と期限を商品ページでチェック✨";
-  if (yenMatch) return `今なら${yenMatch[1]}円OFFクーポン対象！${suffix}`;
-  if (percentMatch) return `今なら${percentMatch[1]}%OFFクーポン対象！${suffix}`;
-  return "";
-}
-
 function truncateSaleOpeningLine(line, max = 56) {
   if (countChars(line) <= max) return line;
-  const inner = String(line || "").replace(/^☁️“/, "").replace(/”♡$/, "");
-  return `☁️“${truncateText(inner, Math.max(24, max - 5))}”♡`;
+  const emoji = openingEmojiFromLine(line);
+  const inner = removeOpeningEmoji(line).replace(/^“/, "").replace(/”♡$/, "");
+  return `${emoji}“${truncateText(inner, Math.max(24, max - 5))}”♡`;
 }
 
 function inferWorry(category, features, seed) {
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return pickByHash(nonFashion.worries, `${seed} non-fashion worry`);
   const featureText = features.join(" ");
   const featureWorries = [];
 
@@ -1288,6 +1390,8 @@ function buildEvidenceBackedConversionLines(category, featureA, featureB, seed) 
 }
 
 function inferLead(category, featureA, featureB, seed) {
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return pickByHash(nonFashion.leads, `${seed} non-fashion lead`);
   const featureText = `${featureA} ${featureB}`;
   const signals = inferProductSignals(seed);
   const categoryCopy = inferCategoryCopy(category, featureA, featureB);
@@ -1424,6 +1528,8 @@ function inferLead(category, featureA, featureB, seed) {
 }
 
 function inferDetail(category, featureA, featureB, seed) {
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return pickByHash(nonFashion.details, `${seed} non-fashion detail`);
   const signals = inferProductSignals(seed);
   const categoryCopy = inferCategoryCopy(category, featureA, featureB);
   const variation = buildReviewVariationLines(category, featureA, featureB, seed);
@@ -1560,6 +1666,8 @@ function inferDetail(category, featureA, featureB, seed) {
 }
 
 function inferSalesLine(category, featureA, featureB, seed) {
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return pickByHash(nonFashion.sales, `${seed} non-fashion sales`);
   const signals = inferProductSignals(seed);
   const categoryCopy = inferCategoryCopy(category, featureA, featureB);
   const variation = buildReviewVariationLines(category, featureA, featureB, seed);
@@ -2667,7 +2775,7 @@ function addSpecializedCategoryCopy(copy, category, featureA, featureB) {
       leads: [`${featureA}の表情で、顔まわりをやさしく明るく見せてくれます✨`, `${featureB}なら着膨れを抑えながら、女性らしいシルエットになじみそうです💖`, `シンプルでも素材感に表情があり、1枚で寂しく見えにくいニットです🎀`],
       details: [`首元や袖の形で印象が変わるので、着用写真を見ながら選びたいです🔍`, `スカートにもパンツにも合わせやすく、オンオフの着回しに便利です✨`, `チクチク感や毛玉のできやすさは、素材表示とレビューで確認しておくと安心です◎`],
       sales: [`肌触りがよく着回しやすいニットは、色違いまで欲しくなりそうです💖`, `定番だからこそ、着た時のシルエットがきれいな一枚を選びたいです✨`],
-      clicks: [`肌触りや厚みをレビューで確認したいです🔍`, `首元の開きや袖丈を着用写真で見ておきたいです◎`],
+      clicks: [`肌触りや厚みはレビューでわかると安心です🔍`, `首元の抜け感と袖丈で華奢見えしやすいのが魅力です◎`],
       coords: ["きれいめパンツで通勤に", "フレアスカートで女性らしく", "デニムで大人カジュアルに"],
       points: ["顔まわりが明るい", "着膨れしにくい", "肌触りを確認", "オンオフ着回せる", "1枚で着映える"],
     },
@@ -3170,7 +3278,7 @@ function addExpandedFashionCopy(copy, category, featureA, featureB) {
       `二の腕カバー系は人気が出やすいので、気になるサイズは早めに見たいです💖`,
     ]);
     add("clicks", [
-      `首元の開きや袖丈は、着用写真で確認したいです🔍`,
+      `首元の抜け感と袖丈で、華奢見えしやすいかが大事です✨`,
       `透け感やインナーの必要性はレビューで見ておきたいです◎`,
       `ボトムインした時の丈感も商品ページで確認したいです✨`,
       `洗濯後のシワ感や生地感もレビューが参考になります💖`,
@@ -3182,7 +3290,7 @@ function addExpandedFashionCopy(copy, category, featureA, featureB) {
       "ジャンスカのインナーにも",
       "ジャケットの中に入れてきれいめに",
     ]);
-    add("points", ["1枚で着映える", "手持ちボトムに合う", "顔まわりが華やぐ", "袖丈を確認したい", "買い足しに便利"]);
+    add("points", ["1枚で着映える", "手持ちボトムに合う", "顔まわりが華やぐ", "絶妙な袖丈で華奢に見える", "買い足しに便利"]);
   }
 
   if (category.includes("パンツ")) {
@@ -3579,6 +3687,17 @@ function inferProductSignals(seed) {
 
 function inferClickLine(category, featureA, featureB, seed) {
   const text = String(seed || "");
+  const sale = inferSaleSignal(seed);
+  if (sale && sale.type === "coupon") {
+    const couponDiscount = sale.amount
+      ? (/%$/.test(sale.amount) ? `${sale.amount}OFF` : `${sale.amount}円OFF`)
+      : "";
+    return couponDiscount
+      ? `${couponDiscount}クーポン配布中！なくなる前に商品ページをチェックしたいです✨`
+      : `今ならクーポン配布中！終了前に商品ページをチェックしたいです✨`;
+  }
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return pickByHash(nonFashion.clicks, `${seed} non-fashion click`);
   const categoryCopy = inferCategoryCopy(category, featureA, featureB);
   const variation = buildReviewVariationLines(category, featureA, featureB, seed);
   const conversion = buildEvidenceBackedConversionLines(category, featureA, featureB, seed);
@@ -3587,7 +3706,7 @@ function inferClickLine(category, featureA, featureB, seed) {
     `人気カラーは早めに動くこともあるので、気になる色があるうちにチェックしておきたいです✨`,
     `実際のレビューで丈感や生地感を確認すると、自分に合うかイメージしやすいです💖`,
     `手持ち服に合う色を選べば出番が増えそうなので、カラバリまで見ておきたいアイテムです🎀`,
-    `クーポンや在庫状況でお得感が変わるので、気になったタイミングで確認しておくのがおすすめです✨`,
+    `お得な情報があるうちに、商品ページで今の条件をチェックしたいです✨`,
     `着用写真を見ると雰囲気がつかみやすいので、購入前にシルエットをチェックしたいです👗`,
   ];
   if (isFocusedCategory(category) && categoryCopy.clicks.length) {
@@ -3628,6 +3747,8 @@ function inferClickLine(category, featureA, featureB, seed) {
 }
 
 function inferTrustLine(category, featureA, featureB, seed) {
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return pickByHash(nonFashion.trusts, `${seed} non-fashion trust`);
   const text = String(seed || "");
   const categoryCopy = inferCategoryCopy(category, featureA, featureB);
   const variation = buildReviewVariationLines(category, featureA, featureB, seed);
@@ -3666,6 +3787,8 @@ function inferTrustLine(category, featureA, featureB, seed) {
 }
 
 function inferFinalPushLine(category, seed) {
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return pickByHash(nonFashion.pushes, `${seed} non-fashion final`);
   const choices = [
     `気になる方は、在庫とカラーを早めに見ておきたいです✨🛒`,
     `お気に入り登録して比較しておくのもおすすめです💖🔍`,
@@ -3970,6 +4093,8 @@ function inferHumanLine(category, featureA, featureB, seed) {
 }
 
 function inferReaderEmpathyLine(category, featureA, featureB, seed) {
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return pickByHash(nonFashion.humans, `${seed} non-fashion empathy`);
   const text = String(seed || "");
   const variation = buildReviewVariationLines(category, featureA, featureB, seed);
   const conversion = buildEvidenceBackedConversionLines(category, featureA, featureB, seed);
@@ -4138,10 +4263,10 @@ function decoratePoint(point, index, category = "", seed = "") {
 }
 
 function diversifyPostEmojis(text, category, seed) {
-  const protectedLines = /^(☁️|✔|💫コーデ|🍀|🐾|#|・)/;
+  const protectedLinePrefixes = new RegExp(`^(?:${OPENING_EMOJI_SOURCE}“|✔|💫コーデ|🍀|🐾|#|・)`, "u");
   let lineIndex = 0;
   return String(text || "").split("\n").map((line) => {
-    if (!line || protectedLines.test(line)) return line;
+    if (!line || protectedLinePrefixes.test(line)) return line;
     const nextEmoji = endingEmoji(category, seed, `body-${lineIndex++}`);
     return line.replace(/[✨💖🎀👗💫🤍🫶♡🌿💍👜👠🌴🎐🫧🌙💗☔💎]$/u, nextEmoji);
   }).join("\n");
@@ -4160,7 +4285,38 @@ function safePointFallbacks(category) {
   return (groups.find(([pattern]) => pattern.test(category)) || [null, ["商品写真を確認したい", "使う場面を想像しやすい", "レビューも参考にしたい"]])[1];
 }
 
+function convertCheckPointToBenefit(point, category, seed) {
+  const source = cleanText(point);
+  const replacements = [
+    [/商品写真でサイズ感を確認/g, "荷物がすっきり収まるサイズ感"],
+    [/股上と丈感を確認/g, "脚長見えしやすい股上と丈感"],
+    [/袖丈(?:を)?確認したい|袖丈(?:を)?確認|袖丈レビューを見たい/g, "絶妙な袖丈で華奢見え"],
+    [/着丈(?:を)?確認したい|着丈(?:を)?確認/g, "すっきり見える絶妙な着丈"],
+    [/丈感レビューを見たい|丈感(?:を)?確認したい|丈感(?:を)?確認|丈感を見て選びたい/g, "バランスよく見える丈感"],
+    [/サイズ感レビューを見たい|サイズ感(?:を)?確認したい|サイズ感(?:を)?確認/g, "きれいに決まりやすいサイズ感"],
+    [/歩きやすさ(?:を)?確認/g, "長時間も歩きやすい"],
+    [/スマホ対応(?:を)?確認/g, "着けたままスマホ操作しやすい"],
+    [/素材表記(?:を)?確認したい/g, "上品に見える素材感"],
+    [/着用写真を見て選びたい/g, "着た時のきれいなシルエット"],
+  ];
+  let benefit = source;
+  replacements.forEach(([pattern, replacement]) => {
+    benefit = benefit.replace(pattern, replacement);
+  });
+  if (/確認したい|確認$|レビューを見たい|見て選びたい/.test(benefit)) {
+    const fallback = [
+      "毎日使いやすいデザイン",
+      "届いた日から活躍しやすい",
+      "大人っぽく高見えしやすい",
+    ];
+    return pickByHash(fallback, `${category} ${seed} ${source} benefit fallback`);
+  }
+  return benefit;
+}
+
 function inferPoints(category, features, seed) {
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return uniquePick(nonFashion.points, `${seed} non-fashion points`, 3);
   const categoryCopy = inferCategoryCopy(category, features[0] || "", features[1] || "");
   if (category.includes("ランジェリー") || /ワンピ|トップス|パンツ|スカート|カーデ|アウター|バッグ|シューズ|アクセサリー|水際|フォーマル|ルームウェア|浴衣|マタニティ|インナー|帽子|財布|ファッション小物|スポーツウェア|レッグウェア|レインウェア|ブライダル|ヘアアクセサリー|セットアップ|オールインワン|デニム|ニット|スーツ|腕時計|ストール|ベルト|サングラス|手袋|アームカバー|傘/.test(category)) {
     const compatiblePoints = categoryCopy.points.filter((point) => isReviewLineCompatible(point, category, seed));
@@ -4255,6 +4411,8 @@ function inferProductSpecificCoords(category, seed) {
 }
 
 function inferCoords(category, features, seed) {
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) return uniquePick(nonFashion.coords, `${seed} non-fashion coords`, 2);
   const categoryCopy = inferCategoryCopy(category, features[0] || "", features[1] || "");
   const productSpecificCoords = inferProductSpecificCoords(category, seed);
   if (productSpecificCoords.length >= 2) {
@@ -4435,13 +4593,83 @@ function inferFeatures(text) {
     ["汗染み防止", "汗染み防止素材"],
     ["防シワ", "シワになりにくい素材"],
     ["静電気防止", "静電気を抑える素材"],
+    ["個包装", "配りやすい個包装"],
+    ["小分け", "使いやすい小分け"],
+    ["訳あり", "お得な訳あり"],
+    ["国産", "国産素材"],
+    ["無添加", "無添加タイプ"],
+    ["低糖質", "低糖質"],
+    ["糖質オフ", "糖質オフ"],
+    ["グルテンフリー", "グルテンフリー"],
+    ["冷凍", "冷凍ストック"],
+    ["常温保存", "常温保存しやすい"],
+    ["レンジ", "レンジ調理OK"],
+    ["時短", "時短に便利"],
+    ["大容量", "たっぷり容量"],
+    ["ラベルレス", "ラベルレスで捨てやすい"],
+    ["カフェインレス", "カフェインレス"],
+    ["デカフェ", "デカフェ"],
+    ["強炭酸", "強炭酸"],
+    ["食洗機", "食洗機対応"],
+    ["電子レンジ対応", "電子レンジ対応"],
+    ["レンジ対応", "レンジ対応"],
+    ["IH対応", "IH対応"],
+    ["取っ手が取れる", "収納しやすい取っ手着脱"],
+    ["焦げ付きにくい", "焦げ付きにくい加工"],
+    ["詰め替え", "詰め替えしやすい"],
+    ["まとめ買い", "まとめ買い向き"],
+    ["敏感肌", "敏感肌にも選びやすい"],
+    ["保湿", "保湿ケア"],
+    ["毛穴", "毛穴ケア"],
+    ["くすみ", "くすみケア"],
+    ["ウォータープルーフ", "ウォータープルーフ"],
+    ["石けんオフ", "石けんオフ"],
+    ["コードレス", "コードレスで使いやすい"],
+    ["静音", "静音設計"],
+    ["コンパクト", "コンパクト設計"],
+    ["省エネ", "省エネ設計"],
+    ["USB充電", "USB充電"],
+    ["折りたたみ", "折りたたみ収納"],
+    ["省スペース", "省スペース設計"],
+    ["積み重ね", "積み重ねOK"],
+    ["引き出し", "出し入れしやすい引き出し"],
+    ["滑り止め", "滑り止め付き"],
+    ["洗える", "洗えて清潔"],
+    ["撥水", "撥水加工"],
+    ["防水", "防水仕様"],
+    ["軽量", "軽量で扱いやすい"],
+    ["安全設計", "安全設計"],
+    ["名入れ", "名入れ対応"],
+    ["知育", "知育にも使いやすい"],
   ];
-  const found = pairs.filter(([needle]) => text.includes(needle)).map(([, label]) => label);
-  return [...new Set([...found, "きれいめシルエット", "着回し力"])].slice(0, 4);
+  const inferredCategory = inferCategory(text);
+const found = pairs.filter(([needle]) => text.includes(needle)).map(([, label]) => label)
+    .filter((label) => {
+      if (!/バッグ|財布|収納/.test(inferredCategory) && /収納力|ショルダー仕様|トートデザイン|ミニバッグ対応/.test(label)) return false;
+      if (inferredCategory.includes("パンツ") && /デイリーショーツ|上下セット|カップ付き|バストメイク|脇高|補正|ナイトブラ/.test(label)) return false;
+      return true;
+    });
+  const defaults = isNonFashionCategory(inferredCategory) ? [] : ["きれいめシルエット", "着回し力"];
+  return [...new Set([...found, ...defaults])].slice(0, 4);
 }
 
 function buildTags(name, genreName, features, catchcopy = "", shopName = "") {
   const text = `${name} ${genreName} ${features.join(" ")} ${catchcopy} ${shopName}`;
+  const category = resolveProductCategory(name, genreName, catchcopy);
+  const nonFashion = getNonFashionProfile(category);
+  if (nonFashion) {
+    return dedupeText([
+      ...saleTagsFor(text),
+      `#${category.replace(/[・\s]/g, "")}`,
+      ...nonFashion.tags,
+      ...nonFashionSeoTagsFor(category, text),
+      "#楽天ROOM",
+      "#買ってよかった",
+      "#便利グッズ",
+      "#楽天購入品",
+      "#暮らしを楽しむ",
+    ]).slice(0, 12);
+  }
   const tags = new Set();
   preferredTagsFor(text).forEach((tag) => tags.add(tag));
   ["#レディースファッション", "#30代ファッション", "#大人可愛い", "#きれいめ", "#高見え", "#着回しコーデ"].forEach((tag) => tags.add(tag));
@@ -4449,10 +4677,9 @@ function buildTags(name, genreName, features, catchcopy = "", shopName = "") {
   const brandTag = brand ? toHashTag(brand) : "";
   if (brandTag) tags.add(brandTag);
   saleTagsFor(text).forEach((tag) => tags.add(tag));
-  const category = resolveProductCategory(name, genreName, "");
   if (category) tags.add(`#${category}`);
   seoTagsFor(category, text).forEach((tag) => tags.add(tag));
-  return prioritizeTags(Array.from(tags), brand).slice(0, 10);
+  return prioritizeTags(Array.from(tags), brand).slice(0, 12);
 }
 
 function saleTagsFor(text) {
@@ -4480,6 +4707,7 @@ function prioritizeTags(tags, brand) {
     "#30代ファッション",
     "#大人可愛い",
     "#きれいめ",
+    "#楽天ROOM",
   ].filter(Boolean);
   return dedupeText([...priority, ...tags]);
 }
@@ -4494,45 +4722,84 @@ function toHashTag(value) {
 
 function seoTagsFor(category, text) {
   const tags = [];
-  if (/ワンピ/.test(category)) tags.push("#ワンピースコーデ", "#褒められワンピ");
-  if (/トップス/.test(category)) tags.push("#着映えトップス", "#大人トップス");
-  if (/パンツ/.test(category)) tags.push("#美脚パンツ", "#細見えパンツ");
-  if (/スカート/.test(category)) tags.push("#大人フェミニン", "#スカートコーデ");
-  if (/カーデ|アウター/.test(category)) tags.push("#羽織り", "#冷房対策");
-  if (/バッグ/.test(category)) tags.push("#高見えバッグ", "#きれいめバッグ");
-  if (/シューズ/.test(category)) tags.push("#きれいめシューズ", "#歩きやすい");
-  if (/アクセサリー/.test(category)) tags.push("#高見えアクセ", "#華奢見え");
-  if (/ランジェリー|インナー/.test(category)) tags.push("#響きにくい", "#インナー");
-  if (/水際/.test(category)) tags.push("#水際ファッション", "#リゾートコーデ");
-  if (/フォーマル/.test(category)) tags.push("#セレモニーコーデ", "#卒入園");
-  if (/ルームウェア/.test(category)) tags.push("#ルームウェア", "#おうち時間");
-  if (/浴衣/.test(category)) tags.push("#浴衣コーデ", "#夏祭り");
-  if (/マタニティ/.test(category)) tags.push("#マタニティコーデ", "#産前産後");
-  if (/スポーツウェア/.test(category)) tags.push("#ヨガウェア", "#ジムウェア");
-  if (/レッグウェア/.test(category)) tags.push("#レギンス", "#着圧");
-  if (/レインウェア/.test(category)) tags.push("#雨の日コーデ", "#撥水");
-  if (/ブライダル/.test(category)) tags.push("#お呼ばれコーデ", "#結婚式コーデ");
-  if (/ヘアアクセサリー/.test(category)) tags.push("#ヘアアレンジ", "#大人ヘアアクセ");
-  if (/セットアップ/.test(category)) tags.push("#セットアップコーデ", "#着回しコーデ");
-  if (/オールインワン/.test(category)) tags.push("#オールインワンコーデ", "#楽ちんコーデ");
-  if (/デニム/.test(category)) tags.push("#デニムコーデ", "#大人カジュアル");
-  if (/ニット/.test(category)) tags.push("#ニットコーデ", "#着映えニット");
-  if (/スーツ/.test(category)) tags.push("#通勤コーデ", "#きちんとコーデ");
-  if (/腕時計/.test(category)) tags.push("#腕時計", "#手元コーデ");
-  if (/ストール/.test(category)) tags.push("#ストールコーデ", "#冷房対策");
-  if (/ベルト/.test(category)) tags.push("#ベルトコーデ", "#ウエストマーク");
-  if (/サングラス/.test(category)) tags.push("#サングラス", "#紫外線対策");
-  if (/手袋/.test(category)) tags.push("#手袋", "#冬小物");
-  if (/アームカバー/.test(category)) tags.push("#アームカバー", "#UVカット");
-  if (/傘/.test(category)) tags.push("#晴雨兼用", "#日傘");
+  if (/ワンピ/.test(category)) tags.push("#ワンピースコーデ", "#褒められワンピ", "#1枚で決まる", "#きれいめワンピ");
+  if (/トップス/.test(category)) tags.push("#着映えトップス", "#大人トップス", "#着回しトップス", "#二の腕カバー");
+  if (/パンツ/.test(category)) tags.push("#美脚パンツ", "#細見えパンツ", "#脚長効果", "#きれいめパンツ");
+  if (/スカート/.test(category)) tags.push("#大人フェミニン", "#スカートコーデ", "#華奢見え", "#上品コーデ");
+  if (/カーデ|アウター/.test(category)) tags.push("#羽織り", "#冷房対策", "#体型カバー", "#季節の変わり目");
+  if (/バッグ/.test(category)) tags.push("#高見えバッグ", "#きれいめバッグ", "#収納力", "#通勤バッグ");
+  if (/シューズ/.test(category)) tags.push("#きれいめシューズ", "#歩きやすい", "#痛くない靴", "#足元コーデ");
+  if (/アクセサリー/.test(category)) tags.push("#高見えアクセ", "#華奢見え", "#金属アレルギー対応", "#大人アクセ");
+  if (/ランジェリー|インナー/.test(category)) tags.push("#響きにくい", "#インナー", "#カップ付き", "#着心地重視");
+  if (/水際/.test(category)) tags.push("#水際ファッション", "#リゾートコーデ", "#体型カバー水着", "#UV対策");
+  if (/フォーマル/.test(category)) tags.push("#セレモニーコーデ", "#卒入園", "#オケージョン", "#きちんとコーデ");
+  if (/ルームウェア/.test(category)) tags.push("#ルームウェア", "#おうち時間", "#リラックスウェア", "#大人可愛い部屋着");
+  if (/浴衣/.test(category)) tags.push("#浴衣コーデ", "#夏祭り", "#花火大会", "#浴衣セット");
+  if (/マタニティ/.test(category)) tags.push("#マタニティコーデ", "#産前産後", "#授乳服", "#楽ちんコーデ");
+  if (/スポーツウェア/.test(category)) tags.push("#ヨガウェア", "#ジムウェア", "#吸汗速乾", "#動きやすい");
+  if (/レッグウェア/.test(category)) tags.push("#レギンス", "#着圧", "#美脚見え", "#冷え対策");
+  if (/レインウェア/.test(category)) tags.push("#雨の日コーデ", "#撥水", "#梅雨対策", "#レインウェア");
+  if (/ブライダル/.test(category)) tags.push("#お呼ばれコーデ", "#結婚式コーデ", "#パーティードレス", "#上品ドレス");
+  if (/ヘアアクセサリー/.test(category)) tags.push("#ヘアアレンジ", "#大人ヘアアクセ", "#まとめ髪", "#垢抜けヘア");
+  if (/セットアップ/.test(category)) tags.push("#セットアップコーデ", "#着回しコーデ", "#時短コーデ", "#高見えコーデ");
+  if (/オールインワン/.test(category)) tags.push("#オールインワンコーデ", "#楽ちんコーデ", "#体型カバー", "#大人カジュアル");
+  if (/デニム/.test(category)) tags.push("#デニムコーデ", "#大人カジュアル", "#美脚デニム", "#こなれ感");
+  if (/ニット/.test(category)) tags.push("#ニットコーデ", "#着映えニット", "#着膨れしない", "#大人ニット");
+  if (/スーツ/.test(category)) tags.push("#通勤コーデ", "#きちんとコーデ", "#オフィスコーデ", "#セレモニー");
+  if (/腕時計/.test(category)) tags.push("#腕時計", "#手元コーデ", "#高見え小物", "#大人小物");
+  if (/ストール/.test(category)) tags.push("#ストールコーデ", "#冷房対策", "#紫外線対策", "#季節小物");
+  if (/ベルト/.test(category)) tags.push("#ベルトコーデ", "#ウエストマーク", "#細見え", "#高見え小物");
+  if (/サングラス/.test(category)) tags.push("#サングラス", "#紫外線対策", "#ブルーライトカット", "#アイウェア");
+  if (/手袋/.test(category)) tags.push("#手袋", "#冬小物", "#冷え対策", "#スマホ対応");
+  if (/アームカバー/.test(category)) tags.push("#アームカバー", "#UVカット", "#紫外線対策", "#冷感");
+  if (/傘/.test(category)) tags.push("#晴雨兼用", "#日傘", "#遮光", "#雨の日グッズ");
   if (/接触冷感|冷感|UV|洗える|撥水/.test(text)) tags.push("#機能服");
   if (/淡色|ベージュ|アイボリー|白|エクリュ/.test(text)) tags.push("#淡色女子");
   if (/通勤|オフィス|仕事/.test(text)) tags.push("#オフィスカジュアル");
   if (/デート|女子会|お呼ばれ/.test(text)) tags.push("#デートコーデ");
+  if (/骨格ウェーブ/.test(text)) tags.push("#骨格ウェーブ");
+  if (/シアー|透け感/.test(text)) tags.push("#シアー", "#抜け感");
+  if (/洗える|ウォッシャブル/.test(text)) tags.push("#洗える");
+  if (/接触冷感|冷感/.test(text)) tags.push("#接触冷感");
+  if (/撥水/.test(text)) tags.push("#撥水");
+  if (/UV|紫外線/.test(text)) tags.push("#UVカット");
+  if (/旅行|トラベル/.test(text)) tags.push("#旅行コーデ");
+  if (/体型カバー/.test(text)) tags.push("#体型カバー");
+  if (/高見え|上品/.test(text)) tags.push("#高見え");
+  if (/クーポン|SALE|セール|送料無料|ポイント/.test(text)) tags.push("#お得情報");
+  return tags;
+}
+
+function nonFashionSeoTagsFor(category, text) {
+  const tags = [];
+  if (/食品/.test(category)) tags.push("#お取り寄せ", "#時短ごはん", "#ストック食品", "#おうちごはん", "#ご褒美グルメ");
+  if (/スイーツ/.test(category)) tags.push("#お取り寄せスイーツ", "#手土産", "#ご褒美スイーツ", "#個包装", "#ギフト");
+  if (/飲料/.test(category)) tags.push("#ドリンク", "#まとめ買い", "#ストック", "#ラベルレス", "#おうちカフェ");
+  if (/キッチン用品/.test(category)) tags.push("#キッチン用品", "#時短家事", "#便利グッズ", "#食洗機対応", "#買ってよかった");
+  if (/日用品/.test(category)) tags.push("#日用品", "#まとめ買い", "#家事ラク", "#消耗品", "#ストック");
+  if (/コスメ/.test(category)) tags.push("#コスメ", "#垢抜けメイク", "#時短メイク", "#プチプラコスメ", "#崩れにくい");
+  if (/スキンケア/.test(category)) tags.push("#スキンケア", "#保湿ケア", "#毛穴ケア", "#敏感肌", "#毎日ケア");
+  if (/家電/.test(category)) tags.push("#家電", "#便利家電", "#時短家電", "#コードレス", "#暮らしを整える");
+  if (/美容家電/.test(category)) tags.push("#美容家電", "#おうち美容", "#セルフケア", "#時短美容", "#美活");
+  if (/インテリア/.test(category)) tags.push("#インテリア", "#おしゃれインテリア", "#部屋作り", "#韓国インテリア", "#模様替え");
+  if (/収納/.test(category)) tags.push("#収納", "#整理整頓", "#片付け", "#省スペース", "#クローゼット収納");
+  if (/ベビー・キッズ/.test(category)) tags.push("#ベビー用品", "#キッズ用品", "#育児グッズ", "#入園準備", "#ママにおすすめ");
+  if (/ペット用品/.test(category)) tags.push("#ペット用品", "#犬のいる暮らし", "#猫のいる暮らし", "#ペットグッズ", "#お世話グッズ");
+  if (/健康/.test(category)) tags.push("#健康習慣", "#サプリ", "#セルフケア", "#プロテイン", "#毎日続けたい");
+  if (/スポーツ・アウトドア/.test(category)) tags.push("#アウトドア", "#キャンプ用品", "#スポーツ用品", "#旅行グッズ", "#防災グッズ");
+  if (/文房具/.test(category)) tags.push("#文房具", "#手帳時間", "#デスク周り", "#仕事道具", "#勉強垢");
+  if (/おもちゃ/.test(category)) tags.push("#おもちゃ", "#知育玩具", "#プレゼント", "#親子時間", "#室内遊び");
+  if (/個包装|小分け/.test(text)) tags.push("#個包装", "#配りやすい");
+  if (/訳あり/.test(text)) tags.push("#訳あり", "#お得");
+  if (/国産/.test(text)) tags.push("#国産");
+  if (/冷凍/.test(text)) tags.push("#冷凍ストック");
+  if (/時短/.test(text)) tags.push("#時短");
+  if (/クーポン|SALE|セール|送料無料|ポイント/.test(text)) tags.push("#お得情報");
   return tags;
 }
 
 function preferredTagsFor(text) {
+  const category = inferCategory(text);
   const rules = [
     ["#骨格ウェーブ", /骨格ウェーブ|ウェーブ|ハイウエスト|ウエスト|フレア|Aライン|プリーツ/],
     ["#高見え", /高見え|上品|きれいめ|大人|オフィス|通勤|ジャケット|ブラウス/],
@@ -4599,7 +4866,14 @@ function preferredTagsFor(text) {
     ["#骨格ストレート", /骨格ストレート|ストレート体型/],
     ["#骨格ナチュラル", /骨格ナチュラル|ナチュラル体型/],
   ];
-  return rules.filter(([, pattern]) => pattern.test(text)).map(([tag]) => tag);
+  return rules
+    .filter(([, pattern]) => pattern.test(text))
+    .map(([tag]) => tag)
+    .filter((tag) => {
+      if (category.includes("パンツ") && /^#(ランジェリー|ブラショーツセット|サニタリーショーツ|ガードル|補正下着|脇高ブラ|バストケア)$/.test(tag)) return false;
+      if (tag === "#冬小物" && !/手袋|ストール|ファッション小物/.test(category)) return false;
+      return true;
+    });
 }
 
 function scoreItem({ reviewCount, reviewAverage, itemPrice, name, catchcopy, context }) {
@@ -4618,10 +4892,381 @@ function scoreItem({ reviewCount, reviewAverage, itemPrice, name, catchcopy, con
   return Math.max(0, Math.round(score));
 }
 
+function createNonFashionProfile(label, worries, benefits, details, points, coords, tags) {
+  return {
+    label,
+    worries,
+    leads: benefits.map((line, index) => `${line}${["✨", "💖", "🌿"][index % 3]}`),
+    details: details.map((line, index) => `${line}${["◎", "✨", "💫"][index % 3]}`),
+    sales: [
+      `${label}は毎日の使いやすさが大切だから、仕様とレビューを比べて選びたいです✨`,
+      `暮らしに取り入れやすい${label}なら、無理なく長く活躍してくれそうです💖`,
+      `使う場面が想像できる${label}は、買ってから出番が増えやすいのが魅力です🌿`,
+    ],
+    clicks: [
+      `容量・サイズ・使い方など、気になる仕様は商品ページで詳しく確認したいです🔍`,
+      `実際に使った方の写真やレビューを見ると、自分に合うか想像しやすいです✨`,
+      `セット内容やバリエーションまで比べて、いちばん使いやすいタイプを選びたいです💖`,
+    ],
+    trusts: [
+      `毎日使うものだから、評価だけでなく具体的な使用感まで確認できると安心です◎`,
+      `素材やお手入れ方法まで見ておくと、届いてからの使い方をイメージしやすいです◎`,
+      `口コミのよかった点と気になる点を両方見ると、納得して選びやすいです🔍`,
+    ],
+    pushes: [
+      `気になる方は、在庫と内容を早めにチェックしておきたいです✨`,
+      `暮らしに合うか、商品ページの詳しい写真で確認してみてください🔍`,
+      `比較候補に入れて、レビューまで見ておきたい${label}です💖`,
+    ],
+    humans: [
+      `便利そうでも本当に使い続けられるか迷うから、リアルな使用感が分かるとうれしいですよね🫶`,
+      `せっかく選ぶなら、見た目だけでなく扱いやすさにも納得できるものがいいですよね✨`,
+      `毎日の小さな負担を減らせるものなら、暮らしに取り入れたくなりますよね🌿`,
+    ],
+    points,
+    coords,
+    tags,
+  };
+}
+
+const NON_FASHION_PROFILES = {
+  食品: createNonFashionProfile("食品", [
+    "忙しい日は手軽に食べたいけど、味や満足感も妥協したくない…",
+    "お取り寄せは気になるけど、量や食べ切りやすさが分からない…",
+    "家族みんなで楽しめて、ストックにも便利なものを選びたい…",
+  ], [
+    "手軽さとおいしさを両立しやすく、忙しい日の食卓を頼もしく支えてくれます",
+    "自宅にいながら特別感のある味を楽しめて、いつもの食事が少し華やぎます",
+    "ストックしておくと、献立に迷った日やもう一品ほしい時にも頼れます",
+  ], [
+    "内容量や保存方法を確認しておけば、家族構成や食べるペースに合わせやすいです",
+    "温め方やアレンジ例まで見ると、届いた後の楽しみ方が広がります",
+    "個包装や小分けタイプなら、必要な分だけ使いやすいのもうれしいポイントです",
+  ], ["手軽に楽しめる", "食卓の満足感アップ", "ストックにも便利", "アレンジしやすい", "家族で楽しみやすい"],
+  ["忙しい日のごはんやもう一品に", "休日のご褒美ランチに", "家族や友人との食卓に", "冷蔵庫・冷凍庫の頼れるストックに"],
+  ["#お取り寄せグルメ", "#時短ごはん", "#おうちごはん", "#楽天グルメ", "#ストック食品"]),
+  スイーツ: createNonFashionProfile("スイーツ", [
+    "自分へのご褒美が欲しいけど、甘すぎたり量が多すぎるのは困る…",
+    "お取り寄せスイーツは見た目だけでなく、味にも満足したい…",
+    "手土産にしたいけど、きちんと感と喜ばれる可愛さの両方が欲しい…",
+  ], [
+    "箱を開けた瞬間に気分が上がる華やかさで、おうち時間を特別にしてくれます",
+    "ティータイムにちょうどいいご褒美感があり、忙しい日の気分転換にもぴったりです",
+    "見た目にも映えるので、自宅用はもちろん手土産や贈り物にも選びやすいです",
+  ], [
+    "個数や賞味期限を確認すると、食べる人数や贈るタイミングに合わせやすいです",
+    "冷凍・常温など保存方法まで見ておけば、好きな時に楽しみやすいです",
+    "味の種類が選べるタイプなら、家族や友人とシェアする時間も盛り上がります",
+  ], ["ご褒美感たっぷり", "見た目も華やか", "手土産にも選びやすい", "シェアして楽しめる", "おうちカフェにぴったり"],
+  ["午後のご褒美ティータイムに", "来客時のお茶菓子に", "誕生日や記念日のデザートに", "大切な方への手土産に"],
+  ["#お取り寄せスイーツ", "#ご褒美スイーツ", "#おうちカフェ", "#手土産", "#スイーツ好き"]),
+  飲料: createNonFashionProfile("ドリンク", [
+    "毎日飲むものだから、おいしさも続けやすさも大切にしたい…",
+    "重い飲み物は買い物が大変。自宅にまとめて届けてほしい…",
+    "気分転換できる飲み物が欲しいけど、種類が多くて迷う…",
+  ], [
+    "毎日の水分補給やほっとひと息つきたい時間に、気軽に取り入れられます",
+    "まとめて届くタイプなら重い買い物の負担を減らし、ストック切れも防ぎやすいです",
+    "味や香りを楽しめる一杯があると、おうち時間の満足感も自然に高まります",
+  ], [
+    "容量や本数を見比べると、飲む頻度や収納スペースに合うセットを選びやすいです",
+    "カフェインや甘さ、原材料まで確認すれば、生活スタイルに合わせやすいです",
+    "個包装や飲み切りサイズなら、職場や外出先にも持って行きやすいです",
+  ], ["毎日続けやすい", "まとめ買いに便利", "気分転換にぴったり", "持ち運びやすい", "ストックしやすい"],
+  ["朝の一杯や仕事の合間に", "家族の毎日の水分補給に", "来客時のおもてなしに", "外出や職場への持ち歩きに"],
+  ["#ドリンク", "#水分補給", "#まとめ買い", "#おうちカフェ", "#ストック"]),
+  キッチン用品: createNonFashionProfile("キッチン用品", [
+    "料理を少しでもラクにしたいけど、使わなくなる道具は増やしたくない…",
+    "キッチンが狭いから、出しっぱなしでも邪魔になりにくいものが欲しい…",
+    "便利グッズは気になるけど、お手入れが面倒だと続かなそう…",
+  ], [
+    "毎日の調理や後片付けをスムーズにして、キッチンに立つ負担を軽くしてくれます",
+    "使いやすさとすっきりした見た目を両立し、料理時間を心地よく整えてくれます",
+    "ひとつで複数の使い方ができるタイプなら、道具を増やしすぎず効率も上げられます",
+  ], [
+    "サイズや対応熱源を確認すると、自宅のキッチンで使えるか判断しやすいです",
+    "食洗機対応や分解して洗えるタイプなら、使用後のお手入れもラクになります",
+    "収納方法までイメージして選ぶと、使いたい時にさっと取り出せます",
+  ], ["調理を時短できる", "お手入れしやすい", "省スペースで使える", "見た目もすっきり", "毎日活躍しやすい"],
+  ["毎日の下ごしらえや調理に", "作り置きやお弁当作りに", "休日のパン・お菓子作りに", "新生活のキッチン準備に"],
+  ["#キッチン用品", "#時短家事", "#便利グッズ", "#料理好き", "#新生活"]),
+  日用品: createNonFashionProfile("日用品", [
+    "毎日使う消耗品は、品質もコスパもどちらも妥協したくない…",
+    "かさばる日用品を買いに行くのが大変。まとめて届けてほしい…",
+    "家事をラクにしたいけど、使い方が複雑なものは続かなそう…",
+  ], [
+    "毎日の家事や身支度に取り入れやすく、小さな手間を減らしてくれます",
+    "まとめてストックできるタイプなら、買い忘れを減らして家事の余裕につながります",
+    "使いやすさに配慮されたアイテムは、家族みんなで無理なく続けやすいです",
+  ], [
+    "容量や使用回数を比べると、交換頻度やコスパをイメージしやすいです",
+    "香りや素材、使用できる場所まで確認すると暮らしに合うものを選べます",
+    "収納スペースに収まるサイズか見ておけば、まとめ買いでもすっきり保管できます",
+  ], ["毎日の家事がラクに", "まとめ買いに便利", "家族で使いやすい", "ストック切れを防げる", "扱いやすい設計"],
+  ["毎日の掃除や洗濯に", "洗面所やバスルームで", "家族分のストックに", "新生活のまとめ買いに"],
+  ["#日用品", "#家事ラク", "#まとめ買い", "#暮らしを整える", "#便利アイテム"]),
+  コスメ: createNonFashionProfile("コスメ", [
+    "気になるコスメは多いけど、自分の肌や好みに合うか不安…",
+    "きれいに仕上げたいけど、忙しい朝に手間はかけられない…",
+    "トレンド感は欲しいけど、大人でも使いやすい色を選びたい…",
+  ], [
+    "いつものメイクに取り入れるだけで、顔まわりを明るく今っぽい印象へ導いてくれます",
+    "使いやすさと仕上がりの美しさを両立し、忙しい日のメイクにも頼れます",
+    "大人の肌になじみやすい質感なら、頑張りすぎず自然な垢抜け感を楽しめます",
+  ], [
+    "色味や質感は、公式写真だけでなくレビュー画像まで見ると選びやすいです",
+    "肌質やパーソナルカラーが近い方の口コミは、仕上がりを想像する参考になります",
+    "使用順や落とし方まで確認すると、毎日のメイクに無理なく取り入れられます",
+  ], ["垢抜けメイクに", "時短でもきれい", "大人も使いやすい", "持ち歩きにも便利", "気分が上がるデザイン"],
+  ["毎日のナチュラルメイクに", "仕事の日のきちんとメイクに", "デートやお出かけメイクに", "旅行用コスメの見直しに"],
+  ["#コスメ", "#垢抜けメイク", "#大人メイク", "#時短メイク", "#美容好き"]),
+  スキンケア: createNonFashionProfile("スキンケア", [
+    "乾燥やゆらぎが気になるけど、何を重ねればいいか分からない…",
+    "毎日続けたいから、心地よさと手軽さのどちらも譲れない…",
+    "口コミで人気でも、自分の肌に合うか慎重に選びたい…",
+  ], [
+    "毎日のケアに取り入れやすく、うるおいを守りながら健やかな肌印象を目指せます",
+    "シンプルなステップで使えるアイテムなら、忙しい日もお手入れを続けやすいです",
+    "心地よい使用感のケアは、自分をいたわる時間まで楽しみに変えてくれます",
+  ], [
+    "成分や使用方法、推奨される肌タイプまで確認して自分に合うか見極めたいです",
+    "香りやテクスチャーの口コミを見ると、毎日続けやすい使用感か想像できます",
+    "初めて使う場合は少量から試し、肌の様子を見ながら取り入れると安心です",
+  ], ["毎日続けやすい", "うるおいケアに", "シンプルに使える", "心地よい使用感", "自分時間が充実"],
+  ["朝晩のデイリーケアに", "乾燥が気になる季節の保湿に", "旅行やお泊まりのケアに", "自分へのご褒美美容に"],
+  ["#スキンケア", "#保湿ケア", "#美容好き", "#自分磨き", "#おうち美容"]),
+  家電: createNonFashionProfile("家電", [
+    "便利な家電が欲しいけど、操作が難しかったり場所を取るのは困る…",
+    "買っても使わなくならないよう、生活に本当に合うものを選びたい…",
+    "機能が多すぎて違いが分からない。必要な機能を見極めたい…",
+  ], [
+    "毎日の家事や身支度を効率よく整え、時間にも気持ちにも余裕を作ってくれます",
+    "分かりやすい操作と暮らしになじむサイズ感なら、家族みんなで使いやすいです",
+    "必要な機能がしっかり揃った一台は、日々の小さなストレスを減らしてくれます",
+  ], [
+    "本体サイズ・消費電力・設置条件を確認すると、自宅で使えるか判断しやすいです",
+    "お手入れ方法や交換部品まで見ておけば、購入後も長く使い続けやすいです",
+    "音の大きさや操作感は、実際に使った方のレビューが参考になります",
+  ], ["家事や身支度を時短", "操作が分かりやすい", "暮らしになじむ", "お手入れしやすい", "毎日使いやすい"],
+  ["忙しい朝の時短に", "毎日の家事負担の軽減に", "在宅時間を快適に", "新生活の家電選びに"],
+  ["#家電", "#時短家電", "#便利家電", "#暮らしを整える", "#新生活"]),
+  美容家電: createNonFashionProfile("美容家電", [
+    "サロン級のケアは気になるけど、家で無理なく続けられるか不安…",
+    "美容家電が欲しいけど、操作やお手入れが複雑だと使わなくなりそう…",
+    "短い時間でも、毎日のケアを少し丁寧にしたい…",
+  ], [
+    "自宅で好きな時間に使えて、いつもの美容時間を手軽にアップデートできます",
+    "短時間で使いやすいタイプなら、忙しい日も無理なくセルフケアを続けられます",
+    "使うたび気分が上がるデザインで、自分をいたわる習慣づくりにも役立ちます",
+  ], [
+    "使用できる部位や頻度、充電方法を確認すると生活に取り入れやすいです",
+    "お手入れの手順や付属品まで見ておけば、購入後の負担を想像できます",
+    "美容機器は説明書に従い、肌や髪の状態を見ながら無理なく使いたいです",
+  ], ["おうち美容が充実", "短時間で使いやすい", "セルフケアを習慣化", "気分が上がる", "自分へのご褒美に"],
+  ["夜のリラックスタイムに", "忙しい朝の身支度に", "週末のスペシャルケアに", "自分へのご褒美美容に"],
+  ["#美容家電", "#おうち美容", "#セルフケア", "#自分磨き", "#美容好き"]),
+  インテリア: createNonFashionProfile("インテリア", [
+    "部屋をおしゃれにしたいけど、圧迫感が出たり今の家具から浮くのは避けたい…",
+    "ネットで家具を選びたいけど、サイズ感や色味の違いが心配…",
+    "生活感を抑えながら、毎日快適に使えるものが欲しい…",
+  ], [
+    "置くだけで空間の印象を整え、いつもの部屋を心地よくアップデートしてくれます",
+    "見た目と使いやすさのバランスがよく、生活感を自然に抑えてくれます",
+    "部屋になじむ色や素材を選べば、長く愛用しやすい落ち着いた空間を作れます",
+  ], [
+    "幅・奥行き・高さを設置場所と照らし合わせると、圧迫感や動線を確認できます",
+    "素材や色味はレビュー写真まで見ると、手持ちの家具との相性を想像しやすいです",
+    "組み立て方法やお手入れのしやすさも、長く使うために確認したいポイントです",
+  ], ["部屋がすっきり見える", "暮らしになじむデザイン", "使いやすさも両立", "空間を手軽に模様替え", "長く愛用しやすい"],
+  ["リビングの模様替えに", "寝室のリラックス空間に", "ワークスペースを整える時に", "新生活のお部屋作りに"],
+  ["#インテリア", "#部屋づくり", "#暮らしを整える", "#模様替え", "#新生活"]),
+  収納: createNonFashionProfile("収納アイテム", [
+    "片付けてもすぐ散らかる。無理なく戻せる収納に変えたい…",
+    "収納スペースが少ないから、デッドスペースまで上手に使いたい…",
+    "すっきり見せたいけど、中身が分からなくなる収納は使いにくい…",
+  ], [
+    "散らかりやすい物の定位置を作り、片付けやすくすっきりした空間へ整えてくれます",
+    "限られたスペースを効率よく使えて、毎日の探し物や出し入れを減らせます",
+    "見せる収納にもなじむデザインなら、生活感を抑えながら使いやすさも保てます",
+  ], [
+    "収納したい物と設置場所を測っておくと、届いてからのサイズ違いを防げます",
+    "積み重ねや仕切り調整ができるタイプなら、物が増えても使い方を変えられます",
+    "中身の見え方や取り出し口まで確認すると、家族も戻しやすい収納になります",
+  ], ["散らかりを防ぎやすい", "省スペースを活用", "出し入れしやすい", "生活感を抑えられる", "収納を調整しやすい"],
+  ["クローゼットの整理に", "洗面所やキッチン収納に", "デスクまわりの片付けに", "新生活の収納づくりに"],
+  ["#収納", "#整理整頓", "#片付け", "#暮らしを整える", "#省スペース"]),
+  ベビー・キッズ: createNonFashionProfile("ベビー・キッズ用品", [
+    "子どもが使うものだから、安全性も使いやすさも丁寧に選びたい…",
+    "成長が早いから、今だけでなく少し長く使えるものが欲しい…",
+    "親の負担を減らしながら、子どもも心地よく使えるものを探したい…",
+  ], [
+    "子どもの使いやすさに配慮され、毎日の育児やお出かけをやさしく支えてくれます",
+    "成長に合わせて使い方を変えられるタイプなら、長く活躍してくれます",
+    "親子どちらにも扱いやすい工夫が、忙しい育児の小さな負担を軽くしてくれます",
+  ], [
+    "対象年齢・サイズ・素材を確認し、子どもの成長段階に合うものを選びたいです",
+    "洗い方やお手入れ方法まで見ておくと、汚れやすい時期にも使いやすいです",
+    "安全上の注意や使用方法を確認して、必ず保護者の見守りのもとで使いたいです",
+  ], ["親子で使いやすい", "成長に合わせやすい", "お手入れしやすい", "育児の負担を軽減", "毎日活躍しやすい"],
+  ["毎日の育児やお世話に", "保育園・幼稚園の準備に", "家族でのお出かけに", "出産祝いや誕生日ギフトに"],
+  ["#ベビー用品", "#キッズ用品", "#子育て", "#育児便利グッズ", "#出産祝い"]),
+  ペット用品: createNonFashionProfile("ペット用品", [
+    "大切な家族に使うものだから、快適さと安全性をしっかり選びたい…",
+    "便利そうでも、うちの子が気に入って使ってくれるか心配…",
+    "毎日のお世話を少しラクにしながら、清潔も保ちたい…",
+  ], [
+    "ペットの心地よさに配慮しながら、毎日のお世話をスムーズにしてくれます",
+    "暮らしになじむ使いやすさで、飼い主さんの負担もやさしく減らせます",
+    "体格や性格に合うものを選べば、ペットとの毎日をより快適に整えられます",
+  ], [
+    "対応する種類・体重・サイズを確認し、ゆとりや使用環境に合うものを選びたいです",
+    "洗いやすさや交換部品まで見ておくと、清潔な状態を保ちやすいです",
+    "初めて使う時は様子を見ながら慣らし、誤飲や事故がないよう見守りたいです",
+  ], ["毎日のお世話がラクに", "ペットの快適さに配慮", "清潔を保ちやすい", "暮らしになじむ", "サイズを選びやすい"],
+  ["毎日のごはんやケアに", "お散歩やお出かけに", "お留守番を快適に", "誕生日のプレゼントに"],
+  ["#ペット用品", "#犬のいる暮らし", "#猫のいる暮らし", "#ペットと暮らす", "#便利グッズ"]),
+  健康: createNonFashionProfile("健康アイテム", [
+    "健康習慣を始めたいけど、面倒だと三日坊主になりそう…",
+    "毎日使うものだから、無理なく続けられるかを大切にしたい…",
+    "体に関わるものは、内容や使い方をきちんと確認して選びたい…",
+  ], [
+    "普段の生活に無理なく取り入れやすく、健やかな毎日を意識するきっかけになります",
+    "続けやすさに配慮されたアイテムなら、自分のペースで健康習慣を整えられます",
+    "忙しい日も手軽に使えることで、セルフケアを習慣にしやすくなります",
+  ], [
+    "使用方法や対象者、注意事項を確認し、自分の体調や生活に合うか判断したいです",
+    "食品やサプリは原材料・栄養成分・摂取目安まで確認すると選びやすいです",
+    "治療中・服薬中・妊娠中の場合は、必要に応じて医師や専門家へ相談したいです",
+  ], ["健康習慣を始めやすい", "毎日続けやすい", "手軽に取り入れられる", "セルフケアに便利", "生活リズムを整えやすい"],
+  ["朝晩の健康習慣に", "仕事や家事の合間のケアに", "運動後のセルフケアに", "家族の健康管理に"],
+  ["#健康習慣", "#セルフケア", "#健康管理", "#ウェルネス", "#毎日続けたい"]),
+  スポーツ・アウトドア: createNonFashionProfile("スポーツ・アウトドア用品", [
+    "運動を始めたいけど、初心者でも扱いやすいものを選びたい…",
+    "外で使うものだから、持ち運びや耐久性もしっかり確認したい…",
+    "機能性は欲しいけど、準備や片付けが大変だと出番が減りそう…",
+  ], [
+    "使いやすい道具があると、運動や外遊びを始めるハードルをぐっと下げてくれます",
+    "持ち運びや設営に配慮されたタイプなら、思い立った時に気軽に楽しめます",
+    "必要な機能を備えたアイテムは、アクティブな時間をより快適に支えてくれます",
+  ], [
+    "サイズ・重量・耐荷重などを確認すると、使う人や場所に合うか判断しやすいです",
+    "収納方法やお手入れまで見ておけば、使用後の片付けもイメージできます",
+    "安全上の注意を確認し、用途やレベルに合った使い方をしたいです",
+  ], ["初心者も使いやすい", "持ち運びに便利", "外時間が快適に", "準備しやすい", "運動習慣を応援"],
+  ["おうちトレーニングに", "キャンプやピクニックに", "家族との外遊びに", "旅行やレジャーの準備に"],
+  ["#スポーツ用品", "#アウトドア", "#おうちトレーニング", "#キャンプ用品", "#外遊び"]),
+  文房具: createNonFashionProfile("文房具", [
+    "仕事や勉強をはかどらせたいけど、使いにくい文具は増やしたくない…",
+    "毎日使うものだから、機能性だけでなく気分が上がるデザインも欲しい…",
+    "デスクまわりを整えて、探し物や小さなストレスを減らしたい…",
+  ], [
+    "使うたび気分が上がるデザインで、仕事や勉強の時間を心地よく整えてくれます",
+    "手になじむ使いやすさが、書く・まとめる作業をスムーズにしてくれます",
+    "デスク上をすっきり保てるアイテムなら、集中しやすい環境づくりにも役立ちます",
+  ], [
+    "サイズや用紙規格、替芯などの対応品を確認すると長く使いやすいです",
+    "収納量や持ち運びやすさまで見ると、仕事用・学校用を選び分けられます",
+    "色やデザインのバリエーションがあれば、用途別に揃えるのも楽しめます",
+  ], ["仕事や勉強がはかどる", "毎日使いやすい", "デスクが整う", "持ち運びに便利", "気分が上がるデザイン"],
+  ["仕事や在宅ワークに", "勉強や資格学習に", "手帳・ノート時間に", "入学・就職のギフトに"],
+  ["#文房具", "#文具好き", "#手帳時間", "#デスク周り", "#勉強垢"]),
+  おもちゃ: createNonFashionProfile("おもちゃ", [
+    "子どもが夢中になれて、遊び方が広がるおもちゃを選びたい…",
+    "プレゼントしたいけど、年齢に合うか、長く遊べるか迷う…",
+    "楽しいだけでなく、親子で安心して遊べるものが欲しい…",
+  ], [
+    "遊びながら好奇心や想像力を刺激し、親子の楽しい時間を作ってくれます",
+    "成長に合わせて遊び方を広げられるタイプなら、飽きにくく長く楽しめます",
+    "ひとり遊びにも家族時間にも使えて、おうち時間を豊かにしてくれます",
+  ], [
+    "対象年齢や部品の大きさ、遊ぶためのスペースを確認して選びたいです",
+    "片付け方や収納サイズまで見ておくと、遊んだ後も扱いやすいです",
+    "安全上の注意を守り、年齢に応じて保護者が見守りながら楽しみたいです",
+  ], ["夢中になって遊べる", "想像力を育みやすい", "親子時間が充実", "長く楽しみやすい", "ギフトに選びやすい"],
+  ["雨の日のおうち遊びに", "家族で過ごす休日に", "誕生日や季節のプレゼントに", "帰省や旅行のお供に"],
+  ["#おもちゃ", "#知育玩具", "#おうち遊び", "#子どものいる暮らし", "#誕生日プレゼント"]),
+};
+
+function getNonFashionProfile(category) {
+  return NON_FASHION_PROFILES[String(category || "")] || null;
+}
+
+function isNonFashionCategory(category) {
+  return Boolean(getNonFashionProfile(category));
+}
+
 function resolveProductCategory(name, genreName, catchcopy) {
   const nameCategory = inferCategory(name);
   if (nameCategory !== "レディースファッション") return nameCategory;
   return inferCategory(`${genreName || ""} ${catchcopy || ""}`);
+}
+
+function inferApparelCategorySignal(text) {
+  const value = String(text || "");
+  if (/水着|ラッシュガード|ビキニ|タンキニ|スイムウェア|水陸両用|ビーチウェア|リゾートワンピ/.test(value)) return "水際ファッション";
+  if (/ルームウェア|パジャマ|ナイトウェア|ワンマイルウェア|ホームウェア/.test(value)) return "ルームウェア";
+  if (/ブラジャー|ブラトップ|ランジェリー|インナー|キャミソール|タンクトップ|ペチコート|補正下着/.test(value)) return "インナー";
+  if (/セットアップ|上下セット|2点セット|3点セット|コーデセット/.test(value)) return "セットアップ";
+  if (/オールインワン|サロペット|ジャンプスーツ|コンビネゾン/.test(value)) return "オールインワン";
+  if (/ワンピース|ワンピ|ドレス|ジャンスカ|キャミワンピ|シャツワンピ|ニットワンピ|ロングワンピ/.test(value)) return "ワンピース";
+  if (/スカート|フレアスカート|タイトスカート|プリーツスカート|チュールスカート|キュロット/.test(value)) return "スカート";
+  if (/デニム|ジーンズ|パンツ|スラックス|ワイドパンツ|テーパードパンツ|カーゴパンツ|レギパン|ガウチョ/.test(value)) return "パンツ";
+  if (/カーディガン|カーデ|羽織り|ボレロ/.test(value)) return "カーディガン";
+  if (/ジャケット|コート|ブルゾン|ジレ|ベスト|トレンチ|パーカー|ダウン|アウター/.test(value)) return "アウター";
+  if (/ブラウス|シャツ|トップス|カットソー|Tシャツ|ニット|セーター|プルオーバー|チュニック|ベアトップ|ビスチェ/.test(value)) return "トップス";
+  if (/レディースファッション|婦人服|服|衣服|洋服|きれいめ|大人可愛い|着回し|細見え|体型カバー|袖丈|着丈|丈感|骨格ウェーブ/.test(value)) return "レディースファッション";
+  return "";
+}
+
+function isClothingReviewCategory(category) {
+  return /レディースファッション|ワンピース|トップス|パンツ|スカート|カーディガン|アウター|ランジェリー|インナー|水際ファッション|フォーマル|ルームウェア|浴衣|マタニティ|スポーツウェア|レッグウェア|レインウェア|ブライダル|セットアップ|オールインワン|デニム|ニット|スーツ/.test(String(category || ""));
+}
+
+function inferFashionAccessoryCategorySignal(text) {
+  const value = String(text || "");
+  if (/サングラス|アイウェア|UVメガネ|伊達メガネ|だてメガネ|ブルーライトカット|PCメガネ|老眼鏡|リーディンググラス|メガネ(?!ケース)|眼鏡(?!ケース)/.test(value)) return "サングラス";
+  if (/サングラスケース|メガネケース|眼鏡ケース/.test(value)) return "ファッション小物";
+  return "";
+}
+
+function inferRakutenFashionCategorySignal(text) {
+  const value = String(text || "");
+  const isFashionStore = /Rakuten Fashion|RakutenFashion|journalstandard|JOURNAL STANDARD|ジャーナル\s*スタンダード|relume|レリューム|ベイクルーズ|BAYCREW/i.test(value);
+  if (!isFashionStore) return "";
+  if (/ワンピース|ワンピ|ドレス|ジャンスカ|オールインワン|ロンパース/.test(value)) return "ワンピース";
+  if (/Tシャツ|Ｔシャツ|カットソー|トップス|シャツ|ブラウス|ニット|ポロシャツ|タンクトップ|ノースリーブ|スウェット|トレーナー|フーディー|パーカー|ベスト|ジレ/.test(value)) return "トップス";
+  if (/パンツ|ショーツ|ショートパンツ|デニム|ジーンズ|スラックス|イージーパンツ|ハーフパンツ/.test(value)) return "パンツ";
+  if (/スカート/.test(value)) return "スカート";
+  if (/ジャケット|アウター|ブルゾン|コート|ブレザー|ジャンパー|カーディガン/.test(value)) return /カーディガン/.test(value) ? "カーディガン" : "アウター";
+  if (/バッグ|トート|ショルダー|リュック|ポーチ/.test(value)) return "バッグ";
+  if (/シューズ|靴|サンダル|スニーカー|ローファー|パンプス|ブーツ/.test(value)) return "シューズ";
+  if (/アクセサリー|リング|指輪|ネックレス|ピアス|イヤリング|ブレスレット/.test(value)) return "アクセサリー";
+  if (/ファッション雑貨|帽子|キャップ|ハット|サングラス|傘|ストール|ベルト|腕時計|財布/.test(value)) return inferFashionAccessoryCategorySignal(value) || "ファッション小物";
+  return "";
+}
+
+function buildReviewCopySeed(category, seed) {
+  let text = String(seed || "");
+  if (isClothingReviewCategory(category)) return removeStorageContextForClothing(text);
+  if (isNonFashionCategory(category)) return removeFashionContextForNonFashion(text);
+  return text;
+}
+
+function removeStorageContextForClothing(text) {
+  return String(text || "")
+    .replace(/収納ボックス|収納ケース|衣装ケース|引き出し収納|収納用品|整理棚|収納袋|圧縮袋|ハンガーラック|突っ張り棚/g, " ")
+    .replace(/収納力|収納写真|収納サイズ|収納スペース|収納しやすい|収納できる|収納付き|収納/g, " ")
+    .replace(/大容量|A4|ポケット|マチ|荷物|ショルダー|トート|持ちやすさ|バッグ/g, " ");
+}
+
+function removeFashionContextForNonFashion(text) {
+  return String(text || "")
+    .replace(/きれいめシルエット|着回し力|細見え|痩せ見え|高見えコーデ|大人可愛いシルエット|二の腕|袖丈|着丈|丈感|骨格ウェーブ|ワンピース|ワンピ|トップス|スカート|パンツ|ニット|カーディガン|アウター|コーデ/g, " ")
+    .replace(/顔まわり|華奢見え|体型カバー|抜け感|着回し|レディースファッション|30代ファッション/g, " ");
+}
+
+function isFashionFeatureNoise(feature) {
+  return /きれいめシルエット|着回し力|細見え|痩せ見え|華奢見え|二の腕|袖丈|着丈|丈感|体型カバー|ワンピ|トップス|スカート|パンツ|ニット|カーディガン|アウター|コーデ|顔まわり|ウエストマーク|バストメイク|補正|脇高|シルエット/.test(String(feature || ""));
 }
 
 function isFocusedCategory(category) {
@@ -4666,6 +5311,23 @@ function refineFeaturesForCategory(category, features) {
     手袋: ["暖かな素材", "手元になじむデザイン"],
     アームカバー: ["紫外線対策", "蒸れにくい着け心地"],
     傘: ["持ち歩きやすい軽さ", "雨や日差しへの対策"],
+    食品: ["手軽に楽しめるおいしさ", "ストックにも便利"],
+    スイーツ: ["ご褒美感のある味わい", "見た目も華やか"],
+    飲料: ["毎日続けやすい", "ストックしやすい"],
+    キッチン用品: ["調理を助ける使いやすさ", "お手入れしやすい"],
+    日用品: ["毎日の家事に便利", "扱いやすい設計"],
+    コスメ: ["大人も使いやすい仕上がり", "メイクになじむ質感"],
+    スキンケア: ["毎日続けやすい使用感", "うるおいケアに便利"],
+    家電: ["暮らしを助ける機能", "分かりやすい操作"],
+    美容家電: ["おうち美容に便利", "続けやすい使い心地"],
+    インテリア: ["空間になじむデザイン", "暮らしやすい設計"],
+    収納: ["すっきり片付く", "出し入れしやすい"],
+    "ベビー・キッズ": ["親子で使いやすい", "成長に合わせやすい"],
+    ペット用品: ["ペットの快適さに配慮", "毎日のお世話に便利"],
+    健康: ["健康習慣に取り入れやすい", "毎日続けやすい"],
+    "スポーツ・アウトドア": ["初心者も使いやすい", "持ち運びに便利"],
+    文房具: ["仕事や勉強に便利", "毎日使いやすい"],
+    おもちゃ: ["夢中になって遊べる", "親子で楽しみやすい"],
   };
   const key = Object.keys(defaults).find((label) => category.includes(label));
   if (!key) return Array.isArray(features) ? features : [];
@@ -4677,6 +5339,9 @@ function refineFeaturesForCategory(category, features) {
   }[key];
   const source = (Array.isArray(features) ? features : []).filter((feature) => {
     if (/きれいめシルエット|着回し力/.test(feature)) return false;
+    if (isClothingReviewCategory(category) && /収納力|たっぷり容量|大容量|荷物|A4|ポケット|マチ|ショルダー仕様|トートデザイン|持ちやすさ|まとめやすい|個包装|小分け|レンジ調理|食洗機|IH対応|詰め替え|コードレス|静音設計/.test(feature)) return false;
+    if (isNonFashionCategory(category) && isFashionFeatureNoise(feature)) return false;
+    if (isNonFashionCategory(category) && !/収納|バッグ|財布/.test(category) && /収納力|ショルダー仕様|トートデザイン|ミニバッグ対応|ウエストマーク|華やかアクセ/.test(feature)) return false;
     return !excluded || !excluded.test(feature);
   });
   return [...new Set([...source, ...defaults[key]])].slice(0, 4);
@@ -4684,6 +5349,31 @@ function refineFeaturesForCategory(category, features) {
 
 function inferCategory(text) {
   const value = String(text || "");
+  const rakutenFashionCategory = inferRakutenFashionCategorySignal(value);
+  const apparelCategory = inferApparelCategorySignal(value);
+  const accessoryCategory = inferFashionAccessoryCategorySignal(value);
+  if (rakutenFashionCategory) return rakutenFashionCategory;
+
+  // 非ファッション商品は、固有の商品語を優先してジャンルを分ける。
+  if (/美顔器|フェイススチーマー|ヘアアイロン|ドライヤー|脱毛器|光美容器|美容ローラー|電動頭皮ブラシ|ヘッドスパ|電動シェーバー/.test(value)) return "美容家電";
+  if (/化粧水|乳液|美容液|フェイスクリーム|クレンジング|洗顔|フェイスマスク|パック|日焼け止め|導入液|オールインワンジェル|スキンケア/.test(value)) return "スキンケア";
+  if (/ファンデーション|リップ|口紅|アイシャドウ|マスカラ|アイライナー|チーク|コンシーラー|化粧下地|フェイスパウダー|メイクブラシ|コスメ|化粧品|ネイル/.test(value)) return "コスメ";
+  if (/ケーキ|クッキー|チョコレート|チョコ|プリン|ゼリー|アイスクリーム|アイス|大福|羊羹|ようかん|どら焼き|フィナンシェ|マカロン|焼き菓子|和菓子|洋菓子|スイーツ|お菓子/.test(value)) return "スイーツ";
+  if (/コーヒー|珈琲|紅茶|お茶|緑茶|ほうじ茶|ジュース|炭酸水|ミネラルウォーター|水\s|飲料|ドリンク|ワイン|ビール|日本酒|焼酎/.test(value)) return "飲料";
+  if (/フライパン|鍋|包丁|まな板|ボウル|ざる|保存容器|水筒|タンブラー|マグカップ|食器|カトラリー|キッチンツール|調理器具|弁当箱/.test(value)) return "キッチン用品";
+  if (/収納ボックス|収納ケース|衣装ケース|ラック|シェルフ|ハンガーラック|突っ張り棚|引き出し収納|圧縮袋|収納袋|収納用品|整理棚/.test(value)) {
+    return apparelCategory || accessoryCategory || "収納";
+  }
+  if (/ソファ|テーブル|チェア|椅子|デスク|ベッド|マットレス|寝具|布団|枕|ラグ|カーペット|カーテン|照明|インテリア|家具|クッション/.test(value)) return "インテリア";
+  if (/掃除機|洗濯機|冷蔵庫|電子レンジ|炊飯器|トースター|電気ケトル|空気清浄機|加湿器|除湿機|扇風機|サーキュレーター|イヤホン|スピーカー|家電/.test(value)) return "家電";
+  if (/おむつ|オムツ|抱っこ紐|ベビーカー|チャイルドシート|ベビー用品|キッズ用品|離乳食|哺乳瓶|おしりふき|入園準備|ランドセル/.test(value)) return "ベビー・キッズ";
+  if (/ドッグフード|キャットフード|ペットフード|犬用|猫用|ペットシーツ|猫砂|首輪|リード|キャットタワー|ペット用品/.test(value)) return "ペット用品";
+  if (/プロテイン|サプリメント|サプリ|青汁|健康食品|健康器具|体温計|血圧計|マッサージ器|ストレッチ用品/.test(value)) return "健康";
+  if (/テント|タープテント|ヘキサタープ|スクリーンタープ|ワンタッチタープ|寝袋|シュラフ|キャンプ|アウトドア|バーベキュー|BBQ|クーラーボックス|トレーニング器具|ダンベル|ヨガマット|スポーツ用品/.test(value)) return "スポーツ・アウトドア";
+  if (/ボールペン|万年筆|シャープペン|筆箱|ペンケース|ノート|手帳|付箋|スタンプ|シール|文房具|文具|デスク用品/.test(value)) return "文房具";
+  if (/積み木|ブロック|ぬいぐるみ|パズル|知育玩具|ボードゲーム|カードゲーム|おもちゃ|玩具|ラジコン|人形|ドール/.test(value)) return "おもちゃ";
+  if (/ティッシュ|トイレットペーパー|洗剤|柔軟剤|漂白剤|スポンジ|ゴミ袋|掃除用品|洗濯用品|バス用品|タオル|歯ブラシ|日用品/.test(value)) return "日用品";
+  if (/牛肉|豚肉|鶏肉|ハンバーグ|餃子|うなぎ|蟹|カニ|海鮮|魚介|米|食パン|菓子パン|パンセット|パン詰め合わせ|ベーカリー|麺|ラーメン|うどん|そば|カレー|惣菜|冷凍食品|レトルト|食品|グルメ/.test(value)) return "食品";
 
   // 商品そのものを示す語を、用途・着用シーンを示す語より優先する。
   if (/マタニティ|授乳口|授乳服|産前産後|妊婦服/.test(value)) return "マタニティ";
@@ -4699,8 +5389,8 @@ function inferCategory(text) {
   if (/レインコート|レインウェア|レインポンチョ|雨具|レインパンプス|レインブーツ|レインシューズ|レインスニーカー|撥水パーカー|撥水コート|防水ジャケット|ポンチョ|カッパ|合羽/.test(value)) return "レインウェア";
   if (/ベルト|サッシュベルト|ウエストベルト|細ベルト|太ベルト|ゴムベルト|メッシュベルト|レザーベルト|チェーンベルト/.test(value)) return "ベルト";
   if (/ピアス|イヤリング|ネックレス|指輪|リング|ブレスレット|アンクレット|ブローチ|サージカルステンレス|金属アレルギー対応|イヤーカフ|イヤカフ|チョーカー|ペンダント|バングル|チェーン|パールアクセ|淡水パール|ジュエリー|チャーム|ラリエット|ネックカフ|カフリング|トゥリング/.test(value)) return "アクセサリー";
+  if (/サングラス|アイウェア|UVメガネ|伊達メガネ|だてメガネ|ブルーライトカット|PCメガネ|老眼鏡|リーディンググラス|メガネ(?!ケース)|眼鏡(?!ケース)/.test(value)) return "サングラス";
   if (/サングラスケース|メガネケース|眼鏡ケース|マスク|ファッションマスク|付け襟|つけ襟|アームウォーマー|レッグウォーマー|ネックウォーマー|イヤーマフ|インソール|靴紐|シューケア|バッグチャーム|スカーフリング/.test(value)) return "ファッション小物";
-  if (/サングラス|アイウェア|UVメガネ|伊達メガネ|だてメガネ|ブルーライトカット|メガネ|眼鏡/.test(value)) return "サングラス";
   if (/アームカバー|UV手袋|日焼け防止手袋|UVカット手袋|指穴アーム|冷感アーム|アームスリーブ/.test(value)) return "アームカバー";
   if (/手袋|グローブ|スマホ対応手袋|ミトン|ハンドウォーマー|フィンガーレス/.test(value)) return "手袋";
   if (/日傘|雨傘|晴雨兼用傘|折りたたみ傘|長傘|アンブレラ|折傘|折り畳み傘|完全遮光傘|遮光傘|ジャンプ傘|ビニール傘/.test(value)) return "傘";
@@ -4965,13 +5655,13 @@ function truncateText(text, maxLength) {
 }
 
   function generateFromInfo(info) {
-    const name = cleanText(info && info.title) || "蝠・刀";
+    const name = cleanText(info && info.title) || "\u5546\u54c1";
     const catchcopy = cleanText(info && info.description);
     const shopName = cleanText(info && info.shopName);
     const genreName = inferCategory(`${name} ${catchcopy}`);
     const features = inferFeatures(`${name} ${catchcopy} ${genreName}`);
     const targetTags = buildTags(name, genreName, features);
-    return generatePostText({ name, shopName, genreName, features, targetTags, catchcopy, variationSeed: info?.variationSeed || 0 });
+    return generatePostText({ name, shopName, genreName, features, targetTags, catchcopy, variationSeed: info && info.variationSeed });
   }
 
   window.RoomReviewGenerator = {

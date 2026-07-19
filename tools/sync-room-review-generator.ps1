@@ -14,6 +14,14 @@ if ($start -lt 0 -or $end -lt 0 -or $end -le $start) {
 }
 
 $generator = $source.Substring($start, $end - $start).TrimEnd()
+$generator = $generator.Replace(
+  'function generatePostText({ name, shopName, genreName, features, targetTags, catchcopy })',
+  'function generatePostText({ name, shopName, genreName, features, targetTags, catchcopy, variationSeed = 0 })'
+)
+$generator = $generator.Replace(
+  'const seed = `${name} ${catchcopy} ${featureA} ${featureB}`;',
+  'const seed = `${name} ${catchcopy} ${featureA} ${featureB} variation-${variationSeed}`;'
+)
 $header = @'
 (function () {
   "use strict";
@@ -25,13 +33,13 @@ $footer = @'
 
 
   function generateFromInfo(info) {
-    const name = cleanText(info && info.title) || "商品";
+    const name = cleanText(info && info.title) || "\u5546\u54c1";
     const catchcopy = cleanText(info && info.description);
     const shopName = cleanText(info && info.shopName);
     const genreName = inferCategory(`${name} ${catchcopy}`);
     const features = inferFeatures(`${name} ${catchcopy} ${genreName}`);
     const targetTags = buildTags(name, genreName, features);
-    return generatePostText({ name, shopName, genreName, features, targetTags, catchcopy });
+    return generatePostText({ name, shopName, genreName, features, targetTags, catchcopy, variationSeed: info && info.variationSeed });
   }
 
   window.RoomReviewGenerator = {
