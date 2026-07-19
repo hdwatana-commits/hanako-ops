@@ -428,6 +428,7 @@ function initialize() {
   renderProducts();
   renderDailySelection();
   renderOpsPipeline();
+  renderOwnRoomPostedPanel();
   renderProductOptions();
   restoreGeneratorPreferences();
   renderRoomProductOptions();
@@ -711,6 +712,8 @@ function loadState() {
       calendar: [],
       metrics: [],
       roomQueue: [],
+      ownRoomUrl: "",
+      ownRoomPostedItems: [],
     };
   }
 
@@ -724,6 +727,8 @@ function loadState() {
       calendar: [],
       metrics: [],
       roomQueue: [],
+      ownRoomUrl: "",
+      ownRoomPostedItems: [],
     };
   }
 }
@@ -738,6 +743,8 @@ function normalizeState(value) {
     calendar: Array.isArray(source.calendar) ? source.calendar : [],
     metrics: Array.isArray(source.metrics) ? source.metrics : [],
     roomQueue: Array.isArray(source.roomQueue) ? source.roomQueue : [],
+    ownRoomUrl: typeof source.ownRoomUrl === "string" ? source.ownRoomUrl : "",
+    ownRoomPostedItems: Array.isArray(source.ownRoomPostedItems) ? source.ownRoomPostedItems : [],
     roomCollectionDrafts: Array.isArray(source.roomCollectionDrafts) ? source.roomCollectionDrafts : [],
     coordinatePhotos: Array.isArray(source.coordinatePhotos) ? source.coordinatePhotos : [],
     appearance: source.appearance && typeof source.appearance === "object" ? source.appearance : { avatarTheme: "original" },
@@ -801,6 +808,8 @@ function ensureOpsState(target = state) {
   target.postPlans ||= [];
   target.posts ||= [];
   target.roomCollectionDrafts ||= [];
+  target.ownRoomUrl ||= "";
+  target.ownRoomPostedItems ||= [];
   target.userDecisions ||= [];
   target.duplicateMatches ||= [];
   target.collectionRuleVersions ||= [];
@@ -1060,6 +1069,13 @@ function buildOwnRoomPostedMatcher() {
     addProduct(state.products.find((entry) => entry.id === plan.productId));
   });
   (state.products || []).filter((product) => product.opsDecision === "posted").forEach(addProduct);
+  (state.ownRoomPostedItems || []).forEach((item) => {
+    if (item.canonicalProductId) canonicalIds.add(String(item.canonicalProductId));
+    const itemUrl = normalizeComparableUrl(item.normalizedUrl || item.url || "");
+    if (itemUrl) urls.add(itemUrl);
+    const itemName = normalizeComparableProductName(item.name);
+    if (itemName) names.add(itemName);
+  });
   return {
     hasProduct(product) {
       if (!product) return false;
@@ -1141,6 +1157,148 @@ function openRakutenRoomPostScreen(product, fallbackUrl = "") {
   if (!url) return showToast("商品URLが未登録です");
   window.open(url, "_blank", "noopener");
   if (!url.includes("room.rakuten.co.jp/mix")) showToast("投稿画面を直接作れないため、商品ページを開きました。楽天市場ページのROOMボタンから投稿してください");
+}
+
+function buildOwnRoomPostedItemFromUrl(url, label = "") {
+  const parsed = parseRakutenItemCodeFromUrl(url);
+  const normalizedUrl = normalizeComparableUrl(url);
+  const canonicalProductId = parsed.shopCode && parsed.itemCode ? `rakuten:${parsed.shopCode}:${parsed.itemCode}` : "";
+  return {
+    id: createId(),
+    source: "own-room-import",
+    url: safeHttpUrl(url),
+    normalizedUrl,
+    canonicalProductId,
+    shopCode: parsed.shopCode || "",
+    itemCode: parsed.itemCode || "",
+    name: trimText(String(label || "").replace(url, "").trim(), 80),
+    importedAt: new Date().toISOString(),
+  };
+}
+
+function parseOwnRoomPostedItems(text) {
+  const source = String(text || "");
+  const urls = [...source.matchAll(/https?:\/\/[^\s"'<>）)]+/gi)].map((match) => match[0].replace(/[.,、。]+$/, ""));
+  const itemCodes = [...source.matchAll(/(?:itemcode=|itemCode=)([a-z0-9_-]+%3A[a-z0-9_-]+|[a-z0-9_-]+:[a-z0-9_-]+)/gi)]
+    .map((match) => decodeURIComponent(match[1]));
+  const directCodes = [...source.matchAll(/\b([a-z0-9][a-z0-9_-]{2,}:[0-9][a-z0-9_-]{3,})\b/gi)].map((match) => match[1]);
+  const items = [];
+  const seen = new Set();
+
+  urls.forEach((url) => {
+    const item = buildOwnRoomPostedItemFromUrl(url, source.split(/\r?\n/).find((line) => line.includes(url)) || "");
+    const key = item.canonicalProductId || item.normalizedUrl;
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    items.push(item);
+  });
+
+  [...itemCodes, ...directCodes].forEach((code) => {
+    const [shopCode, itemCode] = String(code).split(":");
+    if (!shopCode || !itemCode) return;
+    const canonicalProductId = `rakuten:${shopCode}:${itemCode}`;
+    if (seen.has(canonicalProductId)) return;
+    seen.add(canonicalProductId);
+    items.push({
+      id: createId(),
+      source: "own-room-import",
+      url: "",
+      normalizedUrl: "",
+      canonicalProductId,
+      shopCode,
+      itemCode,
+      name: "",
+      importedAt: new Date().toISOString(),
+    });
+  });
+
+  source.split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(isLikelyOwnRoomProductName)
+    .slice(0, 200)
+    .forEach((name) => {
+      const key = normalizeComparableProductName(name);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      items.push({
+        id: createId(),
+        source: "own-room-import",
+        url: "",
+        normalizedUrl: "",
+        canonicalProductId: "",
+        shopCode: "",
+        itemCode: "",
+        name,
+        importedAt: new Date().toISOString(),
+      });
+    });
+  return items;
+}
+
+function isLikelyOwnRoomProductName(line) {
+  const value = String(line || "").trim();
+  if (value.length < 10 || value.length > 140) return false;
+  if (/https?:\/\/|itemcode=|^\d+円?$|^[\d,.\s%％]+$/.test(value)) return false;
+  if (/ROOM|楽天市場|プロフィール|フォロー|フォロワー|いいね|コメント|コレクション|コーディネート|商品を検索|購入履歴|お気に入り|もっと見る/.test(value)) return false;
+  return normalizeComparableProductName(value).length >= 6;
+}
+
+function getOwnRoomPostedKey(item) {
+  return item?.canonicalProductId || item?.normalizedUrl || normalizeComparableUrl(item?.url || "") || normalizeComparableProductName(item?.name || "");
+}
+
+function importOwnRoomPostedItems(text) {
+  const parsedItems = parseOwnRoomPostedItems(text);
+  if (!parsedItems.length) {
+    showOwnRoomPostedStatus("楽天市場の商品URL、ROOMの商品URL、または itemcode=shop:item を貼り付けてください", true);
+    return;
+  }
+  state.ownRoomPostedItems ||= [];
+  const existingKeys = new Set(state.ownRoomPostedItems.map(getOwnRoomPostedKey).filter(Boolean));
+  let added = 0;
+  parsedItems.forEach((item) => {
+    const key = getOwnRoomPostedKey(item);
+    if (!key || existingKeys.has(key)) return;
+    state.ownRoomPostedItems.unshift(item);
+    existingKeys.add(key);
+    added += 1;
+  });
+  saveState();
+  renderOwnRoomPostedPanel();
+  renderProducts();
+  renderDailySelection();
+  showOwnRoomPostedStatus(added ? `掲載済み商品を${added}件追加しました。商品を探すから自動除外します。` : "新しく追加できる掲載済み商品はありませんでした");
+}
+
+function showOwnRoomPostedStatus(message, isError = false) {
+  const status = document.querySelector("#ownRoomPostedStatus");
+  if (!status) return showToast(message);
+  status.hidden = false;
+  status.textContent = message;
+  status.classList.toggle("error", Boolean(isError));
+}
+
+function renderOwnRoomPostedPanel() {
+  const count = document.querySelector("#ownRoomPostedCount");
+  const list = document.querySelector("#ownRoomPostedList");
+  const urlInput = document.querySelector("#ownRoomUrl");
+  const items = state.ownRoomPostedItems || [];
+  if (count) count.textContent = `${items.length}件`;
+  if (urlInput && document.activeElement !== urlInput) urlInput.value = state.ownRoomUrl || "";
+  if (!list) return;
+  list.innerHTML = items.slice(0, 8).map((item) => `
+    <div class="posted-room-chip">
+      <span>${escapeHtml(item.name || item.canonicalProductId || item.url || "掲載済み商品")}</span>
+      <button type="button" data-remove-own-room-posted="${escapeHtml(item.id)}" aria-label="削除">×</button>
+    </div>
+  `).join("") || `<p class="muted">まだ掲載済み商品は登録されていません。</p>`;
+  list.querySelectorAll("[data-remove-own-room-posted]").forEach((button) => button.addEventListener("click", () => {
+    state.ownRoomPostedItems = (state.ownRoomPostedItems || []).filter((item) => item.id !== button.dataset.removeOwnRoomPosted);
+    saveState();
+    renderOwnRoomPostedPanel();
+    renderProducts();
+    renderDailySelection();
+  }));
 }
 
 function renderDailySelection(showAll = false) {
@@ -2574,6 +2732,7 @@ function bindProductImporter() {
   const importBtn = document.querySelector("#importProductBtn");
   const searchQuery = document.querySelector("#productSearchQuery");
   const searchBtn = document.querySelector("#searchProductBtn");
+  bindOwnRoomPostedImporter();
   if (!importUrl || !importBtn) return;
 
   const importProduct = async () => {
@@ -2666,6 +2825,42 @@ function bindProductImporter() {
       event.preventDefault();
       searchProducts();
     }
+  });
+}
+
+function bindOwnRoomPostedImporter() {
+  const roomUrl = document.querySelector("#ownRoomUrl");
+  const openButton = document.querySelector("#openOwnRoomUrl");
+  const pasteInput = document.querySelector("#ownRoomPostedPaste");
+  const importButton = document.querySelector("#importOwnRoomPosted");
+  const clearButton = document.querySelector("#clearOwnRoomPosted");
+  if (!roomUrl || roomUrl.dataset.bound) return;
+  roomUrl.dataset.bound = "true";
+  roomUrl.value = state.ownRoomUrl || "";
+  roomUrl.addEventListener("input", () => {
+    state.ownRoomUrl = roomUrl.value.trim();
+    saveState();
+  });
+  openButton?.addEventListener("click", () => {
+    const url = safeHttpUrl(roomUrl.value.trim() || state.ownRoomUrl || "https://room.rakuten.co.jp/");
+    window.open(url, "_blank", "noopener");
+    showOwnRoomPostedStatus("開いたROOMの商品リンクやページ本文をコピーして、下の欄に貼り付けてください");
+  });
+  importButton?.addEventListener("click", () => importOwnRoomPostedItems(pasteInput?.value || ""));
+  pasteInput?.addEventListener("paste", () => {
+    window.setTimeout(() => {
+      if ((pasteInput.value.match(/https?:\/\/|itemcode=|[a-z0-9_-]+:[0-9][a-z0-9_-]+/gi) || []).length >= 1) {
+        showOwnRoomPostedStatus("貼り付けを確認しました。「掲載済みリストを作る」を押すと除外対象に入ります。");
+      }
+    }, 0);
+  });
+  clearButton?.addEventListener("click", () => {
+    state.ownRoomPostedItems = [];
+    saveState();
+    renderOwnRoomPostedPanel();
+    renderProducts();
+    renderDailySelection();
+    showOwnRoomPostedStatus("掲載済みリストをクリアしました");
   });
 }
 

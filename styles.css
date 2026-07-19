@@ -3968,6 +3968,84 @@ body {
   min-width: 82px;
 }
 
+.own-room-posted-panel {
+  margin: 14px 0 18px;
+  padding: 14px;
+  border: 1px solid #ead3dc;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff9fb, #fff);
+}
+
+.own-room-posted-head,
+.own-room-url-row,
+.own-room-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.own-room-posted-head {
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.own-room-posted-head h4 {
+  margin: 2px 0 0;
+  font-size: 17px;
+}
+
+.own-room-url-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-bottom: 8px;
+}
+
+.own-room-posted-panel textarea {
+  width: 100%;
+  min-height: 92px;
+  margin: 0 0 9px;
+  resize: vertical;
+}
+
+.own-room-actions {
+  flex-wrap: wrap;
+}
+
+.own-room-posted-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.posted-room-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  gap: 6px;
+  padding: 6px 8px 6px 10px;
+  color: #74384e;
+  background: #fff1f6;
+  border: 1px solid #f0ccd8;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.posted-room-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.posted-room-chip button {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+}
+
 .coord-import-status {
   margin: 8px 0 0;
   color: var(--muted);
@@ -5979,5 +6057,16 @@ body {
 
   .daily-reason-columns {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .own-room-url-row {
+    grid-template-columns: 1fr;
+  }
+
+  .own-room-url-row button,
+  .own-room-actions button {
+    width: 100%;
   }
 }
