@@ -1106,6 +1106,43 @@ function normalizeComparableProductName(value) {
     .trim();
 }
 
+function buildRakutenRoomPostUrl(product, fallbackUrl = "") {
+  const shopCode = String(product?.ops?.shopCode || product?.details?.shopCode || "").trim();
+  const itemCode = String(product?.ops?.itemCode || product?.details?.itemCode || product?.details?.itemId || "").trim();
+  const canonical = String(product?.ops?.canonicalProductId || product?.canonicalProductId || "");
+  const canonicalMatch = canonical.match(/^rakuten:([^:]+):(.+)$/);
+  const parsedFromUrl = parseRakutenItemCodeFromUrl(fallbackUrl || product?.url || product?.sourceUrl || "");
+  const roomShopCode = shopCode || canonicalMatch?.[1] || parsedFromUrl.shopCode;
+  const roomItemCode = itemCode || canonicalMatch?.[2] || parsedFromUrl.itemCode;
+  if (roomShopCode && roomItemCode) {
+    return `https://room.rakuten.co.jp/mix?itemcode=${encodeURIComponent(`${roomShopCode}:${roomItemCode}`)}`;
+  }
+  return safeHttpUrl(fallbackUrl || product?.url || product?.sourceUrl || "");
+}
+
+function parseRakutenItemCodeFromUrl(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (!host.includes("rakuten.co.jp")) return {};
+    const parts = url.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
+    if (host === "item.rakuten.co.jp" && parts.length >= 2) return { shopCode: parts[0], itemCode: parts[1] };
+    const itemCode = url.searchParams.get("itemCode") || url.searchParams.get("item_code") || url.searchParams.get("itemcode");
+    const shopCode = url.searchParams.get("shopCode") || url.searchParams.get("shop_code") || url.searchParams.get("shopcode");
+    if (shopCode && itemCode) return { shopCode, itemCode };
+  } catch {
+    return {};
+  }
+  return {};
+}
+
+function openRakutenRoomPostScreen(product, fallbackUrl = "") {
+  const url = buildRakutenRoomPostUrl(product, fallbackUrl);
+  if (!url) return showToast("商品URLが未登録です");
+  window.open(url, "_blank", "noopener");
+  if (!url.includes("room.rakuten.co.jp/mix")) showToast("投稿画面を直接作れないため、商品ページを開きました。楽天市場ページのROOMボタンから投稿してください");
+}
+
 function renderDailySelection(showAll = false) {
   const grid = document.querySelector("#dailySelectionGrid");
   const kpiGrid = document.querySelector("#opsKpiGrid");
@@ -1342,9 +1379,7 @@ async function copyDailyRoomPost(productId) {
 function openDailyRoomProduct(productId) {
   const item = ensureRoomQueueItem(productId, { generateText: false });
   const product = state.products.find((entry) => entry.id === productId);
-  const url = item?.productUrl || product?.url || "";
-  if (!url) return showToast("商品URLが未登録です");
-  window.open(url, "_blank", "noopener");
+  openRakutenRoomPostScreen(product, item?.productUrl || product?.url || "");
 }
 
 function markDailyRoomPosted(productId) {
@@ -3157,7 +3192,7 @@ function renderProducts() {
       </div>
       <div class="product-card-actions">
         <button class="primary" data-use="${product.id}">SNS投稿へ</button>
-        ${product.category !== "ホテル・旅行" ? `<button data-room-use="${product.id}">ROOM文へ</button>` : ""}
+        ${product.category !== "ホテル・旅行" ? `<button data-room-use="${product.id}">ROOM文へ</button><button data-room-open-product="${product.id}">ROOMを開く</button>` : ""}
         <button data-delete="${product.id}">削除</button>
       </div>
     `;
@@ -3191,6 +3226,13 @@ function renderProducts() {
       renderRoomProductPreview();
       openView("room");
       generateRoomPost();
+    });
+  });
+
+  productGrid.querySelectorAll("[data-room-open-product]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const product = state.products.find((item) => item.id === button.dataset.roomOpenProduct);
+      openRakutenRoomPostScreen(product, product?.url || "");
     });
   });
 
@@ -7698,7 +7740,7 @@ function renderRoomQueue() {
       </div>
       <div class="room-queue-actions">
         <button data-room-copy="${escapeHtml(item.id)}">コピー</button>
-        <button data-room-open="${escapeHtml(item.id)}">商品を開く</button>
+        <button data-room-open="${escapeHtml(item.id)}">ROOM投稿画面</button>
         <button data-room-done="${escapeHtml(item.id)}">${item.done ? "未投稿へ戻す" : "投稿済みにする"}</button>
         <button data-room-delete="${escapeHtml(item.id)}" aria-label="削除">×</button>
       </div>
@@ -7710,8 +7752,8 @@ function renderRoomQueue() {
   }));
   roomQueue.querySelectorAll("[data-room-open]").forEach((button) => button.addEventListener("click", () => {
     const item = state.roomQueue.find((entry) => entry.id === button.dataset.roomOpen);
-    if (item?.productUrl) window.open(item.productUrl, "_blank", "noopener");
-    else showToast("商品URLが未登録です");
+    const product = state.products.find((entry) => entry.id === item?.productId);
+    openRakutenRoomPostScreen(product, item?.productUrl || product?.url || "");
   }));
   roomQueue.querySelectorAll("[data-room-done]").forEach((button) => button.addEventListener("click", () => {
     const item = state.roomQueue.find((entry) => entry.id === button.dataset.roomDone);
