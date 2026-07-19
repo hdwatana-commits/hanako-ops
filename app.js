@@ -1,4 +1,4 @@
-const APP_VERSION = (() => {
+﻿const APP_VERSION = (() => {
   try {
     return new URL(document.currentScript?.src || location.href).searchParams.get("v") || "開発版";
   } catch {
@@ -421,6 +421,7 @@ function initialize() {
   bindForms();
   bindActions();
   bindPhase2Actions();
+  bindPhase3Actions();
   bindCloudSync();
   renderProducts();
   renderDailySelection();
@@ -435,6 +436,7 @@ function initialize() {
   renderCalendar();
   renderMetrics();
   renderPhase2Panels();
+  renderAiAgentDashboard();
   renderLearningHint();
   renderChecks("");
   renderHome();
@@ -755,6 +757,18 @@ function normalizeState(value) {
     weeklyInsights: Array.isArray(source.weeklyInsights) ? source.weeklyInsights : [],
     ruleConflicts: Array.isArray(source.ruleConflicts) ? source.ruleConflicts : [],
     automationDecisions: Array.isArray(source.automationDecisions) ? source.automationDecisions : [],
+    aiProductEvaluations: Array.isArray(source.aiProductEvaluations) ? source.aiProductEvaluations : [],
+    aiPostPlans: Array.isArray(source.aiPostPlans) ? source.aiPostPlans : [],
+    aiImageJobs: Array.isArray(source.aiImageJobs) ? source.aiImageJobs : [],
+    aiCopyBundles: Array.isArray(source.aiCopyBundles) ? source.aiCopyBundles : [],
+    aiCollectionSuggestions: Array.isArray(source.aiCollectionSuggestions) ? source.aiCollectionSuggestions : [],
+    aiRepostSuggestions: Array.isArray(source.aiRepostSuggestions) ? source.aiRepostSuggestions : [],
+    aiSalesInsights: Array.isArray(source.aiSalesInsights) ? source.aiSalesInsights : [],
+    aiImprovementReports: Array.isArray(source.aiImprovementReports) ? source.aiImprovementReports : [],
+    aiSchedulePlans: Array.isArray(source.aiSchedulePlans) ? source.aiSchedulePlans : [],
+    aiAssistantMessages: Array.isArray(source.aiAssistantMessages) ? source.aiAssistantMessages : [],
+    aiAgentRuns: Array.isArray(source.aiAgentRuns) ? source.aiAgentRuns : [],
+    aiLearningProfile: source.aiLearningProfile && typeof source.aiLearningProfile === "object" ? source.aiLearningProfile : {},
     jobRuns: Array.isArray(source.jobRuns) ? source.jobRuns : [],
     errorLogs: Array.isArray(source.errorLogs) ? source.errorLogs : [],
   };
@@ -782,6 +796,18 @@ function ensureOpsState(target = state) {
   target.weeklyInsights ||= [];
   target.ruleConflicts ||= [];
   target.automationDecisions ||= [];
+  target.aiProductEvaluations ||= [];
+  target.aiPostPlans ||= [];
+  target.aiImageJobs ||= [];
+  target.aiCopyBundles ||= [];
+  target.aiCollectionSuggestions ||= [];
+  target.aiRepostSuggestions ||= [];
+  target.aiSalesInsights ||= [];
+  target.aiImprovementReports ||= [];
+  target.aiSchedulePlans ||= [];
+  target.aiAssistantMessages ||= [];
+  target.aiAgentRuns ||= [];
+  target.aiLearningProfile ||= {};
   target.jobRuns ||= [];
   target.errorLogs ||= [];
   if (window.HanakoPhase2Engine) {
@@ -1154,10 +1180,21 @@ function renderOpsPipeline() {
   const board = document.querySelector("#opsPipelineBoard");
   if (!board) return;
   state.postPlans ||= [];
-  const statuses = ["候補", "採用", "画像待ち", "画像完成", "文章完成", "投稿予約", "投稿済み", "成果確認済み"];
+  const statuses = [
+    "Candidate",
+    "Adopted",
+    "AI image waiting",
+    "AI image running",
+    "AI image done",
+    "AI image failed",
+    "Copy done",
+    "Scheduled",
+    "Posted",
+    "Result checked",
+  ];
   board.innerHTML = statuses.map((status) => {
     const plans = state.postPlans.filter((plan) => plan.status === status).slice(0, 20);
-    return `<section class="pipeline-column"><h4>${status}<span>${plans.length}</span></h4>${plans.map(renderPipelineCard).join("") || "<p>なし</p>"}</section>`;
+    return `<section class="pipeline-column"><h4>${status}<span>${plans.length}</span></h4>${plans.map(renderPipelineCard).join("") || "<p>No items</p>"}</section>`;
   }).join("");
 }
 
@@ -1166,8 +1203,8 @@ function renderPipelineCard(plan) {
   const collections = plan.recommendedCollections || [];
   return `<article class="pipeline-card">
     ${plan.image ? `<img src="${escapeHtml(plan.image)}" alt="">` : ""}
-    <strong>${escapeHtml(plan.productName || product?.name || "商品")}</strong>
-    <small>${escapeHtml(collections[0]?.name || "コレクション未確定")}</small>
+    <strong>${escapeHtml(plan.productName || product?.name || "Product")}</strong>
+    <small>${escapeHtml(collections[0]?.name || "Collection undecided")}</small>
   </article>`;
 }
 
@@ -1688,6 +1725,200 @@ function bindPhase2Actions() {
         renderPerformanceAnalytics();
       }
     }
+  });
+}
+
+function runPhase3Agent(reason = "manual") {
+  if (!window.HanakoPhase3Engine) {
+    showToast("Phase3 engine is not loaded");
+    return null;
+  }
+  ensureOpsState();
+  const latestSelection = getLatestDailySelection();
+  const selectionItems = Array.isArray(latestSelection?.items) && latestSelection.items.length
+    ? latestSelection.items
+    : (state.products || []).slice(0, 200);
+  const run = window.HanakoPhase3Engine.buildAgentRun({
+    products: state.products || [],
+    selectionItems,
+    posts: state.posts || [],
+    collections: state.collections || [],
+    salesResults: state.salesResults || [],
+    performanceAggregates: state.performanceAggregates || [],
+    scoreAdjustments: state.scoreAdjustments || [],
+    calendar: state.calendar || [],
+    aiProvider: getSelectedAiName(),
+  });
+  run.reason = reason;
+  state.aiAgentRuns = [run, ...(state.aiAgentRuns || []).filter((item) => item.id !== run.id)].slice(0, 30);
+  state.aiProductEvaluations = mergeAiRows(state.aiProductEvaluations, run.evaluations);
+  state.aiPostPlans = mergeAiRows(state.aiPostPlans, run.plans);
+  state.aiImageJobs = mergeAiRows(state.aiImageJobs, run.plans.map((plan) => ({ ...plan.imageJob, productId: plan.productId, planId: plan.id })));
+  state.aiCopyBundles = mergeAiRows(state.aiCopyBundles, run.plans.map((plan) => ({ id: plan.id, productId: plan.productId, ...plan.copyBundle })));
+  state.aiCollectionSuggestions = mergeAiRows(state.aiCollectionSuggestions, run.collectionSuggestions || []);
+  state.aiRepostSuggestions = mergeAiRows(
+    state.aiRepostSuggestions,
+    (run.reposts || []).map((item) => ({ id: window.HanakoPhase3Engine.stableHash(`repost:${item.productId}`), ...item }))
+  );
+  state.aiSalesInsights = mergeAiRows(state.aiSalesInsights, [run.salesInsight].filter(Boolean));
+  state.aiImprovementReports = mergeAiRows(state.aiImprovementReports, [run.weeklyReport].filter(Boolean));
+  state.aiSchedulePlans = mergeAiRows(state.aiSchedulePlans, (run.schedule || []).map((item) => ({ id: window.HanakoPhase3Engine.stableHash(`schedule:${item.day}:${item.productId}`), ...item })));
+  state.aiLearningProfile = buildAiLearningProfile(run);
+  saveUserDecision("AiAgent", run.id, "generated", null, { planCount: run.plans.length, reason }, "Phase3 AI agent");
+  saveState();
+  renderAiAgentDashboard();
+  renderOpsPipeline();
+  showToast("Phase3 AI agent updated");
+  return run;
+}
+
+function mergeAiRows(existing = [], incoming = []) {
+  const rows = new Map();
+  (existing || []).forEach((item) => item?.id && rows.set(item.id, item));
+  (incoming || []).forEach((item) => item?.id && rows.set(item.id, item));
+  return Array.from(rows.values()).sort((a, b) => String(b.generatedAt || b.createdAt || "").localeCompare(String(a.generatedAt || a.createdAt || ""))).slice(0, 500);
+}
+
+function buildAiLearningProfile(run = null) {
+  const adopted = (state.userDecisions || []).filter((item) => /adopt|approve|accept/i.test(`${item.decision} ${item.afterValue || ""}`)).length;
+  const excluded = (state.userDecisions || []).filter((item) => /exclude|reject|skip/i.test(`${item.decision} ${item.afterValue || ""}`)).length;
+  const sales = (state.salesResults || []).reduce((sum, item) => sum + (Number(item.salesAmount) || 0), 0);
+  return {
+    updatedAt: new Date().toISOString(),
+    adoptedDecisions: adopted,
+    excludedDecisions: excluded,
+    totalSalesAmount: sales,
+    lastRunId: run?.id || state.aiLearningProfile?.lastRunId || "",
+    styleSignals: ["adult cute", "high-looking", "travel", "ROOM friendly", "low effort approval"],
+  };
+}
+
+function renderAiAgentDashboard() {
+  const section = document.querySelector("#aiAgentSummary");
+  if (!section) return;
+  const run = state.aiAgentRuns?.[0] || null;
+  const plans = state.aiPostPlans || [];
+  const waitingImages = (state.aiImageJobs || []).filter((item) => item.status === "waiting").length;
+  const scheduled = (state.aiSchedulePlans || []).length;
+  const inbox = (state.decisionInboxItems || []).filter((item) => item.status !== "resolved").length;
+  const strongPlans = plans.filter((plan) => plan.aiRank === "S").length;
+  section.innerHTML = `
+    <article><strong>${strongPlans}</strong><span>S rank plans</span></article>
+    <article><strong>${waitingImages}</strong><span>Image queue</span></article>
+    <article><strong>${scheduled}</strong><span>Schedule</span></article>
+    <article><strong>${inbox}</strong><span>Need review</span></article>
+  `;
+  const taskList = document.querySelector("#aiTaskList");
+  if (taskList) {
+    const tasks = run?.tasks?.length ? run.tasks : [
+      { title: "Run AI agent", detail: "Create product picks, image prompts, copy, schedule, and reports.", count: plans.length },
+    ];
+    taskList.innerHTML = tasks.slice(0, 6).map((task) => `
+      <article class="ai-task-card">
+        <strong>${escapeHtml(task.title || "AI task")}</strong>
+        <p>${escapeHtml(task.detail || "")}</p>
+        <span>${Number(task.count || 0)} items</span>
+      </article>
+    `).join("");
+  }
+  const planList = document.querySelector("#aiPlanList");
+  if (planList) {
+    const visiblePlans = plans.slice(0, 8);
+    planList.innerHTML = visiblePlans.length
+      ? visiblePlans.map(renderAiPlanCard).join("")
+      : `<p class="muted">Run the AI agent to create today's posting plans.</p>`;
+  }
+  const assistantLog = document.querySelector("#aiAssistantLog");
+  if (assistantLog) {
+    const messages = (state.aiAssistantMessages || []).slice(0, 8);
+    assistantLog.innerHTML = messages.length
+      ? messages.map((message) => `<div class="ai-message ${message.role === "user" ? "user" : "assistant"}">${escapeHtml(message.text)}</div>`).join("")
+      : `<div class="ai-message assistant">Ask me what to post today.</div>`;
+  }
+}
+
+function renderAiPlanCard(plan) {
+  const product = (state.products || []).find((item) => item.id === plan.productId) || {};
+  const image = product.image || product.mainImageUrl || "";
+  const collection = plan.collectionCandidates?.[0]?.name || "Collection suggested by AI";
+  const roomCopy = plan.copyBundle?.room || "";
+  const imagePrompt = plan.imageJob?.prompt || "";
+  return `<article class="ai-plan-card">
+    ${image ? `<img src="${escapeHtml(image)}" alt="">` : ""}
+    <div>
+      <strong>${escapeHtml(plan.productName || product.name || "Product")}</strong>
+      <p>${escapeHtml(collection)}</p>
+      <small>${escapeHtml(plan.aiRank || "-")} / ${Number(plan.aiTotalScore || 0)}pt</small>
+    </div>
+    <div class="ai-plan-actions">
+      <button type="button" class="ghost-button" data-ai-copy-image="${escapeHtml(plan.id)}">Image prompt</button>
+      <button type="button" class="ghost-button" data-ai-copy-copy="${escapeHtml(plan.id)}">ROOM copy</button>
+      <button type="button" class="primary-button" data-ai-approve="${escapeHtml(plan.id)}">OK</button>
+    </div>
+    <textarea hidden data-ai-image-prompt="${escapeHtml(plan.id)}">${escapeHtml(imagePrompt)}</textarea>
+    <textarea hidden data-ai-room-copy="${escapeHtml(plan.id)}">${escapeHtml(roomCopy)}</textarea>
+  </article>`;
+}
+
+function approveAiPlan(planId) {
+  const plan = (state.aiPostPlans || []).find((item) => item.id === planId);
+  if (!plan) return;
+  const product = (state.products || []).find((item) => item.id === plan.productId);
+  if (product) {
+    sendProductToPipeline(product.id, "AI image waiting", false);
+  }
+  state.aiPostPlans = (state.aiPostPlans || []).map((item) => item.id === planId ? { ...item, status: "approved", approvedAt: new Date().toISOString() } : item);
+  state.aiImageJobs = (state.aiImageJobs || []).map((item) => item.planId === planId ? { ...item, status: "waiting" } : item);
+  saveUserDecision("AiPostPlan", planId, "approved", plan.status, "approved", "Phase3 approval");
+  saveState();
+  renderAiAgentDashboard();
+  renderOpsPipeline();
+  showToast("AI plan approved");
+}
+
+function bindPhase3Actions() {
+  document.querySelector("#runAiAgent")?.addEventListener("click", () => {
+    runPhase3Agent("manual");
+  });
+  document.querySelector("#approveAiTopPlans")?.addEventListener("click", () => {
+    (state.aiPostPlans || []).slice(0, 5).forEach((plan) => approveAiPlan(plan.id));
+    renderAiAgentDashboard();
+  });
+  document.querySelector("#aiPlanList")?.addEventListener("click", (event) => {
+    const approveButton = event.target.closest("[data-ai-approve]");
+    const imageButton = event.target.closest("[data-ai-copy-image]");
+    const copyButton = event.target.closest("[data-ai-copy-copy]");
+    if (approveButton) approveAiPlan(approveButton.dataset.aiApprove);
+    if (imageButton) {
+      const text = document.querySelector(`[data-ai-image-prompt="${CSS.escape(imageButton.dataset.aiCopyImage)}"]`)?.value || "";
+      copyText(text);
+    }
+    if (copyButton) {
+      const text = document.querySelector(`[data-ai-room-copy="${CSS.escape(copyButton.dataset.aiCopyCopy)}"]`)?.value || "";
+      copyText(text);
+    }
+  });
+  document.querySelector("#aiAssistantForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const input = document.querySelector("#aiAssistantQuestion");
+    const question = input?.value?.trim();
+    if (!question || !window.HanakoPhase3Engine) return;
+    const run = state.aiAgentRuns?.[0] || runPhase3Agent("assistant");
+    const answer = window.HanakoPhase3Engine.answerAssistant(question, {
+      run,
+      products: state.products || [],
+      posts: state.posts || [],
+      collections: state.collections || [],
+      salesResults: state.salesResults || [],
+    });
+    state.aiAssistantMessages = [
+      { id: createId(), role: "assistant", text: answer, createdAt: new Date().toISOString() },
+      { id: createId(), role: "user", text: question, createdAt: new Date().toISOString() },
+      ...(state.aiAssistantMessages || []),
+    ].slice(0, 50);
+    input.value = "";
+    saveState();
+    renderAiAgentDashboard();
   });
 }
 
@@ -2525,6 +2756,7 @@ function applyCloudState(payload) {
   renderCalendar();
   renderMetrics();
   renderPhase2Panels();
+  renderAiAgentDashboard();
   renderHome();
   suppressCloudSave = false;
 }

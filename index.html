@@ -11,11 +11,12 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=174">
+    <link rel="stylesheet" href="styles.css?v=175">
     <script src="config.js"></script>
-    <script src="cloud-sync.js?v=174"></script>
-    <script src="ops-engine.js?v=174"></script>
-    <script src="ops-phase2-engine.js?v=174"></script>
+    <script src="cloud-sync.js?v=175"></script>
+    <script src="ops-engine.js?v=175"></script>
+    <script src="ops-phase2-engine.js?v=175"></script>
+    <script src="ops-phase3-engine.js?v=175"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -98,6 +99,32 @@
             </div>
             <img src="icons/hanako-avatar.jpg" alt="おしゃれ研究家ハナコ" class="home-avatar" data-app-avatar>
           </div>
+
+          <section class="ai-agent-dashboard panel" aria-labelledby="aiAgentTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">AI ROOM AGENT</p>
+                <h3 id="aiAgentTitle">Today AI will prepare</h3>
+              </div>
+              <div class="button-row">
+                <button class="primary" id="runAiAgent" type="button">Run AI agent</button>
+                <button id="approveAiTopPlans" type="button">Approve top plans</button>
+              </div>
+            </div>
+            <div class="ai-agent-summary" id="aiAgentSummary"></div>
+            <div class="ai-agent-layout">
+              <div class="ai-task-list" id="aiTaskList"></div>
+              <div class="ai-assistant-box">
+                <h4>Ask AI assistant</h4>
+                <form id="aiAssistantForm" class="ai-assistant-form">
+                  <input id="aiAssistantQuestion" name="question" placeholder="What should I post today?">
+                  <button type="submit">Ask</button>
+                </form>
+                <div class="ai-assistant-log" id="aiAssistantLog"></div>
+              </div>
+            </div>
+            <div class="ai-plan-list" id="aiPlanList"></div>
+          </section>
 
           <section class="home-avatar-coverflow-picker" aria-labelledby="homeAvatarCoverflowTitle">
             <div class="home-avatar-coverflow-heading">
@@ -1492,7 +1519,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=174"></script>
-    <script src="app.js?v=174"></script>
+    <script src="room-review-generator.js?v=175"></script>
+    <script src="app.js?v=175"></script>
   </body>
 </html>

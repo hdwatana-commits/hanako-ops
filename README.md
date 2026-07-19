@@ -222,3 +222,13 @@ META_GRAPH_VERSION
 - サンプル20件未満は補正せず、十分な実績だけ翌日の売れやすさスコア補正へ使います。
 - SupabaseへPhase 2テーブルを追加する場合は `supabase-ops-phase2.sql` をSQL Editorで実行してください。
 - 実装計画と制約は `docs/phase2-ops-implementation-plan.md` にまとめています。
+
+## Phase 3 OPS: AI楽天ROOM運営エージェント
+
+- ホームに「今日AIがやること」と「AI秘書」を追加しました。
+- `AI担当者に作らせる` を押すと、商品評価、コーデ、画像生成プロンプト、ROOM文、SNS文、コレクション候補、再投稿判断、投稿予定をまとめて作ります。
+- `OKして準備` で投稿パイプライン、ROOM投稿待ち、カレンダーへ送れます。
+- AI判断には理由、根拠、参照データを保存します。
+- AI秘書には「今日は何を投稿する？」「今売れそうなのは？」「旅行コーデ作って」「同じ商品ある？」のように聞けます。
+- SupabaseへPhase 3テーブルを追加する場合は `supabase-ops-phase3.sql` をSQL Editorで実行してください。
+- 設計メモは `docs/phase3-ai-agent-plan.md` にまとめています。

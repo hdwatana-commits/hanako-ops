@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <title>Hanako OPS Phase 3 Tests</title>
+    <style>
+      body { font-family: system-ui, sans-serif; line-height: 1.6; padding: 24px; }
+      .pass { color: #137333; }
+      .fail { color: #b3261e; }
+      pre { background: #f7f7f7; padding: 12px; border-radius: 8px; overflow: auto; }
+    </style>
+    <script src="../ops-phase3-engine.js"></script>
+  </head>
+  <body>
+    <h1>Hanako OPS Phase 3 Tests</h1>
+    <div id="results"></div>
+    <script>
+      const E = window.HanakoPhase3Engine;
+      const products = [
+        {
+          id: "p1",
+          name: "高見えフリルブラウス 冷房対策にも",
+          url: "https://item.rakuten.co.jp/sample-shop/blouse-001/",
+          image: "https://example.com/blouse.jpg",
+          category: "トップス",
+          price: "3,980円",
+          hook: "甘めきれいめで通勤にも使える",
+          details: { brand: "Sample Fashion", color: "白" },
+          salePotentialScore: 88,
+          operationPriorityScore: 91,
+        },
+        {
+          id: "p2",
+          name: "淡色ミニショルダーバッグ",
+          category: "バッグ",
+          price: "2,480円",
+          details: { brand: "Bag Shop", color: "ベージュ" },
+        },
+      ];
+      const tests = [];
+      function test(name, fn) {
+        try {
+          fn();
+          tests.push({ name, ok: true });
+        } catch (error) {
+          tests.push({ name, ok: false, error: error.message });
+        }
+      }
+      function assert(condition, message) {
+        if (!condition) throw new Error(message || "Assertion failed");
+      }
+
+      test("AI商品評価", () => {
+        const evaluation = E.evaluateProduct(products[0], {});
+        assert(evaluation.aiTotalScore > 60, "score");
+        assert(evaluation.visionPrompt.includes("0〜100点"), "vision prompt");
+        assert(evaluation.reasons.length >= 3, "reasons");
+      });
+
+      test("AI投稿プラン生成", () => {
+        const run = E.buildAgentRun({ products, selectionItems: products, collections: [], posts: [], salesResults: [], performanceAggregates: [] });
+        assert(run.plans.length >= 1, "plans");
+        assert(run.plans[0].imageJob.prompt.includes("3:4"), "image prompt");
+        assert(run.plans[0].copyBundle.room.includes("PR"), "room copy");
+      });
+
+      test("AIコレクション提案", () => {
+        const run = E.buildAgentRun({ products, selectionItems: products, collections: [], posts: [], salesResults: [], performanceAggregates: [] });
+        assert(run.collectionSuggestions.length >= 1, "collection suggestions");
+      });
+
+      test("AI投稿スケジュール", () => {
+        const run = E.buildAgentRun({ products, selectionItems: products, collections: [], posts: [], salesResults: [], performanceAggregates: [] });
+        assert(run.schedule.length >= 1, "schedule");
+        assert(run.schedule[0].date, "date");
+      });
+
+      test("AI秘書応答", () => {
+        const run = E.buildAgentRun({ products, selectionItems: products, collections: [], posts: [], salesResults: [], performanceAggregates: [] });
+        const answer = E.answerAssistant("今日は何を投稿する？", { latestRun: run });
+        assert(answer.includes("1."), "ranked answer");
+      });
+
+      document.querySelector("#results").innerHTML = tests.map((item) => `<p class="${item.ok ? "pass" : "fail"}">${item.ok ? "PASS" : "FAIL"} ${item.name}${item.error ? `: ${item.error}` : ""}</p>`).join("") + `<pre>${JSON.stringify(tests, null, 2)}</pre>`;
+    </script>
+  </body>
+</html>
