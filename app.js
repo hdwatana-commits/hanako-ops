@@ -1428,6 +1428,7 @@ function renderDailySelectionCard(item) {
           <button type="button" data-daily-image="${escapeHtml(item.id)}">画像生成へ</button>
           <button type="button" data-daily-room="${escapeHtml(item.id)}">ROOM文へ</button>
           <button type="button" data-daily-room-copy="${escapeHtml(item.id)}">ROOM文コピー</button>
+          <button type="button" data-daily-room-copy-open="${escapeHtml(item.id)}">コピーしてROOM</button>
           <button type="button" data-daily-room-open="${escapeHtml(item.id)}">ROOMへ開く</button>
           <button type="button" data-daily-room-posted="${escapeHtml(item.id)}">投稿済み</button>
           <button type="button" data-daily-hold="${escapeHtml(item.id)}">保留</button>
@@ -1444,6 +1445,7 @@ function bindDailySelectionCardActions(root) {
   root.querySelectorAll("[data-daily-image]").forEach((button) => button.addEventListener("click", () => sendProductToPipeline(button.dataset.dailyImage, "画像待ち")));
   root.querySelectorAll("[data-daily-room]").forEach((button) => button.addEventListener("click", () => sendProductToRoomQueue(button.dataset.dailyRoom)));
   root.querySelectorAll("[data-daily-room-copy]").forEach((button) => button.addEventListener("click", () => copyDailyRoomPost(button.dataset.dailyRoomCopy)));
+  root.querySelectorAll("[data-daily-room-copy-open]").forEach((button) => button.addEventListener("click", () => copyDailyRoomPostAndOpen(button.dataset.dailyRoomCopyOpen)));
   root.querySelectorAll("[data-daily-room-open]").forEach((button) => button.addEventListener("click", () => openDailyRoomProduct(button.dataset.dailyRoomOpen)));
   root.querySelectorAll("[data-daily-room-posted]").forEach((button) => button.addEventListener("click", () => markDailyRoomPosted(button.dataset.dailyRoomPosted)));
   root.querySelectorAll("[data-daily-detail]").forEach((button) => button.addEventListener("click", () => showDailyDetail(button.dataset.dailyDetail)));
@@ -1587,6 +1589,18 @@ async function copyDailyRoomPost(productId) {
   saveState();
   renderRoomQueue();
   showToast("ROOM投稿文をコピーしました");
+}
+
+async function copyDailyRoomPostAndOpen(productId) {
+  const item = ensureRoomQueueItem(productId, { generateText: true });
+  const product = state.products.find((entry) => entry.id === productId);
+  if (!item?.text) return showToast("ROOM投稿文を作れませんでした");
+  const copyPromise = copyRoomText(item.text);
+  openRakutenRoomPostScreen(product, item?.productUrl || product?.url || "");
+  await copyPromise;
+  saveState();
+  renderRoomQueue();
+  showToast("ROOM投稿文をコピーして投稿画面を開きました");
 }
 
 function openDailyRoomProduct(productId) {
@@ -3446,7 +3460,7 @@ function renderProducts() {
       </div>
       <div class="product-card-actions">
         <button class="primary" data-use="${product.id}">SNS投稿へ</button>
-        ${product.category !== "ホテル・旅行" ? `<button data-room-use="${product.id}">ROOM文へ</button><button data-room-copy-open-product="${product.id}">コピーしてROOM投稿画面</button><button data-room-open-product="${product.id}">ROOMを開く</button>` : ""}
+        ${product.category !== "ホテル・旅行" ? `<button data-room-use="${product.id}">ROOM文へ</button><button data-room-copy-open-product="${product.id}">コピーしてROOM</button><button data-room-open-product="${product.id}">ROOMを開く</button>` : ""}
         <button data-delete="${product.id}">削除</button>
       </div>
     `;
