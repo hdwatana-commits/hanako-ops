@@ -420,6 +420,7 @@ function initialize() {
   bindNavigation();
   bindForms();
   bindActions();
+  bindPhase2Actions();
   bindCloudSync();
   renderProducts();
   renderDailySelection();
@@ -433,6 +434,7 @@ function initialize() {
   renderRoomQueue();
   renderCalendar();
   renderMetrics();
+  renderPhase2Panels();
   renderLearningHint();
   renderChecks("");
   renderHome();
@@ -738,6 +740,23 @@ function normalizeState(value) {
     posts: Array.isArray(source.posts) ? source.posts : [],
     userDecisions: Array.isArray(source.userDecisions) ? source.userDecisions : [],
     duplicateMatches: Array.isArray(source.duplicateMatches) ? source.duplicateMatches : [],
+    collectionRuleVersions: Array.isArray(source.collectionRuleVersions) ? source.collectionRuleVersions : [],
+    collectionMemberships: Array.isArray(source.collectionMemberships) ? source.collectionMemberships : [],
+    collectionBalanceSnapshots: Array.isArray(source.collectionBalanceSnapshots) ? source.collectionBalanceSnapshots : [],
+    postSimilarities: Array.isArray(source.postSimilarities) ? source.postSimilarities : [],
+    decisionInboxItems: Array.isArray(source.decisionInboxItems) ? source.decisionInboxItems : [],
+    csvImports: Array.isArray(source.csvImports) ? source.csvImports : [],
+    csvColumnMappings: Array.isArray(source.csvColumnMappings) ? source.csvColumnMappings : [],
+    csvImportRows: Array.isArray(source.csvImportRows) ? source.csvImportRows : [],
+    salesResults: Array.isArray(source.salesResults) ? source.salesResults : [],
+    salesAttributions: Array.isArray(source.salesAttributions) ? source.salesAttributions : [],
+    performanceAggregates: Array.isArray(source.performanceAggregates) ? source.performanceAggregates : [],
+    scoreAdjustments: Array.isArray(source.scoreAdjustments) ? source.scoreAdjustments : [],
+    weeklyInsights: Array.isArray(source.weeklyInsights) ? source.weeklyInsights : [],
+    ruleConflicts: Array.isArray(source.ruleConflicts) ? source.ruleConflicts : [],
+    automationDecisions: Array.isArray(source.automationDecisions) ? source.automationDecisions : [],
+    jobRuns: Array.isArray(source.jobRuns) ? source.jobRuns : [],
+    errorLogs: Array.isArray(source.errorLogs) ? source.errorLogs : [],
   };
 }
 
@@ -748,6 +767,26 @@ function ensureOpsState(target = state) {
   target.posts ||= [];
   target.userDecisions ||= [];
   target.duplicateMatches ||= [];
+  target.collectionRuleVersions ||= [];
+  target.collectionMemberships ||= [];
+  target.collectionBalanceSnapshots ||= [];
+  target.postSimilarities ||= [];
+  target.decisionInboxItems ||= [];
+  target.csvImports ||= [];
+  target.csvColumnMappings ||= [];
+  target.csvImportRows ||= [];
+  target.salesResults ||= [];
+  target.salesAttributions ||= [];
+  target.performanceAggregates ||= [];
+  target.scoreAdjustments ||= [];
+  target.weeklyInsights ||= [];
+  target.ruleConflicts ||= [];
+  target.automationDecisions ||= [];
+  target.jobRuns ||= [];
+  target.errorLogs ||= [];
+  if (window.HanakoPhase2Engine) {
+    target.collections = window.HanakoPhase2Engine.defaultCollectionRules(target.collections);
+  }
   target.products = (target.products || []).map((product) => enrichProductForOps(product));
   return target;
 }
@@ -864,9 +903,11 @@ function runDailySelection({ sourceFailed = false } = {}) {
     candidateCount: selection.candidateCount,
     visibleCount: selection.visibleCount,
   }, sourceFailed ? "API失敗時フォールバック" : "手動実行");
+  runPhase2AutomationJobs("daily-selection");
   saveState();
   renderDailySelection();
   renderOpsPipeline();
+  renderPhase2Panels();
   showToast(`Sランク${selection.visibleCount}件に絞りました`);
 }
 
@@ -1143,6 +1184,511 @@ function saveUserDecision(entityType, entityId, decision, beforeValue, afterValu
     createdAt: new Date().toISOString(),
   });
   state.userDecisions = state.userDecisions.slice(0, 500);
+}
+
+function runPhase2AutomationJobs(reason = "manual") {
+  if (!window.HanakoPhase2Engine) return;
+  ensureOpsState();
+  const startedAt = new Date().toISOString();
+  const job = {
+    id: createId(),
+    jobName: "phase2Automation",
+    reason,
+    status: "running",
+    startedAt,
+    targetCount: 0,
+    successCount: 0,
+    errorCount: 0,
+  };
+  state.jobRuns.unshift(job);
+  try {
+    const selection = getLatestDailySelection();
+    const items = selection?.items || state.products.map((product) => enrichProductForOps(product));
+    const context = {
+      products: state.products,
+      posts: buildOpsPostHistory(),
+      collectionMemberships: state.collectionMemberships,
+      performanceAggregates: state.performanceAggregates,
+    };
+
+    items.forEach((item) => {
+      const product = state.products.find((entry) => entry.id === item.id) || item;
+      const adjusted = window.HanakoPhase2Engine.applyScoreAdjustments(item, state.scoreAdjustments);
+      if (adjusted.correction) {
+        item.performanceAdjustedScore = adjusted.finalScore;
+        item.performanceAdjustmentBreakdown = adjusted;
+      }
+      item.recommendedCollections = window.HanakoPhase2Engine.classifyCollections(product, state.collections, {
+        ...context,
+        collectionMemberships: state.collectionMemberships,
+      });
+    });
+
+    const pendingMemberships = window.HanakoPhase2Engine.buildPendingMemberships(items, state.collections, {
+      ...context,
+      collectionMemberships: state.collectionMemberships,
+    });
+    mergeById(state.collectionMemberships, pendingMemberships);
+
+    state.collectionBalanceSnapshots = state.collections.map((collection) => (
+      window.HanakoPhase2Engine.analyzeCollectionBalance(collection, state.collectionMemberships, state.products, state.salesResults)
+    ));
+
+    state.postSimilarities = buildPhase2PostSimilarities();
+    state.decisionInboxItems = mergeOpenInboxItems(window.HanakoPhase2Engine.generateDecisionInbox({
+      selectionItems: items,
+      postSimilarities: state.postSimilarities,
+      salesAttributions: state.salesAttributions,
+    }));
+
+    state.performanceAggregates = window.HanakoPhase2Engine.aggregatePerformance({
+      products: state.products,
+      posts: buildOpsPostHistory(),
+      salesResults: state.salesResults,
+      attributions: state.salesAttributions,
+      metrics: state.metrics,
+    });
+    state.scoreAdjustments = mergeScoreAdjustments(window.HanakoPhase2Engine.calculateScoreAdjustments(state.performanceAggregates));
+    state.weeklyInsights = [window.HanakoPhase2Engine.buildWeeklyInsights({
+      performanceAggregates: state.performanceAggregates,
+      userDecisions: state.userDecisions,
+    }), ...(state.weeklyInsights || []).filter((item) => item.id !== `weekly-${new Date().toISOString().slice(0, 10)}`)].slice(0, 12);
+
+    job.targetCount = items.length;
+    job.successCount = items.length;
+    job.status = "success";
+    job.finishedAt = new Date().toISOString();
+  } catch (error) {
+    job.status = "failed";
+    job.errorCount = 1;
+    job.finishedAt = new Date().toISOString();
+    state.errorLogs.unshift({
+      id: createId(),
+      source: "phase2Automation",
+      message: error.message || String(error),
+      createdAt: new Date().toISOString(),
+    });
+  }
+  state.jobRuns = state.jobRuns.slice(0, 80);
+  state.errorLogs = state.errorLogs.slice(0, 100);
+}
+
+function buildPhase2PostSimilarities() {
+  if (!window.HanakoPhase2Engine) return [];
+  const posts = buildOpsPostHistory();
+  return (state.postPlans || []).flatMap((plan) => {
+    const product = state.products.find((item) => item.id === plan.productId) || {};
+    const candidate = {
+      ...product,
+      productId: product.id,
+      canonicalProductId: product.ops?.canonicalProductId,
+      brand: product.details?.brand || product.ops?.brand || "",
+      category: product.category || "",
+      colorFamily: product.details?.color || product.ops?.color || "",
+      scene: plan.scene || product.scene || "",
+      backgroundLocation: plan.backgroundLocation || "",
+      pose: plan.pose || "",
+      hairstyle: plan.hairstyle || "",
+      problemSolution: plan.problemSolution || product.hook || "",
+      copyType: plan.copyType || "",
+      copyText: plan.copyText || plan.copy || "",
+      imageLayout: plan.imageLayout || "",
+      collectionIds: plan.collectionIds || [],
+    };
+    return window.HanakoPhase2Engine.findSimilarPosts(candidate, posts, { compareDays: 90 })
+      .filter((similarity) => similarity.similarityScore >= 40)
+      .map((similarity) => ({
+        id: `${plan.id}-${similarity.existingPostId}`,
+        newPostPlanId: plan.id,
+        ...similarity,
+      }));
+  }).slice(0, 80);
+}
+
+function mergeOpenInboxItems(nextItems) {
+  const resolved = (state.decisionInboxItems || []).filter((item) => item.status === "resolved");
+  const manualOpen = (state.decisionInboxItems || []).filter((item) => item.status === "open" && item.manual);
+  return [...resolved, ...manualOpen, ...nextItems.filter((item) => !resolved.some((done) => done.id === item.id))].slice(0, 200);
+}
+
+function mergeById(target, rows) {
+  const map = new Map((target || []).map((item) => [item.id, item]));
+  rows.forEach((row) => {
+    if (!map.has(row.id)) map.set(row.id, row);
+  });
+  target.splice(0, target.length, ...map.values());
+}
+
+function mergeScoreAdjustments(nextRows) {
+  const existing = new Map((state.scoreAdjustments || []).map((item) => [item.id, item]));
+  return nextRows.map((row) => ({ ...row, isEnabled: existing.get(row.id)?.isEnabled ?? row.isEnabled }));
+}
+
+function renderPhase2Panels() {
+  renderDecisionInbox();
+  renderCollectionRules();
+  renderSalesCsvPreview();
+  renderPerformanceAnalytics();
+  renderWeeklyInsights();
+}
+
+function renderDecisionInbox() {
+  const summary = document.querySelector("#decisionInboxSummary");
+  const list = document.querySelector("#decisionInboxList");
+  if (!summary || !list) return;
+  const openItems = (state.decisionInboxItems || []).filter((item) => item.status !== "resolved").sort((a, b) => b.priority - a.priority);
+  const byType = openItems.reduce((acc, item) => {
+    acc[item.type] = (acc[item.type] || 0) + 1;
+    return acc;
+  }, {});
+  summary.innerHTML = [
+    ["未処理", openItems.length],
+    ["重複", byType.duplicate || 0],
+    ["分類", byType.collection || 0],
+    ["類似投稿", byType.similar_post || 0],
+    ["売上紐付け", byType.sales_link || 0],
+  ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+  if (!openItems.length) {
+    list.innerHTML = `<div class="phase2-empty"><strong>判断待ちはありません</strong><p>高確信度の分類と低リスク商品は自動で進みます。</p></div>`;
+    return;
+  }
+  list.innerHTML = openItems.slice(0, 20).map((item) => {
+    const entity = getInboxEntity(item);
+    return `<article class="decision-card" data-inbox-id="${escapeHtml(item.id)}">
+      <div>
+        <span class="status-pill">${escapeHtml(inboxTypeLabel(item.type))}</span>
+        <strong>${escapeHtml(entity?.name || entity?.productName || item.entityId || "対象データ")}</strong>
+        <p>${escapeHtml(item.reason)}</p>
+        <small>推奨: ${escapeHtml(item.recommendedAction)} / 確信度 ${escapeHtml(item.recommendationConfidence || 0)}%</small>
+      </div>
+      <div class="decision-actions">
+        <button class="primary" type="button" data-inbox-resolve="${escapeHtml(item.id)}">推奨で解決</button>
+        <button type="button" data-inbox-ignore="${escapeHtml(item.id)}">今回は無視</button>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+function getInboxEntity(item) {
+  if (item.entityType === "Product") return state.products.find((product) => product.id === item.entityId);
+  if (item.entityType === "PostPlan") return state.postPlans.find((plan) => plan.id === item.entityId);
+  if (item.entityType === "SalesResult") return state.salesResults.find((sale) => sale.id === item.entityId);
+  return null;
+}
+
+function inboxTypeLabel(type) {
+  return {
+    duplicate: "重複確認",
+    repost: "再投稿判断",
+    collection: "コレクション確認",
+    similar_post: "類似投稿",
+    sales_link: "売上紐付け",
+    data_missing: "データ不足",
+  }[type] || type;
+}
+
+function resolveInboxItem(id, resolution = "recommended") {
+  const item = state.decisionInboxItems.find((entry) => entry.id === id);
+  if (!item) return;
+  item.status = "resolved";
+  item.resolution = resolution;
+  item.resolvedAt = new Date().toISOString();
+  saveUserDecision(item.entityType, item.entityId, `inbox:${resolution}`, item.reason, item.recommendedAction, "Phase 2判断待ち受信箱");
+  state.automationDecisions.unshift({
+    id: createId(),
+    inboxItemId: id,
+    action: resolution,
+    reason: item.reason,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+function renderCollectionRules() {
+  const list = document.querySelector("#collectionRuleList");
+  if (!list || !window.HanakoPhase2Engine) return;
+  const previews = state.collections.map((rule) => window.HanakoPhase2Engine.previewRule(rule, state.products, {
+    collectionMemberships: state.collectionMemberships,
+    products: state.products,
+    performanceAggregates: state.performanceAggregates,
+  }));
+  list.innerHTML = previews.map((preview) => {
+    const rule = preview.rule;
+    const balance = state.collectionBalanceSnapshots.find((item) => item.collectionId === rule.collectionId);
+    return `<article class="collection-rule-card">
+      <div>
+        <span class="status-pill">${escapeHtml(rule.automationMode)}</span>
+        <strong>${escapeHtml(rule.name)}</strong>
+        <p>${escapeHtml(rule.description || "説明未設定")}</p>
+        <small>対象 ${preview.targetCount}件 / 自動予約 ${preview.autoTargetCount}件 / 偏り ${escapeHtml(balance?.status || "未集計")}</small>
+      </div>
+      <div class="decision-actions">
+        <button type="button" data-rule-toggle="${escapeHtml(rule.collectionId)}">${rule.isActive ? "一時停止" : "再開"}</button>
+        <button type="button" data-rule-duplicate="${escapeHtml(rule.collectionId)}">複製</button>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+function addCollectionRuleFromForm(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const name = String(data.get("name") || "").trim();
+  if (!name) return showToast("ルール名を入れてください");
+  const rule = window.HanakoPhase2Engine.normalizeRule({
+    id: createId(),
+    collectionId: createId(),
+    name,
+    automationMode: data.get("automationMode"),
+    minimumConfidence: Number(data.get("minimumConfidence") || 86),
+    requiredConditions: { category: splitCsv(data.get("requiredCategory")) },
+    preferredConditions: { taste: splitCsv(data.get("preferredTaste")) },
+    description: "画面から追加した分類ルール",
+  });
+  state.collections.unshift(rule);
+  state.collectionRuleVersions.unshift({
+    id: createId(),
+    collectionRuleId: rule.id,
+    version: 1,
+    snapshot: rule,
+    changeReason: "manual_create",
+    createdAt: new Date().toISOString(),
+  });
+  runPhase2AutomationJobs("collection-rule-create");
+  saveState();
+  renderPhase2Panels();
+  form.reset();
+  showToast("コレクションルールを追加しました");
+}
+
+function splitCsv(value) {
+  return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function renderSalesCsvPreview() {
+  const target = document.querySelector("#salesCsvPreview");
+  if (!target) return;
+  const latest = state.csvImports?.[0];
+  const pending = window.pendingSalesCsvImport;
+  if (pending) {
+    target.innerHTML = `<div class="csv-map-grid">
+      <div><span>文字コード</span><strong>${escapeHtml(pending.encoding)}</strong></div>
+      <div><span>行数</span><strong>${pending.rows.length}</strong></div>
+      <div><span>自動マッピング</span><strong>${Object.keys(pending.mapping).length}列</strong></div>
+    </div>
+    <p class="muted">${escapeHtml(pending.headers.join(" / "))}</p>
+    <div class="csv-preview-table">${pending.rows.slice(0, 5).map((row) => `<p>${escapeHtml(row.slice(0, 6).join(" | "))}</p>`).join("")}</div>`;
+    return;
+  }
+  if (!latest) {
+    target.innerHTML = `<div class="phase2-empty"><strong>CSV未取込</strong><p>楽天アフィリエイトの成果CSVを選ぶと、列を自動判定して重複なしで取り込みます。</p></div>`;
+    return;
+  }
+  target.innerHTML = `<div class="csv-map-grid">
+    <div><span>前回取込</span><strong>${escapeHtml(latest.fileName || latest.id)}</strong></div>
+    <div><span>新規</span><strong>${latest.insertedCount || 0}</strong></div>
+    <div><span>重複スキップ</span><strong>${latest.duplicateCount || 0}</strong></div>
+    <div><span>要確認</span><strong>${latest.needsReviewCount || 0}</strong></div>
+  </div>`;
+}
+
+async function handleSalesCsvFile(event) {
+  const file = event.target.files?.[0];
+  if (!file || !window.HanakoPhase2Engine) return;
+  const buffer = await file.arrayBuffer();
+  const candidates = [
+    ["UTF-8", "utf-8"],
+    ["Shift_JIS", "shift_jis"],
+  ];
+  let parsed = null;
+  for (const [label, encoding] of candidates) {
+    try {
+      const text = new TextDecoder(encoding).decode(buffer);
+      const csv = window.HanakoPhase2Engine.parseCsv(text);
+      if (csv.headers.length) {
+        parsed = { ...csv, encoding: label };
+        break;
+      }
+    } catch {
+      // Try next encoding.
+    }
+  }
+  if (!parsed) return showToast("CSVを読み込めませんでした");
+  window.pendingSalesCsvImport = {
+    fileName: file.name,
+    encoding: parsed.encoding,
+    headers: parsed.headers,
+    rows: parsed.rows,
+    mapping: getSavedOrAutoMapping(parsed.headers),
+  };
+  renderSalesCsvPreview();
+}
+
+function getSavedOrAutoMapping(headers) {
+  const key = headers.map((header) => String(header).trim()).join("|");
+  const saved = state.csvColumnMappings.find((item) => item.headerFingerprint === key);
+  return saved?.mapping || window.HanakoPhase2Engine.autoMapColumns(headers);
+}
+
+function executeSalesImport() {
+  const pending = window.pendingSalesCsvImport;
+  if (!pending || !window.HanakoPhase2Engine) return showToast("先にCSVを選んでください");
+  const importId = createId();
+  const results = window.HanakoPhase2Engine.rowsToSalesResults(pending.headers, pending.rows, pending.mapping, importId);
+  const fingerprints = new Set((state.salesResults || []).map((item) => item.importFingerprint));
+  let insertedCount = 0;
+  let duplicateCount = 0;
+  results.forEach((result) => {
+    if (fingerprints.has(result.importFingerprint)) {
+      duplicateCount += 1;
+      return;
+    }
+    state.salesResults.unshift(result);
+    fingerprints.add(result.importFingerprint);
+    insertedCount += 1;
+  });
+  const attributions = results
+    .filter((result) => !state.salesAttributions.some((item) => item.salesResultId === result.id))
+    .map((result) => window.HanakoPhase2Engine.attributeSales(result, state.products, buildOpsPostHistory()));
+  mergeById(state.salesAttributions, attributions);
+  const headerFingerprint = pending.headers.map((header) => String(header).trim()).join("|");
+  state.csvColumnMappings.unshift({ id: createId(), headerFingerprint, mapping: pending.mapping, createdAt: new Date().toISOString() });
+  const importRow = {
+    id: importId,
+    fileName: pending.fileName,
+    encoding: pending.encoding,
+    rowCount: pending.rows.length,
+    insertedCount,
+    duplicateCount,
+    autoLinkedCount: attributions.filter((item) => item.status === "confirmed").length,
+    needsReviewCount: attributions.filter((item) => item.status !== "confirmed").length,
+    createdAt: new Date().toISOString(),
+  };
+  state.csvImports.unshift(importRow);
+  window.pendingSalesCsvImport = null;
+  runPhase2AutomationJobs("sales-csv-import");
+  saveState();
+  renderPhase2Panels();
+  showToast(`CSV取込: 新規${insertedCount}件 / 重複${duplicateCount}件`);
+}
+
+function renderPerformanceAnalytics() {
+  const summary = document.querySelector("#performanceSummary");
+  const adjustments = document.querySelector("#scoreAdjustmentList");
+  if (!summary || !adjustments) return;
+  const totals = (state.salesResults || []).reduce((acc, item) => {
+    acc.salesCount += Number(item.quantity || 1);
+    acc.salesAmount += Number(item.salesAmount || 0);
+    acc.rewardAmount += Number(item.rewardAmount || 0);
+    return acc;
+  }, { salesCount: 0, salesAmount: 0, rewardAmount: 0 });
+  const topAggregates = [...(state.performanceAggregates || [])]
+    .filter((item) => Number(item.sampleSize || 0) > 0)
+    .sort((a, b) => Number(b.conversionRate || 0) - Number(a.conversionRate || 0))
+    .slice(0, 8);
+  summary.innerHTML = [
+    ["売上件数", totals.salesCount],
+    ["売上金額", `${totals.salesAmount.toLocaleString()}円`],
+    ["成果報酬", `${totals.rewardAmount.toLocaleString()}円`],
+    ["集計セグメント", state.performanceAggregates?.length || 0],
+  ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")
+    + topAggregates.map((item) => `<article class="performance-row"><strong>${escapeHtml(item.dimension)} / ${escapeHtml(item.dimensionValue)}</strong><span>成果${item.salesCount}件 / サンプル${item.sampleSize}件</span></article>`).join("");
+  adjustments.innerHTML = (state.scoreAdjustments || []).slice(0, 12).map((item) => `
+    <article class="score-adjustment-row">
+      <div><strong>${escapeHtml(item.dimension)}：${escapeHtml(item.dimensionValue)}</strong><p>${escapeHtml(item.reason || "")}</p><small>サンプル${item.sampleSize}件 / 補正 ${item.adjustmentValue > 0 ? "+" : ""}${item.adjustmentValue}</small></div>
+      <button type="button" data-score-toggle="${escapeHtml(item.id)}">${item.isEnabled === false ? "有効化" : "無効化"}</button>
+    </article>`).join("") || `<div class="phase2-empty"><strong>実績補正はまだありません</strong><p>20件以上のサンプルが集まるまで断定的な補正はしません。</p></div>`;
+}
+
+function renderWeeklyInsights() {
+  const panel = document.querySelector("#weeklyInsightPanel");
+  if (!panel) return;
+  const insight = state.weeklyInsights?.[0];
+  if (!insight) {
+    panel.innerHTML = `<div class="phase2-empty"><strong>レポート未生成</strong><p>CSV取込後に更新すると、事実と推測を分けて改善案を出します。</p></div>`;
+    return;
+  }
+  panel.innerHTML = `<div class="weekly-columns">
+    <section><h4>事実</h4>${(insight.facts || []).slice(0, 5).map((item) => `<p>${escapeHtml(item)}</p>`).join("") || "<p>十分な実績がまだありません。</p>"}</section>
+    <section><h4>推測</h4>${(insight.assumptions || []).slice(0, 5).map((item) => `<p>${escapeHtml(item)}</p>`).join("") || "<p>サンプル不足のため保留です。</p>"}</section>
+    <section><h4>次の一手</h4>${(insight.recommendations || []).slice(0, 6).map((item) => `<p>${escapeHtml(item)}</p>`).join("") || "<p>まず成果CSVを取り込みます。</p>"}</section>
+  </div>`;
+}
+
+function bindPhase2Actions() {
+  if (document.body.dataset.phase2Bound === "true") return;
+  document.body.dataset.phase2Bound = "true";
+  document.querySelector("#collectionRuleForm")?.addEventListener("submit", addCollectionRuleFromForm);
+  document.querySelector("#testCollectionRules")?.addEventListener("click", () => {
+    runPhase2AutomationJobs("rule-test");
+    saveState();
+    renderPhase2Panels();
+    showToast("ルールをテストしました");
+  });
+  document.querySelector("#bulkResolveInbox")?.addEventListener("click", () => {
+    (state.decisionInboxItems || []).filter((item) => item.status !== "resolved").slice(0, 20).forEach((item) => resolveInboxItem(item.id, "bulk_recommended"));
+    saveState();
+    renderPhase2Panels();
+    showToast("表示分を解決しました");
+  });
+  document.querySelector("#salesCsvFile")?.addEventListener("change", handleSalesCsvFile);
+  document.querySelector("#executeSalesImport")?.addEventListener("click", executeSalesImport);
+  document.querySelector("#recalculatePerformance")?.addEventListener("click", () => {
+    runPhase2AutomationJobs("performance-recalculate");
+    saveState();
+    renderPhase2Panels();
+    showToast("成果分析を再集計しました");
+  });
+  document.querySelector("#generateWeeklyInsight")?.addEventListener("click", () => {
+    runPhase2AutomationJobs("weekly-insight");
+    saveState();
+    renderWeeklyInsights();
+    showToast("改善レポートを更新しました");
+  });
+  document.addEventListener("click", (event) => {
+    const resolveButton = event.target.closest("[data-inbox-resolve]");
+    if (resolveButton) {
+      resolveInboxItem(resolveButton.dataset.inboxResolve, "recommended");
+      saveState();
+      renderPhase2Panels();
+    }
+    const ignoreButton = event.target.closest("[data-inbox-ignore]");
+    if (ignoreButton) {
+      resolveInboxItem(ignoreButton.dataset.inboxIgnore, "ignored");
+      saveState();
+      renderPhase2Panels();
+    }
+    const toggleRule = event.target.closest("[data-rule-toggle]");
+    if (toggleRule) {
+      const rule = state.collections.find((item) => item.collectionId === toggleRule.dataset.ruleToggle);
+      if (rule) {
+        rule.isActive = !rule.isActive;
+        state.collectionRuleVersions.unshift({ id: createId(), collectionRuleId: rule.id, version: Date.now(), snapshot: rule, changeReason: "toggle", createdAt: new Date().toISOString() });
+        runPhase2AutomationJobs("rule-toggle");
+        saveState();
+        renderPhase2Panels();
+      }
+    }
+    const duplicateRule = event.target.closest("[data-rule-duplicate]");
+    if (duplicateRule) {
+      const rule = state.collections.find((item) => item.collectionId === duplicateRule.dataset.ruleDuplicate);
+      if (rule && window.HanakoPhase2Engine) {
+        const copy = window.HanakoPhase2Engine.normalizeRule({ ...rule, id: createId(), collectionId: createId(), name: `${rule.name} コピー`, automationMode: "confirm" });
+        state.collections.unshift(copy);
+        saveState();
+        renderCollectionRules();
+      }
+    }
+    const scoreToggle = event.target.closest("[data-score-toggle]");
+    if (scoreToggle) {
+      const adjustment = state.scoreAdjustments.find((item) => item.id === scoreToggle.dataset.scoreToggle);
+      if (adjustment) {
+        adjustment.isEnabled = adjustment.isEnabled === false;
+        saveState();
+        renderPerformanceAnalytics();
+      }
+    }
+  });
 }
 
 function renderHomeCommandCenter() {
@@ -1978,6 +2524,7 @@ function applyCloudState(payload) {
   renderRoomQueue();
   renderCalendar();
   renderMetrics();
+  renderPhase2Panels();
   renderHome();
   suppressCloudSave = false;
 }

@@ -1,13 +1,14 @@
-const CACHE_NAME = "hanako-room-ops-v173";
+const CACHE_NAME = "hanako-room-ops-v174";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=173",
-  "./app.js?v=173",
-  "./cloud-sync.js?v=173",
-  "./ops-engine.js?v=173",
-  "./room-review-generator.js?v=173",
+  "./styles.css?v=174",
+  "./app.js?v=174",
+  "./cloud-sync.js?v=174",
+  "./ops-engine.js?v=174",
+  "./ops-phase2-engine.js?v=174",
+  "./room-review-generator.js?v=174",
   "./version.json",
   "./update.html",
   "./covers/rakuten-room-cover-hanako-v5.jpg",
@@ -400,11 +401,12 @@ const APP_SHELL = [
 const CORE_SHELL = [
   "./",
   "./index.html",
-    "./styles.css?v=173",
-    "./app.js?v=173",
-    "./cloud-sync.js?v=173",
-    "./ops-engine.js?v=173",
-    "./room-review-generator.js?v=173",
+    "./styles.css?v=174",
+    "./app.js?v=174",
+    "./cloud-sync.js?v=174",
+    "./ops-engine.js?v=174",
+    "./ops-phase2-engine.js?v=174",
+    "./room-review-generator.js?v=174",
 ];
 
 self.addEventListener("install", (event) => {
@@ -443,6 +445,7 @@ self.addEventListener("fetch", (event) => {
     || url.pathname.endsWith("/styles.css")
     || url.pathname.endsWith("/cloud-sync.js")
     || url.pathname.endsWith("/ops-engine.js")
+    || url.pathname.endsWith("/ops-phase2-engine.js")
     || url.pathname.endsWith("/room-review-generator.js")
     || url.pathname.endsWith("/sw.js")
   );

@@ -1,0 +1,4 @@
+発生日,確定日,商品名,商品URL,商品コード,ショップ名,ショップコード,売上金額,件数,成果報酬,ステータス,料率,デバイス,注文ID,管理用ID
+2026-07-12,2026-07-14,高見えフリルブラウス,https://item.rakuten.co.jp/sample-shop/blouse-001/,blouse-001,Sample Fashion,sample-shop,3980,1,119,確定,3%,iPhone,order-1001,hanako-room-001
+2026-07-13,2026-07-15,細見えマーメイドスカート,https://item.rakuten.co.jp/sample-shop/skirt-002/,skirt-002,Sample Fashion,sample-shop,4980,1,149,確定,3%,Android,order-1002,hanako-room-002
+2026-07-14,,淡色ミニショルダーバッグ,https://item.rakuten.co.jp/bag-shop/bag-003/,bag-003,Bag Shop,bag-shop,2480,2,148,未確定,3%,PC,order-1003,hanako-room-003

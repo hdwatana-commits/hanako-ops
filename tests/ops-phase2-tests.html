@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <title>Hanako OPS Phase 2 Tests</title>
+    <style>
+      body { font-family: system-ui, sans-serif; line-height: 1.6; padding: 24px; }
+      .pass { color: #137333; }
+      .fail { color: #b3261e; }
+      pre { background: #f7f7f7; padding: 12px; border-radius: 8px; overflow: auto; }
+    </style>
+    <script src="../ops-phase2-engine.js"></script>
+  </head>
+  <body>
+    <h1>Hanako OPS Phase 2 Tests</h1>
+    <div id="results"></div>
+    <script>
+      const E = window.HanakoPhase2Engine;
+      const products = [
+        {
+          id: "p1",
+          name: "SALE 新色 高見えフリルブラウス M",
+          url: "https://item.rakuten.co.jp/sample-shop/blouse-001/?scid=af",
+          category: "トップス",
+          price: "3,980円",
+          details: { brand: "Sample Fashion", color: "白", shopCode: "sample-shop", itemCode: "blouse-001" },
+          ops: { canonicalProductId: "rakuten:sample-shop:blouse-001", itemCode: "blouse-001", shopCode: "sample-shop" },
+          salePotentialScore: 88,
+          operationPriorityScore: 91,
+          tags: { taste: ["きれいめ", "大人可愛い"], scene: ["通勤", "カフェ"] },
+          missingItems: [],
+          repost: { status: "投稿可能" },
+        },
+        {
+          id: "p2",
+          name: "スポーツ専用 レギンス",
+          category: "スポーツウェア",
+          price: "2,000円",
+          details: { brand: "Sporty" },
+          salePotentialScore: 72,
+          operationPriorityScore: 74,
+          tags: { taste: ["スポーツ専用"] },
+          missingItems: [],
+          repost: { status: "投稿可能" },
+        },
+      ];
+      const posts = [
+        {
+          id: "post1",
+          productId: "p1",
+          canonicalProductId: "rakuten:sample-shop:blouse-001",
+          brand: "Sample Fashion",
+          category: "トップス",
+          colorFamily: "白",
+          scene: "通勤",
+          backgroundLocation: "パリ",
+          pose: "歩く",
+          problemSolution: "高見え",
+          copyText: "高見えブラウスで朝の服迷子を解決",
+          imageLayout: "teacher",
+          postedAt: "2026-07-01T00:00:00.000Z",
+          sales: 1,
+        },
+      ];
+      const tests = [];
+      function test(name, fn) {
+        try {
+          fn();
+          tests.push({ name, ok: true });
+        } catch (error) {
+          tests.push({ name, ok: false, error: error.message });
+        }
+      }
+      function assert(condition, message) {
+        if (!condition) throw new Error(message || "Assertion failed");
+      }
+
+      const rules = E.defaultCollectionRules([]);
+      test("高確信度の自動登録予約", () => {
+        const fit = E.classifyCollections(products[0], rules, { products, collectionMemberships: [] })[0];
+        assert(fit.score >= 80, `fit score ${fit.score}`);
+      });
+      test("除外条件違反", () => {
+        const fit = E.evaluateCollectionRule(products[1], rules[0], { products, collectionMemberships: [] });
+        assert(fit.violations.length > 0, "excluded product should be blocked");
+      });
+      test("投稿企画類似度", () => {
+        const similarity = E.findSimilarPosts({ ...products[0], productId: "p1", canonicalProductId: "rakuten:sample-shop:blouse-001", brand: "Sample Fashion", category: "トップス", colorFamily: "白", scene: "通勤", backgroundLocation: "パリ", pose: "歩く", problemSolution: "高見え", copyText: "高見えブラウスで朝の服迷子を解決", imageLayout: "teacher" }, posts)[0];
+        assert(similarity.similarityScore >= 80, `similarity ${similarity.similarityScore}`);
+        assert(similarity.changeSuggestions.length >= 3, "needs suggestions");
+      });
+      test("CSV取込と自動マッピング", () => {
+        const csv = "発生日,商品名,商品URL,商品コード,売上金額,件数,成果報酬,注文ID\n2026-07-12,高見えフリルブラウス,https://item.rakuten.co.jp/sample-shop/blouse-001/,blouse-001,3980,1,119,order-1";
+        const parsed = E.parseCsv(csv);
+        const mapping = E.autoMapColumns(parsed.headers);
+        const rows = E.rowsToSalesResults(parsed.headers, parsed.rows, mapping, "import-test");
+        assert(rows.length === 1, "one row");
+        assert(rows[0].importFingerprint, "fingerprint");
+      });
+      test("売上紐付け", () => {
+        const result = E.normalizeSalesRecord({ occurredAt: "2026-07-12", productName: "高見えフリルブラウス", productUrl: "https://item.rakuten.co.jp/sample-shop/blouse-001/", productCode: "blouse-001", salesAmount: 3980, rewardAmount: 119 });
+        result.id = "sale1";
+        const attribution = E.attributeSales(result, products, posts);
+        assert(attribution.confidence >= 90, `confidence ${attribution.confidence}`);
+      });
+      test("サンプル不足時の補正なし", () => {
+        const adjustments = E.calculateScoreAdjustments([{ dimension: "brand", dimensionValue: "Sample", sampleSize: 8, conversionRate: 0.1, baselineConversionRate: 0.05 }]);
+        assert(adjustments.length === 0, "no adjustment under 20 samples");
+      });
+      test("20件以上の小幅補正", () => {
+        const adjustments = E.calculateScoreAdjustments([{ dimension: "brand", dimensionValue: "Sample", sampleSize: 24, conversionRate: 0.1, baselineConversionRate: 0.05 }]);
+        assert(adjustments[0].adjustmentValue <= 2, "max plus 2");
+      });
+
+      document.querySelector("#results").innerHTML = tests.map((item) => `<p class="${item.ok ? "pass" : "fail"}">${item.ok ? "PASS" : "FAIL"} ${item.name}${item.error ? `: ${item.error}` : ""}</p>`).join("") + `<pre>${JSON.stringify(tests, null, 2)}</pre>`;
+    </script>
+  </body>
+</html>

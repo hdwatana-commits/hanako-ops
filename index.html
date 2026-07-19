@@ -11,10 +11,11 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=173">
+    <link rel="stylesheet" href="styles.css?v=174">
     <script src="config.js"></script>
-    <script src="cloud-sync.js?v=173"></script>
-    <script src="ops-engine.js?v=173"></script>
+    <script src="cloud-sync.js?v=174"></script>
+    <script src="ops-engine.js?v=174"></script>
+    <script src="ops-phase2-engine.js?v=174"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -485,6 +486,44 @@
               <span class="muted">候補から投稿済みまでを一括管理</span>
             </div>
             <div class="pipeline-board" id="opsPipelineBoard"></div>
+          </div>
+
+          <div class="phase2-grid">
+            <section class="panel decision-inbox-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">NEEDS DECISION</p>
+                  <h3>判断待ち受信箱</h3>
+                </div>
+                <button id="bulkResolveInbox" type="button">表示分を推奨判断で解決</button>
+              </div>
+              <div class="phase2-kpi-row" id="decisionInboxSummary"></div>
+              <div class="decision-inbox-list" id="decisionInboxList"></div>
+            </section>
+
+            <section class="panel collection-rule-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">COLLECTION RULES</p>
+                  <h3>コレクションルール</h3>
+                </div>
+                <button id="testCollectionRules" type="button">ルールをテスト</button>
+              </div>
+              <form id="collectionRuleForm" class="phase2-form">
+                <input name="name" placeholder="ルール名">
+                <select name="automationMode">
+                  <option value="auto">auto：高確信度は自動予約</option>
+                  <option value="confirm">confirm：人が承認</option>
+                  <option value="suggest">suggest：提案のみ</option>
+                  <option value="disabled">disabled：停止</option>
+                </select>
+                <input name="minimumConfidence" type="number" min="0" max="100" placeholder="最低確信度 例: 90">
+                <input name="requiredCategory" placeholder="必須カテゴリ 例: トップス,ワンピース">
+                <input name="preferredTaste" placeholder="加点テイスト 例: きれいめ,大人可愛い">
+                <button class="primary" type="submit">ルール追加</button>
+              </form>
+              <div class="collection-rule-list" id="collectionRuleList"></div>
+            </section>
           </div>
 
           <div class="panel">
@@ -1354,6 +1393,40 @@
           <div class="panel">
             <div class="metric-list" id="metricList"></div>
           </div>
+          <div class="phase2-grid analytics-phase2">
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">SALES CSV</p>
+                  <h3>売上CSV取込</h3>
+                </div>
+                <button id="executeSalesImport" type="button">取込実行</button>
+              </div>
+              <input id="salesCsvFile" type="file" accept=".csv,text/csv">
+              <div class="csv-import-preview" id="salesCsvPreview"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">PERFORMANCE</p>
+                  <h3>成果分析・実績補正</h3>
+                </div>
+                <button id="recalculatePerformance" type="button">再集計</button>
+              </div>
+              <div class="performance-tabs" id="performanceSummary"></div>
+              <div class="score-adjustment-list" id="scoreAdjustmentList"></div>
+            </section>
+          </div>
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">WEEKLY REPORT</p>
+                <h3>運用改善レポート</h3>
+              </div>
+              <button id="generateWeeklyInsight" type="button">レポート更新</button>
+            </div>
+            <div class="weekly-insight" id="weeklyInsightPanel"></div>
+          </div>
         </section>
       </main>
     </div>
@@ -1419,7 +1492,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=173"></script>
-    <script src="app.js?v=173"></script>
+    <script src="room-review-generator.js?v=174"></script>
+    <script src="app.js?v=174"></script>
   </body>
 </html>
