@@ -1,12 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="AI投稿準備">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="今日の投稿準備">
   <defs>
-    <linearGradient id="g" x1="18" y1="10" x2="78" y2="86" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#ffe4ef"/>
-      <stop offset="1" stop-color="#f2fff8"/>
+    <linearGradient id="bg" x1="13" y1="10" x2="82" y2="88" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff0f5"/>
+      <stop offset="1" stop-color="#f0fff7"/>
     </linearGradient>
   </defs>
-  <rect x="8" y="8" width="80" height="80" rx="24" fill="url(#g)"/>
-  <path d="M29 30h38a8 8 0 0 1 8 8v24a8 8 0 0 1-8 8H37L24 78V38a8 8 0 0 1 5-8Z" fill="#fff" stroke="#d76f96" stroke-width="3"/>
-  <path d="M35 55c8-13 17-13 26 0M39 39h18M39 48h10" fill="none" stroke="#6f4a55" stroke-width="5" stroke-linecap="round"/>
-  <path d="M69 22l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z" fill="#d76f96"/>
+  <rect x="6" y="6" width="84" height="84" rx="26" fill="url(#bg)"/>
+  <rect x="21" y="24" width="54" height="44" rx="13" fill="#fff" stroke="#d56f96" stroke-width="3"/>
+  <path d="M34 38h25M34 49h17" stroke="#6d4d58" stroke-width="5" stroke-linecap="round"/>
+  <path d="M28 70l10-9h28" fill="none" stroke="#d56f96" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="68" cy="29" r="9" fill="#ffe1eb" stroke="#d56f96" stroke-width="2"/>
+  <path d="M68 24v10M63 29h10" stroke="#a43d64" stroke-width="3" stroke-linecap="round"/>
+  <path d="M28 18l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z" fill="#f5b4ca"/>
 </svg>

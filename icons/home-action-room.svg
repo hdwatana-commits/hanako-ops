@@ -1,8 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="ROOM画像">
-  <rect x="8" y="8" width="80" height="80" rx="24" fill="#fff2f6"/>
-  <rect x="24" y="18" width="48" height="60" rx="12" fill="#fff" stroke="#cf7892" stroke-width="3"/>
-  <path d="M33 35h30M33 45h22" stroke="#71515b" stroke-width="5" stroke-linecap="round"/>
-  <path d="M34 60c8-12 20-12 28 0" fill="none" stroke="#d76f96" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="65" cy="24" r="10" fill="#f7ccd9"/>
-  <path d="M65 18v12M59 24h12" stroke="#a43d64" stroke-width="3" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="ROOM画像を作る">
+  <rect x="6" y="6" width="84" height="84" rx="26" fill="#fff1f6"/>
+  <rect x="19" y="18" width="58" height="62" rx="16" fill="#fff" stroke="#cc7892" stroke-width="3"/>
+  <rect x="29" y="29" width="38" height="26" rx="9" fill="#f9dce6"/>
+  <path d="M34 64h28M36 70h20" stroke="#6d4d58" stroke-width="5" stroke-linecap="round"/>
+  <path d="M37 42l7 7 13-15" fill="none" stroke="#a43d64" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M75 19c7 7 7 18 0 25" fill="none" stroke="#e0a1b6" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="75" cy="47" r="5" fill="#d56f96"/>
 </svg>
