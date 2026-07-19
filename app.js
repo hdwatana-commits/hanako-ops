@@ -1247,6 +1247,56 @@ function getOwnRoomPostedKey(item) {
   return item?.canonicalProductId || item?.normalizedUrl || normalizeComparableUrl(item?.url || "") || normalizeComparableProductName(item?.name || "");
 }
 
+function buildOwnRoomPostedItemFromProduct(product, source = "room-helper-posted") {
+  if (!product) return null;
+  const enriched = enrichProductForOps(product);
+  const base = buildOwnRoomPostedItemFromUrl(enriched.url || enriched.sourceUrl || "", enriched.name || product.name || "");
+  return {
+    ...base,
+    source,
+    productId: product.id || "",
+    url: safeHttpUrl(enriched.url || enriched.sourceUrl || base.url || ""),
+    normalizedUrl: normalizeComparableUrl(enriched.ops?.normalizedUrl || enriched.url || enriched.sourceUrl || base.url || ""),
+    canonicalProductId: enriched.ops?.canonicalProductId || base.canonicalProductId || "",
+    shopCode: enriched.ops?.shopCode || base.shopCode || "",
+    itemCode: enriched.ops?.itemCode || base.itemCode || "",
+    name: enriched.name || product.name || base.name || "",
+    image: enriched.image || product.image || "",
+    postedAt: new Date().toISOString(),
+  };
+}
+
+function rememberOwnRoomPostedProduct(product, source = "room-helper-posted") {
+  const item = buildOwnRoomPostedItemFromProduct(product, source);
+  if (!item) return false;
+  state.ownRoomPostedItems ||= [];
+  const key = getOwnRoomPostedKey(item);
+  if (!key) return false;
+  const existing = state.ownRoomPostedItems.find((entry) => getOwnRoomPostedKey(entry) === key || (item.productId && entry.productId === item.productId));
+  if (existing) {
+    Object.assign(existing, {
+      ...item,
+      id: existing.id,
+      importedAt: existing.importedAt || item.importedAt,
+      updatedAt: new Date().toISOString(),
+    });
+    return false;
+  }
+  state.ownRoomPostedItems.unshift(item);
+  return true;
+}
+
+function forgetOwnRoomPostedProduct(product) {
+  if (!product) return;
+  const item = buildOwnRoomPostedItemFromProduct(product);
+  const key = getOwnRoomPostedKey(item);
+  state.ownRoomPostedItems = (state.ownRoomPostedItems || []).filter((entry) => {
+    if (entry.source !== "room-helper-posted" && entry.source !== "daily-room-posted") return true;
+    if (item.productId && entry.productId === item.productId) return false;
+    return key ? getOwnRoomPostedKey(entry) !== key : true;
+  });
+}
+
 function importOwnRoomPostedItems(text) {
   const parsedItems = parseOwnRoomPostedItems(text);
   if (!parsedItems.length) {
@@ -1470,9 +1520,14 @@ function sendProductToPipeline(productId, status = "採用", shouldSave = true) 
       updatedAt: new Date().toISOString(),
     });
   }
+  if (status === "投稿済み" || status === "Posted") {
+    product.opsDecision = "posted";
+    rememberOwnRoomPostedProduct(product, "room-helper-posted");
+  }
   if (shouldSave) {
     saveState();
     renderOpsPipeline();
+    renderOwnRoomPostedPanel();
     showToast(`${product.name}を${status}へ移動しました`);
   }
 }
@@ -1551,11 +1606,15 @@ function markDailyRoomPosted(productId) {
     });
   });
   const product = state.products.find((entry) => entry.id === productId);
-  if (product) product.opsDecision = "posted";
+  if (product) {
+    product.opsDecision = "posted";
+    rememberOwnRoomPostedProduct(product, "daily-room-posted");
+  }
   saveUserDecision("Product", productId, "posted", "room-ready", "posted", "今朝のおすすめからROOM投稿済み");
   saveState();
   renderDailySelection();
   renderProducts();
+  renderOwnRoomPostedPanel();
   renderRoomQueue();
   renderOpsPipeline();
   renderHome();
@@ -7955,12 +8014,25 @@ function renderRoomQueue() {
     if (!item) return;
     item.done = !item.done;
     item.postedAt = item.done ? new Date().toISOString() : "";
+    const product = state.products.find((entry) => entry.id === item.productId);
     if (item.productId) sendProductToPipeline(item.productId, item.done ? "投稿済み" : "文章完成", false);
+    if (item.done) {
+      if (product) {
+        product.opsDecision = "posted";
+        rememberOwnRoomPostedProduct(product, "room-helper-posted");
+      } else {
+        importOwnRoomPostedItems(item.productUrl || item.productName || "");
+      }
+    } else if (product) {
+      forgetOwnRoomPostedProduct(product);
+      if (product.opsDecision === "posted") product.opsDecision = "pending";
+    }
     saveState();
     renderRoomQueue();
     renderOpsPipeline();
     renderDailySelection();
     renderProducts();
+    renderOwnRoomPostedPanel();
   }));
   roomQueue.querySelectorAll("[data-room-delete]").forEach((button) => button.addEventListener("click", () => {
     state.roomQueue = state.roomQueue.filter((entry) => entry.id !== button.dataset.roomDelete);
