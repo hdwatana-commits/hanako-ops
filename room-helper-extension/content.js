@@ -712,7 +712,16 @@ ${hashtags}`;
 
   function autoOpenRoomPostFromHanakoOps() {
     if (!shouldAutoOpenRoomPost()) return;
+    let opened = false;
+    let attempts = 0;
     const run = () => {
+      if (opened) return;
+      attempts += 1;
+      if (!findRoomPostElement()) {
+        if (attempts < 10) setTimeout(run, 1200);
+        return;
+      }
+      opened = true;
       openRoomPost();
       try {
         const url = new URL(location.href);
@@ -723,7 +732,6 @@ ${hashtags}`;
       }
     };
     setTimeout(run, 900);
-    setTimeout(run, 2400);
   }
 
   function openProductTab(url) {

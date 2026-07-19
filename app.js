@@ -1166,11 +1166,15 @@ function buildRoomHelperAutoPostUrl(product, fallbackUrl = "") {
   const canonicalMatch = canonical.match(/^rakuten:([^:]+):(.+)$/);
   const shopCode = parsed.shopCode || product?.ops?.shopCode || product?.details?.shopCode || canonicalMatch?.[1] || "";
   const itemCode = parsed.itemCode || product?.ops?.itemCode || product?.details?.itemCode || product?.details?.itemId || canonicalMatch?.[2] || "";
-  const baseUrl = productUrl && !/room\.rakuten\.co\.jp/i.test(productUrl)
-    ? productUrl
-    : shopCode && itemCode
-      ? `https://item.rakuten.co.jp/${encodeURIComponent(shopCode)}/${encodeURIComponent(itemCode)}/`
-      : productUrl;
+  const itemUrl = shopCode && itemCode ? `https://item.rakuten.co.jp/${encodeURIComponent(shopCode)}/${encodeURIComponent(itemCode)}/` : "";
+  let baseUrl = productUrl;
+  try {
+    const host = productUrl ? new URL(productUrl).hostname.toLowerCase() : "";
+    const shouldUseMarketItemUrl = itemUrl && (!productUrl || /(^|\.)item\.rakuten\.co\.jp$|room\.rakuten\.co\.jp$|hb\.afl\.rakuten\.co\.jp$|pt\.afl\.rakuten\.co\.jp$|linksynergy|search\.rakuten\.co\.jp$/.test(host));
+    baseUrl = shouldUseMarketItemUrl ? itemUrl : productUrl || itemUrl;
+  } catch {
+    baseUrl = itemUrl || productUrl;
+  }
   if (!baseUrl) return "";
   try {
     const url = new URL(baseUrl);
