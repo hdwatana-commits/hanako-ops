@@ -5394,3 +5394,97 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Phase 4 self-learning dashboard */
+.ai-learning-dashboard {
+  margin-top: 18px;
+  border: 1px solid rgba(79, 119, 106, 0.18);
+  background: linear-gradient(135deg, rgba(245, 251, 248, 0.96), rgba(255, 250, 252, 0.94));
+}
+
+.ai-learning-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.ai-learning-summary article {
+  padding: 12px;
+  border: 1px solid rgba(79, 119, 106, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.ai-learning-summary strong {
+  display: block;
+  font-size: 24px;
+  color: var(--green);
+}
+
+.ai-learning-summary span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ai-learning-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ai-learning-grid h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.ai-learning-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-learning-list article {
+  padding: 10px 12px;
+  border: 1px solid rgba(223, 111, 150, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.ai-learning-list strong,
+.ai-learning-list small {
+  display: block;
+}
+
+.ai-learning-list small {
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.ai-learning-question {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ai-learning-answer {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px dashed rgba(79, 119, 106, 0.28);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.74);
+  white-space: pre-wrap;
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+@media (max-width: 820px) {
+  .ai-learning-summary,
+  .ai-learning-grid,
+  .ai-learning-question {
+    grid-template-columns: 1fr;
+  }
+}

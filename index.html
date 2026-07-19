@@ -11,12 +11,13 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=176">
+    <link rel="stylesheet" href="styles.css?v=177">
     <script src="config.js"></script>
-    <script src="cloud-sync.js?v=176"></script>
-    <script src="ops-engine.js?v=176"></script>
-    <script src="ops-phase2-engine.js?v=176"></script>
-    <script src="ops-phase3-engine.js?v=176"></script>
+    <script src="cloud-sync.js?v=177"></script>
+    <script src="ops-engine.js?v=177"></script>
+    <script src="ops-phase2-engine.js?v=177"></script>
+    <script src="ops-phase3-engine.js?v=177"></script>
+    <script src="ops-phase4-engine.js?v=177"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -124,6 +125,43 @@
               </div>
             </div>
             <div class="ai-plan-list" id="aiPlanList"></div>
+          </section>
+
+          <section class="ai-learning-dashboard panel" aria-labelledby="aiLearningTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">AI SELF LEARNING</p>
+                <h3 id="aiLearningTitle">AIが毎日学習する</h3>
+              </div>
+              <div class="button-row">
+                <button class="primary" id="runAiLearningCycle" type="button">今日の反省会を作る</button>
+                <button id="copyAiWeeklyMeeting" type="button">週間会議をコピー</button>
+              </div>
+            </div>
+            <div class="ai-learning-summary" id="aiLearningSummary"></div>
+            <div class="ai-learning-grid">
+              <section>
+                <h4>今日売れそうTOP10</h4>
+                <div id="aiLearningTop10" class="ai-learning-list"></div>
+              </section>
+              <section>
+                <h4>今週改善ポイント</h4>
+                <div id="aiLearningImprovements" class="ai-learning-list"></div>
+              </section>
+              <section>
+                <h4>探索商品</h4>
+                <div id="aiLearningExploration" class="ai-learning-list"></div>
+              </section>
+              <section>
+                <h4>勝ちパターン / 注意</h4>
+                <div id="aiLearningPatterns" class="ai-learning-list"></div>
+              </section>
+            </div>
+            <form id="aiLearningQuestionForm" class="ai-learning-question">
+              <input id="aiLearningQuestion" placeholder="例: 今週おすすめブランドは？ 売れない理由は？">
+              <button type="submit">Knowledge DBに聞く</button>
+            </form>
+            <div class="ai-learning-answer" id="aiLearningAnswer"></div>
           </section>
 
           <section class="home-avatar-coverflow-picker" aria-labelledby="homeAvatarCoverflowTitle">
@@ -1586,7 +1624,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=176"></script>
-    <script src="app.js?v=176"></script>
+    <script src="room-review-generator.js?v=177"></script>
+    <script src="app.js?v=177"></script>
   </body>
 </html>

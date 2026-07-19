@@ -422,6 +422,7 @@ function initialize() {
   bindActions();
   bindPhase2Actions();
   bindPhase3Actions();
+  bindPhase4Actions();
   bindCloudSync();
   renderProducts();
   renderDailySelection();
@@ -437,6 +438,8 @@ function initialize() {
   renderMetrics();
   renderPhase2Panels();
   renderAiAgentDashboard();
+  ensurePhase4DailyRun();
+  renderAiLearningDashboard();
   renderLearningHint();
   renderChecks("");
   renderHome();
@@ -770,6 +773,22 @@ function normalizeState(value) {
     aiAssistantMessages: Array.isArray(source.aiAssistantMessages) ? source.aiAssistantMessages : [],
     aiAgentRuns: Array.isArray(source.aiAgentRuns) ? source.aiAgentRuns : [],
     aiLearningProfile: source.aiLearningProfile && typeof source.aiLearningProfile === "object" ? source.aiLearningProfile : {},
+    aiLearningEvents: Array.isArray(source.aiLearningEvents) ? source.aiLearningEvents : [],
+    aiDailyRetrospectives: Array.isArray(source.aiDailyRetrospectives) ? source.aiDailyRetrospectives : [],
+    aiImprovementPlans: Array.isArray(source.aiImprovementPlans) ? source.aiImprovementPlans : [],
+    aiWeightProposals: Array.isArray(source.aiWeightProposals) ? source.aiWeightProposals : [],
+    aiWinPatterns: Array.isArray(source.aiWinPatterns) ? source.aiWinPatterns : [],
+    aiLosePatterns: Array.isArray(source.aiLosePatterns) ? source.aiLosePatterns : [],
+    aiExperimentPlans: Array.isArray(source.aiExperimentPlans) ? source.aiExperimentPlans : [],
+    aiBrandKnowledge: Array.isArray(source.aiBrandKnowledge) ? source.aiBrandKnowledge : [],
+    aiBackgroundKnowledge: Array.isArray(source.aiBackgroundKnowledge) ? source.aiBackgroundKnowledge : [],
+    aiCopyKnowledge: Array.isArray(source.aiCopyKnowledge) ? source.aiCopyKnowledge : [],
+    aiImageKnowledge: Array.isArray(source.aiImageKnowledge) ? source.aiImageKnowledge : [],
+    aiSimulations: Array.isArray(source.aiSimulations) ? source.aiSimulations : [],
+    aiWeeklyMeetings: Array.isArray(source.aiWeeklyMeetings) ? source.aiWeeklyMeetings : [],
+    aiMonthlyMeetings: Array.isArray(source.aiMonthlyMeetings) ? source.aiMonthlyMeetings : [],
+    aiKnowledgeBase: Array.isArray(source.aiKnowledgeBase) ? source.aiKnowledgeBase : [],
+    aiPhase4Runs: Array.isArray(source.aiPhase4Runs) ? source.aiPhase4Runs : [],
     jobRuns: Array.isArray(source.jobRuns) ? source.jobRuns : [],
     errorLogs: Array.isArray(source.errorLogs) ? source.errorLogs : [],
   };
@@ -810,6 +829,22 @@ function ensureOpsState(target = state) {
   target.aiAssistantMessages ||= [];
   target.aiAgentRuns ||= [];
   target.aiLearningProfile ||= {};
+  target.aiLearningEvents ||= [];
+  target.aiDailyRetrospectives ||= [];
+  target.aiImprovementPlans ||= [];
+  target.aiWeightProposals ||= [];
+  target.aiWinPatterns ||= [];
+  target.aiLosePatterns ||= [];
+  target.aiExperimentPlans ||= [];
+  target.aiBrandKnowledge ||= [];
+  target.aiBackgroundKnowledge ||= [];
+  target.aiCopyKnowledge ||= [];
+  target.aiImageKnowledge ||= [];
+  target.aiSimulations ||= [];
+  target.aiWeeklyMeetings ||= [];
+  target.aiMonthlyMeetings ||= [];
+  target.aiKnowledgeBase ||= [];
+  target.aiPhase4Runs ||= [];
   target.jobRuns ||= [];
   target.errorLogs ||= [];
   if (window.HanakoPhase2Engine) {
@@ -1924,6 +1959,125 @@ function bindPhase3Actions() {
   });
 }
 
+function ensurePhase4DailyRun() {
+  if (!window.HanakoPhase4Engine) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const latest = state.aiPhase4Runs?.[0];
+  if (latest?.generatedAt?.slice(0, 10) === today) return;
+  runPhase4LearningCycle("daily-auto", true);
+}
+
+function runPhase4LearningCycle(reason = "manual", quiet = false) {
+  if (!window.HanakoPhase4Engine) {
+    if (!quiet) showToast("Phase4 engine is not loaded");
+    return null;
+  }
+  ensureOpsState();
+  const run = window.HanakoPhase4Engine.runLearningCycle({
+    products: state.products || [],
+    posts: state.posts || [],
+    aiPostPlans: state.aiPostPlans || [],
+    aiAgentRuns: state.aiAgentRuns || [],
+    salesResults: state.salesResults || [],
+    metrics: state.metrics || [],
+    collections: state.collections || [],
+    performanceAggregates: state.performanceAggregates || [],
+    scoreAdjustments: state.scoreAdjustments || [],
+    aiKnowledgeBase: state.aiKnowledgeBase || [],
+  });
+  run.reason = reason;
+  state.aiPhase4Runs = [run, ...(state.aiPhase4Runs || []).filter((item) => item.id !== run.id)].slice(0, 60);
+  state.aiLearningEvents = mergeAiRows(state.aiLearningEvents, run.observations || []);
+  state.aiKnowledgeBase = mergeAiRows(state.aiKnowledgeBase, run.knowledge || []);
+  state.aiDailyRetrospectives = mergeAiRows(state.aiDailyRetrospectives, [run.retrospective].filter(Boolean));
+  state.aiImprovementPlans = mergeAiRows(state.aiImprovementPlans, run.improvements || []);
+  state.aiWeightProposals = mergeAiRows(state.aiWeightProposals, run.weightProposals || []);
+  state.aiWinPatterns = mergeAiRows(state.aiWinPatterns, run.winPatterns || []);
+  state.aiLosePatterns = mergeAiRows(state.aiLosePatterns, run.losePatterns || []);
+  state.aiExperimentPlans = mergeAiRows(state.aiExperimentPlans, [run.exploration].filter(Boolean));
+  state.aiSimulations = mergeAiRows(state.aiSimulations, run.simulations || []);
+  state.aiWeeklyMeetings = mergeAiRows(state.aiWeeklyMeetings, [run.weeklyMeeting].filter(Boolean));
+  state.aiMonthlyMeetings = mergeAiRows(state.aiMonthlyMeetings, [run.monthlyMeeting].filter(Boolean));
+  state.aiBrandKnowledge = (state.aiKnowledgeBase || []).filter((item) => item.type === "brand").slice(0, 100);
+  state.aiBackgroundKnowledge = (state.aiKnowledgeBase || []).filter((item) => item.type === "background").slice(0, 100);
+  state.aiCopyKnowledge = (state.aiKnowledgeBase || []).filter((item) => item.type === "copyType").slice(0, 100);
+  state.aiImageKnowledge = (state.aiLearningEvents || []).map((item) => ({
+    id: `image_${item.id}`,
+    productId: item.productId,
+    features: item.imageFeatures,
+    actualScore: item.actualScore,
+    outcome: item.outcome,
+    updatedAt: item.createdAt,
+  })).slice(0, 200);
+  saveUserDecision("AiLearningCycle", run.id, "generated", null, { knowledge: run.knowledge.length, reason }, "Phase4 self learning");
+  saveState();
+  renderAiLearningDashboard();
+  if (!quiet) showToast("AI self-learning cycle updated");
+  return run;
+}
+
+function renderAiLearningDashboard() {
+  const summary = document.querySelector("#aiLearningSummary");
+  if (!summary) return;
+  const run = state.aiPhase4Runs?.[0] || null;
+  const knowledgeCount = state.aiKnowledgeBase?.length || 0;
+  const winCount = state.aiWinPatterns?.length || 0;
+  const loseCount = state.aiLosePatterns?.length || 0;
+  const explorationCount = run?.exploration?.candidates?.length || state.aiExperimentPlans?.[0]?.candidates?.length || 0;
+  summary.innerHTML = `
+    <article><strong>${knowledgeCount}</strong><span>Knowledge DB</span></article>
+    <article><strong>${winCount}</strong><span>Win patterns</span></article>
+    <article><strong>${loseCount}</strong><span>Risk patterns</span></article>
+    <article><strong>${explorationCount}</strong><span>Explore slots</span></article>
+  `;
+  renderAiLearningList("#aiLearningTop10", run?.dashboard?.top10 || [], (item) => `
+    <article><strong>${escapeHtml(item.productName || "Product")}</strong><small>${Number(item.score || 0)}pt / ${escapeHtml(item.reason || "")}</small></article>
+  `);
+  renderAiLearningList("#aiLearningImprovements", run?.dashboard?.weeklyImprovements || state.aiImprovementPlans || [], (item) => `
+    <article><strong>${escapeHtml(item.action || "Improve")}</strong><small>+${Number(item.expectedImpact || 0)}% / ${escapeHtml(item.reason || "")}</small></article>
+  `);
+  renderAiLearningList("#aiLearningExploration", run?.dashboard?.explorationItems || [], (item) => `
+    <article><strong>${escapeHtml(item.productName || "Explore product")}</strong><small>${Number(item.explorationScore || 0)}pt / ${escapeHtml(item.reason || "")}</small></article>
+  `);
+  const patterns = [
+    ...(run?.dashboard?.winPatterns || state.aiWinPatterns || []).slice(0, 3),
+    ...(run?.dashboard?.cautionBrands || state.aiLosePatterns || []).slice(0, 3),
+  ];
+  renderAiLearningList("#aiLearningPatterns", patterns, (item) => `
+    <article><strong>${escapeHtml(item.title || item.value || "Pattern")}</strong><small>${escapeHtml(item.reason || item.verdict || "")}</small></article>
+  `);
+}
+
+function renderAiLearningList(selector, items, renderItem) {
+  const target = document.querySelector(selector);
+  if (!target) return;
+  target.innerHTML = items.length ? items.map(renderItem).join("") : `<p class="muted">Run Phase4 learning after recording sales and clicks.</p>`;
+}
+
+function bindPhase4Actions() {
+  document.querySelector("#runAiLearningCycle")?.addEventListener("click", () => runPhase4LearningCycle("manual"));
+  document.querySelector("#copyAiWeeklyMeeting")?.addEventListener("click", () => {
+    const meeting = state.aiWeeklyMeetings?.[0];
+    if (!meeting) return showToast("先に今日の反省会を作ってください");
+    copyText(`【${meeting.title}】\n\nFacts\n${(meeting.facts || []).map((item) => `・${item}`).join("\n")}\n\nAssumptions\n${(meeting.assumptions || []).map((item) => `・${item}`).join("\n")}\n\nNext strategy\n${(meeting.nextStrategy || []).map((item) => `・${item}`).join("\n")}`);
+  });
+  document.querySelector("#aiLearningQuestionForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const input = document.querySelector("#aiLearningQuestion");
+    const question = input?.value?.trim();
+    if (!question || !window.HanakoPhase4Engine) return;
+    const run = state.aiPhase4Runs?.[0] || runPhase4LearningCycle("rag-question", true);
+    const answer = window.HanakoPhase4Engine.answer(question, {
+      run,
+      knowledge: state.aiKnowledgeBase || [],
+      aiKnowledgeBase: state.aiKnowledgeBase || [],
+    });
+    const target = document.querySelector("#aiLearningAnswer");
+    if (target) target.textContent = answer;
+    input.value = "";
+  });
+}
+
 function renderHomeCommandCenter() {
   const focusProduct = getHomeFocusProduct();
   const activeCalendar = (state.calendar || []).filter((item) => !item.done);
@@ -2759,6 +2913,7 @@ function applyCloudState(payload) {
   renderMetrics();
   renderPhase2Panels();
   renderAiAgentDashboard();
+  renderAiLearningDashboard();
   renderHome();
   suppressCloudSave = false;
 }
