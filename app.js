@@ -908,6 +908,25 @@ function bindNavigation() {
     activateView(event.currentTarget.dataset.target || "products");
   });
   document.querySelector("#homeBuildPlan")?.addEventListener("click", addHomeSmartPlan);
+  bindHomeActionHub();
+}
+
+function bindHomeActionHub() {
+  document.querySelector("#homeRunAiAgent")?.addEventListener("click", () => {
+    const runButton = document.querySelector("#runAiAgent");
+    if (runButton) runButton.click();
+  });
+  document.querySelector("#homeOpenRoom")?.addEventListener("click", () => activateView("room"));
+  document.querySelector("#homeOpenCollectionMaker")?.addEventListener("click", () => {
+    activateView("room");
+    window.setTimeout(() => {
+      document.querySelector(".room-collection-maker")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+  });
+  document.querySelector("#homeRunLearningCycle")?.addEventListener("click", () => {
+    const runButton = document.querySelector("#runAiLearningCycle");
+    if (runButton) runButton.click();
+  });
 }
 
 function activateView(viewName) {
@@ -1805,7 +1824,7 @@ function runPhase3Agent(reason = "manual") {
   saveState();
   renderAiAgentDashboard();
   renderOpsPipeline();
-  showToast("Phase3 AI agent updated");
+  showToast("AIが今日の投稿準備を作りました");
   return run;
 }
 
@@ -1840,21 +1859,21 @@ function renderAiAgentDashboard() {
   const inbox = (state.decisionInboxItems || []).filter((item) => item.status !== "resolved").length;
   const strongPlans = plans.filter((plan) => plan.aiRank === "S").length;
   section.innerHTML = `
-    <article><strong>${strongPlans}</strong><span>S rank plans</span></article>
-    <article><strong>${waitingImages}</strong><span>Image queue</span></article>
-    <article><strong>${scheduled}</strong><span>Schedule</span></article>
-    <article><strong>${inbox}</strong><span>Need review</span></article>
+    <article><strong>${strongPlans}</strong><span>Sランク案</span></article>
+    <article><strong>${waitingImages}</strong><span>画像待ち</span></article>
+    <article><strong>${scheduled}</strong><span>投稿予定</span></article>
+    <article><strong>${inbox}</strong><span>判断待ち</span></article>
   `;
   const taskList = document.querySelector("#aiTaskList");
   if (taskList) {
     const tasks = run?.tasks?.length ? run.tasks : [
-      { title: "Run AI agent", detail: "Create product picks, image prompts, copy, schedule, and reports.", count: plans.length },
+      { title: "AIに今日の投稿準備を作らせる", detail: "商品選定、画像プロンプト、ROOM文、投稿予定までまとめて作ります。", count: plans.length },
     ];
     taskList.innerHTML = tasks.slice(0, 6).map((task) => `
       <article class="ai-task-card">
-        <strong>${escapeHtml(task.title || "AI task")}</strong>
+        <strong>${escapeHtml(task.title || "AIタスク")}</strong>
         <p>${escapeHtml(task.detail || "")}</p>
-        <span>${Number(task.count || 0)} items</span>
+        <span>${Number(task.count || 0)}件</span>
       </article>
     `).join("");
   }
@@ -1863,33 +1882,33 @@ function renderAiAgentDashboard() {
     const visiblePlans = plans.slice(0, 8);
     planList.innerHTML = visiblePlans.length
       ? visiblePlans.map(renderAiPlanCard).join("")
-      : `<p class="muted">Run the AI agent to create today's posting plans.</p>`;
+      : `<p class="muted">「AIに作らせる」を押すと、今日の投稿案がここに並びます。</p>`;
   }
   const assistantLog = document.querySelector("#aiAssistantLog");
   if (assistantLog) {
     const messages = (state.aiAssistantMessages || []).slice(0, 8);
     assistantLog.innerHTML = messages.length
       ? messages.map((message) => `<div class="ai-message ${message.role === "user" ? "user" : "assistant"}">${escapeHtml(message.text)}</div>`).join("")
-      : `<div class="ai-message assistant">Ask me what to post today.</div>`;
+      : `<div class="ai-message assistant">「今日は何を投稿する？」みたいに聞いてください。</div>`;
   }
 }
 
 function renderAiPlanCard(plan) {
   const product = (state.products || []).find((item) => item.id === plan.productId) || {};
   const image = product.image || product.mainImageUrl || "";
-  const collection = plan.collectionCandidates?.[0]?.name || "Collection suggested by AI";
+  const collection = plan.collectionCandidates?.[0]?.name || "AIおすすめコレクション";
   const roomCopy = plan.copyBundle?.room || "";
   const imagePrompt = plan.imageJob?.prompt || "";
   return `<article class="ai-plan-card">
     ${image ? `<img src="${escapeHtml(image)}" alt="">` : ""}
     <div>
-      <strong>${escapeHtml(plan.productName || product.name || "Product")}</strong>
+      <strong>${escapeHtml(plan.productName || product.name || "商品")}</strong>
       <p>${escapeHtml(collection)}</p>
       <small>${escapeHtml(plan.aiRank || "-")} / ${Number(plan.aiTotalScore || 0)}pt</small>
     </div>
     <div class="ai-plan-actions">
-      <button type="button" class="ghost-button" data-ai-copy-image="${escapeHtml(plan.id)}">Image prompt</button>
-      <button type="button" class="ghost-button" data-ai-copy-copy="${escapeHtml(plan.id)}">ROOM copy</button>
+      <button type="button" class="ghost-button" data-ai-copy-image="${escapeHtml(plan.id)}">画像プロンプト</button>
+      <button type="button" class="ghost-button" data-ai-copy-copy="${escapeHtml(plan.id)}">ROOM文</button>
       <button type="button" class="primary-button" data-ai-approve="${escapeHtml(plan.id)}">OK</button>
     </div>
     <textarea hidden data-ai-image-prompt="${escapeHtml(plan.id)}">${escapeHtml(imagePrompt)}</textarea>
@@ -1910,7 +1929,7 @@ function approveAiPlan(planId) {
   saveState();
   renderAiAgentDashboard();
   renderOpsPipeline();
-  showToast("AI plan approved");
+  showToast("AI投稿案を承認しました");
 }
 
 function bindPhase3Actions() {
@@ -2012,7 +2031,7 @@ function runPhase4LearningCycle(reason = "manual", quiet = false) {
   saveUserDecision("AiLearningCycle", run.id, "generated", null, { knowledge: run.knowledge.length, reason }, "Phase4 self learning");
   saveState();
   renderAiLearningDashboard();
-  if (!quiet) showToast("AI self-learning cycle updated");
+  if (!quiet) showToast("AIの反省会と改善案を更新しました");
   return run;
 }
 
@@ -2025,33 +2044,33 @@ function renderAiLearningDashboard() {
   const loseCount = state.aiLosePatterns?.length || 0;
   const explorationCount = run?.exploration?.candidates?.length || state.aiExperimentPlans?.[0]?.candidates?.length || 0;
   summary.innerHTML = `
-    <article><strong>${knowledgeCount}</strong><span>Knowledge DB</span></article>
-    <article><strong>${winCount}</strong><span>Win patterns</span></article>
-    <article><strong>${loseCount}</strong><span>Risk patterns</span></article>
-    <article><strong>${explorationCount}</strong><span>Explore slots</span></article>
+    <article><strong>${knowledgeCount}</strong><span>学習メモ</span></article>
+    <article><strong>${winCount}</strong><span>勝ちパターン</span></article>
+    <article><strong>${loseCount}</strong><span>注意パターン</span></article>
+    <article><strong>${explorationCount}</strong><span>探索枠</span></article>
   `;
   renderAiLearningList("#aiLearningTop10", run?.dashboard?.top10 || [], (item) => `
-    <article><strong>${escapeHtml(item.productName || "Product")}</strong><small>${Number(item.score || 0)}pt / ${escapeHtml(item.reason || "")}</small></article>
+    <article><strong>${escapeHtml(item.productName || "商品")}</strong><small>${Number(item.score || 0)}pt / ${escapeHtml(item.reason || "")}</small></article>
   `);
   renderAiLearningList("#aiLearningImprovements", run?.dashboard?.weeklyImprovements || state.aiImprovementPlans || [], (item) => `
-    <article><strong>${escapeHtml(item.action || "Improve")}</strong><small>+${Number(item.expectedImpact || 0)}% / ${escapeHtml(item.reason || "")}</small></article>
+    <article><strong>${escapeHtml(item.action || "改善案")}</strong><small>+${Number(item.expectedImpact || 0)}% / ${escapeHtml(item.reason || "")}</small></article>
   `);
   renderAiLearningList("#aiLearningExploration", run?.dashboard?.explorationItems || [], (item) => `
-    <article><strong>${escapeHtml(item.productName || "Explore product")}</strong><small>${Number(item.explorationScore || 0)}pt / ${escapeHtml(item.reason || "")}</small></article>
+    <article><strong>${escapeHtml(item.productName || "探索商品")}</strong><small>${Number(item.explorationScore || 0)}pt / ${escapeHtml(item.reason || "")}</small></article>
   `);
   const patterns = [
     ...(run?.dashboard?.winPatterns || state.aiWinPatterns || []).slice(0, 3),
     ...(run?.dashboard?.cautionBrands || state.aiLosePatterns || []).slice(0, 3),
   ];
   renderAiLearningList("#aiLearningPatterns", patterns, (item) => `
-    <article><strong>${escapeHtml(item.title || item.value || "Pattern")}</strong><small>${escapeHtml(item.reason || item.verdict || "")}</small></article>
+    <article><strong>${escapeHtml(item.title || item.value || "パターン")}</strong><small>${escapeHtml(item.reason || item.verdict || "")}</small></article>
   `);
 }
 
 function renderAiLearningList(selector, items, renderItem) {
   const target = document.querySelector(selector);
   if (!target) return;
-  target.innerHTML = items.length ? items.map(renderItem).join("") : `<p class="muted">Run Phase4 learning after recording sales and clicks.</p>`;
+  target.innerHTML = items.length ? items.map(renderItem).join("") : `<p class="muted">売上やクリックを記録してから「今日の反省会」を作ると表示されます。</p>`;
 }
 
 function bindPhase4Actions() {
