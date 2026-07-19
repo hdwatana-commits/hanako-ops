@@ -1032,11 +1032,86 @@ function buildOpsPostHistory() {
   return [...explicitPosts, ...roomPosts, ...calendarPosts];
 }
 
+function buildOwnRoomPostedMatcher() {
+  const productIds = new Set();
+  const canonicalIds = new Set();
+  const urls = new Set();
+  const names = new Set();
+  const addProduct = (product) => {
+    if (!product) return;
+    if (product.id) productIds.add(String(product.id));
+    if (product.ops?.canonicalProductId) canonicalIds.add(String(product.ops.canonicalProductId));
+    const normalizedUrl = normalizeComparableUrl(product.ops?.normalizedUrl || product.url || product.sourceUrl || "");
+    if (normalizedUrl) urls.add(normalizedUrl);
+    const name = normalizeComparableProductName(product.name);
+    if (name) names.add(name);
+  };
+  (state.roomQueue || []).filter((item) => item.done).forEach((item) => {
+    if (item.productId) productIds.add(String(item.productId));
+    const product = state.products.find((entry) => entry.id === item.productId);
+    addProduct(product);
+    const itemUrl = normalizeComparableUrl(item.productUrl || "");
+    if (itemUrl) urls.add(itemUrl);
+    const itemName = normalizeComparableProductName(item.productName);
+    if (itemName) names.add(itemName);
+  });
+  (state.postPlans || []).filter((plan) => plan.status === "投稿済み" || plan.status === "Posted").forEach((plan) => {
+    if (plan.productId) productIds.add(String(plan.productId));
+    addProduct(state.products.find((entry) => entry.id === plan.productId));
+  });
+  (state.products || []).filter((product) => product.opsDecision === "posted").forEach(addProduct);
+  return {
+    hasProduct(product) {
+      if (!product) return false;
+      if (productIds.has(String(product.id))) return true;
+      if (product.ops?.canonicalProductId && canonicalIds.has(String(product.ops.canonicalProductId))) return true;
+      const url = normalizeComparableUrl(product.ops?.normalizedUrl || product.url || product.sourceUrl || "");
+      if (url && urls.has(url)) return true;
+      const name = normalizeComparableProductName(product.name);
+      return Boolean(name && names.has(name));
+    },
+    hasDailyItem(item) {
+      if (!item) return false;
+      if (item.decision === "posted") return true;
+      if (productIds.has(String(item.id))) return true;
+      if (item.canonicalProductId && canonicalIds.has(String(item.canonicalProductId))) return true;
+      const name = normalizeComparableProductName(item.name);
+      return Boolean(name && names.has(name));
+    },
+    hasSearchProduct(product) {
+      if (!product) return false;
+      const url = normalizeComparableUrl(product.sourceUrl || product.url || "");
+      if (url && urls.has(url)) return true;
+      const name = normalizeComparableProductName(product.name);
+      return Boolean(name && names.has(name));
+    },
+  };
+}
+
+function normalizeComparableUrl(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/[?#].*$/, "")
+    .replace(/\/$/, "")
+    .toLowerCase();
+}
+
+function normalizeComparableProductName(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/【[^】]*】|\[[^\]]*\]|（[^）]*）|\([^)]*\)/g, " ")
+    .replace(/sale|new|送料無料|ポイント|クーポン|再入荷|新色|追加|限定|予約|税込|楽天|room/gi, " ")
+    .replace(/[0-9０-９,.，、円%％offＯＦＦ\s/_｜|・:：-]+/g, " ")
+    .trim();
+}
+
 function renderDailySelection(showAll = false) {
   const grid = document.querySelector("#dailySelectionGrid");
   const kpiGrid = document.querySelector("#opsKpiGrid");
   if (!grid || !kpiGrid) return;
   const selection = getLatestDailySelection();
+  const postedMatcher = buildOwnRoomPostedMatcher();
   if (!selection) {
     kpiGrid.innerHTML = [
       ["候補", state.products.length],
@@ -1049,11 +1124,16 @@ function renderDailySelection(showAll = false) {
   }
   const items = (showAll ? selection.items : selection.visibleItems)
     .filter((item) => item.decision !== "excluded")
+    .filter((item) => !postedMatcher.hasDailyItem(item))
     .slice(0, showAll ? 200 : 30);
+  const postedExcluded = (showAll ? selection.items : selection.visibleItems)
+    .filter((item) => item.decision !== "excluded")
+    .filter((item) => postedMatcher.hasDailyItem(item)).length;
   kpiGrid.innerHTML = [
     ["収集候補", selection.sourceCount],
     ["保存候補", selection.candidateCount],
     ["確認対象", items.length],
+    ["ROOM掲載済み除外", postedExcluded],
     ["削減率", `${selection.kpis?.expectedReviewReductionRate || 0}%`],
     ["重複防止", selection.kpis?.duplicatePrevented || 0],
     ["状態", selection.job?.status === "fallback" ? "前回/手動データ" : "最新"],
@@ -1282,6 +1362,7 @@ function markDailyRoomPosted(productId) {
   saveUserDecision("Product", productId, "posted", "room-ready", "posted", "今朝のおすすめからROOM投稿済み");
   saveState();
   renderDailySelection();
+  renderProducts();
   renderRoomQueue();
   renderOpsPipeline();
   renderHome();
@@ -2602,9 +2683,17 @@ function fillProductForm(product, originalUrl) {
 function renderProductSearchResults(results) {
   const container = document.querySelector("#productSearchResults");
   if (!container) return;
+  const postedMatcher = buildOwnRoomPostedMatcher();
+  const visibleResults = (results || []).filter((product) => !postedMatcher.hasSearchProduct(product));
+  const excludedCount = (results || []).length - visibleResults.length;
   container.innerHTML = "";
-  container.hidden = !results.length;
-  results.forEach((product) => {
+  container.hidden = !visibleResults.length;
+  if (!visibleResults.length && excludedCount) {
+    showProductImportStatus("検索結果はすべて自分の楽天ROOMに掲載済みだったため除外しました");
+    return;
+  }
+  if (excludedCount) showProductImportStatus(`自分の楽天ROOMに掲載済みの商品を${excludedCount}件除外しました`);
+  visibleResults.forEach((product) => {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "product-search-result";
@@ -3023,7 +3112,13 @@ function setSyncStatus(status) {
 
 function renderProducts() {
   productGrid.innerHTML = "";
-  state.products.forEach((product) => {
+  const postedMatcher = buildOwnRoomPostedMatcher();
+  const visibleProducts = (state.products || []).filter((product) => !postedMatcher.hasProduct(product));
+  if (!visibleProducts.length) {
+    productGrid.innerHTML = `<p class="muted">未投稿の商品候補はありません。新しい商品をURLか検索から追加してください。</p>`;
+    return;
+  }
+  visibleProducts.forEach((product) => {
     const recommendations = buildProductRecommendations(product);
     const cardFacts = product.category === "ホテル・旅行"
       ? [product.details?.location, product.details?.rating ? `評価 ${product.details.rating}` : ""].filter(Boolean).join(" / ")
@@ -7628,6 +7723,7 @@ function renderRoomQueue() {
     renderRoomQueue();
     renderOpsPipeline();
     renderDailySelection();
+    renderProducts();
   }));
   roomQueue.querySelectorAll("[data-room-delete]").forEach((button) => button.addEventListener("click", () => {
     state.roomQueue = state.roomQueue.filter((entry) => entry.id !== button.dataset.roomDelete);
