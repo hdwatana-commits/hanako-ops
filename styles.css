@@ -2723,7 +2723,8 @@ textarea:focus {
   background: #fffafb;
 }
 
-.room-image-photo img {
+.room-image-photo img,
+.room-image-photo .coord-photo-thumb-empty {
   width: 52px;
   height: 64px;
   object-fit: cover;
@@ -3667,12 +3668,24 @@ body {
   text-align: left;
 }
 
-.coord-photo-card img {
+.coord-photo-card img,
+.coord-photo-thumb-empty {
   display: block;
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
   border-radius: 5px;
+}
+
+.coord-photo-thumb-empty {
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(216, 75, 125, 0.28);
+  background: #fff0f4;
+  color: var(--rose-dark);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
 }
 
 .coord-photo-card strong {

@@ -298,6 +298,7 @@ let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
 const coordinatePhotoPreviewCache = new Map();
 const COORDINATE_PHOTO_CACHE = "hanako-private-photo-previews-v1";
+let coordinatePhotoPreviewHydrating = false;
 let coordinateBoardDataUrl = "";
 let coordinateBoardHasPerson = false;
 let coordinateBoardRenderId = 0;
@@ -3493,11 +3494,11 @@ async function handleCoordinatePhotoLibraryClick(event) {
 function renderCoordinatePhotoLibrary() {
   state.coordinatePhotos ||= [];
   const selected = getSelectedCoordinatePhoto();
-  coordinatePhotoDataUrl = selected ? (coordinatePhotoPreviewCache.get(selected.id) || selected.signedUrl || "") : "";
+  coordinatePhotoDataUrl = selected ? getCoordinatePhotoDisplaySrc(selected) : "";
   const libraryHtml = state.coordinatePhotos.length ? state.coordinatePhotos.map((photo, index) => `
       <div class="coord-photo-card${photo.id === state.selectedCoordinatePhotoId ? " selected" : ""}">
         <button type="button" data-select-coordinate-photo="${escapeHtml(photo.id)}" aria-label="${index + 1}枚目の写真を選ぶ">
-          <img src="${escapeHtml(photo.signedUrl || "")}" alt="保存した全身写真${index + 1}">
+          ${renderCoordinatePhotoThumb(photo, index)}
           <strong>${escapeHtml(photo.name || `写真${index + 1}`)}</strong>
         </button>
         <button class="coord-photo-delete" type="button" data-delete-coordinate-photo="${escapeHtml(photo.id)}" aria-label="この写真を削除">×</button>
@@ -3514,6 +3515,50 @@ function renderCoordinatePhotoLibrary() {
     status.classList.remove("error");
   });
   renderRoomImagePhotoPreview();
+  hydrateCoordinatePhotoPreviews();
+}
+
+function renderCoordinatePhotoThumb(photo, index) {
+  const src = getCoordinatePhotoDisplaySrc(photo);
+  if (src) return `<img src="${escapeHtml(src)}" alt="保存した全身写真${index + 1}">`;
+  return `<div class="coord-photo-thumb-empty" aria-label="保存した全身写真${index + 1}を読み込み中">PHOTO</div>`;
+}
+
+function getCoordinatePhotoDisplaySrc(photo) {
+  if (!photo?.id) return "";
+  const localPreview = coordinatePhotoPreviewCache.get(photo.id);
+  if (localPreview) return localPreview;
+  if (photo.signedUrl && Number(photo.expiresAt || 0) - Date.now() > 60 * 1000) return photo.signedUrl;
+  return "";
+}
+
+async function hydrateCoordinatePhotoPreviews() {
+  if (coordinatePhotoPreviewHydrating || !state.coordinatePhotos?.length) return;
+  const missing = state.coordinatePhotos.filter((photo) => photo?.id && !coordinatePhotoPreviewCache.has(photo.id));
+  if (!missing.length) return;
+  coordinatePhotoPreviewHydrating = true;
+  let changed = false;
+  try {
+    for (const photo of missing) {
+      const localPreview = await readPersistedCoordinatePhotoPreview(photo.id);
+      if (localPreview) {
+        coordinatePhotoPreviewCache.set(photo.id, localPreview);
+        changed = true;
+        continue;
+      }
+      if (photo.signedUrl && Number(photo.expiresAt || 0) - Date.now() > 60 * 1000) {
+        try {
+          await loadCoordinatePhotoPreview(photo);
+          changed = true;
+        } catch {
+          // 期限切れや通信失敗の写真は、同期ログイン後のURL更新で復元する。
+        }
+      }
+    }
+  } finally {
+    coordinatePhotoPreviewHydrating = false;
+  }
+  if (changed) renderCoordinatePhotoLibrary();
 }
 
 function getSelectedCoordinatePhoto() {
@@ -3620,7 +3665,9 @@ async function refreshCoordinatePhotoLibraryUrls() {
         Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
       }
     }
-    await loadCoordinatePhotoPreview(getSelectedCoordinatePhoto());
+    for (const photo of state.coordinatePhotos) {
+      await loadCoordinatePhotoPreview(photo).catch(() => "");
+    }
     localStorage.setItem("hanako-room-ops", JSON.stringify(state));
     renderCoordinatePhotoLibrary();
   } catch {
@@ -6533,7 +6580,8 @@ function renderRoomImagePhotoPreview() {
     target.innerHTML = `<div><strong>本人写真が未選択です</strong><small>ホーム画面で全身写真を保存して選んでください。</small></div><button id="roomChoosePhoto" type="button">写真を選ぶ</button>`;
     return;
   }
-  target.innerHTML = `<img src="${escapeHtml(photo.signedUrl || "")}" alt="今回使う本人写真"><div><strong>コーデと共通の本人写真</strong><small>${escapeHtml(photo.name || "選択中の写真")}を使います</small></div><button id="roomChoosePhoto" type="button">変更</button>`;
+  const src = getCoordinatePhotoDisplaySrc(photo);
+  target.innerHTML = `${src ? `<img src="${escapeHtml(src)}" alt="今回使う本人写真">` : `<div class="coord-photo-thumb-empty">PHOTO</div>`}<div><strong>コーデと共通の本人写真</strong><small>${escapeHtml(photo.name || "選択中の写真")}を使います</small></div><button id="roomChoosePhoto" type="button">変更</button>`;
 }
 
 function markRoomImagePromptStale() {
