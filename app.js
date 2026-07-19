@@ -1159,6 +1159,34 @@ function openRakutenRoomPostScreen(product, fallbackUrl = "") {
   if (!url.includes("room.rakuten.co.jp/mix")) showToast("投稿画面を直接作れないため、商品ページを開きました。楽天市場ページのROOMボタンから投稿してください");
 }
 
+function buildRoomHelperAutoPostUrl(product, fallbackUrl = "") {
+  const productUrl = safeHttpUrl(product?.url || product?.sourceUrl || fallbackUrl || "");
+  const parsed = parseRakutenItemCodeFromUrl(productUrl);
+  const canonical = String(product?.ops?.canonicalProductId || product?.canonicalProductId || "");
+  const canonicalMatch = canonical.match(/^rakuten:([^:]+):(.+)$/);
+  const shopCode = parsed.shopCode || product?.ops?.shopCode || product?.details?.shopCode || canonicalMatch?.[1] || "";
+  const itemCode = parsed.itemCode || product?.ops?.itemCode || product?.details?.itemCode || product?.details?.itemId || canonicalMatch?.[2] || "";
+  const baseUrl = productUrl && !/room\.rakuten\.co\.jp/i.test(productUrl)
+    ? productUrl
+    : shopCode && itemCode
+      ? `https://item.rakuten.co.jp/${encodeURIComponent(shopCode)}/${encodeURIComponent(itemCode)}/`
+      : productUrl;
+  if (!baseUrl) return "";
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set("hanakoRoomPost", "1");
+    return url.href;
+  } catch {
+    return baseUrl;
+  }
+}
+
+function openRoomHelperAutoPost(product, fallbackUrl = "") {
+  const url = buildRoomHelperAutoPostUrl(product, fallbackUrl);
+  if (!url) return showToast("商品URLが未登録です");
+  window.open(url, "_blank", "noopener");
+}
+
 function buildOwnRoomPostedItemFromUrl(url, label = "") {
   const parsed = parseRakutenItemCodeFromUrl(url);
   const normalizedUrl = normalizeComparableUrl(url);
@@ -1596,7 +1624,7 @@ async function copyDailyRoomPostAndOpen(productId) {
   const product = state.products.find((entry) => entry.id === productId);
   if (!item?.text) return showToast("ROOM投稿文を作れませんでした");
   const copyPromise = copyRoomText(item.text);
-  openRakutenRoomPostScreen(product, item?.productUrl || product?.url || "");
+  openRoomHelperAutoPost(product, item?.productUrl || product?.url || "");
   await copyPromise;
   saveState();
   renderRoomQueue();
@@ -7950,7 +7978,7 @@ async function copyAndOpenRoomProduct() {
   if (!roomPostOutput.value.trim()) generateRoomPost();
   if (!roomPostOutput.value.trim()) return;
   const copyPromise = copyRoomText(roomPostOutput.value);
-  openRakutenRoomPostScreen(product, product.url || product.sourceUrl || "");
+  openRoomHelperAutoPost(product, product.url || product.sourceUrl || "");
   await copyPromise;
 }
 
@@ -7960,7 +7988,7 @@ async function copyProductRoomPostAndOpen(productId) {
   const text = buildRoomPostText(product);
   if (!text) return;
   const copyPromise = copyRoomText(text);
-  openRakutenRoomPostScreen(product, product.url || product.sourceUrl || "");
+  openRoomHelperAutoPost(product, product.url || product.sourceUrl || "");
   await copyPromise;
   showToast("ROOM投稿文をコピーして投稿画面を開きました");
 }

@@ -700,6 +700,32 @@ ${hashtags}`;
     }
   }
 
+  function shouldAutoOpenRoomPost() {
+    if (!isProductSite()) return false;
+    try {
+      const url = new URL(location.href);
+      return url.searchParams.get("hanakoRoomPost") === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function autoOpenRoomPostFromHanakoOps() {
+    if (!shouldAutoOpenRoomPost()) return;
+    const run = () => {
+      openRoomPost();
+      try {
+        const url = new URL(location.href);
+        url.searchParams.delete("hanakoRoomPost");
+        history.replaceState(history.state, document.title, url.href);
+      } catch {
+        // keep the page usable even if URL cleanup fails
+      }
+    };
+    setTimeout(run, 900);
+    setTimeout(run, 2400);
+  }
+
   function openProductTab(url) {
     if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
       chrome.runtime.sendMessage({ type: "open-product-tab", url });
@@ -1069,6 +1095,7 @@ ${hashtags}`;
   function boot() {
     injectMainWorldFallback();
     registerProductTab();
+    autoOpenRoomPostFromHanakoOps();
     handleCollectionAutoReturn();
     setTimeout(maybeAutoCloseAfterCompletion, 1500);
     inject();
