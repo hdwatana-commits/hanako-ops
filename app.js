@@ -1072,7 +1072,7 @@ function renderDailySelectionCard(item) {
   const collections = item.recommendedCollections || [];
   const missing = item.missingItems || [];
   return `
-    <article class="daily-card rank-${escapeHtml(item.rank)}" data-daily-product="${escapeHtml(item.id)}" data-canonical="${escapeHtml(item.canonicalProductId)}">
+    <article class="daily-card rank-${escapeHtml(item.rank)} decision-${escapeHtml(item.decision || "pending")}" data-daily-product="${escapeHtml(item.id)}" data-canonical="${escapeHtml(item.canonicalProductId)}">
       <label class="daily-card-check"><input type="checkbox" data-daily-select="${escapeHtml(item.id)}"><span>${escapeHtml(item.rank)}</span></label>
       ${item.mainImageUrl ? `<img src="${escapeHtml(item.mainImageUrl)}" alt="">` : `<div class="daily-placeholder">品</div>`}
       <div class="daily-card-body">
@@ -1085,6 +1085,7 @@ function renderDailySelectionCard(item) {
           <span>売れやすさ <strong>${item.salePotentialScore}</strong></span>
           <span>運用優先 <strong>${item.operationPriorityScore}</strong></span>
           <span class="repost-state">${escapeHtml(item.repost?.status || "投稿可能")}</span>
+          ${item.decision === "posted" ? `<span class="posted-state">ROOM投稿済み</span>` : ""}
         </div>
         <div class="daily-collections">
           ${collections.map((collection) => `<span>${escapeHtml(collection.name)} ${collection.score}</span>`).join("") || "<span>未分類</span>"}
@@ -1101,6 +1102,9 @@ function renderDailySelectionCard(item) {
           <button class="primary" type="button" data-daily-adopt="${escapeHtml(item.id)}">採用</button>
           <button type="button" data-daily-image="${escapeHtml(item.id)}">画像生成へ</button>
           <button type="button" data-daily-room="${escapeHtml(item.id)}">ROOM文へ</button>
+          <button type="button" data-daily-room-copy="${escapeHtml(item.id)}">ROOM文コピー</button>
+          <button type="button" data-daily-room-open="${escapeHtml(item.id)}">ROOMへ開く</button>
+          <button type="button" data-daily-room-posted="${escapeHtml(item.id)}">投稿済み</button>
           <button type="button" data-daily-hold="${escapeHtml(item.id)}">保留</button>
           <button type="button" data-daily-exclude="${escapeHtml(item.id)}">除外</button>
         </div>
@@ -1114,6 +1118,9 @@ function bindDailySelectionCardActions(root) {
   root.querySelectorAll("[data-daily-hold]").forEach((button) => button.addEventListener("click", () => setDailyDecision(button.dataset.dailyHold, "held")));
   root.querySelectorAll("[data-daily-image]").forEach((button) => button.addEventListener("click", () => sendProductToPipeline(button.dataset.dailyImage, "画像待ち")));
   root.querySelectorAll("[data-daily-room]").forEach((button) => button.addEventListener("click", () => sendProductToRoomQueue(button.dataset.dailyRoom)));
+  root.querySelectorAll("[data-daily-room-copy]").forEach((button) => button.addEventListener("click", () => copyDailyRoomPost(button.dataset.dailyRoomCopy)));
+  root.querySelectorAll("[data-daily-room-open]").forEach((button) => button.addEventListener("click", () => openDailyRoomProduct(button.dataset.dailyRoomOpen)));
+  root.querySelectorAll("[data-daily-room-posted]").forEach((button) => button.addEventListener("click", () => markDailyRoomPosted(button.dataset.dailyRoomPosted)));
   root.querySelectorAll("[data-daily-detail]").forEach((button) => button.addEventListener("click", () => showDailyDetail(button.dataset.dailyDetail)));
 }
 
@@ -1170,7 +1177,7 @@ function sendProductToPipeline(productId, status = "採用", shouldSave = true) 
   const product = state.products.find((item) => item.id === productId);
   if (!product) return;
   state.postPlans ||= [];
-  const existing = state.postPlans.find((plan) => plan.productId === productId && !["投稿済み", "成果確認済み"].includes(plan.status));
+  const existing = state.postPlans.find((plan) => plan.productId === productId && (status === "投稿済み" || !["投稿済み", "成果確認済み"].includes(plan.status)));
   const collections = getDailyItem(productId)?.recommendedCollections || window.HanakoOpsEngine.recommendCollections(enrichProductForOps(product), state.collections);
   if (existing) {
     existing.status = status;
@@ -1199,24 +1206,86 @@ function sendProductToRoomQueue(productId, shouldSave = true) {
   const product = state.products.find((item) => item.id === productId);
   if (!product) return;
   sendProductToPipeline(productId, "文章完成", false);
-  if (!state.roomQueue.some((item) => item.productId === productId && !item.done)) {
-    state.roomQueue.unshift({
-      id: createId(),
-      productId,
-      productName: product.name,
-      productUrl: product.url || "",
-      image: product.image || "",
-      copy: "",
-      done: false,
-      createdAt: new Date().toISOString(),
-    });
-  }
+  ensureRoomQueueItem(productId, { generateText: false });
   if (shouldSave) {
     saveState();
     renderRoomQueue();
     renderOpsPipeline();
     showToast("ROOM文生成キューへ送りました");
   }
+}
+
+function ensureRoomQueueItem(productId, { generateText = true, markDone = false } = {}) {
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) return null;
+  state.roomQueue ||= [];
+  const text = generateText ? buildRoomPostText(product) : "";
+  let item = state.roomQueue.find((entry) => entry.productId === productId && !entry.done)
+    || state.roomQueue.find((entry) => entry.productId === productId);
+  if (item) {
+    item.productName = product.name;
+    item.productUrl = product.url || item.productUrl || "";
+    item.image = product.image || item.image || "";
+    if (text) item.text = text;
+    if (!item.text && item.copy) item.text = item.copy;
+    item.updatedAt = new Date().toISOString();
+  } else {
+    item = {
+      id: createId(),
+      productId,
+      productName: product.name,
+      productUrl: product.url || "",
+      image: product.image || "",
+      text,
+      done: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    state.roomQueue.unshift(item);
+  }
+  if (markDone) {
+    item.done = true;
+    item.postedAt = new Date().toISOString();
+  }
+  return item;
+}
+
+async function copyDailyRoomPost(productId) {
+  const item = ensureRoomQueueItem(productId, { generateText: true });
+  if (!item?.text) return showToast("ROOM投稿文を作れませんでした");
+  await copyRoomText(item.text);
+  saveState();
+  renderRoomQueue();
+  showToast("ROOM投稿文をコピーしました");
+}
+
+function openDailyRoomProduct(productId) {
+  const item = ensureRoomQueueItem(productId, { generateText: false });
+  const product = state.products.find((entry) => entry.id === productId);
+  const url = item?.productUrl || product?.url || "";
+  if (!url) return showToast("商品URLが未登録です");
+  window.open(url, "_blank", "noopener");
+}
+
+function markDailyRoomPosted(productId) {
+  const item = ensureRoomQueueItem(productId, { generateText: true, markDone: true });
+  if (!item) return;
+  sendProductToPipeline(productId, "投稿済み", false);
+  const selection = getLatestDailySelection();
+  [selection?.items, selection?.visibleItems].forEach((list) => {
+    (list || []).forEach((entry) => {
+      if (entry.id === productId) entry.decision = "posted";
+    });
+  });
+  const product = state.products.find((entry) => entry.id === productId);
+  if (product) product.opsDecision = "posted";
+  saveUserDecision("Product", productId, "posted", "room-ready", "posted", "今朝のおすすめからROOM投稿済み");
+  saveState();
+  renderDailySelection();
+  renderRoomQueue();
+  renderOpsPipeline();
+  renderHome();
+  showToast("ROOM投稿済みにしました");
 }
 
 function getDailyItem(productId) {
@@ -7392,6 +7461,14 @@ async function openRoomImageGemini() {
 function generateRoomPost() {
   const product = getSelectedRoomProduct();
   if (!product) return showToast("先に商品を登録してください");
+  const text = buildRoomPostText(product);
+  if (!text) return;
+  roomPostOutput.value = text;
+  updateRoomCharacterCount();
+  showToast("ROOM投稿文を作りました");
+}
+
+function buildRoomPostText(product) {
   if (!window.RoomReviewGenerator?.generateFromInfo) return showToast("ROOM生成エンジンを読み込めませんでした");
   const info = {
     title: product.name,
@@ -7407,9 +7484,7 @@ function generateRoomPost() {
     shopName: product.details?.brand || "",
     variationSeed: ++roomGenerationVariant,
   };
-  roomPostOutput.value = cleanRoomMultilineText(window.RoomReviewGenerator.generateFromInfo(info));
-  updateRoomCharacterCount();
-  showToast("ROOM投稿文を作りました");
+  return cleanRoomMultilineText(window.RoomReviewGenerator.generateFromInfo(info));
 }
 
 function cleanRoomMultilineText(text) {
@@ -7499,19 +7574,19 @@ function renderRoomQueue() {
       ${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : `<div class="room-queue-placeholder">R</div>`}
       <div class="room-queue-copy">
         <div class="room-queue-title"><strong>${escapeHtml(item.productName)}</strong><span>${item.done ? "投稿済み" : "投稿待ち"}</span></div>
-        <p>${escapeHtml(trimText(item.text, 150))}</p>
+        <p>${escapeHtml(trimText(item.text || item.copy || "", 150))}</p>
       </div>
       <div class="room-queue-actions">
-        <button data-room-copy="${item.id}">コピー</button>
-        <button data-room-open="${item.id}">商品を開く</button>
-        <button data-room-done="${item.id}">${item.done ? "未投稿へ戻す" : "投稿済みにする"}</button>
-        <button data-room-delete="${item.id}" aria-label="削除">×</button>
+        <button data-room-copy="${escapeHtml(item.id)}">コピー</button>
+        <button data-room-open="${escapeHtml(item.id)}">商品を開く</button>
+        <button data-room-done="${escapeHtml(item.id)}">${item.done ? "未投稿へ戻す" : "投稿済みにする"}</button>
+        <button data-room-delete="${escapeHtml(item.id)}" aria-label="削除">×</button>
       </div>
     </article>
   `).join("");
   roomQueue.querySelectorAll("[data-room-copy]").forEach((button) => button.addEventListener("click", () => {
     const item = state.roomQueue.find((entry) => entry.id === button.dataset.roomCopy);
-    if (item) copyRoomText(item.text);
+    if (item) copyRoomText(item.text || item.copy || "");
   }));
   roomQueue.querySelectorAll("[data-room-open]").forEach((button) => button.addEventListener("click", () => {
     const item = state.roomQueue.find((entry) => entry.id === button.dataset.roomOpen);
@@ -7522,8 +7597,12 @@ function renderRoomQueue() {
     const item = state.roomQueue.find((entry) => entry.id === button.dataset.roomDone);
     if (!item) return;
     item.done = !item.done;
+    item.postedAt = item.done ? new Date().toISOString() : "";
+    if (item.productId) sendProductToPipeline(item.productId, item.done ? "投稿済み" : "文章完成", false);
     saveState();
     renderRoomQueue();
+    renderOpsPipeline();
+    renderDailySelection();
   }));
   roomQueue.querySelectorAll("[data-room-delete]").forEach((button) => button.addEventListener("click", () => {
     state.roomQueue = state.roomQueue.filter((entry) => entry.id !== button.dataset.roomDelete);

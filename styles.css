@@ -3119,6 +3119,16 @@ textarea:focus {
   background: #fff0f4;
 }
 
+.daily-score-row .posted-state,
+.daily-card.decision-posted .daily-card-check span {
+  background: #e8f5ee;
+  color: #3f695d;
+}
+
+.daily-card.decision-posted {
+  border-color: rgba(79, 119, 106, 0.32);
+}
+
 .daily-reasons {
   margin: 8px 0;
 }
@@ -3144,6 +3154,19 @@ textarea:focus {
 
 .daily-actions button {
   min-height: 34px;
+}
+
+.daily-actions [data-daily-room-copy],
+.daily-actions [data-daily-room-open],
+.daily-actions [data-daily-room-posted] {
+  border-color: rgba(79, 119, 106, 0.22);
+  background: #f3fbf7;
+  color: #3f695d;
+}
+
+.daily-actions [data-daily-room-posted] {
+  background: #2f292c;
+  color: #fff;
 }
 
 .pipeline-board {
