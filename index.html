@@ -11,12 +11,12 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=175">
+    <link rel="stylesheet" href="styles.css?v=176">
     <script src="config.js"></script>
-    <script src="cloud-sync.js?v=175"></script>
-    <script src="ops-engine.js?v=175"></script>
-    <script src="ops-phase2-engine.js?v=175"></script>
-    <script src="ops-phase3-engine.js?v=175"></script>
+    <script src="cloud-sync.js?v=176"></script>
+    <script src="ops-engine.js?v=176"></script>
+    <script src="ops-phase2-engine.js?v=176"></script>
+    <script src="ops-phase3-engine.js?v=176"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -1305,6 +1305,73 @@
                 </div>
                 <textarea id="roomImagePrompt" class="coord-prompt-output room-image-prompt" spellcheck="false" placeholder="通常投稿またはコレクション表紙を選び、画像プロンプトを作ってください"></textarea>
               </div>
+
+              <div class="room-collection-maker">
+                <div class="room-image-maker-head">
+                  <div><p class="eyebrow">AI COLLECTION</p><h4>新規コレクションを作る</h4></div>
+                  <span id="roomCollectionStatus">未作成</span>
+                </div>
+                <p class="room-collection-lead">選んだ商品を中心に、楽天ROOMで新しく作るコレクションの件名、本文、表紙画像プロンプトをまとめて作ります。</p>
+                <div class="coord-style-row room-image-settings">
+                  <div>
+                    <label class="field-label" for="roomCollectionTheme">コレクションの方向性</label>
+                    <select id="roomCollectionTheme">
+                      <option value="auto">商品からAIおすすめ</option>
+                      <option value="travel">旅行・お出かけ</option>
+                      <option value="office">通勤・きれいめ</option>
+                      <option value="date">デート・女子会</option>
+                      <option value="wave">骨格ウェーブ</option>
+                      <option value="cooling">冷房対策・気温差</option>
+                      <option value="under3000">3000円以下</option>
+                      <option value="sameBrand">同ブランドまとめ</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label" for="roomCollectionTone">本文の雰囲気</label>
+                    <select id="roomCollectionTone">
+                      <option value="editor">雑誌編集部っぽく</option>
+                      <option value="friendly">礼儀正しい女子大生</option>
+                      <option value="sharp">ハナコ先生の辛口ひとこと</option>
+                      <option value="luxury">ブランド広告風</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="button-row">
+                  <button class="primary" id="generateRoomCollectionSet" type="button">件名・本文・表紙プロンプトを作る</button>
+                  <button id="copyRoomCollectionAll" type="button">全部コピー</button>
+                  <button id="openRoomCollectionAi" type="button">選んだAIを開く</button>
+                </div>
+                <div class="room-collection-output-grid">
+                  <section>
+                    <div class="coord-prompt-heading">
+                      <div><span>SUBJECT</span><h4>件名</h4></div>
+                      <button id="copyRoomCollectionTitle" type="button">コピー</button>
+                    </div>
+                    <textarea id="roomCollectionTitle" class="coord-prompt-output room-collection-title" spellcheck="false" placeholder="コレクション名が入ります"></textarea>
+                  </section>
+                  <section>
+                    <div class="coord-prompt-heading">
+                      <div><span>BODY</span><h4>本文</h4></div>
+                      <button id="copyRoomCollectionBody" type="button">コピー</button>
+                    </div>
+                    <textarea id="roomCollectionBody" class="coord-prompt-output room-collection-body" spellcheck="false" placeholder="コレクション説明文が入ります"></textarea>
+                  </section>
+                  <section>
+                    <div class="coord-prompt-heading">
+                      <div><span>COVER</span><h4>表紙画像プロンプト</h4></div>
+                      <button id="copyRoomCollectionCoverPrompt" type="button">コピー</button>
+                    </div>
+                    <textarea id="roomCollectionCoverPrompt" class="coord-prompt-output room-collection-cover-prompt" spellcheck="false" placeholder="コレクション表紙画像プロンプトが入ります"></textarea>
+                  </section>
+                  <section>
+                    <div class="coord-prompt-heading">
+                      <div><span>AI</span><h4>AIへ渡すまとめプロンプト</h4></div>
+                      <button id="copyRoomCollectionAiPrompt" type="button">コピー</button>
+                    </div>
+                    <textarea id="roomCollectionAiPrompt" class="coord-prompt-output room-collection-ai-prompt" spellcheck="false" placeholder="AIに貼り付ける指示が入ります"></textarea>
+                  </section>
+                </div>
+              </div>
             </article>
 
             <article class="panel room-guide">
@@ -1519,7 +1586,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=175"></script>
-    <script src="app.js?v=175"></script>
+    <script src="room-review-generator.js?v=176"></script>
+    <script src="app.js?v=176"></script>
   </body>
 </html>

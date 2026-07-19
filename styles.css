@@ -5344,3 +5344,53 @@ body {
     grid-template-columns: 1fr;
   }
 }
+/* ROOM new collection maker */
+.room-collection-maker {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid rgba(193, 126, 151, 0.24);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 249, 251, 0.96), rgba(255, 255, 255, 0.92));
+  box-shadow: 0 14px 34px rgba(83, 45, 61, 0.07);
+}
+
+.room-collection-lead {
+  margin: 0 0 14px;
+  color: #715b64;
+  line-height: 1.8;
+}
+
+.room-collection-output-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.room-collection-output-grid section {
+  min-width: 0;
+}
+
+.room-collection-title {
+  min-height: 74px;
+}
+
+.room-collection-body {
+  min-height: 170px;
+}
+
+.room-collection-cover-prompt,
+.room-collection-ai-prompt {
+  min-height: 280px;
+}
+
+@media (max-width: 820px) {
+  .room-collection-maker {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .room-collection-output-grid {
+    grid-template-columns: 1fr;
+  }
+}

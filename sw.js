@@ -1,15 +1,15 @@
-const CACHE_NAME = "hanako-room-ops-v175";
+const CACHE_NAME = "hanako-room-ops-v176";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=175",
-  "./app.js?v=175",
-  "./cloud-sync.js?v=175",
-  "./ops-engine.js?v=175",
-  "./ops-phase2-engine.js?v=175",
-  "./ops-phase3-engine.js?v=175",
-  "./room-review-generator.js?v=175",
+  "./styles.css?v=176",
+  "./app.js?v=176",
+  "./cloud-sync.js?v=176",
+  "./ops-engine.js?v=176",
+  "./ops-phase2-engine.js?v=176",
+  "./ops-phase3-engine.js?v=176",
+  "./room-review-generator.js?v=176",
   "./version.json",
   "./update.html",
   "./covers/rakuten-room-cover-hanako-v5.jpg",
@@ -402,13 +402,13 @@ const APP_SHELL = [
 const CORE_SHELL = [
   "./",
   "./index.html",
-    "./styles.css?v=175",
-    "./app.js?v=175",
-    "./cloud-sync.js?v=175",
-    "./ops-engine.js?v=175",
-    "./ops-phase2-engine.js?v=175",
-    "./ops-phase3-engine.js?v=175",
-    "./room-review-generator.js?v=175",
+    "./styles.css?v=176",
+    "./app.js?v=176",
+    "./cloud-sync.js?v=176",
+    "./ops-engine.js?v=176",
+    "./ops-phase2-engine.js?v=176",
+    "./ops-phase3-engine.js?v=176",
+    "./room-review-generator.js?v=176",
 ];
 
 self.addEventListener("install", (event) => {

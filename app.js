@@ -734,6 +734,7 @@ function normalizeState(value) {
     calendar: Array.isArray(source.calendar) ? source.calendar : [],
     metrics: Array.isArray(source.metrics) ? source.metrics : [],
     roomQueue: Array.isArray(source.roomQueue) ? source.roomQueue : [],
+    roomCollectionDrafts: Array.isArray(source.roomCollectionDrafts) ? source.roomCollectionDrafts : [],
     coordinatePhotos: Array.isArray(source.coordinatePhotos) ? source.coordinatePhotos : [],
     appearance: source.appearance && typeof source.appearance === "object" ? source.appearance : { avatarTheme: "original" },
     collections: Array.isArray(source.collections) ? source.collections : [],
@@ -779,6 +780,7 @@ function ensureOpsState(target = state) {
   target.dailySelections ||= [];
   target.postPlans ||= [];
   target.posts ||= [];
+  target.roomCollectionDrafts ||= [];
   target.userDecisions ||= [];
   target.duplicateMatches ||= [];
   target.collectionRuleVersions ||= [];
@@ -5978,6 +5980,7 @@ function bindRoomActions() {
     applyRoomImageRecommendations(getSelectedRoomProduct());
     renderRoomImagePhotoPreview();
     markRoomImagePromptStale();
+    markRoomCollectionStale();
   });
   roomPostOutput.addEventListener("input", updateRoomCharacterCount);
   document.querySelector("#generateRoomPost").addEventListener("click", generateRoomPost);
@@ -6000,6 +6003,15 @@ function bindRoomActions() {
   document.querySelector("#copyRoomImagePrompt")?.addEventListener("click", copyRoomImagePrompt);
   document.querySelector("#openRoomSelectedAi")?.addEventListener("click", openGeminiDestination);
   document.querySelector("#openRoomImageGemini")?.addEventListener("click", openRoomImageGemini);
+  document.querySelector("#generateRoomCollectionSet")?.addEventListener("click", generateRoomCollectionSet);
+  document.querySelector("#copyRoomCollectionTitle")?.addEventListener("click", () => copyText(document.querySelector("#roomCollectionTitle")?.value || ""));
+  document.querySelector("#copyRoomCollectionBody")?.addEventListener("click", () => copyText(document.querySelector("#roomCollectionBody")?.value || ""));
+  document.querySelector("#copyRoomCollectionCoverPrompt")?.addEventListener("click", () => copyText(document.querySelector("#roomCollectionCoverPrompt")?.value || ""));
+  document.querySelector("#copyRoomCollectionAiPrompt")?.addEventListener("click", () => copyText(document.querySelector("#roomCollectionAiPrompt")?.value || ""));
+  document.querySelector("#copyRoomCollectionAll")?.addEventListener("click", copyRoomCollectionAll);
+  document.querySelector("#openRoomCollectionAi")?.addEventListener("click", openRoomCollectionAi);
+  document.querySelector("#roomCollectionTheme")?.addEventListener("change", markRoomCollectionStale);
+  document.querySelector("#roomCollectionTone")?.addEventListener("change", markRoomCollectionStale);
   document.querySelector("#roomImagePhotoPreview")?.addEventListener("click", (event) => {
     if (event.target.closest("#roomChoosePhoto")) {
       activateView("brief");
@@ -6842,6 +6854,265 @@ function buildRoomCollectionBrandDesign(product, brand, sourceText = "") {
     decoration: "細い罫線、余白、控えめな手書きアクセントだけを使い、既視感のあるテンプレ装飾を避ける",
   };
   return selected;
+}
+
+function markRoomCollectionStale() {
+  const status = document.querySelector("#roomCollectionStatus");
+  if (status) status.textContent = "再作成待ち";
+}
+
+function generateRoomCollectionSet() {
+  const product = getSelectedRoomProduct();
+  if (!product) return showToast("先に商品を選んでください");
+  const draft = buildRoomCollectionSet(product);
+  document.querySelector("#roomCollectionTitle").value = draft.title;
+  document.querySelector("#roomCollectionBody").value = draft.body;
+  document.querySelector("#roomCollectionCoverPrompt").value = draft.coverPrompt;
+  document.querySelector("#roomCollectionAiPrompt").value = draft.aiPrompt;
+  state.roomCollectionDrafts ||= [];
+  state.roomCollectionDrafts.unshift(draft);
+  state.roomCollectionDrafts = state.roomCollectionDrafts.slice(0, 50);
+  const status = document.querySelector("#roomCollectionStatus");
+  if (status) status.textContent = "作成済み";
+  saveUserDecision("RoomCollectionDraft", draft.id, "generated", null, { title: draft.title, theme: draft.theme }, "new collection set");
+  saveState();
+  showToast("新規コレクション案を作りました");
+  return draft;
+}
+
+function buildRoomCollectionSet(product) {
+  const details = product.details || {};
+  const brand = details.brand || "Hanako Select";
+  const theme = document.querySelector("#roomCollectionTheme")?.value || "auto";
+  const tone = document.querySelector("#roomCollectionTone")?.value || "editor";
+  const themeInfo = resolveRoomCollectionTheme(product, theme);
+  const oneLiner = buildRoomImageOneLiner(product);
+  const coverCopy = buildRoomCollectionCoverCopy(product, brand, oneLiner);
+  const relatedProducts = getRoomCollectionRelatedProducts(product, themeInfo);
+  const title = buildRoomCollectionTitle(product, brand, themeInfo);
+  const body = buildRoomCollectionBody(product, brand, title, themeInfo, tone, relatedProducts);
+  const coverPrompt = buildRoomCollectionStandaloneCoverPrompt(product, brand, title, body, coverCopy, themeInfo, relatedProducts);
+  const aiPrompt = buildRoomCollectionAiMasterPrompt(product, brand, title, body, coverPrompt, themeInfo, tone, relatedProducts);
+  return {
+    id: createId(),
+    productId: product.id,
+    productName: product.name,
+    theme: themeInfo.id,
+    tone,
+    title,
+    body,
+    coverPrompt,
+    aiPrompt,
+    relatedProductIds: relatedProducts.map((item) => item.id),
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function resolveRoomCollectionTheme(product, selectedTheme = "auto") {
+  const text = `${product.name || ""} ${product.category || ""} ${product.hook || ""} ${product.details?.material || ""} ${product.details?.color || ""}`;
+  const auto = /カーディガン|羽織|冷房|UV|シアー|薄手/.test(text)
+    ? "cooling"
+    : /旅行|トラベル|リゾート|水着|サンダル|軽い|洗える/.test(text)
+      ? "travel"
+      : /通勤|オフィス|ブラウス|パンツ|ジャケット|きれいめ/.test(text)
+        ? "office"
+        : /デート|女子会|ワンピース|レース|リボン|フリル/.test(text)
+          ? "date"
+          : Number(product.price) > 0 && Number(product.price) <= 3000
+            ? "under3000"
+            : "sameBrand";
+  const id = selectedTheme === "auto" ? auto : selectedTheme;
+  const map = {
+    travel: { id, label: "旅行・お出かけ", titleSeed: "旅先でも可愛い", promise: "写真映えと着回しやすさを両立", audience: "週末のお出かけや旅行で失敗したくない人" },
+    office: { id, label: "通勤・きれいめ", titleSeed: "きれいめ通勤", promise: "きちんと感を残しながら甘さを整える", audience: "大学・通勤・きれいめ予定をラクに整えたい人" },
+    date: { id, label: "デート・女子会", titleSeed: "褒められガーリー", promise: "甘さを上品に見せて写真にも残しやすい", audience: "デートや女子会で可愛く見せたい人" },
+    wave: { id, label: "骨格ウェーブ", titleSeed: "骨格ウェーブ優勝", promise: "重心を上げて、華奢見えとバランスを作る", audience: "上半身や腰位置の見え方を整えたい人" },
+    cooling: { id, label: "冷房対策・気温差", titleSeed: "気温差に負けない", promise: "脱ぎ着しやすく、温度調整も可愛く見せる", audience: "朝晩や冷房の気温差に悩む人" },
+    under3000: { id, label: "3000円以下", titleSeed: "プチプラ高見え", promise: "価格は軽く、見た目はきれいめに整える", audience: "失敗しにくいプチプラ服を探す人" },
+    sameBrand: { id, label: "同ブランドまとめ", titleSeed: "ブランド買い足し候補", promise: "同じ世界観でコーデを組みやすくする", audience: "好きなブランドでまとめて選びたい人" },
+  };
+  return map[id] || map.sameBrand;
+}
+
+function getRoomCollectionRelatedProducts(product, themeInfo) {
+  const brand = product.details?.brand || "";
+  const category = product.category || "";
+  const price = Number(product.price) || 0;
+  const scored = (state.products || [])
+    .filter((item) => item.id !== product.id)
+    .map((item) => {
+      let score = 0;
+      if (brand && item.details?.brand === brand) score += 42;
+      if (item.category === category) score += 18;
+      if (themeInfo.id === "under3000" && Number(item.price) > 0 && Number(item.price) <= 3000) score += 25;
+      if (themeInfo.id === "cooling" && /カーディガン|羽織|シアー|薄手|UV|冷房/.test(`${item.name} ${item.hook}`)) score += 25;
+      if (themeInfo.id === "travel" && /旅行|洗える|軽い|サンダル|バッグ|ワンピ|リネン/.test(`${item.name} ${item.hook} ${item.category}`)) score += 22;
+      if (themeInfo.id === "office" && /通勤|ブラウス|パンツ|ジャケット|きれいめ|バッグ/.test(`${item.name} ${item.hook} ${item.category}`)) score += 22;
+      if (themeInfo.id === "date" && /ワンピ|レース|リボン|フリル|スカート|パール/.test(`${item.name} ${item.hook} ${item.category}`)) score += 22;
+      if (themeInfo.id === "wave" && /ショート|ハイウエスト|リボン|フリル|カーデ|スカート/.test(`${item.name} ${item.hook} ${item.category}`)) score += 22;
+      if (price && Number(item.price)) score += Math.max(0, 10 - Math.abs(Number(item.price) - price) / 1000);
+      return { item, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map((entry) => entry.item);
+  return [product, ...scored].slice(0, 6);
+}
+
+function buildRoomCollectionTitle(product, brand, themeInfo) {
+  const category = product.category || "ファッション";
+  const titleOptions = [
+    `${themeInfo.titleSeed} Collection`,
+    `${themeInfo.titleSeed} ${category}`,
+    `${brand} ${themeInfo.label}`,
+    `${themeInfo.label} 可愛さラボ`,
+    `${themeInfo.titleSeed} まとめ`,
+  ];
+  return titleOptions[hashText(`${product.id || product.name}:${themeInfo.id}:title`) % titleOptions.length].replace(/\s+/g, " ").trim();
+}
+
+function buildRoomCollectionBody(product, brand, title, themeInfo, tone, relatedProducts) {
+  const countLine = relatedProducts.length >= 4 ? `まずは${relatedProducts.length}点から、雰囲気が近いものだけを厳選。` : "最初は少数精鋭で、似合う理由が伝わるものだけを追加。";
+  const toneLine = {
+    editor: "雑誌の小さな特集みたいに、見返すだけで次のコーデが決まる場所にします。",
+    friendly: "礼儀正しく、でもちゃんと本音で、毎日の可愛い選びを少しラクにします。",
+    sharp: "可愛いだけで盛りすぎず、着回しやすさと高見えをズバッと見ます。",
+    luxury: "ブランド広告のように、余白と統一感まで大事にして選びます。",
+  }[tone] || "見返すだけで、今日の可愛いが決まる場所にします。";
+  return cleanRoomMultilineText(`${title}
+
+${themeInfo.audience}へ。
+${themeInfo.promise}アイテムを集めるコレクションです。
+
+${countLine}
+${toneLine}
+
+PR/広告を含みます。気になる商品は、在庫・カラー・サイズ・クーポンを確認してから選んでください。`);
+}
+
+function buildRoomCollectionStandaloneCoverPrompt(product, brand, title, body, coverCopy, themeInfo, relatedProducts) {
+  const products = relatedProducts.map((item, index) => `${index + 1}. ${item.name}
+カテゴリ: ${item.category || "ファッション"}
+ブランド: ${item.details?.brand || brand}
+価格: ${item.price || "未取得"}
+画像URL: ${item.image || "未登録"}
+商品URL: ${item.url || "未登録"}`).join("\n\n");
+  return adaptPromptToSelectedAi(`楽天ROOMの新規コレクション表紙画像を1枚作ってください。
+
+【目的】
+このコレクションへ入りたくなる、センスが良くて保存したくなる表紙にする。
+
+【コレクション件名】
+${title}
+
+【本文の方向性】
+${body}
+
+【表紙に入れるテキスト】
+・一番大きく: 「${title}」
+・小さく: 「${coverCopy.moodLine}」
+・小さく: 「${coverCopy.editLine}」
+・カテゴリ: 「${coverCopy.categoryLabel}」
+・「楽天ROOM」「ROOM」「STYLE EDIT」は入れない
+
+【デザイン方針】
+・正方形1:1、1536×1536px以上
+・ブランドや商品の雰囲気に合わせた、毎回違うファッション雑誌の表紙風
+・コレクション名を一番大きく、遠目でも読める主役見出しにする
+・商品画像をコラージュ、切り抜き、雑誌紙面、ブランド広告風のどれかで大胆に使う
+・商品が少ない場合は水増しせず、1〜2点を大きく見せる
+・価格、レビュー数、ランキング、売上数、効能の数字は入れない
+・外周の白い安全余白や額縁は不要。画面端までデザインしてよい
+・文字は切らず、日本語の誤字、意味不明な言葉、造語、文字化けを絶対に入れない
+・淡すぎる文字は禁止。読める濃さで上品にする
+
+【使ってよい商品】
+${products}
+
+【禁止】
+・未登録の商品を勝手に足さない
+・商品URLや画像URLが読めない場合、読めない商品は想像で補完せず、読み取れる商品と上記の商品名だけで構成する
+・ブランドロゴを勝手に作らない
+・サービス名、広告っぽい過剰な売り文句、ウォーターマークを入れない
+
+完成画像だけを返してください。説明文や別案は不要です。`);
+}
+
+function buildRoomCollectionAiMasterPrompt(product, brand, title, body, coverPrompt, themeInfo, tone, relatedProducts) {
+  const products = relatedProducts.map((item, index) => `${index + 1}. ${item.name} / ${item.category || ""} / ${item.price || ""}円
+商品URL: ${item.url || "未登録"}
+画像URL: ${item.image || "未登録"}`).join("\n");
+  return adaptPromptToSelectedAi(`あなたは楽天ROOMでレディースファッションを売るための編集者です。
+以下の商品情報をもとに、新規コレクションを作るための3点を完成させてください。
+
+1. コレクション件名
+2. コレクション本文
+3. コレクション表紙画像プロンプト
+
+【今回の方向性】
+${themeInfo.label}
+
+【本文トーン】
+${tone}
+
+【初期案】
+件名:
+${title}
+
+本文:
+${body}
+
+表紙画像プロンプト:
+${coverPrompt}
+
+【商品情報】
+メイン商品: ${product.name}
+ブランド: ${brand}
+カテゴリ: ${product.category || ""}
+${products}
+
+【仕上げ条件】
+・件名は短く、楽天ROOMのコレクション名として使いやすくする
+・本文は150〜260文字程度。読みやすく、可愛く、でも売るための理由が伝わるようにする
+・PR/広告を含むことが自然に伝わる表現にする
+・表紙画像プロンプトは、生成AIへそのまま貼れる完成形にする
+・商品を水増ししない。選んだ商品と同系統の商品だけで見せる
+・表紙に「楽天ROOM」「ROOM」「STYLE EDIT」は入れない
+・意味不明な日本語、造語、文字化け、切れた文字を入れない
+・価格、割引、レビュー数は、取得できていない場合は書かない
+
+出力は次の形式だけ:
+【件名】
+...
+
+【本文】
+...
+
+【表紙画像プロンプト】
+...`);
+}
+
+async function copyRoomCollectionAll() {
+  const title = document.querySelector("#roomCollectionTitle")?.value || "";
+  const body = document.querySelector("#roomCollectionBody")?.value || "";
+  const coverPrompt = document.querySelector("#roomCollectionCoverPrompt")?.value || "";
+  const aiPrompt = document.querySelector("#roomCollectionAiPrompt")?.value || "";
+  const text = `【件名】\n${title}\n\n【本文】\n${body}\n\n【表紙画像プロンプト】\n${coverPrompt}\n\n【AIへ渡すまとめプロンプト】\n${aiPrompt}`.trim();
+  if (!title && !body && !coverPrompt && !aiPrompt) return showToast("先に新規コレクション案を作ってください");
+  await copyText(text);
+}
+
+async function openRoomCollectionAi() {
+  let prompt = document.querySelector("#roomCollectionAiPrompt")?.value?.trim() || "";
+  if (!prompt) {
+    const draft = generateRoomCollectionSet();
+    prompt = draft?.aiPrompt || "";
+  }
+  if (!prompt) return;
+  await copyText(prompt, document.querySelector("#roomCollectionAiPrompt"));
+  openGeminiDestination();
+  showToast(`${getSelectedAiName()}へ貼り付けるプロンプトをコピーしました`);
 }
 
 async function copyRoomImagePrompt() {
