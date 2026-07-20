@@ -24,8 +24,9 @@ function generatePostText({ name, shopName, genreName, features, targetTags, cat
   const points = inferPoints(category, resolvedFeatures, seed);
   const coords = inferCoords(category, resolvedFeatures, seed);
   const tags = targetTags.slice(0, 8);
+  const openingEmoji = openingEmojiForCategory(category, nextOpeningEmojiSeed(seed));
 
-  const post = `☁️“${worry}”を解決♡
+  const post = `${openingEmoji}“${worry}”を解決♡
 
 ${lead}
 ${detail}
@@ -123,6 +124,38 @@ function polishPostText(text) {
   return `${next}${tagBlock}`;
 }
 
+let openingEmojiRotation = 0;
+const OPENING_EMOJI_SOURCE = "(?:☁️|👗|🎀|👜|👟|💍|🧢|🕶️|🌂|🧸|🍰|🍫|☕|🍵|🥤|🍽️|🍚|🥣|🍳|🧴|💄|✨|🏠|🧺|🌿|🐾|🎁|📝|🎮|🔌|💫|🩰|👠|👖|🧥|🧶|👒|🌸|🤍|💎|⌚|🌙|🪞|🛍️|🧣|☔|🌧️|❄️|🍪|🍮|🍯|🍓|🥐|🍜|🥗|🍎|🍋|🫖|🧋|🍷|🧂|🔪|🧽|🛁|🪴|🛋️|🕯️|🧼|🫧|🧻|🌺|🪷|🧁|🍼|🚼|⚽|🏕️|🧘|🏃|🖊️|📚)";
+
+function nextOpeningEmojiSeed(seed) {
+  openingEmojiRotation = (openingEmojiRotation + 1) % 997;
+  return `${seed} opening emoji ${openingEmojiRotation}`;
+}
+
+function openingEmojiForCategory(category, seed) {
+  const text = String(category || "");
+  const groups = [
+    [/ワンピ|トップス|パンツ|スカート|カーディガン|アウター|セットアップ|オールインワン|デニム|ニット|スーツ|レッグウェア|水際ファッション|フォーマル|ルームウェア|浴衣|マタニティ|インナー|ランジェリー|スポーツウェア|レインウェア|ブライダル/, ["👗", "🎀", "✨", "💫", "🌸", "🤍", "🛍️", "👖", "🧥", "🧶", "🪞", "🌙"]],
+    [/バッグ|財布|ファッション小物/, ["👜", "🎀", "✨", "🛍️", "🤍", "💎", "🌙"]],
+    [/シューズ/, ["👟", "👠", "🩰", "✨", "💫", "🤍"]],
+    [/アクセサリー|腕時計|ヘアアクセサリー|ベルト/, ["💍", "💎", "⌚", "✨", "🎀", "🌙", "🤍"]],
+    [/帽子|サングラス|手袋|アームカバー|傘|ストール/, ["🧢", "👒", "🕶️", "🌂", "☔", "🧣", "❄️", "✨"]],
+    [/スイーツ/, ["🍰", "🍫", "🍪", "🍮", "🍯", "🍓", "🧁", "🎁", "✨"]],
+    [/食品/, ["🍽️", "🍚", "🥣", "🍜", "🥗", "🍎", "🍋", "🥐", "✨"]],
+    [/飲料/, ["☕", "🍵", "🥤", "🫖", "🧋", "🍷", "✨"]],
+    [/キッチン用品/, ["🍳", "🥣", "🔪", "🧂", "🧽", "✨"]],
+    [/日用品|収納|インテリア/, ["🏠", "🧺", "🌿", "🪴", "🛋️", "🕯️", "🧼", "🫧", "🧻", "✨"]],
+    [/コスメ|スキンケア|美容家電/, ["💄", "🧴", "🪞", "🫧", "🌸", "🤍", "✨"]],
+    [/家電/, ["🔌", "🏠", "✨", "💫"]],
+    [/ベビー・キッズ|おもちゃ/, ["🧸", "🎁", "🍼", "🚼", "🌸", "✨"]],
+    [/ペット用品/, ["🐾", "🌿", "🏠", "✨"]],
+    [/健康|スポーツ・アウトドア/, ["🌿", "⚽", "🏕️", "🧘", "🏃", "✨", "💫"]],
+    [/文房具/, ["📝", "🖊️", "📚", "✨", "🎀"]],
+  ];
+  const matched = groups.find(([pattern]) => pattern.test(text));
+  return pickByHash(matched ? matched[1] : ["✨", "💫", "🎀", "🌸", "🤍", "🎁", "☁️"], `${seed} opening emoji`);
+}
+
 function fitPostText(post, parts) {
   if (countChars(post) <= MAX_POST_CHARS && countChars(post) >= 360) return post;
 
@@ -136,8 +169,9 @@ function fitPostText(post, parts) {
   }
 
   const shortWorry = truncateText(parts.worry, 58);
+  const openingEmoji = openingEmojiForCategory(parts.category, parts.seed);
   const shortTags = parts.tags.slice(0, 6);
-  const post2 = `☁️“${shortWorry}”を解決♡
+  const post2 = `${openingEmoji}“${shortWorry}”を解決♡
 
 ${parts.lead}
 ${parts.detail}
@@ -160,7 +194,7 @@ ${coordEmoji(parts.category, parts.seed, 1)}${parts.coords[1]}${endingEmoji(part
 ${shortTags.join(" ")}`;
   if (countChars(post2) <= MAX_POST_CHARS) return post2;
 
-  const post3 = `☁️“${truncateText(parts.worry, 42)}”を解決♡
+  const post3 = `${openingEmoji}“${truncateText(parts.worry, 42)}”を解決♡
 
 ${truncateText(parts.lead, 58)}
 ${truncateText(parts.humanLine, 56)}
@@ -3423,7 +3457,7 @@ function decoratePoint(point, index, category = "", seed = "") {
 }
 
 function diversifyPostEmojis(text, category, seed) {
-  const protectedLines = /^(☁️|✔|💫コーデ|🍀|🐾|#|・)/;
+  const protectedLines = new RegExp(`^(?:${OPENING_EMOJI_SOURCE}“|✔|💫コーデ|🍀|🐾|#|・)`, "u");
   let lineIndex = 0;
   return String(text || "").split("\n").map((line) => {
     if (!line || protectedLines.test(line)) return line;
