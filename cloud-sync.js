@@ -248,7 +248,7 @@
     async toError(response, path = "") {
       const responseText = await response.text().catch(() => "");
       const serverMessage = this.extractServerMessage(responseText);
-      const code = this.codeForStatus(response.status);
+      const code = this.codeForResponse(response.status, path, serverMessage);
       const error = this.createError(code, serverMessage || `HTTP ${response.status}`, {
         path,
         url: response.url,
@@ -269,6 +269,19 @@
       } catch {
         return responseText;
       }
+    }
+
+    codeForResponse(status, path = "", message = "") {
+      const operation = this.operationForPath(path);
+      const text = String(message || "").toLowerCase();
+      if (/^sign_|refresh_session$/.test(operation)) {
+        if (/invalid login credentials|invalid credentials|email or password|invalid grant|bad jwt|jwt|token/i.test(text)) return "SYNC_AUTH_401";
+        if (/email not confirmed|confirm/i.test(text)) return "SYNC_AUTH_CONFIRM";
+        if (/user already registered|already registered|already exists/i.test(text)) return "SYNC_AUTH_EXISTS";
+        if (/password|weak|too short|at least/i.test(text)) return "SYNC_AUTH_PASSWORD";
+        if (status === 400 || status === 422) return `SYNC_AUTH_${status}`;
+      }
+      return this.codeForStatus(status);
     }
 
     codeForStatus(status) {

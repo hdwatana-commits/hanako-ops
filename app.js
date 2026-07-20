@@ -3402,6 +3402,9 @@ function normalizeCloudErrorMessage(error) {
 function cloudSyncUserMessage(code, error) {
   const operation = cloudSyncOperationLabel(error?.detail?.operation || "");
   if (code === "SYNC_AUTH_REQUIRED") return "先にクラウド同期へログインしてください。";
+  if (code === "SYNC_AUTH_CONFIRM") return "確認メールが未完了です。Supabaseから届いた確認メールを開いてからログインしてください。";
+  if (code === "SYNC_AUTH_EXISTS") return "このメールアドレスは登録済みです。「初回登録」ではなく「ログインして同期」を押してください。";
+  if (code === "SYNC_AUTH_PASSWORD") return "パスワード条件を満たしていません。8文字以上のパスワードで登録してください。";
   if (code === "SYNC_CONFIG_MISSING") return "Supabaseの公開URLまたはPublishable keyが未設定です。config.jsを確認してください。";
   if (code === "SYNC_CONFIG_URL") return "同期APIのURLが相対パス、または不正なURLです。GitHub PagesではSupabaseの本番URLを使ってください。";
   if (code === "SYNC_API_404") return "同期APIのURLまたはエンドポイントが見つかりません。SupabaseのURL、テーブル作成、SQL実行状況を確認してください。";
@@ -3409,7 +3412,7 @@ function cloudSyncUserMessage(code, error) {
   if (code === "SYNC_RATE_429") return "同期APIのアクセス回数制限に当たっています。少し時間を置いてから再同期してください。";
   if (code === "SYNC_CORS") return `${operation}でSupabaseに接続できませんでした。CORS、ネットワーク、API停止、公開URL、Publishable keyを確認してください。`;
   if (code === "SYNC_TIMEOUT") return `${operation}がタイムアウトしました。端末内データは残したままです。少し待って再同期してください。`;
-  if (/^SYNC_AUTH_(401|403)$/.test(code)) return "メールアドレス・パスワードが違うか、同期ログインの有効期限が切れています。ログインし直してください。";
+  if (/^SYNC_AUTH_(400|401|403|422)$/.test(code)) return "メールアドレス・パスワードが違うか、同期ログインの有効期限が切れています。ログインし直してください。";
   if (/^SYNC_SERVER_5\d\d$/.test(code)) return "同期サーバー側でエラーが発生しました。Supabaseの状態を確認してください。";
   if (/^SYNC_HTTP_/.test(code)) return `同期APIからエラーが返りました。詳細はブラウザのconsole.errorを確認してください。${error?.message ? ` (${error.message})` : ""}`;
   return error?.message || "同期に失敗しました。詳細はブラウザのconsole.errorを確認してください。";
@@ -3452,7 +3455,10 @@ function formatCloudDiagnosticReport(report) {
     const result = item.ok ? "OK" : `${item.code || "SYNC_UNKNOWN"}${status}`;
     lines.push(`${labels[item.name] || item.name}: ${result}`);
   });
-  lines.push("NGのコードが出た場合は、そのコードを送ってください。端末内データは削除していません。");
+  const hasError = (report.results || []).some((item) => !item.ok);
+  lines.push(hasError
+    ? "NGのコードが出た場合は、そのコードを送ってください。端末内データは削除していません。"
+    : "接続はOKです。ログインできない場合は、メールアドレス・パスワード・確認メール完了を確認してください。端末内データは削除していません。");
   return lines.join("\n");
 }
 
