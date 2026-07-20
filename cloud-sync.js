@@ -144,11 +144,56 @@
       if (!this.configured) throw this.createError("SYNC_CONFIG_MISSING", "Supabase URL or publishable key is missing.");
       const response = await this.fetchSupabase(path, {
         method: "POST",
-        headers: { apikey: this.key, "Content-Type": "application/json" },
+        headers: {
+          apikey: this.key,
+          Authorization: `Bearer ${this.key}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify(body),
       });
       if (!response.ok) throw await this.toError(response, path);
       return response.json();
+    }
+
+    async diagnose() {
+      const results = [];
+      const authHeaders = {
+        apikey: this.key,
+        Authorization: `Bearer ${this.key}`,
+        Accept: "application/json",
+      };
+      const restHeaders = {
+        apikey: this.key,
+        Authorization: `Bearer ${this.session?.access_token || this.key}`,
+        Accept: "application/json",
+      };
+      results.push(await this.diagnosticFetch("auth_settings", "/auth/v1/settings", { method: "GET", headers: authHeaders }));
+      results.push(await this.diagnosticFetch("auth_token_options", "/auth/v1/token?grant_type=password", { method: "OPTIONS", headers: authHeaders }));
+      results.push(await this.diagnosticFetch("rest_table", "/rest/v1/hanako_app_data?select=user_id&limit=1", { method: "GET", headers: restHeaders }));
+      return {
+        configured: this.configured,
+        supabaseUrl: this.url,
+        usingAbsoluteUrl: /^https?:\/\//i.test(this.url),
+        results,
+      };
+    }
+
+    async diagnosticFetch(name, path, options) {
+      try {
+        const response = await this.fetchSupabase(path, options);
+        if (!response.ok) throw await this.toError(response, path);
+        return { name, ok: true, status: response.status, code: "SYNC_OK", operation: this.operationForPath(path) };
+      } catch (error) {
+        return {
+          name,
+          ok: false,
+          status: error?.status || error?.detail?.status || "",
+          code: error?.syncCode || "SYNC_UNKNOWN",
+          operation: error?.detail?.operation || this.operationForPath(path),
+          message: error?.message || "",
+        };
+      }
     }
 
     async fetchSupabase(path, options = {}) {

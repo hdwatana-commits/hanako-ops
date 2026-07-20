@@ -2021,12 +2021,19 @@ textarea {
   background: #f0f8f4;
   color: var(--green);
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .sync-message.error {
   border-color: #e7b8c8;
   background: #fff3f7;
   color: var(--rose-dark);
+}
+
+.sync-diagnostic-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: -4px 0 14px;
 }
 
 .account-summary {

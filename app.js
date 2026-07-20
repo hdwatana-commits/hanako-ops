@@ -3229,6 +3229,7 @@ function bindCloudSync() {
   const createAccountBtn = document.querySelector("#createSyncAccount");
   const syncNowBtn = document.querySelector("#syncNowBtn");
   const logoutBtn = document.querySelector("#syncLogoutBtn");
+  const diagnoseBtn = document.querySelector("#syncDiagnoseBtn");
   if (!syncBtn || !syncModal) return;
 
   const openModal = () => {
@@ -3282,6 +3283,22 @@ function bindCloudSync() {
       await reconcileCloudData();
       showToast("最新データに同期しました");
     });
+  });
+
+  diagnoseBtn?.addEventListener("click", async () => {
+    const originalLabel = diagnoseBtn.textContent;
+    diagnoseBtn.disabled = true;
+    diagnoseBtn.textContent = "診断中...";
+    try {
+      showSyncMessage("Supabase接続を診断しています...");
+      const report = await cloudSync.diagnose();
+      showSyncMessage(formatCloudDiagnosticReport(report), report.results.some((item) => !item.ok));
+    } catch (error) {
+      showSyncMessage(normalizeCloudErrorMessage(error), true);
+    } finally {
+      diagnoseBtn.disabled = false;
+      diagnoseBtn.textContent = originalLabel;
+    }
   });
 
   logoutBtn?.addEventListener("click", () => {
@@ -3418,6 +3435,25 @@ function showSyncMessage(message, isError = false) {
   element.textContent = message;
   element.className = `sync-message${isError ? " error" : ""}`;
   element.hidden = false;
+}
+
+function formatCloudDiagnosticReport(report) {
+  const lines = [
+    `診断結果: ${report.supabaseUrl || "URL未設定"}`,
+    `URL形式: ${report.usingAbsoluteUrl ? "OK" : "NG（相対パス）"}`,
+  ];
+  const labels = {
+    auth_settings: "Auth設定",
+    auth_token_options: "ログインAPI",
+    rest_table: "同期テーブル",
+  };
+  (report.results || []).forEach((item) => {
+    const status = item.status ? ` HTTP ${item.status}` : "";
+    const result = item.ok ? "OK" : `${item.code || "SYNC_UNKNOWN"}${status}`;
+    lines.push(`${labels[item.name] || item.name}: ${result}`);
+  });
+  lines.push("NGのコードが出た場合は、そのコードを送ってください。端末内データは削除していません。");
+  return lines.join("\n");
 }
 
 function clearSyncMessage() {

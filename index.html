@@ -11,13 +11,13 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=199">
+    <link rel="stylesheet" href="styles.css?v=200">
     <script src="config.js"></script>
-    <script src="cloud-sync.js?v=199"></script>
-    <script src="ops-engine.js?v=199"></script>
-    <script src="ops-phase2-engine.js?v=199"></script>
-    <script src="ops-phase3-engine.js?v=199"></script>
-    <script src="ops-phase4-engine.js?v=199"></script>
+    <script src="cloud-sync.js?v=200"></script>
+    <script src="ops-engine.js?v=200"></script>
+    <script src="ops-phase2-engine.js?v=200"></script>
+    <script src="ops-phase3-engine.js?v=200"></script>
+    <script src="ops-phase4-engine.js?v=200"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -1683,6 +1683,9 @@
           <p class="safari-note">クラウド接続が未設定です。READMEの「クラウド同期を有効にする」を先に行ってください。</p>
         </div>
         <p class="sync-message" id="syncMessage" hidden></p>
+        <div class="sync-diagnostic-actions">
+          <button type="button" id="syncDiagnoseBtn">接続診断</button>
+        </div>
         <form class="sync-form" id="syncLoginForm">
           <label class="field-label" for="syncEmail">メールアドレス</label>
           <input id="syncEmail" name="email" type="email" autocomplete="email" required>
@@ -1708,7 +1711,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=199"></script>
-    <script src="app.js?v=199"></script>
+    <script src="room-review-generator.js?v=200"></script>
+    <script src="app.js?v=200"></script>
   </body>
 </html>
