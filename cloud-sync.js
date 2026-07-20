@@ -27,7 +27,11 @@
     }
 
     async signUp(email, password) {
-      const session = await this.authRequest("/auth/v1/signup", { email, password });
+      const session = await this.authRequest("/auth/v1/signup", {
+        email,
+        password,
+        options: { emailRedirectTo: this.authRedirectTo() },
+      });
       if (!session.access_token) {
         return { user: session.user, confirmationRequired: true };
       }
@@ -42,14 +46,25 @@
     }
 
     async resendConfirmation(email) {
-      await this.authRequest("/auth/v1/resend", { type: "signup", email });
+      await this.authRequest("/auth/v1/resend", {
+        type: "signup",
+        email,
+        options: { emailRedirectTo: this.authRedirectTo() },
+      });
       return true;
     }
 
     async recoverPassword(email) {
-      const redirectTo = `${location.origin}${location.pathname}`;
-      await this.authRequest(`/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`, { email });
+      const redirectTo = this.authRedirectTo();
+      await this.authRequest(`/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`, {
+        email,
+        options: { emailRedirectTo: redirectTo },
+      });
       return true;
+    }
+
+    authRedirectTo() {
+      return `${location.origin}${location.pathname}`;
     }
 
     signOut() {

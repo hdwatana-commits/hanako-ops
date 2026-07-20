@@ -3270,7 +3270,7 @@ function bindCloudSync() {
     await runCloudAction(async () => {
       const result = await cloudSync.signUp(String(form.get("email")).trim(), String(form.get("password")));
       if (result.confirmationRequired) {
-        showSyncMessage("登録できました。Supabaseから届く確認メールを開き、その後この画面で「ログインして同期」を押してください。");
+        showSyncMessage("登録できました。確認メールが届かない場合は、SupabaseのAuthentication > Providers > EmailでConfirm emailをOFFにしてから「ログインして同期」を押してください。");
         return;
       }
       await cloudSync.save(cloneState());
@@ -3285,7 +3285,7 @@ function bindCloudSync() {
     if (!email) return showSyncMessage("メールアドレスを入力してから確認メールを再送してください。", true);
     await runCloudAction(async () => {
       await cloudSync.resendConfirmation(email);
-      showSyncMessage("確認メールを再送しました。メール内のリンクを開いてから、もう一度ログインしてください。");
+      showSyncMessage("確認メールの再送をSupabaseへ依頼しました。届かない場合はSupabaseのAuthentication > Providers > EmailでConfirm emailをOFFにしてください。");
       showToast("確認メールを再送しました");
     });
   });
@@ -3295,7 +3295,7 @@ function bindCloudSync() {
     if (!email) return showSyncMessage("メールアドレスを入力してからパスワード再設定を押してください。", true);
     await runCloudAction(async () => {
       await cloudSync.recoverPassword(email);
-      showSyncMessage("パスワード再設定メールを送りました。メール内のリンクから再設定してください。");
+      showSyncMessage("パスワード再設定メールの送信をSupabaseへ依頼しました。届かない場合はSupabaseのAuthメール送信設定かSMTP制限を確認してください。");
       showToast("再設定メールを送りました");
     });
   });
@@ -3431,7 +3431,7 @@ function normalizeCloudErrorMessage(error) {
 function cloudSyncUserMessage(code, error) {
   const operation = cloudSyncOperationLabel(error?.detail?.operation || "");
   if (code === "SYNC_AUTH_REQUIRED") return "先にクラウド同期へログインしてください。";
-  if (code === "SYNC_AUTH_CONFIRM") return "確認メールが未完了です。Supabaseから届いた確認メールを開いてからログインしてください。";
+  if (code === "SYNC_AUTH_CONFIRM") return "確認メールが未完了です。メールが届かない場合は、SupabaseのAuthentication > Providers > EmailでConfirm emailをOFFにしてからログインしてください。";
   if (code === "SYNC_AUTH_EXISTS") return "このメールアドレスは登録済みです。「初回登録」ではなく「ログインして同期」を押してください。";
   if (code === "SYNC_AUTH_PASSWORD") return "パスワード条件を満たしていません。8文字以上のパスワードで登録してください。";
   if (code === "SYNC_AUTH_EMAIL") return "メールアドレスを確認できませんでした。入力したメールアドレスを確認してください。";
