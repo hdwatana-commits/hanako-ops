@@ -3837,6 +3837,21 @@ function safeHttpUrl(value) {
   }
 }
 
+function normalizeRakutenImportUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const compact = raw.replace(/^\/+/, "");
+  if (/^(room|item|books|travel|brandavenue)\.rakuten\.(co\.jp|com)\//i.test(compact)) {
+    return `https://${compact}`;
+  }
+  if (/^www\.rakuten\.(co\.jp|com)\//i.test(compact)) return `https://${compact}`;
+  if (/^jp\//i.test(compact) || /^[a-z0-9_-]+\/\d{8,}/i.test(compact) || /^room_[a-z0-9_-]+\/items\//i.test(compact)) {
+    return `https://room.rakuten.co.jp/${compact}`;
+  }
+  return raw;
+}
+
 function bindCoordinateActions() {
   if (!coordinateOutput || !coordBoard) return;
   populateCoordinateOverseasCities();
@@ -6757,12 +6772,13 @@ function bindRoomActions() {
 }
 
 async function importProductForRoom(urlInput, button) {
-  const url = urlInput?.value.trim();
+  const url = normalizeRakutenImportUrl(urlInput?.value.trim());
   if (!url) {
     showRoomImportStatus("楽天ROOMまたは楽天市場の商品URLを入力してください", true);
     urlInput?.focus();
     return;
   }
+  if (urlInput && urlInput.value.trim() !== url) urlInput.value = url;
   if (!cloudSync.configured) return showRoomImportStatus("先にクラウド同期を設定してください", true);
   if (!cloudSync.signedIn) return showRoomImportStatus("画面上部の「同期」からログインしてください", true);
 
@@ -6773,7 +6789,16 @@ async function importProductForRoom(urlInput, button) {
   }
   showRoomImportStatus("商品情報を読み込んでいます...");
   try {
-    const imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
+    let usedFallback = false;
+    let imported;
+    try {
+      imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
+    } catch (error) {
+      if (!isRakutenQuotaError(error)) throw error;
+      usedFallback = true;
+      imported = buildRoomImportFallbackProduct(url, error);
+      showRoomImportStatus("楽天APIの取得上限に当たったため、URLから仮登録して作成します...");
+    }
     if (isDefiniteTravelProduct(imported, url)) throw new Error("ROOM投稿では楽天市場のファッション商品URLを入力してください");
     let product = findExistingProductForRoomImport(imported, url);
     if (product) {
@@ -6799,7 +6824,7 @@ async function importProductForRoom(urlInput, button) {
         details: imported.details || {},
         category: imported.category || "その他",
         price: imported.price || "",
-        hook: imported.hook || "毎日のコーデに取り入れやすいアイテム",
+        hook: imported.hook || "リンク先で詳細を確認したい、気になる楽天アイテム",
         roomExplicitOverride: true,
       });
       state.products.unshift(product);
@@ -6816,8 +6841,10 @@ async function importProductForRoom(urlInput, button) {
     renderRoomImagePhotoPreview();
     generateRoomPost();
     await generateRoomImagePrompt(true);
-    showRoomImportStatus(`「${product.name}」のROOM文と画像プロンプトを作りました`);
-    showToast("URLからROOM投稿と画像プロンプトを作りました");
+    showRoomImportStatus(usedFallback
+      ? `取得上限のため仮情報で「${product.name}」のROOM文と画像プロンプトを作りました。あとで再読込すると商品名や画像を更新できます。`
+      : `「${product.name}」のROOM文と画像プロンプトを作りました`);
+    showToast(usedFallback ? "仮情報でROOM投稿を作りました" : "URLからROOM投稿と画像プロンプトを作りました");
   } catch (error) {
     showRoomImportStatus(error.message || "商品情報を読み込めませんでした", true);
   } finally {
@@ -6826,6 +6853,37 @@ async function importProductForRoom(urlInput, button) {
       button.textContent = originalLabel;
     }
   }
+}
+
+function isRakutenQuotaError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  return /quota|exceeded|too many|rate.?limit|上限|制限/.test(message);
+}
+
+function buildRoomImportFallbackProduct(url, error) {
+  const urlText = String(url || "");
+  const roomMatch = urlText.match(/room\.rakuten\.co\.jp\/([^/?#]+)\/(?:items\/)?([^/?#]+)/i);
+  const itemMatch = parseRakutenItemCodeFromUrl(urlText);
+  const label = roomMatch?.[2] || itemMatch.itemCode || "楽天ROOMの商品";
+  const fallbackName = label === "楽天ROOMの商品" ? label : `楽天ROOMの商品 ${label}`;
+  return {
+    name: fallbackName,
+    url: urlText,
+    sourceUrl: urlText,
+    resolvedUrl: urlText,
+    image: "",
+    category: "その他",
+    price: "",
+    hook: "商品情報の取得上限中でも、先にROOM投稿文と画像プロンプトを準備できます",
+    details: {
+      source: "room-url-fallback",
+      importWarning: String(error?.message || "Rakuten API quota exceeded"),
+      roomUser: roomMatch?.[1] || "",
+      roomItemId: roomMatch?.[2] || "",
+      shopCode: itemMatch.shopCode || "",
+      itemCode: itemMatch.itemCode || "",
+    },
+  };
 }
 
 function findExistingProductForRoomImport(imported, originalUrl) {
