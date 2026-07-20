@@ -1,6 +1,6 @@
 (function () {
   const SESSION_KEY = "hanako-cloud-session";
-  const REQUEST_TIMEOUT_MS = 20_000;
+  const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 
   class HanakoCloudSync {
     constructor(config) {
@@ -154,7 +154,8 @@
     async fetchSupabase(path, options = {}) {
       const endpoint = this.buildEndpoint(path);
       const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      const timeoutMs = this.timeoutMsForPath(path);
+      const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
       try {
         return await fetch(endpoint, {
           ...options,
@@ -163,12 +164,19 @@
           signal: controller.signal,
         });
       } catch (error) {
-        const syncError = this.classifyFetchException(error, path, endpoint);
+        const syncError = this.classifyFetchException(error, path, endpoint, timeoutMs);
         this.logError(syncError, { exceptionName: error?.name || "", exceptionMessage: error?.message || "" });
         throw syncError;
       } finally {
         window.clearTimeout(timeout);
       }
+    }
+
+    timeoutMsForPath(path) {
+      if (/\/storage\//.test(path)) return 90_000;
+      if (/\/rest\/v1\/hanako_app_data/.test(path)) return 75_000;
+      if (/\/auth\/v1\//.test(path)) return 60_000;
+      return DEFAULT_REQUEST_TIMEOUT_MS;
     }
 
     buildEndpoint(path) {
@@ -182,14 +190,14 @@
       return endpoint;
     }
 
-    classifyFetchException(error, path, url) {
+    classifyFetchException(error, path, url, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS) {
       if (error?.name === "AbortError") {
-        return this.createError("SYNC_TIMEOUT", "Cloud sync request timed out.", { path, url, exceptionName: error.name });
+        return this.createError("SYNC_TIMEOUT", "Cloud sync request timed out.", { path, url, operation: this.operationForPath(path), timeoutMs, exceptionName: error.name });
       }
       if (error instanceof TypeError || /failed to fetch|load failed|networkerror/i.test(String(error?.message || ""))) {
-        return this.createError("SYNC_CORS", "Cloud sync request was blocked or unreachable.", { path, url, exceptionName: error?.name || "TypeError" });
+        return this.createError("SYNC_CORS", "Cloud sync request was blocked or unreachable.", { path, url, operation: this.operationForPath(path), exceptionName: error?.name || "TypeError" });
       }
-      return this.createError("SYNC_FETCH", "Cloud sync request failed before receiving a response.", { path, url, exceptionName: error?.name || "" });
+      return this.createError("SYNC_FETCH", "Cloud sync request failed before receiving a response.", { path, url, operation: this.operationForPath(path), exceptionName: error?.name || "" });
     }
 
     async toError(response, path = "") {
@@ -201,6 +209,7 @@
         url: response.url,
         status: response.status,
         statusText: response.statusText,
+        operation: this.operationForPath(path),
         responseBody: responseText.slice(0, 2000),
       });
       this.logError(error);
@@ -243,11 +252,25 @@
         message: error?.message || "",
         status: error?.status || error?.detail?.status || "",
         path: error?.detail?.path || "",
+        operation: error?.detail?.operation || this.operationForPath(error?.detail?.path || ""),
         url: error?.detail?.url || "",
+        timeoutMs: error?.detail?.timeoutMs || "",
         responseBody: error?.responseBody || error?.detail?.responseBody || "",
         exceptionName: error?.detail?.exceptionName || extra.exceptionName || "",
         exceptionMessage: extra.exceptionMessage || "",
       });
+    }
+
+    operationForPath(path) {
+      const value = String(path || "");
+      if (/\/auth\/v1\/token\?grant_type=password/.test(value)) return "sign_in";
+      if (/\/auth\/v1\/signup/.test(value)) return "sign_up";
+      if (/\/auth\/v1\/token\?grant_type=refresh_token/.test(value)) return "refresh_session";
+      if (/\/rest\/v1\/hanako_app_data.*select=/.test(value)) return "load_sync_data";
+      if (/\/rest\/v1\/hanako_app_data/.test(value)) return "save_sync_data";
+      if (/\/storage\/v1\/object\/sign\//.test(value)) return "sign_photo_url";
+      if (/\/storage\/v1\/object\//.test(value)) return "photo_storage";
+      return "cloud_request";
     }
 
     setSession(session) {

@@ -3348,6 +3348,7 @@ async function runCloudAction(action) {
     lastCloudSyncError = message;
     showSyncMessage(message, true);
     showToast(message);
+    renderCloudAccountUi();
   }
 }
 
@@ -3382,18 +3383,33 @@ function normalizeCloudErrorMessage(error) {
 }
 
 function cloudSyncUserMessage(code, error) {
+  const operation = cloudSyncOperationLabel(error?.detail?.operation || "");
   if (code === "SYNC_AUTH_REQUIRED") return "先にクラウド同期へログインしてください。";
   if (code === "SYNC_CONFIG_MISSING") return "Supabaseの公開URLまたはPublishable keyが未設定です。config.jsを確認してください。";
   if (code === "SYNC_CONFIG_URL") return "同期APIのURLが相対パス、または不正なURLです。GitHub PagesではSupabaseの本番URLを使ってください。";
   if (code === "SYNC_API_404") return "同期APIのURLまたはエンドポイントが見つかりません。SupabaseのURL、テーブル作成、SQL実行状況を確認してください。";
   if (code === "SYNC_CONFLICT_409") return "同期データが競合しました。端末内データは残したままです。少し待ってから再同期してください。";
   if (code === "SYNC_RATE_429") return "同期APIのアクセス回数制限に当たっています。少し時間を置いてから再同期してください。";
-  if (code === "SYNC_CORS") return "Supabaseに接続できませんでした。CORS、ネットワーク、API停止、公開URL、Publishable keyを確認してください。";
-  if (code === "SYNC_TIMEOUT") return "同期通信がタイムアウトしました。端末内データは残したままです。少し待って再同期してください。";
+  if (code === "SYNC_CORS") return `${operation}でSupabaseに接続できませんでした。CORS、ネットワーク、API停止、公開URL、Publishable keyを確認してください。`;
+  if (code === "SYNC_TIMEOUT") return `${operation}がタイムアウトしました。端末内データは残したままです。少し待って再同期してください。`;
   if (/^SYNC_AUTH_(401|403)$/.test(code)) return "メールアドレス・パスワードが違うか、同期ログインの有効期限が切れています。ログインし直してください。";
   if (/^SYNC_SERVER_5\d\d$/.test(code)) return "同期サーバー側でエラーが発生しました。Supabaseの状態を確認してください。";
   if (/^SYNC_HTTP_/.test(code)) return `同期APIからエラーが返りました。詳細はブラウザのconsole.errorを確認してください。${error?.message ? ` (${error.message})` : ""}`;
   return error?.message || "同期に失敗しました。詳細はブラウザのconsole.errorを確認してください。";
+}
+
+function cloudSyncOperationLabel(operation) {
+  const labels = {
+    sign_in: "ログイン処理",
+    sign_up: "初回登録",
+    refresh_session: "ログイン更新",
+    load_sync_data: "同期データ取得",
+    save_sync_data: "同期データ保存",
+    sign_photo_url: "写真URL更新",
+    photo_storage: "写真保存",
+    cloud_request: "同期通信",
+  };
+  return labels[operation] || "同期通信";
 }
 
 function showSyncMessage(message, isError = false) {
