@@ -3352,15 +3352,48 @@ async function runCloudAction(action) {
 }
 
 function normalizeCloudErrorMessage(error) {
+  const code = String(error?.syncCode || "").trim();
+  if (code) return `[${code}] ${cloudSyncUserMessage(code, error)}`;
   const raw = String(error?.message || error || "").trim();
-  if (!raw) return "同期に失敗しました。通信状態を確認して、もう一度「今すぐ同期」を押してください。";
-  if (/jwt|token|expired|invalid|unauthorized|401|403/i.test(raw)) {
-    return "同期ログインの有効期限が切れている可能性があります。いったんログアウトして、もう一度ログインしてください。";
+  if (!raw) return "同期に失敗しました。同期画面を開き直して、もう一度「ログインして同期」を押してください。";
+  if (/SYNC_AUTH_(401|403)|jwt|token|expired|invalid|unauthorized|401|403/i.test(raw)) {
+    return `[${raw.match(/SYNC_AUTH_(401|403)/i)?.[0] || "SYNC_AUTH"}] メールアドレス・パスワードが違うか、同期ログインの有効期限が切れています。ログインし直してください。`;
   }
-  if (/failed to fetch|network|load failed|internet|offline/i.test(raw)) {
-    return "通信が不安定で同期できませんでした。電波を確認して、もう一度「今すぐ同期」を押してください。";
+  if (/SYNC_API_404|404/i.test(raw)) {
+    return "[SYNC_API_404] 同期APIのURLまたはエンドポイントが見つかりません。Supabase設定とSQL作成状況を確認してください。";
+  }
+  if (/SYNC_CONFLICT_409|409/i.test(raw)) {
+    return "[SYNC_CONFLICT_409] 同期データが競合しました。端末内データは残したままです。少し待ってから再同期してください。";
+  }
+  if (/SYNC_RATE_429|429/i.test(raw)) {
+    return "[SYNC_RATE_429] 同期APIのアクセス回数制限に当たっています。少し時間を置いてから再同期してください。";
+  }
+  if (/SYNC_SERVER_5\d\d|50\d|51\d|52\d|53\d|54\d|55\d|56\d|57\d|58\d|59\d/i.test(raw)) {
+    const matchedCode = raw.match(/SYNC_SERVER_5\d\d/i)?.[0] || "SYNC_SERVER_5XX";
+    return `[${matchedCode}] 同期サーバー側でエラーが発生しました。Supabaseの状態を確認してください。`;
+  }
+  if (/SYNC_TIMEOUT|timeout|AbortError/i.test(raw)) {
+    return "[SYNC_TIMEOUT] 同期通信がタイムアウトしました。端末内データは残したままです。少し待って再同期してください。";
+  }
+  if (/SYNC_CORS|failed to fetch|network|load failed|internet|offline|TypeError/i.test(raw)) {
+    return "[SYNC_CORS] Supabaseに接続できませんでした。CORS、API停止、公開URL、Publishable keyを確認してください。";
   }
   return raw;
+}
+
+function cloudSyncUserMessage(code, error) {
+  if (code === "SYNC_AUTH_REQUIRED") return "先にクラウド同期へログインしてください。";
+  if (code === "SYNC_CONFIG_MISSING") return "Supabaseの公開URLまたはPublishable keyが未設定です。config.jsを確認してください。";
+  if (code === "SYNC_CONFIG_URL") return "同期APIのURLが相対パス、または不正なURLです。GitHub PagesではSupabaseの本番URLを使ってください。";
+  if (code === "SYNC_API_404") return "同期APIのURLまたはエンドポイントが見つかりません。SupabaseのURL、テーブル作成、SQL実行状況を確認してください。";
+  if (code === "SYNC_CONFLICT_409") return "同期データが競合しました。端末内データは残したままです。少し待ってから再同期してください。";
+  if (code === "SYNC_RATE_429") return "同期APIのアクセス回数制限に当たっています。少し時間を置いてから再同期してください。";
+  if (code === "SYNC_CORS") return "Supabaseに接続できませんでした。CORS、ネットワーク、API停止、公開URL、Publishable keyを確認してください。";
+  if (code === "SYNC_TIMEOUT") return "同期通信がタイムアウトしました。端末内データは残したままです。少し待って再同期してください。";
+  if (/^SYNC_AUTH_(401|403)$/.test(code)) return "メールアドレス・パスワードが違うか、同期ログインの有効期限が切れています。ログインし直してください。";
+  if (/^SYNC_SERVER_5\d\d$/.test(code)) return "同期サーバー側でエラーが発生しました。Supabaseの状態を確認してください。";
+  if (/^SYNC_HTTP_/.test(code)) return `同期APIからエラーが返りました。詳細はブラウザのconsole.errorを確認してください。${error?.message ? ` (${error.message})` : ""}`;
+  return error?.message || "同期に失敗しました。詳細はブラウザのconsole.errorを確認してください。";
 }
 
 function showSyncMessage(message, isError = false) {
