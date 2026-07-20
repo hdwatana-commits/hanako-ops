@@ -2974,36 +2974,59 @@ function bindOwnRoomPostedImporter() {
 
 async function fetchRakutenProduct(url) {
   const token = await cloudSync.getAccessToken();
-  const response = await fetch(`${cloudSync.url}/functions/v1/rakuten-product-import`, {
-    method: "POST",
-    headers: {
-      apikey: cloudSync.key,
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ url }),
-  });
+  let response;
+  try {
+    response = await fetch(`${cloudSync.url}/functions/v1/rakuten-product-import`, {
+      method: "POST",
+      headers: {
+        apikey: cloudSync.key,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url }),
+    });
+  } catch (error) {
+    throw createRakutenImportError("商品取得サーバーに接続できませんでした。新Supabaseでrakuten-product-importをDeployしてください。", "SYNC_CORS", error);
+  }
 
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || "楽天の商品情報を取得できませんでした");
+  if (!response.ok) {
+    const code = response.status === 404 ? "SYNC_API_404" : `SYNC_HTTP_${response.status}`;
+    throw createRakutenImportError(body.error || "楽天の商品情報を取得できませんでした", code);
+  }
   return body;
 }
 
 async function fetchRakutenProductSearch(query) {
   const token = await cloudSync.getAccessToken();
-  const response = await fetch(`${cloudSync.url}/functions/v1/rakuten-product-import`, {
-    method: "POST",
-    headers: {
-      apikey: cloudSync.key,
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query }),
-  });
+  let response;
+  try {
+    response = await fetch(`${cloudSync.url}/functions/v1/rakuten-product-import`, {
+      method: "POST",
+      headers: {
+        apikey: cloudSync.key,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query }),
+    });
+  } catch (error) {
+    throw createRakutenImportError("商品検索サーバーに接続できませんでした。新Supabaseでrakuten-product-importをDeployしてください。", "SYNC_CORS", error);
+  }
 
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || "楽天の商品検索に失敗しました");
+  if (!response.ok) {
+    const code = response.status === 404 ? "SYNC_API_404" : `SYNC_HTTP_${response.status}`;
+    throw createRakutenImportError(body.error || "楽天の商品検索に失敗しました", code);
+  }
   return Array.isArray(body.results) ? body.results : [];
+}
+
+function createRakutenImportError(message, code, cause) {
+  const error = new Error(message);
+  error.syncCode = code;
+  error.cause = cause;
+  return error;
 }
 
 function fillProductForm(product, originalUrl) {
@@ -6951,10 +6974,12 @@ async function importProductForRoom(urlInput, button) {
     try {
       imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
     } catch (error) {
-      if (!isRakutenQuotaError(error)) throw error;
+      if (!isRakutenQuotaError(error) && !isRakutenImportNetworkError(error)) throw error;
       usedFallback = true;
       imported = buildRoomImportFallbackProduct(url, error);
-      showRoomImportStatus("楽天APIの取得上限に当たったため、URLから仮登録して作成します...");
+      showRoomImportStatus(isRakutenQuotaError(error)
+        ? "楽天APIの取得上限に当たったため、URLから仮登録して作成します..."
+        : "商品取得サーバーに接続できないため、URLから仮登録して作成します...");
     }
     if (isDefiniteTravelProduct(imported, url)) throw new Error("ROOM投稿では楽天市場のファッション商品URLを入力してください");
     let product = findExistingProductForRoomImport(imported, url);
@@ -7015,6 +7040,13 @@ async function importProductForRoom(urlInput, button) {
 function isRakutenQuotaError(error) {
   const message = String(error?.message || error || "").toLowerCase();
   return /quota|exceeded|too many|rate.?limit|上限|制限/.test(message);
+}
+
+function isRakutenImportNetworkError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  const code = String(error?.syncCode || error?.code || "").toLowerCase();
+  return /failed to fetch|network|cors|blocked|unreachable|timeout|timed out|接続でき|通信|タイムアウト/.test(message)
+    || /sync_(cors|timeout|fetch|network)/.test(code);
 }
 
 function buildRoomImportFallbackProduct(url, error) {

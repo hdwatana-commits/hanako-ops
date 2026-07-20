@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ja">
   <head>
     <meta charset="utf-8">
@@ -34,7 +34,7 @@
           }
         } finally {
           const destination = new URL("./", location.href);
-          destination.searchParams.set("v", new URL(location.href).searchParams.get("v") || "205");
+          destination.searchParams.set("v", new URL(location.href).searchParams.get("v") || "206");
           destination.searchParams.set("updated", Date.now());
           location.replace(destination.href);
         }
