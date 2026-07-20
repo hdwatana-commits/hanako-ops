@@ -4547,12 +4547,13 @@ function updateHanakoTeacherPreview() {
 }
 
 async function importProductForCoordinate(urlInput, button) {
-  const url = urlInput?.value.trim();
+  const url = normalizeRakutenImportUrl(urlInput?.value.trim());
   if (!url) {
     showCoordinateImportStatus("楽天ROOMまたは楽天市場の商品URLを入力してください", true);
     urlInput?.focus();
     return;
   }
+  if (urlInput && urlInput.value.trim() !== url) urlInput.value = url;
   if (!cloudSync.configured) return showCoordinateImportStatus("先にクラウド同期を設定してください", true);
   if (!cloudSync.signedIn) return showCoordinateImportStatus("画面上部の「同期」からログインしてください", true);
 
@@ -4561,7 +4562,18 @@ async function importProductForCoordinate(urlInput, button) {
   button.textContent = "読込中...";
   showCoordinateImportStatus("商品情報を読み込んでいます...");
   try {
-    const imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
+    let usedFallback = false;
+    let imported;
+    try {
+      imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
+    } catch (error) {
+      if (!isRakutenQuotaError(error) && !isRakutenImportNetworkError(error)) throw error;
+      usedFallback = true;
+      imported = normalizeCoordinateImportedProduct(buildRoomImportFallbackProduct(url, error), url);
+      showCoordinateImportStatus(isRakutenQuotaError(error)
+        ? "楽天APIの取得上限に当たったため、URLから仮登録してコーデを作ります..."
+        : "商品取得サーバーに接続できないため、URLから仮登録してコーデを作ります...");
+    }
     if (isDefiniteTravelProduct(imported, url)) throw new Error("このURLは宿泊施設として判定されました。ファッション商品の楽天URLを入力してください");
     let product = state.products.find((item) => item.url === url || item.url === imported.sourceUrl || item.url === imported.resolvedUrl);
     if (product) {
@@ -4595,9 +4607,13 @@ async function importProductForCoordinate(urlInput, button) {
     renderCoordinateOptions();
     renderAngleOptions();
     selectCoordinateProduct(product);
-    showCoordinateImportStatus(`「${product.name}」を追加しました。コーデを作成しています...`);
+    showCoordinateImportStatus(usedFallback
+      ? `仮情報で「${product.name}」を追加しました。コーデを作成しています...`
+      : `「${product.name}」を追加しました。コーデを作成しています...`);
     await generateCoordinate();
-    showCoordinateImportStatus(`「${product.name}」からコーデ文・画像ボードを作りました`);
+    showCoordinateImportStatus(usedFallback
+      ? `取得上限のため仮情報で「${product.name}」のコーデ文・画像ボードを作りました。あとで再読込すると商品名や画像を更新できます。`
+      : `「${product.name}」からコーデ文・画像ボードを作りました`);
   } catch (error) {
     showCoordinateImportStatus(error.message || "商品情報を読み込めませんでした", true);
   } finally {
