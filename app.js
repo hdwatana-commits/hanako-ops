@@ -905,9 +905,104 @@ function saveState() {
   state.profile = profileText.value;
   state.updatedAt = new Date().toISOString();
   hasMeaningfulLocalData = true;
-  localStorage.setItem("hanako-room-ops", JSON.stringify(state));
+  persistAppStateSafely();
   renderHome();
   if (!suppressCloudSave) scheduleCloudSave();
+}
+
+function persistAppStateSafely() {
+  try {
+    localStorage.setItem("hanako-room-ops", JSON.stringify(state));
+    return true;
+  } catch (error) {
+    if (!isStorageQuotaError(error)) throw error;
+    console.warn("[Hanako storage quota] compacting local state before retry", error);
+  }
+
+  try {
+    const compactState = buildCompactLocalState(state);
+    localStorage.setItem("hanako-room-ops", JSON.stringify(compactState));
+    Object.assign(state, compactState);
+    showStorageQuotaNotice();
+    return true;
+  } catch (retryError) {
+    console.error("[Hanako storage quota] failed to save compacted state", {
+      name: retryError?.name,
+      message: retryError?.message,
+    });
+    showStorageQuotaNotice("iPhone内の保存容量がいっぱいです。写真プレビューを整理してから、作成は続けます。");
+    return false;
+  }
+}
+
+function isStorageQuotaError(error) {
+  return error?.name === "QuotaExceededError"
+    || error?.name === "NS_ERROR_DOM_QUOTA_REACHED"
+    || /quota|storage|exceeded/i.test(String(error?.message || ""));
+}
+
+function buildCompactLocalState(source) {
+  const clone = JSON.parse(JSON.stringify(source || {}));
+  clone.coordinatePhotos = Array.isArray(clone.coordinatePhotos)
+    ? clone.coordinatePhotos.map((photo) => ({
+      id: photo.id,
+      name: photo.name,
+      path: photo.path,
+      signedUrl: photo.signedUrl,
+      expiresAt: photo.expiresAt,
+      createdAt: photo.createdAt,
+    }))
+    : [];
+  if (Array.isArray(clone.products)) {
+    clone.products = clone.products.map((product) => ({
+      ...product,
+      image: isLargeInlineImage(product.image) ? "" : product.image,
+    }));
+  }
+  if (clone.appearance) {
+    if (isLargeInlineImage(clone.appearance.customCover, 220000)) clone.appearance.customCover = "";
+    if (isLargeInlineImage(clone.appearance.customAvatar, 220000)) {
+      clone.appearance.customAvatar = "";
+      if (clone.appearance.avatarTheme === "custom") clone.appearance.avatarTheme = "original";
+    }
+  }
+  stripLargeInlineImages(clone);
+  return clone;
+}
+
+function stripLargeInlineImages(value) {
+  if (!value || typeof value !== "object") return;
+  Object.keys(value).forEach((key) => {
+    const item = value[key];
+    if (typeof item === "string") {
+      if (isLargeInlineImage(item, 120000)) value[key] = "";
+    } else if (item && typeof item === "object") {
+      stripLargeInlineImages(item);
+    }
+  });
+}
+
+function isLargeInlineImage(value, limit = 160000) {
+  return typeof value === "string" && value.startsWith("data:image/") && value.length > limit;
+}
+
+function showStorageQuotaNotice(message = "iPhone内の保存容量がいっぱいだったため、重い一時画像だけ整理しました。投稿文とコーデ作成は続けられます。") {
+  showToast(message);
+  const activeViewName = getActiveViewName();
+  const roomStatus = document.querySelector("#roomImportStatus");
+  if (roomStatus && activeViewName === "room") {
+    roomStatus.textContent = message;
+    roomStatus.classList.remove("error");
+  }
+  const coordinateStatus = document.querySelector("#coordImportStatus");
+  if (coordinateStatus && activeViewName === "coordinate") {
+    coordinateStatus.textContent = message;
+    coordinateStatus.classList.remove("error");
+  }
+}
+
+function getActiveViewName() {
+  return document.querySelector(".view.active")?.id || "brief";
 }
 
 function bindNavigation() {
@@ -3337,6 +3432,7 @@ function bindCloudSync() {
     try {
       showSyncMessage("Supabase接続を診断しています...");
       const report = await cloudSync.diagnose();
+      report.localStorage = await getLocalStorageDiagnostic();
       showSyncMessage(formatCloudDiagnosticReport(report), report.results.some((item) => !item.ok));
     } catch (error) {
       showSyncMessage(normalizeCloudErrorMessage(error), true);
@@ -3508,11 +3604,38 @@ function formatCloudDiagnosticReport(report) {
     const result = item.ok ? "OK" : `${item.code || "SYNC_UNKNOWN"}${status}`;
     lines.push(`${labels[item.name] || item.name}: ${result}`);
   });
+  if (report.localStorage) {
+    lines.push(`端末保存: ${report.localStorage.ok ? "OK" : "NG"}${report.localStorage.summary ? `（${report.localStorage.summary}）` : ""}`);
+  }
   const hasError = (report.results || []).some((item) => !item.ok);
   lines.push(hasError
     ? "NGのコードが出た場合は、そのコードを送ってください。端末内データは削除していません。"
     : "接続はOKです。ログインできない場合は、メールアドレス・パスワード・確認メール完了を確認してください。端末内データは削除していません。");
   return lines.join("\n");
+}
+
+async function getLocalStorageDiagnostic() {
+  const json = JSON.stringify(state || {});
+  const appKb = Math.round(json.length / 1024);
+  const result = { ok: true, summary: `アプリデータ約${appKb}KB` };
+  if (navigator.storage?.estimate) {
+    try {
+      const estimate = await navigator.storage.estimate();
+      const usageMb = Math.round((estimate.usage || 0) / 1024 / 1024);
+      const quotaMb = Math.round((estimate.quota || 0) / 1024 / 1024);
+      if (quotaMb) result.summary = `アプリデータ約${appKb}KB / 端末保存 ${usageMb}MB中 ${quotaMb}MB`;
+    } catch {
+      // Safariでは取得できないことがあるため、アプリデータ量だけ表示する。
+    }
+  }
+  try {
+    localStorage.setItem("__hanako_storage_test__", "1");
+    localStorage.removeItem("__hanako_storage_test__");
+  } catch (error) {
+    result.ok = false;
+    result.summary = `容量不足の可能性あり / アプリデータ約${appKb}KB`;
+  }
+  return result;
 }
 
 function clearSyncMessage() {
@@ -3586,7 +3709,7 @@ function applyCloudState(payload) {
   Object.assign(state, payload);
   ensureOpsState(state);
   hasMeaningfulLocalData = true;
-  localStorage.setItem("hanako-room-ops", JSON.stringify(state));
+  persistAppStateSafely();
   profileText.value = state.profile || defaultProfile;
   state.appearance ||= { avatarTheme: "original" };
   state.coordinatePhotos ||= [];
@@ -4373,7 +4496,7 @@ async function refreshCoordinatePhotoLibraryUrls() {
     for (const photo of state.coordinatePhotos) {
       await loadCoordinatePhotoPreview(photo).catch(() => "");
     }
-    localStorage.setItem("hanako-room-ops", JSON.stringify(state));
+    persistAppStateSafely();
     renderCoordinatePhotoLibrary();
   } catch {
     renderCoordinatePhotoLibrary();
@@ -10873,7 +10996,7 @@ function rememberGeneration(text) {
     excerpt: String(text || "").replace(/\s+/g, " ").slice(0, 500),
   });
   state.generatorHistory = state.generatorHistory.slice(0, 30);
-  localStorage.setItem("hanako-room-ops", JSON.stringify(state));
+  persistAppStateSafely();
 }
 
 function currentSeason() {
