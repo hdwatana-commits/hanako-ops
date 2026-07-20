@@ -6775,7 +6775,7 @@ async function importProductForRoom(urlInput, button) {
   try {
     const imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
     if (isDefiniteTravelProduct(imported, url)) throw new Error("ROOM投稿では楽天市場のファッション商品URLを入力してください");
-    let product = state.products.find((item) => item.url === url || item.url === imported.sourceUrl || item.url === imported.resolvedUrl);
+    let product = findExistingProductForRoomImport(imported, url);
     if (product) {
       Object.assign(product, {
         name: imported.name || product.name,
@@ -6785,9 +6785,13 @@ async function importProductForRoom(urlInput, button) {
         category: imported.category || product.category,
         price: imported.price || product.price,
         hook: imported.hook || product.hook,
+        roomExplicitOverride: true,
       });
+      product = enrichProductForOps(product);
+      const index = state.products.findIndex((item) => item.id === product.id);
+      if (index >= 0) state.products[index] = product;
     } else {
-      product = {
+      product = enrichProductForOps({
         id: createId(),
         name: imported.name || "楽天の商品",
         url,
@@ -6796,7 +6800,8 @@ async function importProductForRoom(urlInput, button) {
         category: imported.category || "その他",
         price: imported.price || "",
         hook: imported.hook || "毎日のコーデに取り入れやすいアイテム",
-      };
+        roomExplicitOverride: true,
+      });
       state.products.unshift(product);
     }
     saveState();
@@ -6821,6 +6826,33 @@ async function importProductForRoom(urlInput, button) {
       button.textContent = originalLabel;
     }
   }
+}
+
+function findExistingProductForRoomImport(imported, originalUrl) {
+  const enrichedImported = enrichProductForOps({
+    id: "room-import-check",
+    name: imported?.name || "",
+    url: originalUrl || imported?.sourceUrl || imported?.resolvedUrl || "",
+    image: imported?.image || "",
+    details: imported?.details || {},
+    category: imported?.category || "",
+    price: imported?.price || "",
+    hook: imported?.hook || "",
+  });
+  const urlKeys = new Set([originalUrl, imported?.sourceUrl, imported?.resolvedUrl, imported?.url]
+    .filter(Boolean)
+    .map(normalizeComparableUrl));
+  const canonical = enrichedImported.ops?.canonicalProductId || "";
+  const importedName = normalizeComparableProductName(imported?.name || "");
+  return (state.products || []).find((item) => {
+    const enriched = enrichProductForOps(item);
+    const itemUrls = [item.url, item.sourceUrl, item.ops?.normalizedUrl, enriched.ops?.normalizedUrl]
+      .filter(Boolean)
+      .map(normalizeComparableUrl);
+    if (itemUrls.some((itemUrl) => urlKeys.has(itemUrl))) return true;
+    if (canonical && enriched.ops?.canonicalProductId === canonical) return true;
+    return importedName && normalizeComparableProductName(item.name) === importedName;
+  }) || null;
 }
 
 function showRoomImportStatus(message, isError = false) {
