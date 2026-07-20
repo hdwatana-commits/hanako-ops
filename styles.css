@@ -1984,6 +1984,17 @@ textarea {
   line-height: 1.6;
 }
 
+.sync-auth-help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.sync-auth-help button {
+  flex: 1 1 150px;
+}
+
 .sync-version {
   display: flex;
   align-items: center;

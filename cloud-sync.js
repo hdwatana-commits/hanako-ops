@@ -41,6 +41,17 @@
       return session.user;
     }
 
+    async resendConfirmation(email) {
+      await this.authRequest("/auth/v1/resend", { type: "signup", email });
+      return true;
+    }
+
+    async recoverPassword(email) {
+      const redirectTo = `${location.origin}${location.pathname}`;
+      await this.authRequest(`/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`, { email });
+      return true;
+    }
+
     signOut() {
       this.session = null;
       localStorage.removeItem(SESSION_KEY);
@@ -281,6 +292,10 @@
         if (/password|weak|too short|at least/i.test(text)) return "SYNC_AUTH_PASSWORD";
         if (status === 400 || status === 422) return `SYNC_AUTH_${status}`;
       }
+      if (/recover_password|resend_confirmation/.test(operation)) {
+        if (/email|user|not found|invalid/i.test(text)) return "SYNC_AUTH_EMAIL";
+        if (status === 400 || status === 422) return `SYNC_AUTH_${status}`;
+      }
       return this.codeForStatus(status);
     }
 
@@ -324,6 +339,8 @@
       if (/\/auth\/v1\/token\?grant_type=password/.test(value)) return "sign_in";
       if (/\/auth\/v1\/signup/.test(value)) return "sign_up";
       if (/\/auth\/v1\/token\?grant_type=refresh_token/.test(value)) return "refresh_session";
+      if (/\/auth\/v1\/recover/.test(value)) return "recover_password";
+      if (/\/auth\/v1\/resend/.test(value)) return "resend_confirmation";
       if (/\/rest\/v1\/hanako_app_data.*select=/.test(value)) return "load_sync_data";
       if (/\/rest\/v1\/hanako_app_data/.test(value)) return "save_sync_data";
       if (/\/storage\/v1\/object\/sign\//.test(value)) return "sign_photo_url";

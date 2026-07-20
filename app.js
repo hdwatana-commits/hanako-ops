@@ -3230,6 +3230,8 @@ function bindCloudSync() {
   const syncNowBtn = document.querySelector("#syncNowBtn");
   const logoutBtn = document.querySelector("#syncLogoutBtn");
   const diagnoseBtn = document.querySelector("#syncDiagnoseBtn");
+  const resendConfirmationBtn = document.querySelector("#resendSyncConfirmation");
+  const recoverPasswordBtn = document.querySelector("#recoverSyncPassword");
   if (!syncBtn || !syncModal) return;
 
   const openModal = () => {
@@ -3275,6 +3277,26 @@ function bindCloudSync() {
       renderCloudAccountUi();
       showSyncMessage("同期アカウントを作成しました");
       showToast("同期アカウントを作成しました");
+    });
+  });
+
+  resendConfirmationBtn?.addEventListener("click", async () => {
+    const email = getSyncEmail(loginForm);
+    if (!email) return showSyncMessage("メールアドレスを入力してから確認メールを再送してください。", true);
+    await runCloudAction(async () => {
+      await cloudSync.resendConfirmation(email);
+      showSyncMessage("確認メールを再送しました。メール内のリンクを開いてから、もう一度ログインしてください。");
+      showToast("確認メールを再送しました");
+    });
+  });
+
+  recoverPasswordBtn?.addEventListener("click", async () => {
+    const email = getSyncEmail(loginForm);
+    if (!email) return showSyncMessage("メールアドレスを入力してからパスワード再設定を押してください。", true);
+    await runCloudAction(async () => {
+      await cloudSync.recoverPassword(email);
+      showSyncMessage("パスワード再設定メールを送りました。メール内のリンクから再設定してください。");
+      showToast("再設定メールを送りました");
     });
   });
 
@@ -3334,6 +3356,13 @@ function bindCloudSync() {
   } else {
     setSyncStatus("off");
   }
+}
+
+function getSyncEmail(loginForm) {
+  const email = String(new FormData(loginForm).get("email") || "").trim();
+  const input = loginForm?.querySelector("#syncEmail");
+  if (!email) input?.focus();
+  return email;
 }
 
 function renderCloudAccountUi() {
@@ -3405,6 +3434,7 @@ function cloudSyncUserMessage(code, error) {
   if (code === "SYNC_AUTH_CONFIRM") return "確認メールが未完了です。Supabaseから届いた確認メールを開いてからログインしてください。";
   if (code === "SYNC_AUTH_EXISTS") return "このメールアドレスは登録済みです。「初回登録」ではなく「ログインして同期」を押してください。";
   if (code === "SYNC_AUTH_PASSWORD") return "パスワード条件を満たしていません。8文字以上のパスワードで登録してください。";
+  if (code === "SYNC_AUTH_EMAIL") return "メールアドレスを確認できませんでした。入力したメールアドレスを確認してください。";
   if (code === "SYNC_CONFIG_MISSING") return "Supabaseの公開URLまたはPublishable keyが未設定です。config.jsを確認してください。";
   if (code === "SYNC_CONFIG_URL") return "同期APIのURLが相対パス、または不正なURLです。GitHub PagesではSupabaseの本番URLを使ってください。";
   if (code === "SYNC_API_404") return "同期APIのURLまたはエンドポイントが見つかりません。SupabaseのURL、テーブル作成、SQL実行状況を確認してください。";
