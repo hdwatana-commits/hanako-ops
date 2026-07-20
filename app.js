@@ -5007,10 +5007,17 @@ async function fillCoordinateSlotsFromRakuten(main, slots, selectedIds, notify) 
       renderAngleOptions();
       showCoordinateImportStatus(`楽天市場から相性のよい商品を${added}点追加し、コーデに選びました`);
     } else {
-      showCoordinateImportStatus("楽天市場で条件に合う商品が見つかりませんでした。登録商品から選びました", true);
+      showCoordinateImportStatus("楽天市場で条件に合う商品が見つかりませんでした。登録済みの商品だけでコーデを作ります");
     }
   } catch (error) {
-    showCoordinateImportStatus(error.message || "楽天市場のコーデ検索に失敗しました", true);
+    console.warn("[Coordinate Rakuten search fallback]", error);
+    if (isRakutenQuotaError(error)) {
+      showCoordinateImportStatus("楽天APIの取得上限中です。登録済みの商品だけでコーデを作ります。時間をおいて再読込すると追加候補も探せます。");
+    } else if (isRakutenImportNetworkError(error)) {
+      showCoordinateImportStatus("楽天検索サーバーに接続できませんでした。登録済みの商品だけでコーデを作ります。");
+    } else {
+      showCoordinateImportStatus(error.message || "楽天市場のコーデ検索に失敗しました", true);
+    }
   } finally {
     if (button) {
       button.disabled = false;
