@@ -15,7 +15,7 @@
   <body>
     <main>
       <h1>最新版へ更新中</h1>
-      <p>古いデータを整理して、アプリを開き直しています。</p>
+      <p>古いキャッシュを整理して、アプリを開き直しています。</p>
     </main>
     <script>
       (async () => {
@@ -34,7 +34,7 @@
           }
         } finally {
           const destination = new URL("./", location.href);
-          destination.searchParams.set("v", new URL(location.href).searchParams.get("v") || "195");
+          destination.searchParams.set("v", new URL(location.href).searchParams.get("v") || "196");
           destination.searchParams.set("updated", Date.now());
           location.replace(destination.href);
         }

@@ -251,6 +251,7 @@ let roomGenerationVariant = 0;
 let suppressCloudSave = false;
 let cloudSaveTimer = null;
 let lastCloudSyncAt = null;
+let lastCloudSyncError = "";
 const cloudSync = new window.HanakoCloudSync(window.HANAKO_CLOUD_CONFIG || {});
 
 const anglePresets = {
@@ -408,7 +409,9 @@ queueMicrotask(initialize);
 function initialize() {
   const syncAppVersion = document.querySelector("#syncAppVersion");
   if (syncAppVersion) syncAppVersion.textContent = APP_VERSION === "開発版" ? APP_VERSION : `v${APP_VERSION}`;
-  document.querySelector("#forceAppUpdate")?.addEventListener("click", forceAppUpdate);
+  document.querySelector("#forceAppUpdate")?.addEventListener("click", (event) => {
+    forceAppUpdate(event.currentTarget?.dataset?.latestVersion || "");
+  });
   profileText.value = state.profile || defaultProfile;
   document.querySelector('input[name="date"]').valueAsDate = new Date();
   hydrateCustomBrandAssets();
@@ -3231,6 +3234,7 @@ function bindCloudSync() {
   const openModal = () => {
     clearSyncMessage();
     renderCloudAccountUi();
+    if (lastCloudSyncError) showSyncMessage(lastCloudSyncError, true);
     syncModal.hidden = false;
     document.body.style.overflow = "hidden";
   };
@@ -3292,7 +3296,11 @@ function bindCloudSync() {
   });
 
   window.addEventListener("online", () => {
-    if (cloudSync.signedIn) reconcileCloudData().catch(() => setSyncStatus("error"));
+    if (cloudSync.signedIn) reconcileCloudData().catch((error) => {
+      setSyncStatus("error");
+      lastCloudSyncError = normalizeCloudErrorMessage(error);
+      showSyncMessage(lastCloudSyncError, true);
+    });
   });
 
   window.setInterval(() => {
@@ -3301,7 +3309,11 @@ function bindCloudSync() {
 
   if (cloudSync.signedIn) {
     setSyncStatus("busy");
-    reconcileCloudData().catch(() => setSyncStatus("error"));
+    reconcileCloudData().catch((error) => {
+      setSyncStatus("error");
+      lastCloudSyncError = normalizeCloudErrorMessage(error);
+      showSyncMessage(lastCloudSyncError, true);
+    });
   } else {
     setSyncStatus("off");
   }
@@ -3328,12 +3340,27 @@ async function runCloudAction(action) {
     clearSyncMessage();
     setSyncStatus("busy");
     await action();
+    lastCloudSyncError = "";
     setSyncStatus(cloudSync.signedIn ? "online" : "off");
   } catch (error) {
     setSyncStatus("error");
-    showSyncMessage(error.message || "同期に失敗しました", true);
-    showToast(error.message || "同期に失敗しました");
+    const message = normalizeCloudErrorMessage(error);
+    lastCloudSyncError = message;
+    showSyncMessage(message, true);
+    showToast(message);
   }
+}
+
+function normalizeCloudErrorMessage(error) {
+  const raw = String(error?.message || error || "").trim();
+  if (!raw) return "同期に失敗しました。通信状態を確認して、もう一度「今すぐ同期」を押してください。";
+  if (/jwt|token|expired|invalid|unauthorized|401|403/i.test(raw)) {
+    return "同期ログインの有効期限が切れている可能性があります。いったんログアウトして、もう一度ログインしてください。";
+  }
+  if (/failed to fetch|network|load failed|internet|offline/i.test(raw)) {
+    return "通信が不安定で同期できませんでした。電波を確認して、もう一度「今すぐ同期」を押してください。";
+  }
+  return raw;
 }
 
 function showSyncMessage(message, isError = false) {
@@ -3356,7 +3383,11 @@ function scheduleCloudSave() {
   window.clearTimeout(cloudSaveTimer);
   setSyncStatus("busy");
   cloudSaveTimer = window.setTimeout(() => {
-    saveCloudNow().catch(() => setSyncStatus("error"));
+    saveCloudNow().catch((error) => {
+      setSyncStatus("error");
+      lastCloudSyncError = normalizeCloudErrorMessage(error);
+      showSyncMessage(lastCloudSyncError, true);
+    });
   }, 800);
 }
 
@@ -3364,6 +3395,7 @@ async function saveCloudNow() {
   if (!cloudSync.signedIn) return;
   await cloudSync.save(cloneState());
   lastCloudSyncAt = new Date();
+  lastCloudSyncError = "";
   setSyncStatus("online");
   renderCloudAccountUi();
 }
@@ -3383,6 +3415,7 @@ async function reconcileCloudData() {
     await saveCloudNow();
   }
   lastCloudSyncAt = new Date();
+  lastCloudSyncError = "";
   setSyncStatus("online");
   renderCloudAccountUi();
 }
@@ -3394,9 +3427,12 @@ async function pullCloudIfNewer() {
     const localTime = new Date(state.updatedAt || 0).getTime();
     if (cloudRow?.payload && cloudTime > localTime) applyCloudState(cloudRow.payload);
     lastCloudSyncAt = new Date();
+    lastCloudSyncError = "";
     setSyncStatus("online");
-  } catch {
+  } catch (error) {
     setSyncStatus("error");
+    lastCloudSyncError = normalizeCloudErrorMessage(error);
+    showSyncMessage(lastCloudSyncError, true);
   }
 }
 
@@ -3440,7 +3476,7 @@ function setSyncStatus(status) {
   const label = document.querySelector("#syncLabel");
   const button = document.querySelector("#syncBtn");
   dot.className = `sync-dot ${status === "off" ? "" : status}`.trim();
-  label.textContent = status === "online" ? "同期済み" : status === "busy" ? "同期中" : status === "error" ? "要確認" : "同期設定";
+  label.textContent = status === "online" ? "同期済み" : status === "busy" ? "同期中" : "同期設定";
   button.dataset.status = status;
   button.setAttribute("aria-label", `${label.textContent}。クラウド同期を開く`);
 }
@@ -11599,12 +11635,15 @@ async function checkPublishedAppVersion() {
     if (!response.ok) return;
     const latest = String((await response.json()).version || "");
     const button = document.querySelector("#forceAppUpdate");
-    if (button && latest && latest !== APP_VERSION) button.textContent = `v${latest}へ更新`;
+    if (button && latest && latest !== APP_VERSION) {
+      button.textContent = `v${latest}へ更新`;
+      button.dataset.latestVersion = latest;
+    }
     if (latest && latest !== APP_VERSION) {
       const attemptKey = `hanako-update-attempt-${latest}`;
       if (!sessionStorage.getItem(attemptKey)) {
         sessionStorage.setItem(attemptKey, "1");
-        forceAppUpdate();
+        forceAppUpdate(latest);
       }
     }
   } catch {
@@ -11612,9 +11651,9 @@ async function checkPublishedAppVersion() {
   }
 }
 
-function forceAppUpdate() {
+function forceAppUpdate(targetVersion = "") {
   const updateUrl = new URL("./update.html", location.href);
-  updateUrl.searchParams.set("v", APP_VERSION === "開発版" ? Date.now() : APP_VERSION);
+  updateUrl.searchParams.set("v", targetVersion || (APP_VERSION === "開発版" ? Date.now() : APP_VERSION));
   updateUrl.searchParams.set("t", Date.now());
   location.replace(updateUrl.href);
 }

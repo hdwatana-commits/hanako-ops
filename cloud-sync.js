@@ -116,6 +116,7 @@
 
     async authorizedFetch(path, options = {}) {
       await this.refreshIfNeeded();
+      if (!this.session?.access_token) throw new Error("先にクラウド同期へログインしてください");
       const response = await fetch(`${this.url}${path}`, {
         ...options,
         headers: {
@@ -161,9 +162,9 @@
       if (response.status === 404 && /bucket|not found/i.test(message)) {
         message = "写真保存の初期設定が未完了です。Supabaseで写真保存用SQLを実行してください";
       } else if (response.status === 400 && /mime|content.?type/i.test(message)) {
-        message = "この写真形式は保存できません。iPhoneでスクリーンショットにしてから追加してください";
+        message = "この写真形式は保存できません。iPhoneではスクリーンショットにしてから追加してください";
       } else if (response.status === 401 || response.status === 403) {
-        message = "写真を保存する権限がありません。同期へログインし直し、写真保存用SQLを確認してください";
+        message = "同期ログインの有効期限が切れているか、保存権限がありません。ログインし直してください";
       }
       return new Error(message);
     }
