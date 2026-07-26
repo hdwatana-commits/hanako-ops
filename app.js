@@ -6328,6 +6328,7 @@ function buildOutfitImagePrompt(coordinate) {
   const coordinateLocationInstruction = buildCoordinateLocationInstruction(coordinate, originalProductPhotoMode);
   const coordinateLocationStampInstruction = buildCoordinateLocationStampInstruction(coordinate, originalProductPhotoMode);
   const coordinateSignatureLogoInstruction = buildCoordinateSignatureLogoInstruction();
+  const brandAdVisualInstruction = buildCoordinateBrandAdVisualInstruction(coordinate, originalProductPhotoMode);
   const maskLockInstruction = originalProductPhotoMode
     ? ""
     : `【最優先・マスク固定モード】
@@ -6342,7 +6343,8 @@ function buildOutfitImagePrompt(coordinate) {
 ・人物、主役商品、先生アイコン、吹き出し、手書きポイントの輪郭を鮮明にする
 ・商品は色、形、丈、柄、素材感を参照画像へ忠実に合わせ、別商品へ変えない
 ・指、手足、顔、服の重なり、バッグの持ち手、靴の左右を自然にする
-・外周に約6%の安全余白を取り、文字や顔、商品を端で切らない
+・外周に白い額縁、白フチ、白い余白帯を作らない。写真とデザインは画面端まで自然に広げる
+・文字、顔、商品は端で切らないが、そのために無地の白背景や白い安全余白を足さない
 ・画像内の文字を薄くしない。見出し、本文、吹き出し、手書きポイントは濃く、十分なコントラストで読みやすくする
 ・「STYLE EDIT」という文字は、見出し、ラベル、装飾、透かしのどこにも入れない
 ・特に最下部の文字は画像下端から8%以上離し、最後の句読点と閉じかぎ括弧まで完全に見せる
@@ -6477,6 +6479,8 @@ ${attachmentInstruction}
 ${maskLockInstruction}
 
 ${qualityLockInstruction}
+
+${brandAdVisualInstruction}
 
 【画像サイズと構図】
 ・完成画像は必ず縦3:4。推奨サイズは1536×2048px
@@ -6699,6 +6703,29 @@ function buildCoordinateSignatureLogoInstruction() {
 ・主役コーデ、顔、商品、見出し、手書きポイントより目立たせない
 ・派手なハート、大きな装飾、太い縁取り、濃いピンク、強い影、巨大なロゴ、白い囲み、ポップすぎる配色は禁止
 ・文字化け、誤字、似た文字、別名は禁止。正確に書けない場合は、SIGNATURE LOGO欄の見た目をそのまま小さく写す`;
+}
+
+function buildCoordinateBrandAdVisualInstruction(coordinate, originalProductPhotoMode) {
+  if (originalProductPhotoMode) return `【ビジュアルテイスト】
+・白い額縁や余白だけの背景にせず、商品写真を上品なブランド広告のように編集する
+・背景は無地白ではなく、淡い布、自然光の影、紙質感、木目、石、ガラス、街の空気感などを控えめに使う
+・商品そのものは変えず、余白、光、影、文字組みで洗練された広告写真にする`;
+  const locationMood = coordinate.location === "overseas"
+    ? `${coordinate.city}の街並みと${coordinate.landmark}の空気感`
+    : coordinate.location === "my-room"
+      ? "明るい部屋の自然光、木の家具、鏡や花の気配"
+      : coordinate.location === "stylish-cafe"
+        ? "自然光が入る上品なカフェの奥行き"
+        : "洗練された屋外の建築、緑、やわらかな光";
+  return `【ビジュアルテイスト・最優先】
+・白背景、白いスタジオ背景、無地の白壁、白い額縁、白い余白だけのデザインは禁止
+・背景まで含めて、海外ブランド広告、ファッション誌のルックブック、セレクトショップの広告写真のように洗練させる
+・舞台の空気感は「${locationMood}」。人物と服がその場所の光になじむよう、背景、影、奥行き、色温度を丁寧に作る
+・背景は主役商品を邪魔しない程度に情報を持たせる。無地ではなく、建築、窓光、街角、布、石畳、植物、家具などを控えめに使う
+・全体の色数は3色以内を目安にし、商品色、肌、背景、文字が一つのブランド広告としてまとまるようにする
+・かわいい装飾を増やしすぎず、余白ではなく「光、影、奥行き、質感」で高級感を作る
+・写真は画面端まで自然に広げる。外周に白い安全余白や白いフレームを残さない
+・手書きポイント、ハナコ先生、スコアカード、ロケーション表記、署名ロゴは広告デザインの一部として小さく整理し、写真の完成度を壊さない`;
 }
 
 function generateGeminiCaptionPrompt() {
