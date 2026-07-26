@@ -311,6 +311,7 @@ const coordinateProductHydration = new Map();
 let currentHanakoComment = "";
 let currentHanakoCommentConcern = "";
 let recentHanakoComments = [];
+let lastBalancedOverseasCity = "";
 let currentCoordinateHandwrittenPoints = new Map();
 let socialGeminiGeneratedImageDataUrl = "";
 let socialGeminiGeneratedImageExtension = "png";
@@ -7523,10 +7524,18 @@ function chooseRandomRoomOverseasCity() {
 function chooseBalancedOverseasCity(deckName) {
   const cities = getRoomOverseasCities().map(([city]) => city);
   const storageKey = `hanako-${deckName}-overseas-city-deck`;
+  const globalLastKey = "hanako-overseas-city-global-last";
+  const validCities = new Set(cities);
+  let globalLast = lastBalancedOverseasCity;
   let deckState = { remaining: [], last: "" };
   try {
+    const savedGlobalLast = localStorage.getItem(globalLastKey) || "";
+    if (validCities.has(savedGlobalLast)) globalLast = savedGlobalLast;
+  } catch {
+    globalLast = lastBalancedOverseasCity;
+  }
+  try {
     const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
-    const validCities = new Set(cities);
     const remaining = saved.total === cities.length && Array.isArray(saved.remaining)
       ? saved.remaining.filter((city, index, items) => validCities.has(city) && items.indexOf(city) === index)
       : [];
@@ -7536,15 +7545,25 @@ function chooseBalancedOverseasCity(deckName) {
   }
   if (!deckState.remaining.length) {
     deckState.remaining = shuffleCityDeck([...cities]);
-    if (deckState.remaining.length > 1 && deckState.remaining[0] === deckState.last) {
-      [deckState.remaining[0], deckState.remaining[1]] = [deckState.remaining[1], deckState.remaining[0]];
+  }
+  const blockedCities = new Set([deckState.last, globalLast].filter(Boolean));
+  if (deckState.remaining.length > 1 && blockedCities.has(deckState.remaining[0])) {
+    const swapIndex = deckState.remaining.findIndex((city) => !blockedCities.has(city));
+    if (swapIndex > 0) {
+      [deckState.remaining[0], deckState.remaining[swapIndex]] = [deckState.remaining[swapIndex], deckState.remaining[0]];
     }
+  }
+  if (deckState.remaining.length === 1 && blockedCities.has(deckState.remaining[0]) && cities.length > 1) {
+    deckState.remaining = shuffleCityDeck(cities.filter((city) => !blockedCities.has(city)));
+    if (!deckState.remaining.length) deckState.remaining = shuffleCityDeck([...cities]);
   }
   const selected = deckState.remaining.shift() || cities[0] || "パリ";
   deckState.last = selected;
   deckState.total = cities.length;
+  lastBalancedOverseasCity = selected;
   try {
     localStorage.setItem(storageKey, JSON.stringify(deckState));
+    localStorage.setItem(globalLastKey, selected);
   } catch {
     // 保存できない環境でも、その回のランダム選択は続行する。
   }
