@@ -5658,12 +5658,61 @@ async function drawCoordinateBoard(coordinate, text) {
     ctx.fillStyle = "#6c555e";
     wrapCanvasText(ctx, `${analysis.solution} 色は${analysis.colorPlan}`, 72, 1260, 930, 34, 2);
   }
+  await drawCoordinateSignatureLogoReference(ctx);
+  drawCoordinateLocationStampReference(ctx, coordinate);
   drawFashionScorePanel(ctx, buildCoordinateFashionScore(coordinate), 720, 1110, 290, 236);
   if (renderId !== coordinateBoardRenderId) return;
   const targetContext = targetCanvas.getContext("2d");
   targetContext.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
   targetContext.drawImage(canvas, 0, 0);
   coordinateBoardDataUrl = canvas.toDataURL("image/png");
+}
+
+async function drawCoordinateSignatureLogoReference(ctx) {
+  const logoX = 70;
+  const logoY = 254;
+  const logoWidth = 220;
+  const logoHeight = 52;
+  ctx.save();
+  ctx.fillStyle = "#6b584b";
+  ctx.font = "700 15px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("SIGNATURE LOGO / 左上へ小さく", logoX, logoY - 10);
+  const logo = await loadImage(ROOM_SIGNATURE_LOGO_PATH).catch(() => null);
+  if (logo) {
+    drawContainImage(ctx, logo, logoX, logoY, logoWidth, logoHeight);
+  } else {
+    drawFashionHanakoLogoText(ctx, logoX, logoY + 2, logoWidth, logoHeight);
+  }
+  ctx.restore();
+}
+
+function coordinateLocationStampText(coordinate) {
+  if (coordinate.imagePattern === "オリジナル商品写真で投稿") return "";
+  if (coordinate.location === "overseas") return `${coordinate.city} / ${coordinate.landmark}`;
+  const labels = {
+    "my-room": "自分のへや",
+    "stylish-cafe": "おしゃれなカフェ",
+    "stylish-outdoor": "おしゃれな屋外",
+  };
+  return labels[coordinate.location] || "おしゃれな屋外";
+}
+
+function drawCoordinateLocationStampReference(ctx, coordinate) {
+  const stamp = coordinateLocationStampText(coordinate);
+  if (!stamp) return;
+  ctx.save();
+  ctx.fillStyle = "#6b584b";
+  ctx.font = "700 15px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("LOCATION / 右下へ小さく", 712, 1070);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+  roundRect(ctx, 712, 1080, 300, 34, 17);
+  ctx.fill();
+  ctx.fillStyle = "#7a5d50";
+  ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(trimText(stamp, 28), 862, 1103);
+  ctx.textAlign = "left";
+  ctx.restore();
 }
 
 async function drawHanakoTeacherPanel(ctx, coordinate, analysis) {
@@ -6277,6 +6326,8 @@ function buildOutfitImagePrompt(coordinate) {
   const brand = getCoordinateBrand(mainProduct);
   const originalProductPhotoMode = coordinate.imagePattern === "オリジナル商品写真で投稿";
   const coordinateLocationInstruction = buildCoordinateLocationInstruction(coordinate, originalProductPhotoMode);
+  const coordinateLocationStampInstruction = buildCoordinateLocationStampInstruction(coordinate, originalProductPhotoMode);
+  const coordinateSignatureLogoInstruction = buildCoordinateSignatureLogoInstruction();
   const maskLockInstruction = originalProductPhotoMode
     ? ""
     : `【最優先・マスク固定モード】
@@ -6320,9 +6371,11 @@ function buildOutfitImagePrompt(coordinate) {
 ・商品画像URLはアクセスしない。添付画像を基準に作る
 ・添付画像にない商品や人物を、似た画像や想像で補わない`
     : `【添付画像の役割・最優先】
-・添付は「コーデ参照画像ボード」1枚だけ。PERSON欄は本人、PRODUCT欄は選択商品、TEACHER欄はハナコ先生の基準画像
+・添付は「コーデ参照画像ボード」1枚だけ。PERSON欄は本人、PRODUCT欄は選択商品、TEACHER欄はハナコ先生の基準画像、SIGNATURE LOGO欄は左上へ入れる署名ロゴ、LOCATION欄は右下へ入れる場所表記
 ・本人の顔、髪、体型、マスクはPERSON欄を最優先する
 ・服と小物は各PRODUCT欄、先生アイコンはTEACHER欄を最優先する
+・SIGNATURE LOGO欄のロゴは、透明背景の小さな署名素材として左上へ控えめに入れる
+・LOCATION欄の表記は、完成画像の右下へ小さく上品に入れる
 ・画像内の吹き出し文、手書きポイント、見出し、配置も同じ参照ボードから読み取る
 ・商品画像URLと先生画像URLにはアクセスしない。URLより添付した参照画像を必ず優先する
 ・参照画像ボードが届いていない場合は画像を生成せず、「参照画像を1枚添付してください」とだけ返す`;
@@ -6430,6 +6483,10 @@ ${qualityLockInstruction}
 ${layoutInstruction}
 
 ${coordinateLocationInstruction}
+
+${coordinateLocationStampInstruction}
+
+${coordinateSignatureLogoInstruction}
 
 【利用上の区分】
 ・この生成画像はコーデ検討・SNS用の着用イメージとして作る
@@ -6566,6 +6623,8 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナ
 ・余白の日本語が読みやすく、課題解決風でかわいい。途中で切れた文章や「…」で省略した文章がない
 ・画像内に楽天ROOMを示す文字が入っていない
 ・右下に半透明で小さなファッションランク、レーダーチャート、ファッションパワーのスコアカードがあり、コーデや商品を隠していない
+・左上にSIGNATURE LOGO欄と同じ小さな透明署名ロゴがあり、主張しすぎていない
+・右下または右下スコアカードの少し上にLOCATION欄と同じロケーション表記があり、「mood」という文字を含んでいない
 ・レーダーチャートの周囲に意味のない単独数字がなく、軸名と形だけで特徴が伝わる
 
 以上の条件をすべて守り、文章による説明や紹介文は返さず、完成画像だけを生成してください。`;
@@ -6615,6 +6674,31 @@ function buildCoordinateLocationInstruction(coordinate, originalProductPhotoMode
   return `【場所・おしゃれな屋外】
 ・舞台は緑と洗練された建物が調和する、おしゃれな屋外の小道やテラス
 ・特定できない看板や海外ランドマークは足さず、日常のお出かけスナップとして自然にする`;
+}
+
+function buildCoordinateLocationStampInstruction(coordinate, originalProductPhotoMode) {
+  const stamp = coordinateLocationStampText(coordinate);
+  if (originalProductPhotoMode || !stamp) return `【右下ロケーション表記】
+・この商品写真パターンではロケーション表記を入れない`;
+  return `【右下ロケーション表記】
+・参照画像ボードのLOCATION欄にある表記を、完成画像の右下へ小さく上品に入れる
+・表記は必ず「${stamp}」に統一する。「mood」という文字は入れない
+・ロケーション表記は、こげ茶または上品なブラウンで、写真になじむ小さな文字にする
+・右下のFASHION SCOREカードと重なる場合は、スコアカードの少し上、または右下の空いている位置へ移動する
+・服、顔、商品、ハナコ先生、吹き出し、手書きポイントを隠さない
+・観光ポスターのように目立たせず、ROOM投稿画像と同じく「場所の小さな署名」くらいに控えめにする
+・ロケーション名を別都市、別ランドマーク、英語だけ、誤字、文字化けへ変えない`;
+}
+
+function buildCoordinateSignatureLogoInstruction() {
+  return `【SIGNATURE LOGO・必須】
+・参照画像ボードの「SIGNATURE LOGO」欄にある透明ミニロゴ画像を、完成画像の左上へとても小さく上品に入れる
+・ロゴを新しくデザインし直さない。SIGNATURE LOGO欄を透明背景の画像素材として扱い、その見た目、茶色系の配色、文字をできるだけそのまま小さく写す
+・ロゴは背景なし、余白なし、検索窓なし、虫眼鏡なし。「検索」の文字は絶対に入れない
+・画像幅の7〜10%くらいの小さめサイズで、透け感のある署名ロゴとして左上へ自然に置く
+・主役コーデ、顔、商品、見出し、手書きポイントより目立たせない
+・派手なハート、大きな装飾、太い縁取り、濃いピンク、強い影、巨大なロゴ、白い囲み、ポップすぎる配色は禁止
+・文字化け、誤字、似た文字、別名は禁止。正確に書けない場合は、SIGNATURE LOGO欄の見た目をそのまま小さく写す`;
 }
 
 function generateGeminiCaptionPrompt() {
