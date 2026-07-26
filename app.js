@@ -7780,7 +7780,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
   const locationStampInstruction = location === "overseas" && mode !== "collection"
     ? `【右下ロケーション表記】
 ・画像の右下へ、場所の情報をさりげなく小さく入れる
-・表記は「${cityOption[0]} mood」または「${cityOption[0]} / ${cityOption[1]}」のどちらか1つだけ
+・表記は必ず「${cityOption[0]} / ${cityOption[1]}」に統一する。「mood」という文字は入れない
 ・濃いブラウンまたはくすみピンクの小さな文字で、ブランド広告の撮影地クレジットのように上品にする
 ・商品、人物、顔、手書き一言、表紙コピーに重ねない。読めるけれど主役にならないサイズにする
 ・場所表記以外の住所、国名の長文、観光案内、地図風の文字は入れない`
