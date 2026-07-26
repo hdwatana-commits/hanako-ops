@@ -74,23 +74,23 @@
       };
     });
 
-    const top200 = diversify(scored.sort(sortSelectionItem), 200);
-    const visibleItems = diversify(top200.filter((item) => item.rank === "S" && !["再投稿不可"].includes(item.repost.status)), 30);
-    const fallbackVisible = visibleItems.length ? visibleItems : diversify(top200.slice(0, 30), 30);
+    const topCandidates = diversify(scored.sort(sortSelectionItem), 20);
+    const visibleItems = diversify(topCandidates.filter((item) => item.rank === "S" && !["再投稿不可"].includes(item.repost.status)), 20);
+    const fallbackVisible = visibleItems.length ? visibleItems : diversify(topCandidates.slice(0, 20), 20);
     return {
       id: stableSelectionId(today),
       selectionDate: toDateKey(today),
       sourceCount: sourceProducts.length,
-      candidateCount: top200.length,
+      candidateCount: topCandidates.length,
       visibleCount: fallbackVisible.length,
-      items: top200,
+      items: topCandidates,
       visibleItems: fallbackVisible,
       job: {
         status: sourceFailed ? "fallback" : "ok",
         sourceFailed: Boolean(sourceFailed),
         generatedAt: new Date().toISOString(),
       },
-      kpis: buildEfficiencyKpis(sourceProducts.length, top200.length, fallbackVisible.length),
+      kpis: buildEfficiencyKpis(sourceProducts.length, topCandidates.length, fallbackVisible.length),
     };
   }
 

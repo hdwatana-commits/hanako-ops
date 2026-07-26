@@ -1500,7 +1500,7 @@ function renderDailySelection(showAll = false) {
   const items = (showAll ? selection.items : selection.visibleItems)
     .filter((item) => item.decision !== "excluded")
     .filter((item) => !postedMatcher.hasDailyItem(item))
-    .slice(0, showAll ? 200 : 30);
+    .slice(0, 20);
   const postedExcluded = (showAll ? selection.items : selection.visibleItems)
     .filter((item) => item.decision !== "excluded")
     .filter((item) => postedMatcher.hasDailyItem(item)).length;
@@ -1514,7 +1514,7 @@ function renderDailySelection(showAll = false) {
     ["状態", selection.job?.status === "fallback" ? "前回/手動データ" : "最新"],
   ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
   if (!items.length) {
-    grid.innerHTML = `<div class="ops-empty"><strong>表示できる候補がありません</strong><p>商品を登録するか、候補200表示で除外済み商品を確認してください。</p></div>`;
+    grid.innerHTML = `<div class="ops-empty"><strong>表示できる候補がありません</strong><p>商品を登録するか、候補20表示で除外済み商品を確認してください。</p></div>`;
     return;
   }
   grid.innerHTML = items.map((item) => renderDailySelectionCard(item)).join("");
