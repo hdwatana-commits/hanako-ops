@@ -5477,11 +5477,12 @@ function buildCoordinateFashionScore(coordinate) {
   const productText = products.map((product) => `${product.name || ""} ${product.category || ""} ${product.hook || ""} ${product.details?.color || ""} ${product.details?.material || ""}`).join(" ");
   const scoreText = `${coordinate.style || ""} ${coordinate.occasion || ""} ${coordinate.concern || ""} ${coordinate.priority || ""} ${coordinate.colorMood || ""} ${coordinate.season || ""} ${coordinate.location || ""} ${coordinate.city || ""} ${categoryText} ${productText}`;
   const hasCategory = (patterns) => patterns.some((pattern) => products.some((product) => pattern.test(`${product.category || ""} ${product.name || ""}`)));
-  const clampScore = (value, min = 42, max = 94) => Math.max(min, Math.min(max, Math.round(value)));
+  const clampScore = (value, min = 30, max = 98) => Math.max(min, Math.min(max, Math.round(value)));
   const scoreOffset = (key, range = 6) => {
     const seed = hashText(`${scoreText}:${key}`);
     return seed % (range * 2 + 1) - range;
   };
+  const scoreProfile = hashText(`${scoreText}:profile`) % 5;
   const fullBody = hasCategory([/ワンピース/, /セットアップ/, /オールインワン/, /スーツ/, /浴衣/]);
   const hasTop = hasCategory([/トップス/, /ブラウス/, /シャツ/, /ニット/, /カーディガン/, /アウター/, /ベスト/]);
   const hasBottom = hasCategory([/スカート/, /パンツ/, /デニム/]);
@@ -5504,71 +5505,79 @@ function buildCoordinateFashionScore(coordinate) {
   const neutralColorCount = ["白", "黒", "ベージュ", "グレー"].filter((color) => colorFamilies.has(color)).length;
   const hasSoftColor = ["白", "ベージュ", "ピンク", "青", "緑"].some((color) => colorFamilies.has(color));
   const itemCount = products.length;
-  const categoryBalance = 39
-    + Math.min(itemCount, 6) * 5
-    + (fullBody ? 17 : 0)
-    + (!fullBody && hasTop ? 10 : 0)
-    + (!fullBody && hasBottom ? 10 : 0)
-    + (hasBag ? 7 : 0)
-    + (hasShoes ? 7 : 0)
-    + (hasAccessory ? 4 : 0)
-    - (itemCount <= 1 ? 10 : 0)
-    - (itemCount >= 6 ? 3 : 0)
-    + scoreOffset("category", 5);
-  const colorHarmony = 58
-    + (colorCount >= 2 && colorCount <= 3 ? 16 : 0)
-    + (colorCount === 1 ? 7 : 0)
-    - (colorCount >= 5 ? 15 : colorCount === 4 ? 7 : 0)
-    + (neutralColorCount >= 2 ? 6 : 0)
-    + (/淡色|大人可愛い|ガーリー|フェミニン/.test(scoreText) && hasSoftColor ? 8 : 0)
-    + (/モノトーン|きれいめ|通勤/.test(scoreText) && neutralColorCount >= 2 ? 6 : 0)
-    + (coordinate.colorMood && coordinate.colorMood !== "商品から自動で整える" ? 5 : 0)
-    + scoreOffset("color", 7);
-  const sceneFit = 49
-    + (coordinate.occasion ? 7 : 0)
-    + (coordinate.season ? 4 : 0)
-    + (coordinate.location === "overseas" ? 6 : coordinate.location ? 3 : 0)
-    + (/通勤|大学|仕事/.test(scoreText) && (hasTop || fullBody) && (hasBottom || fullBody) ? 10 : 0)
-    + (/デート|女子会|カフェ/.test(scoreText) && (fullBody || hasBottom) && (hasBag || hasAccessory) ? 10 : 0)
-    + (/旅行|おでかけ/.test(scoreText) && (hasBag || hasShoes) ? 8 : 0)
-    + (/推し活/.test(scoreText) && (hasAccessory || colorCount >= 2) ? 7 : 0)
-    + scoreOffset("scene", 7);
-  const solutionPower = 47
-    + (coordinate.concern ? 8 : 0)
-    + (coordinate.priority ? 5 : 0)
-    + (products.some((product) => product.hook) ? 6 : 0)
-    + (/二の腕|顔まわり|上半身|華奢/.test(scoreText) && (hasTop || fullBody) ? 10 : 0)
-    + (/下半身|脚|腰|体型|細見え/.test(scoreText) && (hasBottom || fullBody) ? 10 : 0)
-    + (/朝|服が決まらない|時短/.test(scoreText) && (fullBody || (hasTop && hasBottom)) ? 9 : 0)
-    + (/気温|冷房|寒暖|羽織/.test(scoreText) && hasCategory([/カーディガン/, /アウター/, /シャツ/]) ? 10 : 0)
-    + (/着回し|高見え/.test(scoreText) && (neutralColorCount >= 1 || colorCount <= 3) ? 7 : 0)
-    + scoreOffset("solution", 7);
-  const trendMood = 50
-    + (/(ガーリー|きれいめ|高見え|甘め|淡色|韓国|フェミニン|上品|大人可愛い)/.test(scoreText) ? 11 : 4)
-    + (/(シアー|サテン|レース|リボン|チュール|パール|クロシェ|ラメ|フリル)/.test(scoreText) ? 9 : 0)
-    + (hasAccessory ? 4 : 0)
-    + (hasBag ? 4 : 0)
-    + (coordinate.city ? 4 : 0)
-    + scoreOffset("trend", 8);
+  const categoryBalance = 33
+    + Math.min(itemCount, 6) * 4
+    + (fullBody ? 13 : 0)
+    + (!fullBody && hasTop ? 13 : 0)
+    + (!fullBody && hasBottom ? 13 : 0)
+    + (hasBag ? 9 : 0)
+    + (hasShoes ? 9 : 0)
+    + (hasAccessory ? 5 : 0)
+    - (itemCount <= 1 ? 18 : 0)
+    - (itemCount >= 6 ? 8 : 0)
+    + (scoreProfile === 0 ? 8 : scoreProfile === 3 ? -7 : 0)
+    + scoreOffset("category", 12);
+  const colorHarmony = 45
+    + (colorCount >= 2 && colorCount <= 3 ? 20 : 0)
+    + (colorCount === 1 ? 8 : 0)
+    - (colorCount >= 5 ? 23 : colorCount === 4 ? 13 : 0)
+    + (neutralColorCount >= 2 ? 8 : 0)
+    + (/淡色|大人可愛い|ガーリー|フェミニン/.test(scoreText) && hasSoftColor ? 11 : 0)
+    + (/モノトーン|きれいめ|通勤/.test(scoreText) && neutralColorCount >= 2 ? 9 : 0)
+    + (coordinate.colorMood && coordinate.colorMood !== "商品から自動で整える" ? 7 : 0)
+    + (scoreProfile === 1 ? 9 : scoreProfile === 4 ? -8 : 0)
+    + scoreOffset("color", 14);
+  const sceneFit = 38
+    + (coordinate.occasion ? 10 : 0)
+    + (coordinate.season ? 6 : 0)
+    + (coordinate.location === "overseas" ? 9 : coordinate.location ? 4 : 0)
+    + (/通勤|大学|仕事/.test(scoreText) && (hasTop || fullBody) && (hasBottom || fullBody) ? 16 : 0)
+    + (/デート|女子会|カフェ/.test(scoreText) && (fullBody || hasBottom) && (hasBag || hasAccessory) ? 16 : 0)
+    + (/旅行|おでかけ/.test(scoreText) && (hasBag || hasShoes) ? 14 : 0)
+    + (/推し活/.test(scoreText) && (hasAccessory || colorCount >= 2) ? 11 : 0)
+    + (scoreProfile === 2 ? 10 : scoreProfile === 0 ? -6 : 0)
+    + scoreOffset("scene", 13);
+  const solutionPower = 36
+    + (coordinate.concern ? 11 : 0)
+    + (coordinate.priority ? 7 : 0)
+    + (products.some((product) => product.hook) ? 8 : 0)
+    + (/二の腕|顔まわり|上半身|華奢/.test(scoreText) && (hasTop || fullBody) ? 17 : 0)
+    + (/下半身|脚|腰|体型|細見え/.test(scoreText) && (hasBottom || fullBody) ? 17 : 0)
+    + (/朝|服が決まらない|時短/.test(scoreText) && (fullBody || (hasTop && hasBottom)) ? 14 : 0)
+    + (/気温|冷房|寒暖|羽織/.test(scoreText) && hasCategory([/カーディガン/, /アウター/, /シャツ/]) ? 17 : 0)
+    + (/着回し|高見え/.test(scoreText) && (neutralColorCount >= 1 || colorCount <= 3) ? 10 : 0)
+    + (scoreProfile === 3 ? 10 : scoreProfile === 1 ? -7 : 0)
+    + scoreOffset("solution", 15);
+  const trendMood = 39
+    + (/(ガーリー|きれいめ|高見え|甘め|淡色|韓国|フェミニン|上品|大人可愛い)/.test(scoreText) ? 17 : 5)
+    + (/(シアー|サテン|レース|リボン|チュール|パール|クロシェ|ラメ|フリル)/.test(scoreText) ? 15 : 0)
+    + (hasAccessory ? 7 : 0)
+    + (hasBag ? 6 : 0)
+    + (coordinate.city ? 8 : 0)
+    + (scoreProfile === 4 ? 12 : scoreProfile === 2 ? -7 : 0)
+    + scoreOffset("trend", 16);
   const metrics = [
-    { label: "完成度", value: clampScore(categoryBalance, 44, 94) },
-    { label: "配色", value: clampScore(colorHarmony, 42, 93) },
-    { label: "シーン", value: clampScore(sceneFit, 42, 92) },
-    { label: "解決力", value: clampScore(solutionPower, 42, 93) },
-    { label: "映え感", value: clampScore(trendMood, 42, 94) },
+    { label: "完成度", value: clampScore(categoryBalance, 34, 98) },
+    { label: "配色", value: clampScore(colorHarmony, 32, 97) },
+    { label: "シーン", value: clampScore(sceneFit, 32, 96) },
+    { label: "解決力", value: clampScore(solutionPower, 32, 97) },
+    { label: "映え感", value: clampScore(trendMood, 34, 98) },
   ];
-  const values = metrics.map((metric) => metric.value);
-  const spread = Math.max(...values) - Math.min(...values);
-  if (spread < 12) {
+  let values = metrics.map((metric) => metric.value);
+  let spread = Math.max(...values) - Math.min(...values);
+  if (spread < 24) {
     const boostIndex = hashText(`${scoreText}:boost`) % metrics.length;
     const dropIndex = (boostIndex + 2) % metrics.length;
-    metrics[boostIndex].value = clampScore(metrics[boostIndex].value + 7, 44, 94);
-    metrics[dropIndex].value = clampScore(metrics[dropIndex].value - 8, 42, 94);
+    const extra = 24 - spread;
+    metrics[boostIndex].value = clampScore(metrics[boostIndex].value + 10 + Math.ceil(extra / 2), 34, 98);
+    metrics[dropIndex].value = clampScore(metrics[dropIndex].value - 10 - Math.ceil(extra / 2), 30, 97);
+    const nudgeIndex = (boostIndex + 4) % metrics.length;
+    metrics[nudgeIndex].value = clampScore(metrics[nudgeIndex].value + scoreOffset(`nudge-${nudgeIndex}`, 8), 30, 98);
   }
   const average = metrics.reduce((sum, metric) => sum + metric.value, 0) / metrics.length;
-  const outfitBonus = (itemCount >= 4 ? 3 : itemCount >= 3 ? 1 : -2) + (fullBody && itemCount >= 3 ? 2 : 0);
-  const power = clampScore(average + outfitBonus + scoreOffset("power", 3), 48, 93);
-  const rank = power >= 90 ? "S" : power >= 82 ? "A" : power >= 74 ? "B" : power >= 66 ? "C" : power >= 58 ? "D" : "E";
+  const outfitBonus = (itemCount >= 5 ? 4 : itemCount >= 4 ? 2 : itemCount >= 3 ? 0 : -6) + (fullBody && itemCount >= 3 ? 3 : 0);
+  const power = clampScore(average + outfitBonus + scoreOffset("power", 8), 42, 97);
+  const rank = power >= 91 ? "S" : power >= 84 ? "A" : power >= 76 ? "B" : power >= 67 ? "C" : power >= 57 ? "D" : "E";
   const rankLabels = {
     S: "神コーデ級",
     A: "主役級",
@@ -5826,23 +5835,7 @@ function drawFashionScorePanel(ctx, fashionScore, x, y, width, height) {
   const badgeX = x + 16;
   const badgeY = y + 64;
   const badgeSize = 72;
-  const gradient = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeSize, badgeY + badgeSize);
-  gradient.addColorStop(0, "#f8c6d7");
-  gradient.addColorStop(1, "#c65a82");
-  ctx.fillStyle = gradient;
-  ctx.beginPath();
-  ctx.arc(badgeX + badgeSize / 2, badgeY + badgeSize / 2, badgeSize / 2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 5;
-  ctx.stroke();
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "center";
-  ctx.font = "900 38px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText(fashionScore.rank, badgeX + badgeSize / 2, badgeY + 48);
-  ctx.font = "700 13px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("RANK", badgeX + badgeSize / 2, badgeY + 66);
-  ctx.textAlign = "left";
+  drawRoomStyleRankIcon(ctx, fashionScore.rank, badgeX, badgeY, badgeSize);
 
   ctx.fillStyle = "#3d3036";
   ctx.font = "900 26px Yu Gothic UI, Meiryo, sans-serif";
@@ -5858,6 +5851,58 @@ function drawFashionScorePanel(ctx, fashionScore, x, y, width, height) {
   ctx.fillText(fashionScore.rankLabel, x + 116, y + 144);
 
   drawFashionRadarChart(ctx, fashionScore.metrics, x + 142, y + 168, 44);
+  ctx.restore();
+}
+
+function drawRoomStyleRankIcon(ctx, rank, x, y, size) {
+  const palettes = {
+    S: ["#f5bfd1", "#b73f70", "#fff3f8"],
+    A: ["#ffd2b6", "#d36a3d", "#fff4e8"],
+    B: ["#d9cffd", "#7460c8", "#f6f2ff"],
+    C: ["#cdebe2", "#438d78", "#effaf6"],
+    D: ["#d8e5f4", "#557fa7", "#f2f7fc"],
+    E: ["#e6d8cf", "#8f6c5a", "#faf5f1"],
+  };
+  const [light, dark, shine] = palettes[rank] || palettes.C;
+  const centerX = x + size / 2;
+  const centerY = y + size / 2;
+  ctx.save();
+  ctx.shadowColor = "rgba(122, 59, 85, 0.16)";
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 4;
+  const outer = ctx.createLinearGradient(x, y, x + size, y + size);
+  outer.addColorStop(0, shine);
+  outer.addColorStop(0.42, light);
+  outer.addColorStop(1, dark);
+  ctx.fillStyle = outer;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.64)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, size / 2 - 8, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+  ctx.beginPath();
+  ctx.arc(x + size * 0.31, y + size * 0.26, size * 0.09, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.font = "900 39px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(rank, centerX, y + size * 0.66);
+  ctx.font = "800 12px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("RANK", centerX, y + size * 0.86);
+  if (rank === "S" || rank === "A") {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.font = "900 14px Yu Gothic UI, Meiryo, sans-serif";
+    ctx.fillText("★", centerX, y + size * 0.26);
+  }
+  ctx.textAlign = "left";
   ctx.restore();
 }
 
@@ -6649,12 +6694,15 @@ function buildCoordinateFashionScorePrompt(fashionScore) {
 ・スコアカードの表示形式は毎回必ず同じにする。配置、順番、見出し、ラベル名を変えない
 ・カード内は次の固定レイアウトだけにする
   1. 上部左寄せに見出し「FASHION SCORE」
-  2. 左側に楽天ROOMのランクアイコン風の丸いバッジで「${fashionScore.rank}」を大きく表示
+  2. 左側に楽天ROOMのランクアイコンと同じ雰囲気の丸いメダル型ランクバッジで「${fashionScore.rank}」を大きく表示。バッジはグラデーション、白い外枠、内側リング、上品な小さな光沢を入れたランクアイコンにする
   3. 右側に「${fashionScore.power}pt」を大きく表示し、その下に小さく「ファッションパワー」
   4. 点数の下に小さなリボンラベルまたはシールで「${fashionScore.rankLabel}」
   5. 下部に5軸レーダーチャートを1個だけ表示
 ・レーダーチャートの軸名は必ず「${fashionScore.metrics.map((metric) => metric.label).join(" / ")}」の5つだけにする
 ・レーダーチャートの評価値は ${fashionScore.metrics.map((metric) => `${metric.label}:${metric.value}`).join(" / ")} を使う。高すぎる満点感を出さず、少し辛口の自己判定に見せる
+・レーダーチャートは指定値どおりに凹凸を大きめに描く。すべての軸を70点前後にそろえたり、毎回同じ正五角形にしない
+・最高軸と最低軸の差が見た目で分かるように、得意な軸は外側へ、弱い軸は内側へ明確に配置する
+・点数がCランク相当でない場合に、勝手に70点やCランクへ丸めない。必ず「${fashionScore.rank}」「${fashionScore.power}pt」をそのまま使う
 ・この診断では80点台でも十分高評価。チャートを盛って90点台や満点のように見せない
 ・スコアカードの見出しは必ず「FASHION SCORE」。別名の「おしゃれ診断」「FASHION POWER」などに変えない
 ・右下カードは主役の服、顔、ハナコ先生の吹き出し、商品ポイントに重ねない。必要なら少し小さくしてもよい
