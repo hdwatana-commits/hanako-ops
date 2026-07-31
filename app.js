@@ -5376,7 +5376,7 @@ function buildCoordinateText(coordinate) {
   const itemLines = (supportingRoles.length ? supportingRoles : analysis.itemRoles)
     .map((item) => `・${item.emoji} ${item.name}｜${trimText(item.role, 38)}`)
     .join("\n");
-  return `※アフィリエイトを含みます\n\nおはファッション🌸\n${analysis.headline}\n\n「${coordinate.concern}」に寄り添うコーデです。\n${analysis.solution}\n\n🎀 主役｜${analysis.mainName}\n${analysis.mainReason}\n\n🪄 似合わせ設計\n・形｜${analysis.silhouette}\n・色｜${analysis.colorPlan}\n・季節｜${analysis.seasonPlan}\n\n👗 合わせた理由\n${itemLines}\n\n🔎 買う前チェック\n${analysis.checks.map((item) => `・${item}`).join("\n")}\n${analysis.missingNote ? `\n💡 ${analysis.missingNote}\n` : ""}${analysis.totalLabel ? `\n予算メモ｜${analysis.totalLabel}\n` : ""}\n${coordinate.occasion}の日に、頑張りすぎず「ちゃんと可愛い」を作りたい方へ🩷\n保存して手持ち服と比べてみてください。\n\n#楽天ROOM #大人ガーリー #甘めきれいめ #${categories.replaceAll("・", " #")}`;
+  return `※アフィリエイトを含みます\n\nおはファッション🌸\n${analysis.headline}\n\n「${coordinate.concern}」に寄り添うコーデです。\n${analysis.solution}\n\n🎀 主役｜${analysis.mainName}\n${analysis.mainReason}\n\n🪄 似合わせ設計\n・形｜${analysis.silhouette}\n・色｜${analysis.colorPlan}\n・季節｜${analysis.seasonPlan}\n\n👗 合わせた理由\n${itemLines}\n\n🔎 買う前チェック\n${analysis.checks.map((item) => `・${item}`).join("\n")}\n${analysis.missingNote ? `\n💡 ${analysis.missingNote}\n` : ""}${analysis.totalLabel ? `\n予算メモ｜${analysis.totalLabel}\n` : ""}\n${coordinate.occasion}の日に、頑張りすぎず「ちゃんと可愛い」を作りたい方へ🩷\n保存して手持ち服と比べてみてください。\n\n#楽天ROOM #ファッションハナコ #大人ガーリー #${categories.split("・").filter(Boolean)[0] || "甘めきれいめ"}`;
 }
 
 function createCoordinateHook(product) {
@@ -6881,7 +6881,8 @@ ${overseasEpisodeInstruction}
 ・冒頭以外の絵文字も、文章になじむものを2〜4個選び、毎回同じ並びにせず、同じ絵文字を繰り返さない
 ・本文の最後は保存したくなる一言か、手持ち服を確認したくなる一言で締める
 ・その次の最終行に、内容と商品に合うハッシュタグを必ず4個だけ入れる
-・ハッシュタグは「#楽天ROOM」を1個含め、残り3個はコーデの系統、悩み、着用シーンから具体的に選ぶ
+・ハッシュタグは必ず「#楽天ROOM」と「#ファッションハナコ」を入れる
+・残り2個はコーデの系統、悩み、着用シーンから具体的に選ぶ
 ・ハッシュタグは重複させず、絵文字や文章を同じ行へ混ぜない。5個以上にしない
 ・むずかしい漢字、上から目線、乱暴な言い方、わざとらしい若者言葉、誇大表現は使わない
 ・特定の人物や作風を示す言葉、読者への乱暴な呼びかけは絶対に書かない
