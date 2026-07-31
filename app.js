@@ -4192,7 +4192,10 @@ function bindCoordinateActions() {
     updateCoordinateCityVisibility();
     refreshCoordinatePromptsAfterSettingChange();
   });
-  document.querySelector("#coordCity")?.addEventListener("change", refreshCoordinatePromptsAfterSettingChange);
+  document.querySelector("#coordCity")?.addEventListener("change", () => {
+    rememberUsedOverseasCity("coordinate", document.querySelector("#coordCity")?.value);
+    refreshCoordinatePromptsAfterSettingChange();
+  });
   document.querySelector("#coordPose")?.addEventListener("change", refreshCoordinatePromptsAfterSettingChange);
   applyRandomCoordinatePose();
   document.querySelector("#rerollHanakoTeacher")?.addEventListener("click", () => {
@@ -5327,6 +5330,7 @@ async function generateCoordinate() {
   }
   let coordinate = getSelectedCoordinate();
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
+  if (coordinate.location === "overseas") rememberUsedOverseasCity("coordinate", coordinate.city);
   if (isHanakoTeacherPattern(coordinate.imagePattern)) {
     applySelectedHanakoTeacher();
     coordinate = getSelectedCoordinate();
@@ -7275,7 +7279,10 @@ function bindRoomActions() {
     updateRoomCityVisibility();
     markRoomImagePromptStale();
   });
-  document.querySelector("#roomImageCity")?.addEventListener("change", markRoomImagePromptStale);
+  document.querySelector("#roomImageCity")?.addEventListener("change", () => {
+    rememberUsedOverseasCity("room", document.querySelector("#roomImageCity")?.value);
+    markRoomImagePromptStale();
+  });
   document.querySelector("#generateRoomImagePrompt")?.addEventListener("click", () => generateRoomImagePrompt(false));
   document.querySelector("#copyRoomImagePrompt")?.addEventListener("click", copyRoomImagePrompt);
   document.querySelector("#openRoomSelectedAi")?.addEventListener("click", openGeminiDestination);
@@ -7692,10 +7699,37 @@ function chooseRandomRoomOverseasCity() {
   return chooseBalancedOverseasCity("room");
 }
 
+function getOverseasCityDeckStorageKeys(deckName) {
+  return {
+    storageKey: `hanako-${deckName}-overseas-city-deck`,
+    globalLastKey: "hanako-overseas-city-global-last",
+  };
+}
+
+function rememberUsedOverseasCity(deckName, city) {
+  const selected = String(city || "").trim();
+  const cities = getRoomOverseasCities().map(([name]) => name);
+  if (!selected || !cities.includes(selected)) return;
+  const { storageKey, globalLastKey } = getOverseasCityDeckStorageKeys(deckName);
+  const validCities = new Set(cities);
+  let deckState = { remaining: [], last: "" };
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+    const remaining = saved.total === cities.length && Array.isArray(saved.remaining)
+      ? saved.remaining.filter((name, index, items) => validCities.has(name) && items.indexOf(name) === index && name !== selected)
+      : shuffleCityDeck(cities.filter((name) => name !== selected));
+    deckState = { remaining, last: selected, total: cities.length };
+    localStorage.setItem(storageKey, JSON.stringify(deckState));
+    localStorage.setItem(globalLastKey, selected);
+  } catch {
+    deckState.last = selected;
+  }
+  lastBalancedOverseasCity = selected;
+}
+
 function chooseBalancedOverseasCity(deckName) {
   const cities = getRoomOverseasCities().map(([city]) => city);
-  const storageKey = `hanako-${deckName}-overseas-city-deck`;
-  const globalLastKey = "hanako-overseas-city-global-last";
+  const { storageKey, globalLastKey } = getOverseasCityDeckStorageKeys(deckName);
   const validCities = new Set(cities);
   let globalLast = lastBalancedOverseasCity;
   let deckState = { remaining: [], last: "" };
@@ -7874,6 +7908,9 @@ function markRoomImagePromptStale() {
 async function generateRoomImagePrompt(quiet = false) {
   const product = getSelectedRoomProduct();
   if (!product) return showToast("先に商品を選んでください");
+  const roomLocation = document.querySelector("#roomImageLocation")?.value || "overseas";
+  const roomCity = document.querySelector("#roomImageCity")?.value || "";
+  if (roomLocation === "overseas") rememberUsedOverseasCity("room", roomCity);
   const warnings = [];
   let personPhotoUrl = "";
   let personPhotoSource = "";
