@@ -1,4 +1,4 @@
-const CACHE_NAME = "hanako-room-ops-v222";
+const CACHE_NAME = "hanako-room-ops-v223";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./",

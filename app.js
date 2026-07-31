@@ -8900,18 +8900,40 @@ function generateRoomPost() {
 
 function buildRoomPostText(product) {
   if (!window.RoomReviewGenerator?.generateFromInfo) return showToast("ROOM生成エンジンを読み込めませんでした");
+  const details = product.details || {};
+  const descriptionParts = [
+    product.hook,
+    product.price,
+    product.category,
+    product.shopName,
+    details.brand,
+    details.shopName,
+    details.genreName,
+    details.category,
+    details.color,
+    details.size,
+    details.material,
+    details.description,
+    details.caption,
+    details.itemCaption,
+    details.catchcopy,
+    details.coupon,
+    details.sale,
+    details.rating ? `評価 ${details.rating}` : "",
+    details.reviewCount ? `レビュー ${details.reviewCount}件` : "",
+    details.itemPrice ? `価格 ${details.itemPrice}円` : "",
+  ];
   const info = {
     title: product.name,
-    description: [
-      product.hook,
-      product.price,
-      product.details?.color,
-      product.details?.material,
-      product.details?.description,
-      product.details?.coupon,
-      product.details?.sale,
-    ].filter(Boolean).join("。"),
-    shopName: product.details?.brand || "",
+    description: descriptionParts
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .filter((value, index, values) => values.indexOf(value) === index)
+      .join("。"),
+    shopName: details.shopName || product.shopName || details.brand || "",
+    brand: details.brand || product.shopName || "",
+    category: product.category || details.category || "",
+    genreName: details.genreName || product.category || "",
     variationSeed: ++roomGenerationVariant,
   };
   return cleanRoomMultilineText(window.RoomReviewGenerator.generateFromInfo(info));

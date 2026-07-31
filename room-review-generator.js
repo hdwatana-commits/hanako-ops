@@ -2775,7 +2775,7 @@ function addSpecializedCategoryCopy(copy, category, featureA, featureB) {
       leads: [`${featureA}の表情で、顔まわりをやさしく明るく見せてくれます✨`, `${featureB}なら着膨れを抑えながら、女性らしいシルエットになじみそうです💖`, `シンプルでも素材感に表情があり、1枚で寂しく見えにくいニットです🎀`],
       details: [`首元や袖の形で印象が変わるので、着用写真を見ながら選びたいです🔍`, `スカートにもパンツにも合わせやすく、オンオフの着回しに便利です✨`, `チクチク感や毛玉のできやすさは、素材表示とレビューで確認しておくと安心です◎`],
       sales: [`肌触りがよく着回しやすいニットは、色違いまで欲しくなりそうです💖`, `定番だからこそ、着た時のシルエットがきれいな一枚を選びたいです✨`],
-      clicks: [`肌触りや厚みが分かると、届いてからも安心です🔍`, `首元の抜け感と袖丈で華奢見えしやすいのが魅力です◎`],
+      clicks: [`肌触りや厚みをレビューで確認したいです🔍`, `首元の開きや袖丈を着用写真で見ておきたいです◎`],
       coords: ["きれいめパンツで通勤に", "フレアスカートで女性らしく", "デニムで大人カジュアルに"],
       points: ["顔まわりが明るい", "着膨れしにくい", "肌触りを確認", "オンオフ着回せる", "1枚で着映える"],
     },
@@ -2799,7 +2799,7 @@ function addSpecializedCategoryCopy(copy, category, featureA, featureB) {
       leads: [`${featureA}をさっと巻くだけで、顔まわりが明るく華やぎます✨`, `${featureB}なら持ち歩きやすく、冷房や朝晩の冷えにも頼れそうです💖`, `防寒だけでなくコーデの差し色にもなり、シンプル服が新鮮に見えます🎀`],
       details: [`肩に掛けたり首元へ巻いたり、気温や服に合わせて使い方を変えられます✨`, `肌触りや厚み、実物の色味はレビューで確認しておきたいです🔍`, `バッグに入るサイズなら、旅行や通勤の温度調整にも便利です◎`],
       sales: [`服を買い足さずに季節感と華やかさを足せるのがうれしいです💖`, `冷房対策から旅行まで使える一枚は、バッグに入れておくと頼れそうです✨`],
-      clicks: [`肌触りや厚みが分かると、届いてからも安心です🔍`, `巻いた時のボリュームや色味でコーデが上品にまとまります◎`],
+      clicks: [`肌触りや厚みをレビューで確認したいです🔍`, `巻いた時のボリュームや実物の色味を見ておきたいです◎`],
       coords: ["ワンピの肩掛けに", "通勤バッグへ入れて冷房対策に", "コートの差し色に"],
       points: ["顔まわりが華やぐ", "冷房対策にも", "持ち歩きやすい", "肌触りを確認", "コーデの差し色に"],
     },
@@ -5657,10 +5657,11 @@ function truncateText(text, maxLength) {
   function generateFromInfo(info) {
     const name = cleanText(info && info.title) || "\u5546\u54c1";
     const catchcopy = cleanText(info && info.description);
-    const shopName = cleanText(info && info.shopName);
-    const genreName = inferCategory(`${name} ${catchcopy}`);
+    const shopName = cleanText(info && (info.shopName || info.brand));
+    const suppliedGenre = cleanText(info && (info.genreName || info.category));
+    const genreName = suppliedGenre || inferCategory(`${name} ${catchcopy}`);
     const features = inferFeatures(`${name} ${catchcopy} ${genreName}`);
-    const targetTags = buildTags(name, genreName, features);
+    const targetTags = buildTags(name, genreName, features, catchcopy, shopName);
     return generatePostText({ name, shopName, genreName, features, targetTags, catchcopy, variationSeed: info && info.variationSeed });
   }
 
