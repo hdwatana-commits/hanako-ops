@@ -404,6 +404,9 @@ let socialHanakoTeacherMode = "random";
 let currentSocialHanakoTeacher = hanakoTeacherGuides[0];
 let currentSocialHanakoComment = "";
 let recentSocialHanakoComments = [];
+let currentRoomHanakoTeacher = hanakoTeacherGuides[0];
+let currentRoomHanakoComment = "";
+let recentRoomHanakoComments = [];
 
 queueMicrotask(initialize);
 
@@ -8207,6 +8210,7 @@ async function generateRoomImagePrompt(quiet = false) {
     warnings.push("本人写真の更新待ち");
   }
   const mode = document.querySelector("#roomImageType")?.value || "normal";
+  prepareRoomHanakoTeacher(product, mode);
   try {
     await drawRoomReferenceBoard(product, mode, personPhotoSource || personPhotoUrl);
     boardReady = Boolean(roomReferenceBoardDataUrl);
@@ -8320,6 +8324,137 @@ ${blackRule}
 ・商品ページや参照画像に存在しない色は作らない。候補色が読み取れない場合だけ、PRODUCT欄の商品画像の色をそのまま使う`;
 }
 
+function prepareRoomHanakoTeacher(product, mode = "normal") {
+  if (mode === "collection") {
+    currentRoomHanakoComment = "";
+    return null;
+  }
+  const candidates = hanakoTeacherGuides.filter((guide) => guide.id !== currentRoomHanakoTeacher?.id);
+  currentRoomHanakoTeacher = candidates[Math.floor(Math.random() * candidates.length)] || hanakoTeacherGuides[0];
+  currentRoomHanakoComment = chooseRoomHanakoComment(product, true);
+  return currentRoomHanakoTeacher;
+}
+
+function chooseRoomHanakoComment(product, force = false) {
+  if (!force && currentRoomHanakoComment) return currentRoomHanakoComment;
+  const text = `${product?.name || ""} ${product?.hook || ""} ${product?.category || ""} ${product?.details?.color || ""} ${product?.details?.material || ""}`;
+  const categoryComments = {
+    トップス: [
+      "袖と首元、ここを見れば失敗しにくいわ。",
+      "上半身が主役。下は静かに支えなさい。",
+      "顔まわりが沈む色なら、可愛くても惜しいわ。",
+      "甘いトップスほど、ボトムは大人に戻して。",
+      "丈が長すぎると全部ぼやける。重心を見て。",
+      "一枚で盛れるなら、小物は欲張らないで。",
+    ],
+    ワンピース: [
+      "ワンピは楽だけど、丈と靴で差が出るわ。",
+      "一枚で決まる服ほど、小物は静かに。",
+      "甘さが強い日は、バッグで大人に戻して。",
+      "ウエスト位置を見て。可愛いだけでは惜しいの。",
+      "羽織りまで考えたら、出番がちゃんと増えるわ。",
+      "柄が主役なら、色を増やさないで。",
+    ],
+    アウター: [
+      "羽織りは隠す服じゃない。縦線づくりよ。",
+      "肩の落ち方を見て。高見えはそこに出るわ。",
+      "中まで盛ると重い。主役は一つで十分。",
+      "脱いだ後のコーデまで考えて選びなさい。",
+      "長め丈なら、小物は小さく締めて。",
+      "防寒だけで終わる服は、少しもったいないわ。",
+    ],
+    スカート: [
+      "揺れ感が主役。トップスはすっきりさせて。",
+      "柄スカートなら、上は休ませるのが正解。",
+      "腰位置がぼやけると、全部惜しく見えるわ。",
+      "甘いスカートほど、靴は大人に。",
+      "丈の終わりを見て。靴とのつながりが命よ。",
+      "ふんわりは一か所。盛りすぎると幼くなるわ。",
+    ],
+    パンツ: [
+      "直線が入ると、甘さはちゃんと整うわ。",
+      "落ち感を隠さないで。そこが高見えポイントよ。",
+      "丈が合わないパンツは、どんな可愛さも負けるわ。",
+      "足もとまで色をつなぐと、すらっと見える。",
+      "太めなら上は軽く。上下ゆるゆるは危険よ。",
+      "楽なのにきれい、この両立を見なさい。",
+    ],
+    バッグ: [
+      "バッグは穴埋めじゃない。配色の仕上げよ。",
+      "持ち手まで見て。高見えは細部に出るわ。",
+      "服が甘い日は、バッグで少し締めなさい。",
+      "差し色は一つ。バッグなら失敗しにくいわ。",
+      "大きさで全身の重心が変わるの、忘れないで。",
+      "主役服を邪魔しない形なら勝ちよ。",
+    ],
+    シューズ: [
+      "靴でコーデの性格は決まるわ。",
+      "歩けない可愛さは、結局出番が減るのよ。",
+      "つま先の形を見て。大人っぽさはそこで変わる。",
+      "靴だけ重いと、全身まで沈むわ。",
+      "バッグと色をつなぐと、急にまとまる。",
+      "足もとを甘くするなら、服は少し引いて。",
+    ],
+    アクセサリー: [
+      "きらめきは一か所。全部光らせないで。",
+      "顔まわりへ視線を上げる、小さな仕事役よ。",
+      "主役服の日は、アクセは囁くくらいでいいわ。",
+      "大ぶりを選ぶなら、ほかは静かに。",
+      "金具の色をそろえるだけで高見えするわ。",
+      "足し算じゃなく、視線の案内役として選んで。",
+    ],
+    ルームウェア: [
+      "部屋着こそ清潔感。だらしなさは可愛さの敵よ。",
+      "楽さだけで選ぶと、写真で一気に生活感が出るわ。",
+      "柔らか素材なら、色は整えて上品に。",
+    ],
+    "水着・水際": [
+      "露出よりバランス。羽織りまで考えて正解よ。",
+      "水際は色が命。顔映りまで見て選びなさい。",
+      "リゾート感は盛っていい。でも小物は整理して。",
+    ],
+  };
+  const contextual = [];
+  if (/シアー|透け|レース|チュール/.test(text)) contextual.push("透け感は味方。でもインナー確認を忘れないで。");
+  if (/リボン|フリル|パール/.test(text)) contextual.push("甘い飾りがある日は、ほかを静かに。");
+  if (/黒|ブラック|ネイビー/.test(text)) contextual.push("濃色は重くしない。どこかに抜けを作って。");
+  if (/白|アイボリー|ベージュ|淡色/.test(text)) contextual.push("淡色は輪郭が大事。小物で少し締めて。");
+  if (/セール|OFF|クーポン|割引/.test(text)) contextual.push("安さより出番。三回着る絵が浮かべば買いよ。");
+  if (/洗える|ウォッシャブル|接触冷感|撥水/.test(text)) contextual.push("機能がある服は強い。見た目まで妥協しないで。");
+  const common = [
+    "かわいいは足し算じゃない。見せ場を一つに。",
+    "主役を決めて。全部目立つと全部ぼやけるわ。",
+    "買う前に、手持ち服との相性を一つ想像して。",
+    "写真映えだけでなく、出番の多さまで見なさい。",
+    "高見えは色数とサイズ感。値段より先にそこよ。",
+    "迷ったら、顔映りと丈感。この二つを確認して。",
+  ];
+  const options = [...new Set([...contextual, ...(categoryComments[product?.category] || []), ...common])];
+  const candidates = options.filter((comment) => !recentRoomHanakoComments.includes(comment));
+  currentRoomHanakoComment = candidates[Math.floor(Math.random() * candidates.length)] || options[0];
+  recentRoomHanakoComments = [currentRoomHanakoComment, ...recentRoomHanakoComments].slice(0, 16);
+  return currentRoomHanakoComment;
+}
+
+function buildRoomHanakoTeacherInstruction(mode) {
+  if (mode === "collection") return `【ハナコ先生】
+・コレクション表紙にはハナコ先生のアイコンと吹き出しを入れない`;
+  const teacher = currentRoomHanakoTeacher || hanakoTeacherGuides[0];
+  const comment = currentRoomHanakoComment || "主役を決めて。全部目立つと全部ぼやけるわ。";
+  return `【ハナコ先生の辛口ひとこと・通常投稿だけ必須】
+・参照画像ボードのTEACHER欄にある「${teacher.name}」を、完成画像へ小さな丸い先生アイコンとして入れる
+・先生は商品や本人とは別の解説キャラクター。実写人物をもう一人追加しない
+・先生アイコンは画像の左下または右下の余白へ、画像幅の12〜16%程度の小さめサイズで置く
+・先生の近くに、白地または半透明アイボリー地、くすみピンク線の小さな吹き出しを1個だけ付ける
+・吹き出しの見出しは必ず「ハナコ先生のひとこと」
+・吹き出し本文は必ず「${comment}」をそのまま使う。言い換え、追加、要約、語尾変更をしない
+・本文は商品に合わせた愛のある辛口コメントとして扱う。購入前に見るべきポイントが短く伝わるようにする
+・先生アイコンと吹き出しは、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記に重ねない
+・吹き出しは最大2行、文字は濃いブラウンで読みやすく。文字切れ、造語、意味不明な語、三点リーダー省略は禁止
+・全体の世界観はブランド広告のように上品に保つ。派手な漫画吹き出し、大きな装飾、強い影、原色、巨大な先生は禁止
+・商品を売るためのメインコピーは別にあるので、先生コメントは小さく効く補足に留める`;
+}
+
 function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, mood, location, city }) {
   const details = product.details || {};
   const brand = details.brand || "HANAKO SELECT";
@@ -8335,6 +8470,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
   const cityOption = overseasCities.find(([name]) => name === city) || overseasCities[0];
   const poseHairInstruction = buildRoomPoseHairNaturalInstruction(pose, hairStyle);
   const productColorInstruction = buildRoomProductColorInstruction(product);
+  const roomHanakoTeacherInstruction = buildRoomHanakoTeacherInstruction(mode);
   const signatureLogoInstruction = mode !== "collection"
     ? `【透明ミニロゴ画像・通常投稿だけ必須】
 ・参照画像ボードの「SIGNATURE LOGO」欄にあるロゴ画像を、完成画像の左上へとても小さく上品に入れる
@@ -8419,7 +8555,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・正方形1:1、1536×1536px以上。明るく自然で、商品と着用イメージが一目で分かる1枚にする
 ・本人が商品を自然に身につけ、商品の色、形、丈、柄、素材感をURL画像と一致させる
 ・画像内の文字は、読みやすい場所へ「${oneLiner}」を一字一句そのまま1回だけ入れる。言い換え、追記、造語は禁止
-・一言と海外都市の小さな場所表記以外の見出し、価格、説明、吹き出し、ランキング、数字、ロゴを追加しない
+・メインの手書き一言、海外都市の小さな場所表記、左上の署名ロゴ、ハナコ先生の小さな吹き出し以外の見出し、価格、説明、ランキング、数字、追加ロゴを増やさない
 ・一言は画像幅の28〜38%くらいの存在感で、スマホの一覧でも読める大きさにする
 ・一言は黒または濃いモカブラウンの太め手書きペンで丁寧に書いたような、自然でかわいい日本語にする
 ・手書き文字は崩しすぎず、一文字ずつはっきり読める太さにする。文字を薄く、細く、かすれさせない
@@ -8432,7 +8568,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
   return `画像を生成してください。楽天ROOM投稿用ですが、画像内に「楽天ROOM」「ROOM」の文字は入れません。添付した参照画像ボード1枚を使い、完成画像を1枚だけ作ってください。
 
 【添付した参照画像ボード・最優先】
-・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像
+・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像、TEACHER欄はハナコ先生の基準画像、TEACHER COMMENT欄は画像へ入れる先生のひとこと
 ・本人はPERSON欄と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
 ・髪型は下の「髪型」設定に自然に合わせる。ただし顔、髪色、本人らしい雰囲気は変えない
 ・髪型が「元写真の髪型を保つ」の場合は、長さ、前髪、分け目、髪の流れを変えない
@@ -8440,6 +8576,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・AIで作ったような不自然な髪の固まり、浮いた毛束、手と髪の融合、顔に食い込む髪、左右で長さが破綻した髪を出さない
 ・PERSON欄でマスクを着けている場合は、色、形、柄、ひもを変えず必ず同じマスクを残す
 ・選んだ主役商品はPRODUCT欄の色、輪郭、丈、袖、襟、柄、装飾、バッグの持ち手、靴の形を変えない
+・通常投稿ではTEACHER欄の先生アイコンとTEACHER COMMENT欄のひとことも、完成画像へ小さく反映する
 ・商品ページURLや画像URLへアクセスしない。添付した参照画像ボードだけを画像の基準にする
 ・参照画像ボードが届いていない場合は「参照画像を1枚添付してください」とだけ返す
 
@@ -8463,6 +8600,8 @@ ${locationStampInstruction}
 
 ${signatureLogoInstruction}
 
+${roomHanakoTeacherInstruction}
+
 ${outfitStylingInstruction}
 
 ${formatInstruction}
@@ -8477,6 +8616,8 @@ ${collectionItems}
 ・画像内の文字は薄くせず、背景と十分な明暗差がある濃い色で読みやすい
 ・「STYLE EDIT」の文字を画像内のどこにも入れていない
 ・未確認の人気、効果、使用体験、価格、数字を作っていない
+・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンと、TEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
+・ハナコ先生と吹き出しが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
 ・外周の白い安全余白や白い額縁は不要。写真は端まで広げてよい
 ・ただし統一感のため、画像の最外周に薄ピンクの上品なラインフレームを必ず入れる
 ・ラインフレームは2〜3px相当の主線＋内側に1px相当のごく淡い補助線で、前より少しだけ目立つ程度にする。低彩度の薄ピンクを使い、白枠、太枠、強いピンク、派手な角装飾は禁止
@@ -8544,6 +8685,7 @@ async function drawRoomReferenceBoard(product, mode, selectedPersonSource = "") 
   }
   if (mode !== "collection") {
     await drawRoomSignatureLogoReference(ctx);
+    await drawRoomHanakoTeacherReference(ctx, product);
   }
   ctx.fillStyle = "#6d5b62";
   ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
@@ -8552,6 +8694,53 @@ async function drawRoomReferenceBoard(product, mode, selectedPersonSource = "") 
     : "主役商品は固定 / 他の服や小物は統一感ある全身コーデへ着せ替えOK", 566, 952);
   roomReferenceBoardDataUrl = canvas.toDataURL("image/jpeg", 0.92);
   return roomReferenceBoardDataUrl;
+}
+
+async function drawRoomHanakoTeacherReference(ctx, product) {
+  if (!currentRoomHanakoTeacher) prepareRoomHanakoTeacher(product, "normal");
+  const teacher = currentRoomHanakoTeacher || hanakoTeacherGuides[0];
+  const comment = currentRoomHanakoComment || chooseRoomHanakoComment(product, true);
+  const avatar = await loadImage(teacher.avatar).catch(() => null);
+  const avatarX = 1218;
+  const avatarY = 834;
+  const avatarSize = 96;
+  const bubbleX = 842;
+  const bubbleY = 842;
+  const bubbleWidth = 350;
+  const bubbleHeight = 82;
+  ctx.save();
+  ctx.fillStyle = "#6b584b";
+  ctx.font = "700 16px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("TEACHER / 小さく余白へ", bubbleX, bubbleY - 12);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.86)";
+  roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 18);
+  ctx.fill();
+  ctx.strokeStyle = "#e1b6c7";
+  ctx.lineWidth = 2;
+  roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 18);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(bubbleX + bubbleWidth, bubbleY + 42);
+  ctx.lineTo(bubbleX + bubbleWidth + 28, bubbleY + 54);
+  ctx.lineTo(bubbleX + bubbleWidth, bubbleY + 66);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.86)";
+  ctx.fill();
+  ctx.strokeStyle = "#e1b6c7";
+  ctx.stroke();
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "800 17px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("TEACHER COMMENT", bubbleX + 18, bubbleY + 25);
+  ctx.fillStyle = "#3d3035";
+  ctx.font = "800 18px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, `「${comment}」`, bubbleX + 18, bubbleY + 52, bubbleWidth - 36, 22, 2);
+  ctx.fillStyle = "#f4cad7";
+  ctx.beginPath();
+  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 5, 0, Math.PI * 2);
+  ctx.fill();
+  if (avatar) drawCoverImage(ctx, avatar, avatarX, avatarY, avatarSize, avatarSize, avatarSize / 2);
+  else drawPlaceholder(ctx, "先生", avatarX, avatarY, avatarSize, avatarSize);
+  ctx.restore();
 }
 
 async function drawRoomSignatureLogoReference(ctx) {
