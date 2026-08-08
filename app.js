@@ -8948,10 +8948,48 @@ function buildRoomEditorialSellingInstruction(product, mode) {
 ・保存したくなる1枚にするため、商品説明ではなく「この商品で何が解決するか」が直感的に伝わるようにする`;
 }
 
+function buildRoomKawaiiPoint(product) {
+  const text = `${product?.name || ""} ${product?.category || ""} ${product?.hook || ""} ${product?.details?.brand || ""} ${product?.details?.material || ""} ${product?.details?.color || ""}`;
+  let score = 78 + (hashText(text) % 9);
+  const bonuses = [
+    [/リボン|フリル|レース|パール|ビジュー|花柄|刺繍|チュール|シフォン/, 6],
+    [/サテン|光沢|シアー|透け|ラメ|キラ|ふわふわ|もちもち/, 5],
+    [/ピンク|ローズ|ラベンダー|アイボリー|ホワイト|ベージュ|ミント|ブルー/, 4],
+    [/高見え|きれいめ|大人可愛い|ガーリー|フェミニン|上品/, 5],
+    [/ワンピース|スカート|ブラウス|カーディガン|バッグ|アクセサリー|浴衣/, 3],
+    [/通勤|デート|旅行|カフェ|お呼ばれ|フォーマル/, 2],
+    [/SALE|セール|OFF|クーポン|値下げ|限定/i, 1],
+  ];
+  bonuses.forEach(([pattern, value]) => {
+    if (pattern.test(text)) score += value;
+  });
+  if (/ブラック|黒|ネイビー|チャコール/.test(text)) score -= 2;
+  score = Math.max(78, Math.min(99, score));
+  const label = score >= 94 ? "ときめき強め" : score >= 89 ? "写真映え" : score >= 84 ? "毎日可愛い" : "さりげなく可愛い";
+  return { score, label };
+}
+
+function buildRoomKawaiiPointInstruction(kawaiiPoint, mode, location) {
+  if (mode === "collection") return `【可愛さポイント】
+・コレクション表紙には可愛さポイントを入れない`;
+  const position = location === "overseas"
+    ? "右下のロケーション表記のすぐ上"
+    : "右下の安全な余白";
+  return `【可愛さポイント・通常投稿だけ必須】
+・画像の${position}へ、商品の可愛さを100点満点で小さく表示する
+・表示文は必ず「可愛さポイント ${kawaiiPoint.score}/100」。補足を入れる場合だけ小さく「${kawaiiPoint.label}」を添える
+・これは人気、売上、レビュー、ランキングではなく、ファッションハナコの主観的な可愛さ自己判定として扱う。未確認の実績数字に見せない
+・デザインは主張しない。薄いピンクベージュの細線、ほぼ透明の小さな紙ラベル、濃すぎないモカブラウン文字で、ブランド広告の端にある小さな編集メモのようにする
+・サイズはロケーション表記より少しだけ大きい程度。メイン手書き一言、商品、本人、ハナコ先生、EDITOR'S NOTEより目立たせない
+・右下でロケーション表記と縦に整列させ、可愛さポイントを上、ロケーション表記を下にする。重ねたり、中央へ移動したり、大きなスコアカードにしない
+・ハートや小さなきらめきは1個まで。ゲージ、メーター、ランキング風、価格札風、レビュー評価風、派手な星評価は禁止`;
+}
+
 function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, mood, location, city }) {
   const details = product.details || {};
   const brand = details.brand || "HANAKO SELECT";
   const oneLiner = buildRoomImageOneLiner(product);
+  const kawaiiPoint = buildRoomKawaiiPoint(product);
   const collectionCopy = buildRoomCollectionCoverCopy(product, brand, oneLiner);
   const sameBrandProducts = state.products
     .filter((item) => item.id !== product.id && item.image && details.brand && item.details?.brand === details.brand)
@@ -8966,6 +9004,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
   const roomHanakoTeacherInstruction = buildRoomHanakoTeacherInstruction(mode);
   const roomBuyReasonInstruction = buildRoomBuyReasonInstruction(product, mode);
   const roomEditorialSellingInstruction = buildRoomEditorialSellingInstruction(product, mode);
+  const roomKawaiiPointInstruction = buildRoomKawaiiPointInstruction(kawaiiPoint, mode, location);
   const signatureLogoInstruction = mode !== "collection"
     ? `【透明ミニロゴ画像・通常投稿だけ必須】
 ・参照画像ボードの「SIGNATURE LOGO」欄にあるロゴ画像を、完成画像の左上へとても小さく上品に入れる
@@ -9050,7 +9089,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・正方形1:1、1536×1536px以上。明るく自然で、商品と着用イメージが一目で分かる1枚にする
 ・本人が商品を自然に身につけ、商品の色、形、丈、柄、素材感をURL画像と一致させる
 ・画像内の文字は、読みやすい場所へ「${oneLiner}」を一字一句そのまま1回だけ入れる。言い換え、追記、造語は禁止
-・メインの手書き一言、海外都市の小さな場所表記、左上の署名ロゴ、ハナコ先生の小さな吹き出し、EDITOR'S NOTEの小さな買う理由メモ以外の見出し、価格、説明、ランキング、数字、追加ロゴを増やさない
+・メインの手書き一言、海外都市の小さな場所表記、右下上の可愛さポイント、左上の署名ロゴ、ハナコ先生の小さな吹き出し、EDITOR'S NOTEの小さな買う理由メモ以外の見出し、価格、説明、ランキング、数字、追加ロゴを増やさない
 ・一言は画像幅の28〜38%くらいの存在感で、スマホの一覧でも読める大きさにする
 ・一言は黒または濃いモカブラウンの太め手書きペンで丁寧に書いたような、自然でかわいい日本語にする
 ・手書き文字は崩しすぎず、一文字ずつはっきり読める太さにする。文字を薄く、細く、かすれさせない
@@ -9063,7 +9102,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
   return `画像を生成してください。楽天ROOM投稿用ですが、画像内に「楽天ROOM」「ROOM」の文字は入れません。添付した参照画像ボード1枚を使い、完成画像を1枚だけ作ってください。
 
 【添付した参照画像ボード・最優先】
-・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像、TEACHER欄はハナコ先生の基準画像、TEACHER COMMENT欄は画像へ入れる先生のひとこと
+・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像、TEACHER欄はハナコ先生の基準画像、TEACHER COMMENT欄は画像へ入れる先生のひとこと、KAWAII POINT欄は右下ロケーション表記の上へ入れる可愛さポイント
 ・EDITOR'S NOTE欄は通常投稿へ入れる買う理由ミニタグとBefore→After解決メモの完成デザイン見本
 ・本人はPERSON欄と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
 ・髪型は下の「髪型」設定に自然に合わせる。ただし顔、髪色、本人らしい雰囲気は変えない
@@ -9094,6 +9133,8 @@ ${locationInstruction}
 
 ${locationStampInstruction}
 
+${roomKawaiiPointInstruction}
+
 ${signatureLogoInstruction}
 
 ${roomHanakoTeacherInstruction}
@@ -9115,9 +9156,10 @@ ${collectionItems}
 ・日本語に誤字、造語、文字切れがない
 ・画像内の文字は薄くせず、背景と十分な明暗差がある濃い色で読みやすい
 ・「STYLE EDIT」の文字を画像内のどこにも入れていない
-・未確認の人気、効果、使用体験、価格、数字を作っていない
+・未確認の人気、効果、使用体験、価格、数字を作っていない。ただし指定された可愛さポイント「${kawaiiPoint.score}/100」だけは入っている
 ・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンが左下にあり、その上にTEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
 ・通常投稿では、EDITOR'S NOTE欄と同じ買う理由ミニタグ、Before→After解決メモ、枠内ほぼ透明の薄い紙カード、細い罫線が右上に小さく上品に入っている
+・通常投稿では、右下のロケーション表記の上に「可愛さポイント ${kawaiiPoint.score}/100」が小さく上品に入り、主張しすぎていない
 ・ハナコ先生と吹き出しが画面左下にまとまり、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
 ・EDITOR'S NOTEが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
 ・通常投稿では、主役商品が一番目立ち、メイン手書き一言が二番目、EDITOR'S NOTEとハナコ先生は小さな補足になっている
@@ -9192,6 +9234,7 @@ async function drawRoomReferenceBoard(product, mode, selectedPersonSource = "") 
     await drawRoomSignatureLogoReference(ctx);
     await drawRoomHanakoTeacherReference(ctx, product);
     drawRoomBuyReasonKitReference(ctx, product);
+    drawRoomKawaiiPointReference(ctx, product);
   }
   ctx.fillStyle = "#6d5b62";
   ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
@@ -9326,6 +9369,42 @@ function drawRoomBuyReasonKitReference(ctx, product) {
   ctx.fillStyle = "rgba(61, 48, 53, 0.54)";
   ctx.font = "800 12px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText(trimText(kit.after, 7), baX + 236, baY + 16);
+  ctx.restore();
+}
+
+function drawRoomKawaiiPointReference(ctx, product) {
+  const kawaiiPoint = buildRoomKawaiiPoint(product);
+  const x = 1088;
+  const y = 866;
+  const width = 242;
+  const height = 54;
+  ctx.save();
+  ctx.fillStyle = "#6b584b";
+  ctx.font = "700 14px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("KAWAII POINT / 場所表記の上", x, y - 12);
+  ctx.shadowColor = "rgba(89, 52, 61, 0.014)";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 1;
+  ctx.fillStyle = "rgba(255, 248, 250, 0.16)";
+  roundRect(ctx, x, y, width, height, 18);
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = "rgba(224, 174, 191, 0.24)";
+  ctx.lineWidth = 1;
+  roundRect(ctx, x, y, width, height, 18);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(143, 54, 91, 0.62)";
+  ctx.font = "800 14px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("可愛さポイント", x + 16, y + 22);
+  ctx.fillStyle = "rgba(61, 48, 53, 0.72)";
+  ctx.font = "900 22px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(`${kawaiiPoint.score}/100`, x + 142, y + 24);
+  ctx.fillStyle = "rgba(117, 83, 73, 0.52)";
+  ctx.font = "700 13px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(kawaiiPoint.label, x + 18, y + 42);
+  ctx.fillStyle = "rgba(205, 106, 139, 0.34)";
+  ctx.font = "900 15px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("♡", x + width - 26, y + 43);
   ctx.restore();
 }
 
