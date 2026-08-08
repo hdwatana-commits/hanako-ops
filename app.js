@@ -8881,16 +8881,19 @@ function buildRoomBuyReasonInstruction(product, mode) {
 ・コレクション表紙には買う理由ミニタグとBefore→After解決メモを入れない`;
   const kit = buildRoomBuyReasonKit(product);
   return `【買う理由ミニタグ＋Before→After解決・通常投稿だけ必須】
-・参照画像ボードのBUY REASON TAGS欄にある3つのミニタグを、完成画像の余白へ小さく上品に入れる
+・参照画像ボード右上のEDITOR'S NOTE欄を、完成画像の余白へ小さな編集メモとして入れる
+・EDITOR'S NOTE欄のデザインを参考に、薄い紙のような半透明カード、細いピンクベージュ罫線、小さな英字見出し、3つの短いタグ、Before→Afterの1行メモでまとめる
+・タグやBefore→Afterを別々のシールとして散らばらせない。必ず1つの小さな編集メモ群に収める
 ・タグ文言は必ず「${kit.tags.join("」「")}」を使う。別タグ、誇大表現、価格、数字、ランキングは足さない
-・タグは小さな丸角ピル型。低彩度ピンク、アイボリー、モカブラウンで、ブランド広告の編集メモのように控えめにする
-・参照画像ボードのBEFORE → AFTER欄を、完成画像へ小さな課題解決メモとして入れる
+・タグは丸いステッカーではなく、細い下線付きの小さなテキストチップにする。低彩度ピンク、アイボリー、モカブラウンで、ブランド広告の編集メモのように控えめにする
+・参照画像ボードのBEFORE → AFTER行を、完成画像へ小さな課題解決メモとして入れる
 ・文言は必ず「${kit.before} → ${kit.after}」。言い換え、造語、長文化、三点リーダー省略は禁止
 ・Before→Afterは押し売りではなく、買う理由が一瞬で伝わるファッション解決メモとして扱う
-・ミニタグとBefore→Afterは、手書き一言より小さく、ハナコ先生の吹き出しより目立ちすぎない
+・EDITOR'S NOTE全体は、手書き一言より小さく、ハナコ先生の吹き出しより目立ちすぎない
+・カードの背景は白ベタではなく、少し透けるアイボリーか淡いローズグレー。強い影、太枠、蛍光色、バナー風、セール札風は禁止
 ・主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠さない
 ・商品と無関係な効果、体型変化の断定、医療的表現、未確認の使用体験は入れない
-・全体の雰囲気は洗練されたファッション誌の小さな注釈。派手なシール、強い影、原色、巨大ラベルは禁止`;
+・全体の雰囲気は洗練されたファッション誌の小さな注釈。派手なシール、強い影、原色、巨大ラベル、アプリUI風のボタンは禁止`;
 }
 
 function buildRoomEditorialSellingInstruction(product, mode) {
@@ -8909,10 +8912,10 @@ function buildRoomEditorialSellingInstruction(product, mode) {
   };
   return `【売れる雑誌広告レイアウト・通常投稿だけ必須】
 ・完成画像は「商品が欲しくなる1枚のファッション広告」として設計する。情報を足すより、視線の流れをきれいに作る
-・視線の順番は必ず「主役商品 → メイン手書き一言 → 買う理由ミニタグ/Before→After → ハナコ先生 → 小さな署名ロゴ」にする
+・視線の順番は必ず「主役商品 → メイン手書き一言 → EDITOR'S NOTE → ハナコ先生 → 小さな署名ロゴ」にする
 ・主役商品と本人の着用イメージを画像の70%以上の主役にする。文字や装飾を合計20%以内に抑え、残りは余白と空気感に使う
 ・${category}なので、特に「${productFocus[category] || "商品らしい形、色、素材感"}」が伝わる構図にする
-・買う理由ミニタグとBefore→Afterは散らばらせず、ひとつの小さな編集メモ群として近くにまとめる。シールを何枚も貼ったように見せない
+・買う理由ミニタグとBefore→AfterはEDITOR'S NOTEの中にまとめ、散らばらせない。シールを何枚も貼ったように見せない
 ・ハナコ先生のひとことは、商品を買う前に背中を押す小さな専門家コメントとして扱う。メインコピーより大きくしない
 ・署名ロゴは左上の余白へ小さく、ロケーション表記は右下へ小さく。どちらもブランド広告のクレジットのように静かに入れる
 ・背景はブランド広告のような自然光、浅い奥行き、やわらかい影、低彩度の上品な色で整える
@@ -9024,7 +9027,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・正方形1:1、1536×1536px以上。明るく自然で、商品と着用イメージが一目で分かる1枚にする
 ・本人が商品を自然に身につけ、商品の色、形、丈、柄、素材感をURL画像と一致させる
 ・画像内の文字は、読みやすい場所へ「${oneLiner}」を一字一句そのまま1回だけ入れる。言い換え、追記、造語は禁止
-・メインの手書き一言、海外都市の小さな場所表記、左上の署名ロゴ、ハナコ先生の小さな吹き出し、買う理由ミニタグ、Before→After解決メモ以外の見出し、価格、説明、ランキング、数字、追加ロゴを増やさない
+・メインの手書き一言、海外都市の小さな場所表記、左上の署名ロゴ、ハナコ先生の小さな吹き出し、EDITOR'S NOTEの小さな買う理由メモ以外の見出し、価格、説明、ランキング、数字、追加ロゴを増やさない
 ・一言は画像幅の28〜38%くらいの存在感で、スマホの一覧でも読める大きさにする
 ・一言は黒または濃いモカブラウンの太め手書きペンで丁寧に書いたような、自然でかわいい日本語にする
 ・手書き文字は崩しすぎず、一文字ずつはっきり読める太さにする。文字を薄く、細く、かすれさせない
@@ -9038,7 +9041,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 
 【添付した参照画像ボード・最優先】
 ・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像、TEACHER欄はハナコ先生の基準画像、TEACHER COMMENT欄は画像へ入れる先生のひとこと
-・BUY REASON TAGS欄は通常投稿へ入れる買う理由ミニタグ、BEFORE → AFTER欄は通常投稿へ入れる課題解決メモ
+・EDITOR'S NOTE欄は通常投稿へ入れる買う理由ミニタグとBefore→After解決メモの完成デザイン見本
 ・本人はPERSON欄と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
 ・髪型は下の「髪型」設定に自然に合わせる。ただし顔、髪色、本人らしい雰囲気は変えない
 ・髪型が「元写真の髪型を保つ」の場合は、長さ、前髪、分け目、髪の流れを変えない
@@ -9091,10 +9094,10 @@ ${collectionItems}
 ・「STYLE EDIT」の文字を画像内のどこにも入れていない
 ・未確認の人気、効果、使用体験、価格、数字を作っていない
 ・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンと、TEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
-・通常投稿では、BUY REASON TAGS欄と同じ買う理由ミニタグ、BEFORE → AFTER欄と同じ課題解決メモが小さく上品に入っている
+・通常投稿では、EDITOR'S NOTE欄と同じ買う理由ミニタグ、Before→After解決メモ、薄い紙カード、細い罫線が小さく上品に入っている
 ・ハナコ先生と吹き出しが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
-・買う理由ミニタグとBefore→Afterが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
-・通常投稿では、主役商品が一番目立ち、メイン手書き一言が二番目、買う理由ミニタグとBefore→Afterとハナコ先生は小さな補足になっている
+・EDITOR'S NOTEが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
+・通常投稿では、主役商品が一番目立ち、メイン手書き一言が二番目、EDITOR'S NOTEとハナコ先生は小さな補足になっている
 ・全体がセールチラシ、広告バナー、情報過多の解説画像に見えず、ファッション誌・ブランド広告のような余白と統一感がある
 ・買う理由が一瞬で伝わるが、誇大表現、未確認の実績、価格、割引率、ランキング、レビュー数を勝手に入れていない
 ・外周の白い安全余白や白い額縁は不要。写真は端まで広げてよい
@@ -9226,43 +9229,80 @@ async function drawRoomHanakoTeacherReference(ctx, product) {
 function drawRoomBuyReasonKitReference(ctx, product) {
   const kit = buildRoomBuyReasonKit(product);
   ctx.save();
-  const tagX = 820;
-  const tagY = 42;
-  ctx.fillStyle = "#6b584b";
-  ctx.font = "700 15px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("BUY REASON TAGS / 小さく上品に", tagX, tagY);
-  let x = tagX;
-  const y = tagY + 14;
-  kit.tags.forEach((tag) => {
-    const width = Math.min(166, Math.max(96, ctx.measureText(tag).width + 36));
-    ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
-    roundRect(ctx, x, y, width, 34, 17);
-    ctx.fill();
-    ctx.strokeStyle = "#e7b6c7";
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, x, y, width, 34, 17);
-    ctx.stroke();
-    ctx.fillStyle = "#a43d64";
-    ctx.font = "800 17px Yu Gothic UI, Meiryo, sans-serif";
-    ctx.fillText(tag, x + 18, y + 23);
-    x += width + 12;
-  });
-  const baX = 820;
-  const baY = 96;
-  const baW = 510;
-  ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
-  roundRect(ctx, baX, baY, baW, 30, 15);
+  const panelX = 818;
+  const panelY = 32;
+  const panelW = 526;
+  const panelH = 112;
+  ctx.shadowColor = "rgba(89, 52, 61, 0.08)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 7;
+  ctx.fillStyle = "rgba(255, 250, 248, 0.92)";
+  roundRect(ctx, panelX, panelY, panelW, panelH, 22);
   ctx.fill();
-  ctx.strokeStyle = "#ead0da";
-  ctx.lineWidth = 1.2;
-  roundRect(ctx, baX, baY, baW, 30, 15);
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = "#e8c1cc";
+  ctx.lineWidth = 1.4;
+  roundRect(ctx, panelX, panelY, panelW, panelH, 22);
   ctx.stroke();
-  ctx.fillStyle = "#8b6973";
-  ctx.font = "800 14px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("BEFORE → AFTER", baX + 18, baY + 20);
+  ctx.strokeStyle = "rgba(216, 156, 176, 0.45)";
+  ctx.lineWidth = 0.8;
+  roundRect(ctx, panelX + 8, panelY + 8, panelW - 16, panelH - 16, 16);
+  ctx.stroke();
+
+  ctx.fillStyle = "#8b6758";
+  ctx.font = "800 13px Georgia, 'Times New Roman', serif";
+  ctx.fillText("EDITOR'S NOTE", panelX + 24, panelY + 30);
+  ctx.strokeStyle = "rgba(139, 103, 88, 0.34)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(panelX + 132, panelY + 25);
+  ctx.lineTo(panelX + panelW - 24, panelY + 25);
+  ctx.stroke();
+
+  let x = panelX + 24;
+  const tagY = panelY + 48;
+  kit.tags.forEach((tag, index) => {
+    ctx.font = "800 17px Yu Gothic UI, Meiryo, sans-serif";
+    const width = Math.min(142, Math.max(86, ctx.measureText(tag).width + 24));
+    ctx.fillStyle = index === 0 ? "#a43d64" : "#6f575d";
+    ctx.fillText(tag, x + 8, tagY);
+    ctx.strokeStyle = index === 0 ? "#d989a4" : "rgba(199, 154, 167, 0.62)";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(x + 6, tagY + 8);
+    ctx.lineTo(x + width - 10, tagY + 8);
+    ctx.stroke();
+    x += width + 18;
+  });
+
+  const baX = panelX + 24;
+  const baY = panelY + 74;
+  const baW = panelW - 48;
+  ctx.fillStyle = "rgba(250, 239, 242, 0.72)";
+  roundRect(ctx, baX, baY, baW, 24, 12);
+  ctx.fill();
+  ctx.fillStyle = "#94727a";
+  ctx.font = "800 11px Georgia, 'Times New Roman', serif";
+  ctx.fillText("BEFORE", baX + 16, baY + 16);
   ctx.fillStyle = "#3d3035";
-  ctx.font = "800 18px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText(`${kit.before} → ${kit.after}`, baX + 170, baY + 21);
+  ctx.font = "800 16px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(kit.before, baX + 82, baY + 17);
+  ctx.strokeStyle = "#d989a4";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(baX + 230, baY + 12);
+  ctx.lineTo(baX + 270, baY + 12);
+  ctx.lineTo(baX + 262, baY + 7);
+  ctx.moveTo(baX + 270, baY + 12);
+  ctx.lineTo(baX + 262, baY + 17);
+  ctx.stroke();
+  ctx.fillStyle = "#94727a";
+  ctx.font = "800 11px Georgia, 'Times New Roman', serif";
+  ctx.fillText("AFTER", baX + 292, baY + 16);
+  ctx.fillStyle = "#3d3035";
+  ctx.font = "800 16px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(kit.after, baX + 346, baY + 17);
   ctx.restore();
 }
 
