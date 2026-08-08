@@ -5878,28 +5878,28 @@ function drawCoordinateStyleKitReference(ctx, coordinate, analysis) {
   const x = 310;
   const y = 254;
   ctx.save();
-  ctx.shadowColor = "rgba(89, 52, 61, 0.035)";
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetY = 4;
-  ctx.fillStyle = "rgba(255, 250, 248, 0.48)";
+  ctx.shadowColor = "rgba(89, 52, 61, 0.018)";
+  ctx.shadowBlur = 7;
+  ctx.shadowOffsetY = 2;
+  ctx.fillStyle = "rgba(255, 250, 248, 0.16)";
   roundRect(ctx, x, y, 238, 54, 18);
   ctx.fill();
   ctx.shadowColor = "transparent";
-  ctx.strokeStyle = "rgba(205, 106, 139, 0.22)";
+  ctx.strokeStyle = "rgba(205, 106, 139, 0.16)";
   ctx.lineWidth = 1.1;
   roundRect(ctx, x, y, 238, 54, 18);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(205, 106, 139, 0.32)";
-  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = "rgba(205, 106, 139, 0.2)";
+  ctx.lineWidth = 1.8;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(x + 16, y + 42);
   ctx.quadraticCurveTo(x + 92, y + 49, x + 178, y + 43);
   ctx.stroke();
-  ctx.fillStyle = "rgba(132, 89, 95, 0.72)";
+  ctx.fillStyle = "rgba(132, 89, 95, 0.58)";
   ctx.font = "700 12px Georgia, 'Times New Roman', serif";
   ctx.fillText("solution note", x + 16, y + 20);
-  ctx.fillStyle = "rgba(47, 41, 44, 0.78)";
+  ctx.fillStyle = "rgba(47, 41, 44, 0.7)";
   ctx.font = "800 19px 'Yu Gothic UI', Meiryo, sans-serif";
   ctx.fillText(trimText(kit.badge, 12), x + 16, y + 40);
 
@@ -5927,28 +5927,28 @@ function drawCoordinateStyleKitReference(ctx, coordinate, analysis) {
   const ry = 318;
   const rw = 650;
   const rh = 42;
-  ctx.shadowColor = "rgba(89, 52, 61, 0.03)";
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetY = 3;
-  ctx.fillStyle = "rgba(255, 250, 248, 0.46)";
+  ctx.shadowColor = "rgba(89, 52, 61, 0.016)";
+  ctx.shadowBlur = 7;
+  ctx.shadowOffsetY = 2;
+  ctx.fillStyle = "rgba(255, 250, 248, 0.14)";
   roundRect(ctx, rx, ry, rw, rh, 19);
   ctx.fill();
   ctx.shadowColor = "transparent";
-  ctx.strokeStyle = "rgba(205, 106, 139, 0.2)";
+  ctx.strokeStyle = "rgba(205, 106, 139, 0.14)";
   ctx.lineWidth = 1;
   roundRect(ctx, rx, ry, rw, rh, 18);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(205, 106, 139, 0.28)";
-  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = "rgba(205, 106, 139, 0.18)";
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
   ctx.moveTo(rx + 18, ry + 28);
   ctx.lineTo(rx + 146, ry + 24);
   ctx.stroke();
-  ctx.fillStyle = "rgba(138, 98, 89, 0.72)";
+  ctx.fillStyle = "rgba(138, 98, 89, 0.56)";
   ctx.font = "800 13px Georgia, 'Times New Roman', serif";
   ctx.fillText("STYLE RECIPE", rx + 18, ry + 20);
   ctx.font = "800 17px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillStyle = "rgba(47, 41, 44, 0.76)";
+  ctx.fillStyle = "rgba(47, 41, 44, 0.68)";
   const recipeText = kit.recipe.map((item) => `${item.label} ${item.value}%`).join(" / ");
   ctx.fillText(recipeText, rx + 164, ry + 25);
   ctx.restore();
@@ -6884,12 +6884,12 @@ function buildOutfitImagePrompt(coordinate) {
 ・商品画像URLはアクセスしない。添付画像を基準に作る
 ・添付画像にない商品や人物を、似た画像や想像で補わない`
     : `【添付画像の役割・最優先】
-・添付は「コーデ参照画像ボード」1枚だけ。PERSON欄は本人、PRODUCT欄は選択商品、TEACHER欄はハナコ先生の基準画像、SIGNATURE LOGO欄は左上へ入れる署名ロゴ、LOCATION欄は右下へ入れる場所表記、3 COLOR PALETTE欄は3色パレット、SOLUTION BADGE欄は半透明の手書きお悩み解決メモ、STYLE RECIPE欄は半透明の手書き配合メモ
+・添付は「コーデ参照画像ボード」1枚だけ。PERSON欄は本人、PRODUCT欄は選択商品、TEACHER欄はハナコ先生の基準画像、SIGNATURE LOGO欄は左上へ入れる署名ロゴ、LOCATION欄は右下へ入れる場所表記、3 COLOR PALETTE欄は3色パレット、SOLUTION BADGE欄はほとんど透明な手書きお悩み解決メモ、STYLE RECIPE欄はほとんど透明な手書き配合メモ
 ・本人の顔、髪、体型、マスクはPERSON欄を最優先する
 ・服と小物は各PRODUCT欄、先生アイコンはTEACHER欄を最優先する
 ・SIGNATURE LOGO欄のロゴは、透明背景の小さな署名素材として左上へ控えめに入れる
 ・LOCATION欄の表記は、完成画像の右下へ小さく上品に入れる
-・3 COLOR PALETTE欄、SOLUTION BADGE欄、STYLE RECIPE欄は、完成画像の余白へ小さく上品に入れる。特にSOLUTION BADGEとSTYLE RECIPEは半透明で、写真になじむ手書きメモとして控えめに配置する
+・3 COLOR PALETTE欄、SOLUTION BADGE欄、STYLE RECIPE欄は、完成画像の余白へ小さく上品に入れる。特にSOLUTION BADGEとSTYLE RECIPEは枠の中をほとんど透明にし、写真になじむ手書きメモとして控えめに配置する
 ・画像内の吹き出し文、手書きポイント、見出し、配置も同じ参照ボードから読み取る
 ・商品画像URLと先生画像URLにはアクセスしない。URLより添付した参照画像を必ず優先する
 ・参照画像ボードが届いていない場合は画像を生成せず、「参照画像を1枚添付してください」とだけ返す`;
@@ -7146,8 +7146,8 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナ
 ・画像内に楽天ROOMを示す文字が入っていない
 ・右下に半透明で小さなファッションランク、レーダーチャート、ファッションパワーのスコアカードがあり、コーデや商品を隠していない
 ・参照画像ボードの3 COLOR PALETTEと同じ3色カラーパレットが、小さく上品に入っている
-・参照画像ボードのSOLUTION BADGEと同じお悩み解決メモが、半透明の手書き風で小さく上品に入っている
-・参照画像ボードのSTYLE RECIPEと同じ配合メモが、半透明の手書き風で小さく上品に入っている
+・参照画像ボードのSOLUTION BADGEと同じお悩み解決メモが、枠内ほぼ透明の手書き風で小さく上品に入っている
+・参照画像ボードのSTYLE RECIPEと同じ配合メモが、枠内ほぼ透明の手書き風で小さく上品に入っている
 ・左上にSIGNATURE LOGO欄と同じ小さな透明署名ロゴがあり、主張しすぎていない
 ・右下または右下スコアカードの少し上にLOCATION欄と同じロケーション表記があり、「mood」という文字を含んでいない
 ・レーダーチャートの周囲に意味のない単独数字がなく、軸名と形だけで特徴が伝わる
@@ -7196,14 +7196,14 @@ function buildCoordinateStyleKitPrompt(styleKit) {
 ・パレットは直径の小さな丸スウォッチ3つで、画像の上部または右上の余白へ控えめに配置する
 ・パレットは服の色選びの補助として見せる。主役商品、顔、ハナコ先生、吹き出し、ファッションスコアに重ねない
 ・お悩み解決バッジの文言は必ず「${styleKit.badge}」。完成画像ではバッジというより、半透明の薄い紙に手書きした小さな「solution note」として入れる
-・お悩み解決バッジは透明度35〜55%くらいのアイボリーまたは淡いローズグレー地に、くすみピンクの細い手書き下線を添える。写真になじませ、遠目では主張しすぎない
+・お悩み解決バッジは枠の中をほとんど透明にする。アイボリーまたは淡いローズグレー地は透明度10〜22%くらい、くすみピンクの細い手書き下線も薄く添える。文字だけ読める程度にして、遠目では写真になじませる
 ・バッジの補足は必要な場合だけ「${styleKit.subBadge}」を小さく添える。長文にしない。太いシール、原色ラベル、大きなピル型、広告バナー風は禁止
 ・STYLE RECIPEは必ず見出し「STYLE RECIPE」と、配合「${recipeText}」を小さく入れる
-・STYLE RECIPEはファッション誌の余白に手書きで添えた編集メモのようにする。半透明の白またはアイボリー地、細い罫線、くすみピンクの小さな手書き線、濃すぎないモカブラウン文字で上品に見せる
-・STYLE RECIPEは「なぜこのコーデが可愛いのか」を一瞬で伝える補助。スコアカードより小さく、商品や人物より目立たせない。写真の上に置いても空気になじむ薄さにする
+・STYLE RECIPEはファッション誌の余白に手書きで添えた編集メモのようにする。枠の中は透明度10〜20%くらいのほぼ透明な白またはアイボリー地、細い罫線、薄いくすみピンクの小さな手書き線、濃すぎないモカブラウン文字で上品に見せる
+・STYLE RECIPEは「なぜこのコーデが可愛いのか」を一瞬で伝える補助。スコアカードより小さく、商品や人物より目立たせない。写真の上に置いても空気のようになじむ薄さにする
 ・STYLE RECIPEの数値、語句、順番は変えない。別の英語、謎の数字、意味のない略語を追加しない
 ・デザインは淡いピンク、アイボリー、モカブラウンを中心に、ブランド広告のように上品で控えめにする
-・パレット、バッジ、STYLE RECIPEは目立ちすぎず、画像全体の高級感と統一感を壊さない。子どもっぽい原色、太い縁取り、派手な影、巨大なステッカー、不透明な白い箱、アプリUI風のボタンは禁止
+・パレット、バッジ、STYLE RECIPEは目立ちすぎず、画像全体の高級感と統一感を壊さない。特にバッジとSTYLE RECIPEの背景カードはほとんど透明でよい。子どもっぽい原色、太い縁取り、派手な影、巨大なステッカー、不透明な白い箱、アプリUI風のボタンは禁止
 ・画像ボードの見た目を参考にするが、完成画像ではより洗練された小さな手書き編集パーツとして整える
 ・カラーパレット、解決バッジ、STYLE RECIPE、ファッションスコア、ロケーション表記、署名ロゴの6要素は互いに重ねず、余白の中で整理して配置する`;
 }
