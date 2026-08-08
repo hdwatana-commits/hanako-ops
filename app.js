@@ -2917,6 +2917,7 @@ function bindActions() {
     const product = state.products.find((item) => item.id === selectedProduct.value);
     applyRecommendedSnsDefaults(product);
   });
+  bindSocialDirectProductImport();
 
   document.querySelector("#optimizationSelect").addEventListener("change", renderLearningHint);
 
@@ -4284,6 +4285,34 @@ function bindCoordinateActions() {
   document.querySelector("#coordGeneratedImage")?.addEventListener("change", previewGeneratedCoordinateImage);
   bindHanakoTeacherSelector();
   updateHanakoTeacherPreview();
+}
+
+function bindSocialDirectProductImport() {
+  const urlInput = document.querySelector("#socialProductUrl");
+  const importButton = document.querySelector("#socialImportAndGenerate");
+  const clearButton = document.querySelector("#socialClearProductUrl");
+  if (!urlInput || urlInput.dataset.bound) return;
+  urlInput.dataset.bound = "true";
+  const importSocialProduct = () => importProductForSocial(urlInput, importButton);
+  importButton?.addEventListener("click", importSocialProduct);
+  urlInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      importSocialProduct();
+    }
+  });
+  urlInput.addEventListener("paste", () => {
+    window.setTimeout(() => {
+      if (/rakuten|room\.rakuten/i.test(urlInput.value)) {
+        showSocialImportStatus("URLを確認しました。「SNS投稿を作る」を押すと商品を読み込みます。");
+      }
+    }, 0);
+  });
+  clearButton?.addEventListener("click", () => {
+    urlInput.value = "";
+    showSocialImportStatus("URLをクリアしました。次の商品URLを貼り付けられます。");
+    urlInput.focus();
+  });
 }
 
 function isHanakoTeacherPattern(pattern = document.querySelector("#coordImagePattern")?.value) {
@@ -7892,6 +7921,90 @@ async function importProductForRoom(urlInput, button) {
   }
 }
 
+async function importProductForSocial(urlInput, button) {
+  const url = normalizeRakutenImportUrl(urlInput?.value.trim());
+  if (!url) {
+    showSocialImportStatus("楽天ROOMまたは楽天市場の商品URLを入力してください", true);
+    urlInput?.focus();
+    return;
+  }
+  if (urlInput && urlInput.value.trim() !== url) urlInput.value = url;
+  if (!cloudSync.configured) return showSocialImportStatus("先にクラウド同期を設定してください", true);
+  if (!cloudSync.signedIn) return showSocialImportStatus("画面上部の「同期」からログインしてください", true);
+
+  const originalLabel = button?.textContent || "SNS投稿を作る";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "読込中...";
+  }
+  showSocialImportStatus("商品情報を読み込んでいます...");
+  try {
+    let usedFallback = false;
+    let imported;
+    try {
+      imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
+    } catch (error) {
+      if (!isRakutenQuotaError(error) && !isRakutenImportNetworkError(error)) throw error;
+      usedFallback = true;
+      imported = buildRoomImportFallbackProduct(url, error);
+      showSocialImportStatus(isRakutenQuotaError(error)
+        ? "楽天APIの取得上限に当たったため、URLから仮登録してSNS投稿を作ります..."
+        : "商品取得サーバーに接続できないため、URLから仮登録してSNS投稿を作ります...");
+    }
+    if (isDefiniteTravelProduct(imported, url)) throw new Error("SNS投稿では楽天市場のファッション商品URLを入力してください");
+    let product = findExistingProductForRoomImport(imported, url);
+    if (product) {
+      Object.assign(product, {
+        name: imported.name || product.name,
+        url,
+        image: imported.image || product.image,
+        details: { ...(product.details || {}), ...(imported.details || {}) },
+        category: imported.category || product.category,
+        price: imported.price || product.price,
+        hook: imported.hook || product.hook,
+        socialExplicitOverride: true,
+      });
+      product = enrichProductForOps(product);
+      const index = state.products.findIndex((item) => item.id === product.id);
+      if (index >= 0) state.products[index] = product;
+    } else {
+      product = enrichProductForOps({
+        id: createId(),
+        name: imported.name || "楽天の商品",
+        url,
+        image: imported.image || "",
+        details: imported.details || {},
+        category: imported.category || "その他",
+        price: imported.price || "",
+        hook: imported.hook || "SNSで紹介しやすい、気になる楽天アイテム",
+        socialExplicitOverride: true,
+      });
+      state.products.unshift(product);
+    }
+    saveState();
+    renderProducts();
+    renderProductOptions();
+    renderRoomProductOptions();
+    renderCoordinateOptions();
+    renderAngleOptions();
+    selectedProduct.value = product.id;
+    applyRecommendedSnsDefaults(product, false);
+    renderSocialGeminiProductPreview();
+    generateEditorialPost(false);
+    showSocialImportStatus(usedFallback
+      ? `取得上限のため仮情報で「${product.name}」のSNS投稿と画像プロンプトを作りました。あとで再読込すると商品名や画像を更新できます。`
+      : `「${product.name}」のSNS投稿と画像プロンプトを作りました`);
+    showToast(usedFallback ? "仮情報でSNS投稿を作りました" : "URLからSNS投稿を作りました");
+  } catch (error) {
+    showSocialImportStatus(error.message || "商品情報を読み込めませんでした", true);
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  }
+}
+
 function isRakutenQuotaError(error) {
   const message = String(error?.message || error || "").toLowerCase();
   return /quota|exceeded|too many|rate.?limit|上限|制限/.test(message);
@@ -7959,6 +8072,13 @@ function findExistingProductForRoomImport(imported, originalUrl) {
 
 function showRoomImportStatus(message, isError = false) {
   const status = document.querySelector("#roomImportStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function showSocialImportStatus(message, isError = false) {
+  const status = document.querySelector("#socialImportStatus");
   if (!status) return;
   status.textContent = message;
   status.classList.toggle("error", isError);

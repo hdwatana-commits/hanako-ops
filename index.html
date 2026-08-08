@@ -752,6 +752,17 @@
                 <h3>素材</h3>
               </div>
               <label class="field-label">商品</label>
+              <div class="coord-url-import social-url-import">
+                <label class="field-label" for="socialProductUrl">楽天ROOM / 楽天市場の商品URLから直接作成</label>
+                <div class="coord-url-row">
+                  <input id="socialProductUrl" type="url" inputmode="url" placeholder="ROOMまたは item.rakuten.co.jp のURL">
+                  <div class="room-url-actions">
+                    <button class="primary" id="socialImportAndGenerate" type="button">SNS投稿を作る</button>
+                    <button id="socialClearProductUrl" type="button" aria-label="入力した商品URLをクリア">× クリア</button>
+                  </div>
+                </div>
+                <p class="coord-import-status" id="socialImportStatus">URLを貼るだけで、商品を読み込みSNS投稿文と画像プロンプトを作ります。</p>
+              </div>
               <select id="selectedProduct"></select>
               <label class="field-label">投稿先</label>
               <div class="segmented" id="platformTabs">
@@ -1739,7 +1750,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=236"></script>
-    <script src="app.js?v=236"></script>
+    <script src="room-review-generator.js?v=237"></script>
+    <script src="app.js?v=237"></script>
   </body>
 </html>
