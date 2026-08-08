@@ -8902,8 +8902,9 @@ function buildRoomBuyReasonInstruction(product, mode) {
 ・コレクション表紙には買う理由ミニタグとBefore→After解決メモを入れない`;
   const kit = buildRoomBuyReasonKit(product);
   return `【買う理由ミニタグ＋Before→After解決・通常投稿だけ必須】
-・参照画像ボード右上のEDITOR'S NOTE欄を、完成画像の余白へ小さな編集メモとして入れる
+・参照画像ボード左下のEDITOR'S NOTE欄を、完成画像では「ハナコ先生のひとこと」の下側、画面左下いっぱい寄りの余白へ小さな編集メモとして入れる
 ・EDITOR'S NOTE欄のデザインを参考に、写真になじむ半透明の薄い紙カード、細いピンクベージュ罫線、小さな英字見出し、3つの短いタグ、Before→Afterの1行メモでまとめる
+・配置は左下を基本にする。ハナコ先生の吹き出しやアイコンのすぐ下、または左下の安全余白に沿わせ、右上や中央へ置かない
 ・タグやBefore→Afterを別々のシールとして散らばらせない。必ず1つの小さな編集メモ群に収める
 ・タグ文言は必ず「${kit.tags.join("」「")}」を使う。別タグ、誇大表現、価格、数字、ランキングは足さない
 ・タグは丸いステッカーではなく、細い下線付きの小さなテキストチップにする。低彩度ピンク、アイボリー、モカブラウンで、ブランド広告の編集メモのように控えめにする
@@ -8911,9 +8912,9 @@ function buildRoomBuyReasonInstruction(product, mode) {
 ・文言は必ず「${kit.before} → ${kit.after}」。言い換え、造語、長文化、三点リーダー省略は禁止
 ・Before→Afterは押し売りではなく、買う理由が一瞬で伝わるファッション解決メモとして扱う
 ・EDITOR'S NOTE全体は、手書き一言より小さく、ハナコ先生の吹き出しよりさらに控えめにする
-・カードの背景は白ベタではなく、写真の色が透けるアイボリーまたは淡いローズグレー。透明度は35〜55%くらいで、近くで見ると読めるが遠目では写真になじむ程度にする
+・カードの背景は白ベタではなく、写真の色が透けるアイボリーまたは淡いローズグレー。透明度は25〜40%くらいで、近くで見ると読めるが遠目では写真になじむ程度にする
 ・文字は読める濃さを保つが、太字の広告見出しにしない。強い影、太枠、蛍光色、バナー風、セール札風、白い大きな箱は禁止
-・主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠さない
+・主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生の顔、ハナコ先生の吹き出し本文を隠さない。左下に余白がない場合だけ、左下から少し上へ逃がす
 ・商品と無関係な効果、体型変化の断定、医療的表現、未確認の使用体験は入れない
 ・全体の雰囲気は洗練されたファッション誌の小さな注釈。主張しない半透明の編集メモにする。派手なシール、強い影、原色、巨大ラベル、アプリUI風のボタンは禁止`;
 }
@@ -8934,7 +8935,7 @@ function buildRoomEditorialSellingInstruction(product, mode) {
   };
   return `【売れる雑誌広告レイアウト・通常投稿だけ必須】
 ・完成画像は「商品が欲しくなる1枚のファッション広告」として設計する。情報を足すより、視線の流れをきれいに作る
-・視線の順番は必ず「主役商品 → メイン手書き一言 → EDITOR'S NOTE → ハナコ先生 → 小さな署名ロゴ」にする
+・視線の順番は必ず「主役商品 → メイン手書き一言 → ハナコ先生のひとこと → その下のEDITOR'S NOTE → 小さな署名ロゴ」にする
 ・主役商品と本人の着用イメージを画像の70%以上の主役にする。文字や装飾を合計20%以内に抑え、残りは余白と空気感に使う
 ・${category}なので、特に「${productFocus[category] || "商品らしい形、色、素材感"}」が伝わる構図にする
 ・買う理由ミニタグとBefore→AfterはEDITOR'S NOTEの中にまとめ、散らばらせない。シールを何枚も貼ったように見せない
@@ -9116,7 +9117,7 @@ ${collectionItems}
 ・「STYLE EDIT」の文字を画像内のどこにも入れていない
 ・未確認の人気、効果、使用体験、価格、数字を作っていない
 ・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンと、TEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
-・通常投稿では、EDITOR'S NOTE欄と同じ買う理由ミニタグ、Before→After解決メモ、半透明の薄い紙カード、細い罫線が小さく上品に入っている
+・通常投稿では、EDITOR'S NOTE欄と同じ買う理由ミニタグ、Before→After解決メモ、より半透明の薄い紙カード、細い罫線が左下寄りに小さく上品に入っている
 ・ハナコ先生と吹き出しが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
 ・EDITOR'S NOTEが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
 ・通常投稿では、主役商品が一番目立ち、メイン手書き一言が二番目、EDITOR'S NOTEとハナコ先生は小さな補足になっている
@@ -9251,30 +9252,30 @@ async function drawRoomHanakoTeacherReference(ctx, product) {
 function drawRoomBuyReasonKitReference(ctx, product) {
   const kit = buildRoomBuyReasonKit(product);
   ctx.save();
-  const panelX = 818;
-  const panelY = 32;
-  const panelW = 526;
+  const panelX = 70;
+  const panelY = 776;
+  const panelW = 430;
   const panelH = 112;
-  ctx.shadowColor = "rgba(89, 52, 61, 0.035)";
-  ctx.shadowBlur = 12;
-  ctx.shadowOffsetY = 4;
-  ctx.fillStyle = "rgba(255, 250, 248, 0.54)";
+  ctx.shadowColor = "rgba(89, 52, 61, 0.02)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 2;
+  ctx.fillStyle = "rgba(255, 250, 248, 0.32)";
   roundRect(ctx, panelX, panelY, panelW, panelH, 22);
   ctx.fill();
   ctx.shadowColor = "transparent";
-  ctx.strokeStyle = "rgba(224, 174, 191, 0.58)";
+  ctx.strokeStyle = "rgba(224, 174, 191, 0.34)";
   ctx.lineWidth = 1;
   roundRect(ctx, panelX, panelY, panelW, panelH, 22);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(216, 156, 176, 0.24)";
+  ctx.strokeStyle = "rgba(216, 156, 176, 0.14)";
   ctx.lineWidth = 0.7;
   roundRect(ctx, panelX + 8, panelY + 8, panelW - 16, panelH - 16, 16);
   ctx.stroke();
 
-  ctx.fillStyle = "rgba(117, 83, 73, 0.78)";
+  ctx.fillStyle = "rgba(117, 83, 73, 0.58)";
   ctx.font = "800 13px Georgia, 'Times New Roman', serif";
   ctx.fillText("EDITOR'S NOTE", panelX + 24, panelY + 30);
-  ctx.strokeStyle = "rgba(139, 103, 88, 0.18)";
+  ctx.strokeStyle = "rgba(139, 103, 88, 0.12)";
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(panelX + 132, panelY + 25);
@@ -9284,12 +9285,12 @@ function drawRoomBuyReasonKitReference(ctx, product) {
   let x = panelX + 24;
   const tagY = panelY + 48;
   kit.tags.forEach((tag, index) => {
-    ctx.font = "800 17px Yu Gothic UI, Meiryo, sans-serif";
-    const width = Math.min(142, Math.max(86, ctx.measureText(tag).width + 24));
-    ctx.fillStyle = index === 0 ? "rgba(143, 54, 91, 0.82)" : "rgba(88, 68, 75, 0.74)";
+    ctx.font = "800 15px Yu Gothic UI, Meiryo, sans-serif";
+    const width = Math.min(118, Math.max(70, ctx.measureText(tag).width + 18));
+    ctx.fillStyle = index === 0 ? "rgba(143, 54, 91, 0.64)" : "rgba(88, 68, 75, 0.56)";
     ctx.fillText(tag, x + 8, tagY);
-    ctx.strokeStyle = index === 0 ? "rgba(217, 137, 164, 0.52)" : "rgba(199, 154, 167, 0.34)";
-    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = index === 0 ? "rgba(217, 137, 164, 0.36)" : "rgba(199, 154, 167, 0.22)";
+    ctx.lineWidth = 1.9;
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(x + 6, tagY + 8);
@@ -9301,30 +9302,30 @@ function drawRoomBuyReasonKitReference(ctx, product) {
   const baX = panelX + 24;
   const baY = panelY + 74;
   const baW = panelW - 48;
-  ctx.fillStyle = "rgba(250, 239, 242, 0.42)";
+  ctx.fillStyle = "rgba(250, 239, 242, 0.26)";
   roundRect(ctx, baX, baY, baW, 24, 12);
   ctx.fill();
-  ctx.fillStyle = "rgba(123, 91, 101, 0.72)";
+  ctx.fillStyle = "rgba(123, 91, 101, 0.56)";
   ctx.font = "800 11px Georgia, 'Times New Roman', serif";
   ctx.fillText("BEFORE", baX + 16, baY + 16);
-  ctx.fillStyle = "rgba(61, 48, 53, 0.78)";
-  ctx.font = "800 16px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText(kit.before, baX + 82, baY + 17);
-  ctx.strokeStyle = "rgba(217, 137, 164, 0.52)";
+  ctx.fillStyle = "rgba(61, 48, 53, 0.64)";
+  ctx.font = "800 14px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(kit.before, baX + 76, baY + 17);
+  ctx.strokeStyle = "rgba(217, 137, 164, 0.34)";
   ctx.lineWidth = 1.3;
   ctx.beginPath();
-  ctx.moveTo(baX + 230, baY + 12);
-  ctx.lineTo(baX + 270, baY + 12);
-  ctx.lineTo(baX + 262, baY + 7);
-  ctx.moveTo(baX + 270, baY + 12);
-  ctx.lineTo(baX + 262, baY + 17);
+  ctx.moveTo(baX + 188, baY + 12);
+  ctx.lineTo(baX + 220, baY + 12);
+  ctx.lineTo(baX + 212, baY + 7);
+  ctx.moveTo(baX + 220, baY + 12);
+  ctx.lineTo(baX + 212, baY + 17);
   ctx.stroke();
-  ctx.fillStyle = "rgba(123, 91, 101, 0.72)";
+  ctx.fillStyle = "rgba(123, 91, 101, 0.56)";
   ctx.font = "800 11px Georgia, 'Times New Roman', serif";
-  ctx.fillText("AFTER", baX + 292, baY + 16);
-  ctx.fillStyle = "rgba(61, 48, 53, 0.78)";
-  ctx.font = "800 16px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText(kit.after, baX + 346, baY + 17);
+  ctx.fillText("AFTER", baX + 240, baY + 16);
+  ctx.fillStyle = "rgba(61, 48, 53, 0.64)";
+  ctx.font = "800 14px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(kit.after, baX + 290, baY + 17);
   ctx.restore();
 }
 
