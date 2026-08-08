@@ -6187,7 +6187,7 @@ function drawFashionScorePanel(ctx, fashionScore, x, y, width, height) {
 
   ctx.fillStyle = "#8f3e5d";
   ctx.font = "800 17px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("FASHION SCORE", x + 16, y + 28);
+  ctx.fillText("可愛さスコア", x + 16, y + 28);
   ctx.font = "700 14px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillStyle = "#7c6870";
   ctx.fillText("おしゃれ自己判定", x + 16, y + 48);
@@ -6202,7 +6202,7 @@ function drawFashionScorePanel(ctx, fashionScore, x, y, width, height) {
   ctx.fillText(`${fashionScore.power}pt`, x + 102, y + 88);
   ctx.fillStyle = "#a43d64";
   ctx.font = "700 16px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("ファッションパワー", x + 102, y + 112);
+  ctx.fillText("可愛さパワー", x + 102, y + 112);
   ctx.fillStyle = "#ffffff";
   roundRect(ctx, x + 102, y + 124, 120, 28, 14);
   ctx.fill();
@@ -6642,7 +6642,7 @@ function chooseHanakoTeacherComment(coordinate, force = false) {
     `${score.rank}ランクなら、見せ場は十分。あとは${weakestMetric?.label || "バランス"}を少し整えて。`,
     `${strongestMetric?.label || "主役"}はいい線よ。弱いところを隠すより、そこをもっと活かしなさい。`,
     `今日の課題は${weakestMetric?.label || "まとまり"}ね。ここを整えるだけで、写真の印象が変わるわ。`,
-    `ファッションパワー${score.power}点。今日は主役を信じて、余計な説明を減らしなさい。`,
+    `可愛さパワー${score.power}点。今日は主役を信じて、余計な説明を減らしなさい。`,
   ];
   options.push(...dynamicOptions);
   const uniqueOptions = [...new Set(options)];
@@ -7144,7 +7144,7 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナ
 ・画像にない商品を、実際に着用した商品として説明していない
 ・余白の日本語が読みやすく、課題解決風でかわいい。途中で切れた文章や「…」で省略した文章がない
 ・画像内に楽天ROOMを示す文字が入っていない
-・右下に半透明で小さなファッションランク、レーダーチャート、ファッションパワーのスコアカードがあり、コーデや商品を隠していない
+・右下に半透明で小さな可愛さランク、レーダーチャート、可愛さパワーのスコアカードがあり、コーデや商品を隠していない
 ・参照画像ボードの3 COLOR PALETTEと同じ3色カラーパレットが、小さく上品に入っている
 ・参照画像ボードのSOLUTION BADGEと同じお悩み解決メモが、枠内ほぼ透明の手書き風で小さく上品に入っている
 ・参照画像ボードのSTYLE RECIPEと同じ配合メモが、枠内ほぼ透明の手書き風で小さく上品に入っている
@@ -7164,9 +7164,9 @@ function buildCoordinateFashionScorePrompt(fashionScore) {
 ・角丸、細いピンク線、少量の小さなハートやリボンで上品に飾る。装飾は文字より目立たせない
 ・スコアカードの表示形式は毎回必ず同じにする。配置、順番、見出し、ラベル名を変えない
 ・カード内は次の固定レイアウトだけにする
-  1. 上部左寄せに見出し「FASHION SCORE」
+  1. 上部左寄せに見出し「可愛さスコア」
   2. 左側に楽天ROOMのランクアイコンと同じ雰囲気の丸いメダル型ランクバッジで「${fashionScore.rank}」を大きく表示。バッジはグラデーション、白い外枠、内側リング、上品な小さな光沢を入れたランクアイコンにする
-  3. 右側に「${fashionScore.power}pt」を大きく表示し、その下に小さく「ファッションパワー」
+  3. 右側に「${fashionScore.power}pt」を大きく表示し、その下に小さく「可愛さパワー」
   4. 点数の下に小さなリボンラベルまたはシールで「${fashionScore.rankLabel}」
   5. 下部に5軸レーダーチャートを1個だけ表示
 ・レーダーチャートの軸名は必ず「${fashionScore.metrics.map((metric) => metric.label).join(" / ")}」の5つだけにする
@@ -7175,11 +7175,11 @@ function buildCoordinateFashionScorePrompt(fashionScore) {
 ・最高軸と最低軸の差が見た目で分かるように、得意な軸は外側へ、弱い軸は内側へ明確に配置する
 ・点数がCランク相当でない場合に、勝手に70点やCランクへ丸めない。必ず「${fashionScore.rank}」「${fashionScore.power}pt」をそのまま使う
 ・この診断では80点台でも十分高評価。チャートを盛って90点台や満点のように見せない
-・スコアカードの見出しは必ず「FASHION SCORE」。別名の「おしゃれ診断」「FASHION POWER」などに変えない
+・スコアカードの見出しは必ず「可愛さスコア」。別名の「FASHION SCORE」「おしゃれ診断」「FASHION POWER」などに変えない
 ・右下カードは主役の服、顔、ハナコ先生の吹き出し、商品ポイントに重ねない。必要なら少し小さくしてもよい
 ・ランク、チャート、点数はこの指定から変えない。別の点数や別ランクを作らない
 ・レーダーチャートは「配色が強い」「抜け感が少し弱い」などが形で分かる納得感のあるバランスにする。正五角形の満点チャートにしない
-・チャート外側に「95」「100」など意味不明な数字を単独表示しない。数字を書くのはファッションパワーの「${fashionScore.power}pt」だけ
+・チャート外側に「95」「100」など意味不明な数字を単独表示しない。数字を書くのは可愛さパワーの「${fashionScore.power}pt」だけ
 ・「神コーデ級」などのランクラベルは、小さなリボン帯、シール、ハート囲みのどれかでかわいくデザインし、ただの黒文字にしない
 ・色は毎回、半透明ホワイト背景、ローズピンクの線、濃いブラウン文字、淡いピンクのチャート塗りで統一する
 ・レーダーチャートはピンク系の線と淡い塗りで、軸名は小さくても読める濃さにする
@@ -7194,7 +7194,7 @@ function buildCoordinateStyleKitPrompt(styleKit) {
 ・参照画像ボードの「3 COLOR PALETTE」「SOLUTION BADGE」「STYLE RECIPE」を、完成画像へ小さな編集パーツとして入れる
 ・カラーパレットは3色だけ。色名は「${paletteLabels}」、色は「${paletteHex}」を基準にする
 ・パレットは直径の小さな丸スウォッチ3つで、画像の上部または右上の余白へ控えめに配置する
-・パレットは服の色選びの補助として見せる。主役商品、顔、ハナコ先生、吹き出し、ファッションスコアに重ねない
+・パレットは服の色選びの補助として見せる。主役商品、顔、ハナコ先生、吹き出し、可愛さスコアに重ねない
 ・お悩み解決バッジの文言は必ず「${styleKit.badge}」。完成画像ではバッジというより、半透明の薄い紙に手書きした小さな「solution note」として入れる
 ・お悩み解決バッジは枠の中をほとんど透明にする。アイボリーまたは淡いローズグレー地は透明度10〜22%くらい、くすみピンクの細い手書き下線も薄く添える。文字だけ読める程度にして、遠目では写真になじませる
 ・バッジの補足は必要な場合だけ「${styleKit.subBadge}」を小さく添える。長文にしない。太いシール、原色ラベル、大きなピル型、広告バナー風は禁止
@@ -7205,7 +7205,7 @@ function buildCoordinateStyleKitPrompt(styleKit) {
 ・デザインは淡いピンク、アイボリー、モカブラウンを中心に、ブランド広告のように上品で控えめにする
 ・パレット、バッジ、STYLE RECIPEは目立ちすぎず、画像全体の高級感と統一感を壊さない。特にバッジとSTYLE RECIPEの背景カードはほとんど透明でよい。子どもっぽい原色、太い縁取り、派手な影、巨大なステッカー、不透明な白い箱、アプリUI風のボタンは禁止
 ・画像ボードの見た目を参考にするが、完成画像ではより洗練された小さな手書き編集パーツとして整える
-・カラーパレット、解決バッジ、STYLE RECIPE、ファッションスコア、ロケーション表記、署名ロゴの6要素は互いに重ねず、余白の中で整理して配置する`;
+・カラーパレット、解決バッジ、STYLE RECIPE、可愛さスコア、ロケーション表記、署名ロゴの6要素は互いに重ねず、余白の中で整理して配置する`;
 }
 
 function buildCoordinateLocationInstruction(coordinate, originalProductPhotoMode) {
@@ -7235,7 +7235,7 @@ function buildCoordinateLocationStampInstruction(coordinate, originalProductPhot
 ・参照画像ボードのLOCATION欄にある表記を、完成画像の右下へ小さく上品に入れる
 ・表記は必ず「${stamp}」に統一する。「mood」という文字は入れない
 ・ロケーション表記は、こげ茶または上品なブラウンで、写真になじむ小さな文字にする
-・右下のFASHION SCOREカードと重なる場合は、スコアカードの少し上、または右下の空いている位置へ移動する
+・右下の可愛さスコアカードと重なる場合は、スコアカードの少し上、または右下の空いている位置へ移動する
 ・服、顔、商品、ハナコ先生、吹き出し、手書きポイントを隠さない
 ・観光ポスターのように目立たせず、ROOM投稿画像と同じく「場所の小さな署名」くらいに控えめにする
 ・ロケーション名を別都市、別ランドマーク、英語だけ、誤字、文字化けへ変えない`;
