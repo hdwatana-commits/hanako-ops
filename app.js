@@ -8976,12 +8976,12 @@ function buildRoomKawaiiPointInstruction(kawaiiPoint, mode, location) {
     ? "右下のロケーション表記のすぐ上"
     : "右下の安全な余白";
   return `【可愛さポイント・通常投稿だけ必須】
-・画像の${position}へ、商品の可愛さを100点満点で小さく表示する
-・表示文は必ず「可愛さポイント ${kawaiiPoint.score}/100」。補足を入れる場合だけ小さく「${kawaiiPoint.label}」を添える
+・画像の${position}へ、商品の可愛さを最高100ptの小さなポイント表示として入れる
+・表示文は必ず「可愛さポイント ${kawaiiPoint.score}pt」。補足を入れる場合だけ小さく「${kawaiiPoint.label}」を添える
 ・これは人気、売上、レビュー、ランキングではなく、ファッションハナコの主観的な可愛さ自己判定として扱う。未確認の実績数字に見せない
-・デザインは主張しない。薄いピンクベージュの細線、ほぼ透明の小さな紙ラベル、濃すぎないモカブラウン文字で、ブランド広告の端にある小さな編集メモのようにする
+・デザインは主張しない。周りの背景、紙ラベル、白い箱、枠は完全に透明にする。薄いピンクベージュの短い下線と、濃すぎないモカブラウン文字だけで、ブランド広告の端にある小さな編集メモのようにする
 ・サイズはロケーション表記より少しだけ大きい程度。メイン手書き一言、商品、本人、ハナコ先生、EDITOR'S NOTEより目立たせない
-・右下でロケーション表記と縦に整列させ、可愛さポイントを上、ロケーション表記を下にする。重ねたり、中央へ移動したり、大きなスコアカードにしない
+・右下でロケーション表記と縦に整列させ、可愛さポイントを上、ロケーション表記を下にする。重ねたり、中央へ移動したり、大きなスコアカード、背景カード、囲み枠にしない
 ・ハートや小さなきらめきは1個まで。ゲージ、メーター、ランキング風、価格札風、レビュー評価風、派手な星評価は禁止`;
 }
 
@@ -9156,10 +9156,10 @@ ${collectionItems}
 ・日本語に誤字、造語、文字切れがない
 ・画像内の文字は薄くせず、背景と十分な明暗差がある濃い色で読みやすい
 ・「STYLE EDIT」の文字を画像内のどこにも入れていない
-・未確認の人気、効果、使用体験、価格、数字を作っていない。ただし指定された可愛さポイント「${kawaiiPoint.score}/100」だけは入っている
+・未確認の人気、効果、使用体験、価格、数字を作っていない。ただし指定された可愛さポイント「${kawaiiPoint.score}pt」だけは入っている
 ・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンが左下にあり、その上にTEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
 ・通常投稿では、EDITOR'S NOTE欄と同じ買う理由ミニタグ、Before→After解決メモ、枠内ほぼ透明の薄い紙カード、細い罫線が右上に小さく上品に入っている
-・通常投稿では、右下のロケーション表記の上に「可愛さポイント ${kawaiiPoint.score}/100」が小さく上品に入り、主張しすぎていない
+・通常投稿では、右下のロケーション表記の上に「可愛さポイント ${kawaiiPoint.score}pt」が小さく上品に入り、周りは完全透明で主張しすぎていない
 ・ハナコ先生と吹き出しが画面左下にまとまり、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
 ・EDITOR'S NOTEが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
 ・通常投稿では、主役商品が一番目立ち、メイン手書き一言が二番目、EDITOR'S NOTEとハナコ先生は小さな補足になっている
@@ -9382,23 +9382,19 @@ function drawRoomKawaiiPointReference(ctx, product) {
   ctx.fillStyle = "#6b584b";
   ctx.font = "700 14px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText("KAWAII POINT / 場所表記の上", x, y - 12);
-  ctx.shadowColor = "rgba(89, 52, 61, 0.014)";
-  ctx.shadowBlur = 6;
-  ctx.shadowOffsetY = 1;
-  ctx.fillStyle = "rgba(255, 248, 250, 0.16)";
-  roundRect(ctx, x, y, width, height, 18);
-  ctx.fill();
-  ctx.shadowColor = "transparent";
-  ctx.strokeStyle = "rgba(224, 174, 191, 0.24)";
-  ctx.lineWidth = 1;
-  roundRect(ctx, x, y, width, height, 18);
-  ctx.stroke();
   ctx.fillStyle = "rgba(143, 54, 91, 0.62)";
   ctx.font = "800 14px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText("可愛さポイント", x + 16, y + 22);
   ctx.fillStyle = "rgba(61, 48, 53, 0.72)";
   ctx.font = "900 22px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText(`${kawaiiPoint.score}/100`, x + 142, y + 24);
+  ctx.fillText(`${kawaiiPoint.score}pt`, x + 142, y + 24);
+  ctx.strokeStyle = "rgba(224, 174, 191, 0.32)";
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x + 16, y + 30);
+  ctx.lineTo(x + 210, y + 30);
+  ctx.stroke();
   ctx.fillStyle = "rgba(117, 83, 73, 0.52)";
   ctx.font = "700 13px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText(kawaiiPoint.label, x + 18, y + 42);
