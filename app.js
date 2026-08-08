@@ -8575,6 +8575,35 @@ function buildRoomBuyReasonInstruction(product, mode) {
 ・全体の雰囲気は洗練されたファッション誌の小さな注釈。派手なシール、強い影、原色、巨大ラベルは禁止`;
 }
 
+function buildRoomEditorialSellingInstruction(product, mode) {
+  if (mode === "collection") return "";
+  const category = getRoomBuyReasonCategory(product);
+  const productFocus = {
+    トップス: "顔まわり、袖、肩線、素材感が一目で分かる上半身の見せ場",
+    ワンピース: "全身の縦ライン、丈感、1枚で決まる雰囲気",
+    アウター: "羽織った時の軽さ、横から見た落ち感、温度調整できる感じ",
+    スカート: "揺れ感、腰位置、裾の広がり、トップスとの甘さ調整",
+    パンツ: "脚のライン、落ち感、足もとの抜け、動きやすさ",
+    バッグ: "バッグの形、持ち手、サイズ感、コーデ全体を締める役割",
+    靴: "つま先、甲、ヒールやソール、足もとが軽く見えるバランス",
+    アクセサリー: "顔まわりに効く小さな光、盛りすぎない上品さ",
+    ファッション小物: "いつもの服に足した時の印象変化と使いやすさ",
+  };
+  return `【売れる雑誌広告レイアウト・通常投稿だけ必須】
+・完成画像は「商品が欲しくなる1枚のファッション広告」として設計する。情報を足すより、視線の流れをきれいに作る
+・視線の順番は必ず「主役商品 → メイン手書き一言 → 買う理由ミニタグ/Before→After → ハナコ先生 → 小さな署名ロゴ」にする
+・主役商品と本人の着用イメージを画像の70%以上の主役にする。文字や装飾を合計20%以内に抑え、残りは余白と空気感に使う
+・${category}なので、特に「${productFocus[category] || "商品らしい形、色、素材感"}」が伝わる構図にする
+・買う理由ミニタグとBefore→Afterは散らばらせず、ひとつの小さな編集メモ群として近くにまとめる。シールを何枚も貼ったように見せない
+・ハナコ先生のひとことは、商品を買う前に背中を押す小さな専門家コメントとして扱う。メインコピーより大きくしない
+・署名ロゴは左上の余白へ小さく、ロケーション表記は右下へ小さく。どちらもブランド広告のクレジットのように静かに入れる
+・背景はブランド広告のような自然光、浅い奥行き、やわらかい影、低彩度の上品な色で整える
+・可愛さは、原色や大きなハートではなく、余白、素材感、薄ピンクの細線、手書き下線、少量のきらめきで出す
+・安っぽく見えるので、セールチラシ風、太い縁取り文字、巨大ステッカー、過剰な吹き出し、ネオン色、広告バナー、過密な説明文、同じ装飾の連打は禁止
+・画像を遠目で見た時に主役商品が先に目に入り、近くで見た時に「買う理由」が読める密度にする
+・保存したくなる1枚にするため、商品説明ではなく「この商品で何が解決するか」が直感的に伝わるようにする`;
+}
+
 function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, mood, location, city }) {
   const details = product.details || {};
   const brand = details.brand || "HANAKO SELECT";
@@ -8592,6 +8621,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
   const productColorInstruction = buildRoomProductColorInstruction(product);
   const roomHanakoTeacherInstruction = buildRoomHanakoTeacherInstruction(mode);
   const roomBuyReasonInstruction = buildRoomBuyReasonInstruction(product, mode);
+  const roomEditorialSellingInstruction = buildRoomEditorialSellingInstruction(product, mode);
   const signatureLogoInstruction = mode !== "collection"
     ? `【透明ミニロゴ画像・通常投稿だけ必須】
 ・参照画像ボードの「SIGNATURE LOGO」欄にあるロゴ画像を、完成画像の左上へとても小さく上品に入れる
@@ -8726,6 +8756,8 @@ ${roomHanakoTeacherInstruction}
 
 ${roomBuyReasonInstruction}
 
+${roomEditorialSellingInstruction}
+
 ${outfitStylingInstruction}
 
 ${formatInstruction}
@@ -8744,6 +8776,9 @@ ${collectionItems}
 ・通常投稿では、BUY REASON TAGS欄と同じ買う理由ミニタグ、BEFORE → AFTER欄と同じ課題解決メモが小さく上品に入っている
 ・ハナコ先生と吹き出しが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
 ・買う理由ミニタグとBefore→Afterが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
+・通常投稿では、主役商品が一番目立ち、メイン手書き一言が二番目、買う理由ミニタグとBefore→Afterとハナコ先生は小さな補足になっている
+・全体がセールチラシ、広告バナー、情報過多の解説画像に見えず、ファッション誌・ブランド広告のような余白と統一感がある
+・買う理由が一瞬で伝わるが、誇大表現、未確認の実績、価格、割引率、ランキング、レビュー数を勝手に入れていない
 ・外周の白い安全余白や白い額縁は不要。写真は端まで広げてよい
 ・ただし統一感のため、画像の最外周に薄ピンクの上品なラインフレームを必ず入れる
 ・ラインフレームは2〜3px相当の主線＋内側に1px相当のごく淡い補助線で、前より少しだけ目立つ程度にする。低彩度の薄ピンクを使い、白枠、太枠、強いピンク、派手な角装飾は禁止
