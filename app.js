@@ -8822,12 +8822,12 @@ function buildRoomHanakoTeacherInstruction(mode) {
   return `【ハナコ先生の辛口ひとこと・通常投稿だけ必須】
 ・参照画像ボードのTEACHER欄にある「${teacher.name}」を、完成画像へ小さな丸い先生アイコンとして入れる
 ・先生は商品や本人とは別の解説キャラクター。実写人物をもう一人追加しない
-・先生アイコンは画像の左下または右下の余白へ、画像幅の12〜16%程度の小さめサイズで置く
-・先生の近くに、白地または半透明アイボリー地、くすみピンク線の小さな吹き出しを1個だけ付ける
+・先生アイコンは画像の左下の安全な余白へ、画像幅の12〜16%程度の小さめサイズで置く。右下や中央には置かない
+・先生アイコンの下に、白地または半透明アイボリー地、くすみピンク線の小さな吹き出しを1個だけ付ける。横並びにせず、上が先生アイコン、下が吹き出しの縦配置にする
 ・吹き出しの見出しは必ず「ハナコ先生のひとこと」
 ・吹き出し本文は必ず「${comment}」をそのまま使う。言い換え、追加、要約、語尾変更をしない
 ・本文は商品に合わせた愛のある辛口コメントとして扱う。購入前に見るべきポイントが短く伝わるようにする
-・先生アイコンと吹き出しは、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記に重ねない
+・先生アイコンと吹き出しは画面左下にまとめ、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記に重ねない。左下に商品がある場合は、左下の端から少し内側または少し上へ逃がして邪魔にならないようにする
 ・吹き出しは最大2行、文字は濃いブラウンで読みやすく。文字切れ、造語、意味不明な語、三点リーダー省略は禁止
 ・全体の世界観はブランド広告のように上品に保つ。派手な漫画吹き出し、大きな装飾、強い影、原色、巨大な先生は禁止
 ・商品を売るためのメインコピーは別にあるので、先生コメントは小さく効く補足に留める`;
@@ -9116,9 +9116,9 @@ ${collectionItems}
 ・画像内の文字は薄くせず、背景と十分な明暗差がある濃い色で読みやすい
 ・「STYLE EDIT」の文字を画像内のどこにも入れていない
 ・未確認の人気、効果、使用体験、価格、数字を作っていない
-・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンと、TEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
+・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンが左下にあり、その下にTEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
 ・通常投稿では、EDITOR'S NOTE欄と同じ買う理由ミニタグ、Before→After解決メモ、枠内ほぼ透明の薄い紙カード、細い罫線が右上に小さく上品に入っている
-・ハナコ先生と吹き出しが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
+・ハナコ先生と吹き出しが画面左下にまとまり、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
 ・EDITOR'S NOTEが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
 ・通常投稿では、主役商品が一番目立ち、メイン手書き一言が二番目、EDITOR'S NOTEとハナコ先生は小さな補足になっている
 ・全体がセールチラシ、広告バナー、情報過多の解説画像に見えず、ファッション誌・ブランド広告のような余白と統一感がある
@@ -9207,17 +9207,23 @@ async function drawRoomHanakoTeacherReference(ctx, product) {
   const teacher = currentRoomHanakoTeacher || hanakoTeacherGuides[0];
   const comment = currentRoomHanakoComment || chooseRoomHanakoComment(product, true);
   const avatar = await loadImage(teacher.avatar).catch(() => null);
-  const avatarX = 1218;
-  const avatarY = 834;
-  const avatarSize = 96;
-  const bubbleX = 842;
-  const bubbleY = 842;
-  const bubbleWidth = 350;
-  const bubbleHeight = 82;
+  const avatarX = 84;
+  const avatarY = 742;
+  const avatarSize = 104;
+  const bubbleX = 56;
+  const bubbleY = 870;
+  const bubbleWidth = 426;
+  const bubbleHeight = 86;
   ctx.save();
   ctx.fillStyle = "#6b584b";
   ctx.font = "700 16px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("TEACHER / 小さく余白へ", bubbleX, bubbleY - 12);
+  ctx.fillText("TEACHER / 左下・アイコン下に吹き出し", bubbleX, avatarY - 12);
+  ctx.fillStyle = "#f4cad7";
+  ctx.beginPath();
+  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 5, 0, Math.PI * 2);
+  ctx.fill();
+  if (avatar) drawCoverImage(ctx, avatar, avatarX, avatarY, avatarSize, avatarSize, avatarSize / 2);
+  else drawPlaceholder(ctx, "先生", avatarX, avatarY, avatarSize, avatarSize);
   ctx.fillStyle = "rgba(255, 255, 255, 0.86)";
   roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 18);
   ctx.fill();
@@ -9226,9 +9232,9 @@ async function drawRoomHanakoTeacherReference(ctx, product) {
   roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 18);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(bubbleX + bubbleWidth, bubbleY + 42);
-  ctx.lineTo(bubbleX + bubbleWidth + 28, bubbleY + 54);
-  ctx.lineTo(bubbleX + bubbleWidth, bubbleY + 66);
+  ctx.moveTo(avatarX + avatarSize / 2 - 16, bubbleY);
+  ctx.lineTo(avatarX + avatarSize / 2, bubbleY - 22);
+  ctx.lineTo(avatarX + avatarSize / 2 + 16, bubbleY);
   ctx.closePath();
   ctx.fillStyle = "rgba(255, 255, 255, 0.86)";
   ctx.fill();
@@ -9240,12 +9246,6 @@ async function drawRoomHanakoTeacherReference(ctx, product) {
   ctx.fillStyle = "#3d3035";
   ctx.font = "800 18px Yu Gothic UI, Meiryo, sans-serif";
   wrapCanvasText(ctx, `「${comment}」`, bubbleX + 18, bubbleY + 52, bubbleWidth - 36, 22, 2);
-  ctx.fillStyle = "#f4cad7";
-  ctx.beginPath();
-  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 5, 0, Math.PI * 2);
-  ctx.fill();
-  if (avatar) drawCoverImage(ctx, avatar, avatarX, avatarY, avatarSize, avatarSize, avatarSize / 2);
-  else drawPlaceholder(ctx, "先生", avatarX, avatarY, avatarSize, avatarSize);
   ctx.restore();
 }
 
