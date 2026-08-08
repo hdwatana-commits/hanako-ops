@@ -5595,6 +5595,93 @@ function buildCoordinateFashionScore(coordinate) {
   };
 }
 
+function buildCoordinateStyleKit(coordinate, analysis = buildCoordinateAnalysis(coordinate)) {
+  const colorText = `${coordinate.colorMood || ""} ${analysis.colorPlan || ""} ${(coordinate.products || []).map((product) => `${product.details?.color || ""} ${product.name || ""} ${product.category || ""}`).join(" ")}`;
+  const colorOptions = [
+    { label: "ivory", jp: "アイボリー", hex: "#f7efe5", patterns: [/アイボリー|オフ|白|ホワイト|生成り|エクリュ|cream|ivory/i] },
+    { label: "pink beige", jp: "ピンクベージュ", hex: "#eec9d3", patterns: [/ピンク|ローズ|桜|サクラ|コーラル|pink|rose/i] },
+    { label: "mocha", jp: "モカ", hex: "#a98676", patterns: [/モカ|ブラウン|茶|キャメル|ベージュ|グレージュ|brown|beige|mocha/i] },
+    { label: "lavender", jp: "ラベンダー", hex: "#d9c8ed", patterns: [/ラベンダー|ライラック|紫|パープル|lavender|lilac|purple/i] },
+    { label: "sax blue", jp: "サックス", hex: "#b9d6ea", patterns: [/ブルー|水色|サックス|青|blue|sax/i] },
+    { label: "mint", jp: "ミント", hex: "#c5dfd3", patterns: [/ミント|グリーン|緑|カーキ|green|mint|khaki/i] },
+    { label: "navy", jp: "ネイビー", hex: "#364255", patterns: [/ネイビー|紺|navy/i] },
+    { label: "black", jp: "ブラック", hex: "#2f292c", patterns: [/黒|ブラック|black/i] },
+    { label: "gray", jp: "グレー", hex: "#b9b3af", patterns: [/グレー|灰|gray|grey/i] },
+  ];
+  const picked = [];
+  for (const color of colorOptions) {
+    if (color.patterns.some((pattern) => pattern.test(colorText)) && !picked.some((item) => item.label === color.label)) {
+      picked.push(color);
+    }
+  }
+  const fallbackPalettes = {
+    "淡色ワントーン": ["ivory", "pink beige", "mocha"],
+    "白ベースで明るく": ["ivory", "sax blue", "mocha"],
+    "黒・濃色で引き締め": ["ivory", "black", "pink beige"],
+    "差し色をひとつ": ["ivory", "mocha", "lavender"],
+    "商品から自動で整える": ["ivory", "pink beige", "mocha"],
+  };
+  const byLabel = Object.fromEntries(colorOptions.map((color) => [color.label, color]));
+  const fallback = (fallbackPalettes[coordinate.colorMood] || fallbackPalettes["商品から自動で整える"]).map((label) => byLabel[label]).filter(Boolean);
+  const palette = [...picked, ...fallback].filter(Boolean).reduce((items, color) => {
+    if (!items.some((item) => item.label === color.label)) items.push(color);
+    return items;
+  }, []).slice(0, 3);
+  const badgeOptions = {
+    "朝、服が決まらない": "朝の迷い解決",
+    "甘すぎ・子どもっぽく見せたくない": "甘さ大人化",
+    "全身のバランスを整えたい": "全身バランスUP",
+    "いつも同じ組み合わせになる": "マンネリ回避",
+    "気温差に対応したい": "気温差OK",
+    "写真で可愛く見せたい": "写真映え強化",
+  };
+  const badge = badgeOptions[coordinate.concern] || "可愛く解決";
+  const subBadge = coordinate.priority ? `${coordinate.priority}を優先` : "今日の正解コーデ";
+  return { palette, badge, subBadge };
+}
+
+function drawCoordinateStyleKitReference(ctx, coordinate, analysis) {
+  const kit = buildCoordinateStyleKit(coordinate, analysis);
+  const x = 310;
+  const y = 254;
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+  roundRect(ctx, x, y, 238, 52, 16);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(205, 106, 139, 0.35)";
+  ctx.lineWidth = 2;
+  roundRect(ctx, x, y, 238, 52, 16);
+  ctx.stroke();
+  ctx.fillStyle = "#a44367";
+  ctx.font = "800 13px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("SOLUTION BADGE", x + 16, y + 20);
+  ctx.fillStyle = "#2f292c";
+  ctx.font = "800 20px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(trimText(kit.badge, 12), x + 16, y + 43);
+  ctx.fillStyle = "#8b7065";
+
+  const px = 572;
+  const py = 254;
+  ctx.fillStyle = "#7a5d50";
+  ctx.font = "700 13px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("3 COLOR PALETTE", px, py - 8);
+  kit.palette.forEach((color, index) => {
+    const cx = px + 18 + index * 52;
+    const cy = py + 24;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+    ctx.fillStyle = color.hex;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(95, 72, 65, 0.35)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+  ctx.fillStyle = "#6b584b";
+  ctx.font = "700 13px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(kit.palette.map((color) => color.label).join(" / "), px, py + 54);
+  ctx.restore();
+}
+
 async function drawCoordinateBoard(coordinate, text) {
   const targetCanvas = coordBoard;
   if (!targetCanvas) return;
@@ -5643,6 +5730,7 @@ async function drawCoordinateBoard(coordinate, text) {
   } else {
     drawPlaceholder(ctx, "PHOTO", 760, 54, 230, 230);
   }
+  drawCoordinateStyleKitReference(ctx, coordinate, analysis);
 
   const teacherPattern = isHanakoTeacherPattern(coordinate.imagePattern);
   const products = coordinate.products.slice(0, 6);
@@ -5652,7 +5740,7 @@ async function drawCoordinateBoard(coordinate, text) {
     const col = index % 2;
     const row = Math.floor(index / 2);
     const x = 70 + col * 485;
-    const y = compactProductLayout ? 300 + row * 195 : 330 + row * 285;
+    const y = compactProductLayout ? 335 + row * 190 : 360 + row * 270;
     await drawProductCard(ctx, product, x, y, compactProductLayout);
     if (teacherPattern) drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate, compactProductLayout);
   }
@@ -6515,17 +6603,20 @@ function buildOutfitImagePrompt(coordinate) {
   const hanakoTeacherComment = coordinate.hanakoComment || chooseHanakoTeacherComment(coordinate);
   const fashionScore = buildCoordinateFashionScore(coordinate);
   const fashionScoreInstruction = buildCoordinateFashionScorePrompt(fashionScore);
+  const styleKit = buildCoordinateStyleKit(coordinate, stylingPlan);
+  const styleKitInstruction = buildCoordinateStyleKitPrompt(styleKit);
   const attachmentInstruction = originalProductPhotoMode
     ? `【添付画像の役割・最優先】
 ・添付された参照画像ボードに写る商品だけを使う
 ・商品画像URLはアクセスしない。添付画像を基準に作る
 ・添付画像にない商品や人物を、似た画像や想像で補わない`
     : `【添付画像の役割・最優先】
-・添付は「コーデ参照画像ボード」1枚だけ。PERSON欄は本人、PRODUCT欄は選択商品、TEACHER欄はハナコ先生の基準画像、SIGNATURE LOGO欄は左上へ入れる署名ロゴ、LOCATION欄は右下へ入れる場所表記
+・添付は「コーデ参照画像ボード」1枚だけ。PERSON欄は本人、PRODUCT欄は選択商品、TEACHER欄はハナコ先生の基準画像、SIGNATURE LOGO欄は左上へ入れる署名ロゴ、LOCATION欄は右下へ入れる場所表記、3 COLOR PALETTE欄は3色パレット、SOLUTION BADGE欄はお悩み解決バッジ
 ・本人の顔、髪、体型、マスクはPERSON欄を最優先する
 ・服と小物は各PRODUCT欄、先生アイコンはTEACHER欄を最優先する
 ・SIGNATURE LOGO欄のロゴは、透明背景の小さな署名素材として左上へ控えめに入れる
 ・LOCATION欄の表記は、完成画像の右下へ小さく上品に入れる
+・3 COLOR PALETTE欄とSOLUTION BADGE欄は、完成画像の余白へ小さく上品に入れる
 ・画像内の吹き出し文、手書きポイント、見出し、配置も同じ参照ボードから読み取る
 ・商品画像URLと先生画像URLにはアクセスしない。URLより添付した参照画像を必ず優先する
 ・参照画像ボードが届いていない場合は画像を生成せず、「参照画像を1枚添付してください」とだけ返す`;
@@ -6667,6 +6758,8 @@ ${stylingPlan.itemRoles.map((item) => `・${item.name}: ${item.role}`).join("\n"
 
 ${fashionScoreInstruction}
 
+${styleKitInstruction}
+
 【選んだ髪型】
 ${hairInstruction}
 
@@ -6777,9 +6870,12 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナ
 ・余白の日本語が読みやすく、課題解決風でかわいい。途中で切れた文章や「…」で省略した文章がない
 ・画像内に楽天ROOMを示す文字が入っていない
 ・右下に半透明で小さなファッションランク、レーダーチャート、ファッションパワーのスコアカードがあり、コーデや商品を隠していない
+・参照画像ボードの3 COLOR PALETTEと同じ3色カラーパレットが、小さく上品に入っている
+・参照画像ボードのSOLUTION BADGEと同じお悩み解決バッジが、小さく上品に入っている
 ・左上にSIGNATURE LOGO欄と同じ小さな透明署名ロゴがあり、主張しすぎていない
 ・右下または右下スコアカードの少し上にLOCATION欄と同じロケーション表記があり、「mood」という文字を含んでいない
 ・レーダーチャートの周囲に意味のない単独数字がなく、軸名と形だけで特徴が伝わる
+・パレット、解決バッジ、スコアカード、ロケーション表記、署名ロゴが互いに重ならず、情報が多すぎる印象になっていない
 
 以上の条件をすべて守り、文章による説明や紹介文は返さず、完成画像だけを生成してください。`;
 }
@@ -6812,6 +6908,22 @@ function buildCoordinateFashionScorePrompt(fashionScore) {
 ・色は毎回、半透明ホワイト背景、ローズピンクの線、濃いブラウン文字、淡いピンクのチャート塗りで統一する
 ・レーダーチャートはピンク系の線と淡い塗りで、軸名は小さくても読める濃さにする
 ・スコアカード内に商品説明文、都市名、余計なキャッチコピー、意味のない単独数字を追加しない`;
+}
+
+function buildCoordinateStyleKitPrompt(styleKit) {
+  const paletteLabels = styleKit.palette.map((color) => `${color.label}（${color.jp}）`).join(" / ");
+  const paletteHex = styleKit.palette.map((color) => color.hex).join(" / ");
+  return `【3色カラーパレット＋お悩み解決バッジ・必須】
+・参照画像ボードの「3 COLOR PALETTE」と「SOLUTION BADGE」を、完成画像へ小さな編集パーツとして入れる
+・カラーパレットは3色だけ。色名は「${paletteLabels}」、色は「${paletteHex}」を基準にする
+・パレットは直径の小さな丸スウォッチ3つで、画像の上部または右上の余白へ控えめに配置する
+・パレットは服の色選びの補助として見せる。主役商品、顔、ハナコ先生、吹き出し、ファッションスコアに重ねない
+・お悩み解決バッジの文言は必ず「${styleKit.badge}」。小さなピル型、シール型、または半透明タグ型で上品に入れる
+・バッジの補足は必要な場合だけ「${styleKit.subBadge}」を小さく添える。長文にしない
+・デザインは淡いピンク、アイボリー、モカブラウンを中心に、ブランド広告のように上品で控えめにする
+・パレットとバッジは目立ちすぎず、画像全体の高級感と統一感を壊さない。子どもっぽい原色、太い縁取り、派手な影、巨大なステッカーは禁止
+・画像ボードの見た目を参考にするが、完成画像ではより洗練された小さな編集パーツとして整える
+・カラーパレット、解決バッジ、ファッションスコア、ロケーション表記、署名ロゴの5要素は互いに重ねず、余白の中で整理して配置する`;
 }
 
 function buildCoordinateLocationInstruction(coordinate, originalProductPhotoMode) {
