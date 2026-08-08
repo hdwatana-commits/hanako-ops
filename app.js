@@ -5640,7 +5640,21 @@ function buildCoordinateStyleKit(coordinate, analysis = buildCoordinateAnalysis(
   };
   const badge = badgeOptions[coordinate.concern] || "可愛く解決";
   const subBadge = coordinate.priority ? `${coordinate.priority}を優先` : "今日の正解コーデ";
-  return { palette, badge, subBadge };
+  const recipeByConcern = {
+    "朝、服が決まらない": ["決まりやすさ", 45, "きれいめ", 35, "抜け感", 20],
+    "甘すぎ・子どもっぽく見せたくない": ["大人感", 45, "甘さ", 30, "引き算", 25],
+    "全身のバランスを整えたい": ["縦ライン", 40, "軽さ", 30, "締め色", 30],
+    "いつも同じ組み合わせになる": ["新鮮さ", 40, "着回し", 35, "差し色", 25],
+    "気温差に対応したい": ["羽織り", 40, "軽さ", 35, "調整力", 25],
+    "写真で可愛く見せたい": ["写真映え", 45, "透明感", 35, "小物感", 20],
+  };
+  const recipeBase = recipeByConcern[coordinate.concern] || ["甘さ", 40, "きれいめ", 35, "抜け感", 25];
+  const recipe = [
+    { label: recipeBase[0], value: recipeBase[1] },
+    { label: recipeBase[2], value: recipeBase[3] },
+    { label: recipeBase[4], value: recipeBase[5] },
+  ];
+  return { palette, badge, subBadge, recipe };
 }
 
 function drawCoordinateStyleKitReference(ctx, coordinate, analysis) {
@@ -5682,6 +5696,25 @@ function drawCoordinateStyleKitReference(ctx, coordinate, analysis) {
   ctx.fillStyle = "#6b584b";
   ctx.font = "700 13px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText(kit.palette.map((color) => color.label).join(" / "), px, py + 54);
+
+  const rx = 70;
+  const ry = 318;
+  const rw = 650;
+  const rh = 36;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.74)";
+  roundRect(ctx, rx, ry, rw, rh, 18);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(205, 106, 139, 0.28)";
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, rx, ry, rw, rh, 18);
+  ctx.stroke();
+  ctx.fillStyle = "#8a6259";
+  ctx.font = "800 13px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("STYLE RECIPE", rx + 18, ry + 23);
+  ctx.font = "800 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillStyle = "#2f292c";
+  const recipeText = kit.recipe.map((item) => `${item.label} ${item.value}%`).join(" / ");
+  ctx.fillText(recipeText, rx + 164, ry + 24);
   ctx.restore();
 }
 
@@ -5743,7 +5776,7 @@ async function drawCoordinateBoard(coordinate, text) {
     const col = index % 2;
     const row = Math.floor(index / 2);
     const x = 70 + col * 485;
-    const y = compactProductLayout ? 335 + row * 190 : 360 + row * 270;
+    const y = compactProductLayout ? 370 + row * 190 : 386 + row * 270;
     await drawProductCard(ctx, product, x, y, compactProductLayout);
     if (teacherPattern) drawTeacherHandwrittenPoint(ctx, product, index, x, y, coordinate, compactProductLayout);
   }
@@ -6614,12 +6647,12 @@ function buildOutfitImagePrompt(coordinate) {
 ・商品画像URLはアクセスしない。添付画像を基準に作る
 ・添付画像にない商品や人物を、似た画像や想像で補わない`
     : `【添付画像の役割・最優先】
-・添付は「コーデ参照画像ボード」1枚だけ。PERSON欄は本人、PRODUCT欄は選択商品、TEACHER欄はハナコ先生の基準画像、SIGNATURE LOGO欄は左上へ入れる署名ロゴ、LOCATION欄は右下へ入れる場所表記、3 COLOR PALETTE欄は3色パレット、SOLUTION BADGE欄はお悩み解決バッジ
+・添付は「コーデ参照画像ボード」1枚だけ。PERSON欄は本人、PRODUCT欄は選択商品、TEACHER欄はハナコ先生の基準画像、SIGNATURE LOGO欄は左上へ入れる署名ロゴ、LOCATION欄は右下へ入れる場所表記、3 COLOR PALETTE欄は3色パレット、SOLUTION BADGE欄はお悩み解決バッジ、STYLE RECIPE欄はコーデの配合メモ
 ・本人の顔、髪、体型、マスクはPERSON欄を最優先する
 ・服と小物は各PRODUCT欄、先生アイコンはTEACHER欄を最優先する
 ・SIGNATURE LOGO欄のロゴは、透明背景の小さな署名素材として左上へ控えめに入れる
 ・LOCATION欄の表記は、完成画像の右下へ小さく上品に入れる
-・3 COLOR PALETTE欄とSOLUTION BADGE欄は、完成画像の余白へ小さく上品に入れる
+・3 COLOR PALETTE欄、SOLUTION BADGE欄、STYLE RECIPE欄は、完成画像の余白へ小さく上品に入れる
 ・画像内の吹き出し文、手書きポイント、見出し、配置も同じ参照ボードから読み取る
 ・商品画像URLと先生画像URLにはアクセスしない。URLより添付した参照画像を必ず優先する
 ・参照画像ボードが届いていない場合は画像を生成せず、「参照画像を1枚添付してください」とだけ返す`;
@@ -6875,10 +6908,11 @@ ${isHanakoTeacherPattern(coordinate.imagePattern) ? `・指定URLと同じハナ
 ・右下に半透明で小さなファッションランク、レーダーチャート、ファッションパワーのスコアカードがあり、コーデや商品を隠していない
 ・参照画像ボードの3 COLOR PALETTEと同じ3色カラーパレットが、小さく上品に入っている
 ・参照画像ボードのSOLUTION BADGEと同じお悩み解決バッジが、小さく上品に入っている
+・参照画像ボードのSTYLE RECIPEと同じ配合メモが、小さく上品に入っている
 ・左上にSIGNATURE LOGO欄と同じ小さな透明署名ロゴがあり、主張しすぎていない
 ・右下または右下スコアカードの少し上にLOCATION欄と同じロケーション表記があり、「mood」という文字を含んでいない
 ・レーダーチャートの周囲に意味のない単独数字がなく、軸名と形だけで特徴が伝わる
-・パレット、解決バッジ、スコアカード、ロケーション表記、署名ロゴが互いに重ならず、情報が多すぎる印象になっていない
+・パレット、解決バッジ、STYLE RECIPE、スコアカード、ロケーション表記、署名ロゴが互いに重ならず、情報が多すぎる印象になっていない
 
 以上の条件をすべて守り、文章による説明や紹介文は返さず、完成画像だけを生成してください。`;
 }
@@ -6916,17 +6950,22 @@ function buildCoordinateFashionScorePrompt(fashionScore) {
 function buildCoordinateStyleKitPrompt(styleKit) {
   const paletteLabels = styleKit.palette.map((color) => `${color.label}（${color.jp}）`).join(" / ");
   const paletteHex = styleKit.palette.map((color) => color.hex).join(" / ");
-  return `【3色カラーパレット＋お悩み解決バッジ・必須】
-・参照画像ボードの「3 COLOR PALETTE」と「SOLUTION BADGE」を、完成画像へ小さな編集パーツとして入れる
+  const recipeText = styleKit.recipe.map((item) => `${item.label} ${item.value}%`).join(" / ");
+  return `【3色カラーパレット＋お悩み解決バッジ＋STYLE RECIPE・必須】
+・参照画像ボードの「3 COLOR PALETTE」「SOLUTION BADGE」「STYLE RECIPE」を、完成画像へ小さな編集パーツとして入れる
 ・カラーパレットは3色だけ。色名は「${paletteLabels}」、色は「${paletteHex}」を基準にする
 ・パレットは直径の小さな丸スウォッチ3つで、画像の上部または右上の余白へ控えめに配置する
 ・パレットは服の色選びの補助として見せる。主役商品、顔、ハナコ先生、吹き出し、ファッションスコアに重ねない
 ・お悩み解決バッジの文言は必ず「${styleKit.badge}」。小さなピル型、シール型、または半透明タグ型で上品に入れる
 ・バッジの補足は必要な場合だけ「${styleKit.subBadge}」を小さく添える。長文にしない
+・STYLE RECIPEは必ず見出し「STYLE RECIPE」と、配合「${recipeText}」を小さく入れる
+・STYLE RECIPEはファッション誌の編集メモのように、細い罫線、半透明の白またはアイボリー地、濃いブラウン文字で上品に見せる
+・STYLE RECIPEは「なぜこのコーデが可愛いのか」を一瞬で伝える補助。スコアカードより小さく、商品や人物より目立たせない
+・STYLE RECIPEの数値、語句、順番は変えない。別の英語、謎の数字、意味のない略語を追加しない
 ・デザインは淡いピンク、アイボリー、モカブラウンを中心に、ブランド広告のように上品で控えめにする
 ・パレットとバッジは目立ちすぎず、画像全体の高級感と統一感を壊さない。子どもっぽい原色、太い縁取り、派手な影、巨大なステッカーは禁止
 ・画像ボードの見た目を参考にするが、完成画像ではより洗練された小さな編集パーツとして整える
-・カラーパレット、解決バッジ、ファッションスコア、ロケーション表記、署名ロゴの5要素は互いに重ねず、余白の中で整理して配置する`;
+・カラーパレット、解決バッジ、STYLE RECIPE、ファッションスコア、ロケーション表記、署名ロゴの6要素は互いに重ねず、余白の中で整理して配置する`;
 }
 
 function buildCoordinateLocationInstruction(coordinate, originalProductPhotoMode) {
