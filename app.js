@@ -8455,6 +8455,87 @@ function buildRoomHanakoTeacherInstruction(mode) {
 ・商品を売るためのメインコピーは別にあるので、先生コメントは小さく効く補足に留める`;
 }
 
+function getRoomBuyReasonCategory(product) {
+  const categoryAliases = {
+    ニット: "トップス",
+    カーディガン: "アウター",
+    オールインワン: "ワンピース",
+    セットアップ: "ワンピース",
+    デニム: "パンツ",
+    ヘアアクセサリー: "アクセサリー",
+    腕時計: "アクセサリー",
+    "ストール・マフラー": "ファッション小物",
+    ベルト: "ファッション小物",
+    サングラス: "ファッション小物",
+    財布: "ファッション小物",
+    傘: "ファッション小物",
+    レッグウェア: "ファッション小物",
+    レインウェア: "アウター",
+  };
+  return categoryAliases[product?.category] || product?.category || "ファッション";
+}
+
+function buildRoomBuyReasonKit(product) {
+  const text = `${product?.name || ""} ${product?.hook || ""} ${product?.category || ""} ${product?.details?.material || ""} ${product?.details?.color || ""}`;
+  const category = getRoomBuyReasonCategory(product);
+  const tagByCategory = {
+    トップス: ["華奢見え", "顔まわり明るく", "着回しOK", "二の腕すっきり"],
+    ワンピース: ["1枚で完成", "写真映え", "上品見え", "朝ラク"],
+    アウター: ["気温差OK", "縦ライン", "着回しOK", "軽やか"],
+    スカート: ["揺れ感", "腰高見え", "甘さ調整", "大人可愛い"],
+    パンツ: ["脚すっきり", "動きやすい", "大人見え", "甘さ引き算"],
+    バッグ: ["高見え", "差し色", "収納力", "抜け感"],
+    靴: ["歩きやすい", "脚長見え", "きれいめ", "軽い足もと"],
+    アクセサリー: ["顔まわり華やか", "上品な光", "盛りすぎない", "小さく効く"],
+    ファッション小物: ["小物で高見え", "抜け感", "差し色", "使い回し"],
+  };
+  const contextualTags = [];
+  if (/二の腕|袖|半袖|ノースリーブ|フレンチスリーブ/.test(text)) contextualTags.push("二の腕すっきり");
+  if (/シアー|透け|レース|チュール/.test(text)) contextualTags.push("抜け感");
+  if (/洗える|ウォッシャブル|手洗い/.test(text)) contextualTags.push("洗える");
+  if (/接触冷感|冷感|涼|クール/.test(text)) contextualTags.push("涼しげ");
+  if (/撥水|雨|レイン/.test(text)) contextualTags.push("雨の日OK");
+  if (/リボン|フリル|パール|ハート/.test(text)) contextualTags.push("大人可愛い");
+  if (/SALE|セール|OFF|クーポン|値下げ|%/.test(text)) contextualTags.push("お得感");
+  if (/UV|紫外線/.test(text)) contextualTags.push("UV対策");
+  if (/ストレッチ|伸縮/.test(text)) contextualTags.push("動きやすい");
+  const tags = [...new Set([...contextualTags, ...(tagByCategory[category] || []), "高見え", "写真映え", "着回しOK"])].slice(0, 3);
+  const beforeAfterByCategory = {
+    トップス: ["上半身がぼんやり", "顔まわりすっきり"],
+    ワンピース: ["朝コーデに迷う", "1枚で完成"],
+    アウター: ["気温差で迷う", "羽織りで解決"],
+    スカート: ["甘さが散らかる", "揺れ感を主役に"],
+    パンツ: ["甘さが残りすぎる", "直線で大人見え"],
+    バッグ: ["全身が締まらない", "小物で高見え"],
+    靴: ["足もとが重い", "軽くきれいめ"],
+    アクセサリー: ["顔まわりが寂しい", "小さな光で上品"],
+    ファッション小物: ["いつもの服が普通", "小物で印象アップ"],
+  };
+  let beforeAfter = beforeAfterByCategory[category] || ["何を足すか迷う", "可愛く整う"];
+  if (/SALE|セール|OFF|クーポン|値下げ|%/.test(text)) beforeAfter = ["迷って後回し", "今チェック"];
+  if (/接触冷感|冷感|涼|クール/.test(text)) beforeAfter = ["暑さで迷う", "涼しげに整う"];
+  if (/撥水|雨|レイン/.test(text)) beforeAfter = ["雨の日に困る", "天気も味方に"];
+  if (/二の腕|袖|半袖|ノースリーブ|フレンチスリーブ/.test(text)) beforeAfter = ["腕まわりが気になる", "袖でさりげなく"];
+  return { tags, before: beforeAfter[0], after: beforeAfter[1] };
+}
+
+function buildRoomBuyReasonInstruction(product, mode) {
+  if (mode === "collection") return `【買う理由ミニタグ＋Before→After】
+・コレクション表紙には買う理由ミニタグとBefore→After解決メモを入れない`;
+  const kit = buildRoomBuyReasonKit(product);
+  return `【買う理由ミニタグ＋Before→After解決・通常投稿だけ必須】
+・参照画像ボードのBUY REASON TAGS欄にある3つのミニタグを、完成画像の余白へ小さく上品に入れる
+・タグ文言は必ず「${kit.tags.join("」「")}」を使う。別タグ、誇大表現、価格、数字、ランキングは足さない
+・タグは小さな丸角ピル型。低彩度ピンク、アイボリー、モカブラウンで、ブランド広告の編集メモのように控えめにする
+・参照画像ボードのBEFORE → AFTER欄を、完成画像へ小さな課題解決メモとして入れる
+・文言は必ず「${kit.before} → ${kit.after}」。言い換え、造語、長文化、三点リーダー省略は禁止
+・Before→Afterは押し売りではなく、買う理由が一瞬で伝わるファッション解決メモとして扱う
+・ミニタグとBefore→Afterは、手書き一言より小さく、ハナコ先生の吹き出しより目立ちすぎない
+・主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠さない
+・商品と無関係な効果、体型変化の断定、医療的表現、未確認の使用体験は入れない
+・全体の雰囲気は洗練されたファッション誌の小さな注釈。派手なシール、強い影、原色、巨大ラベルは禁止`;
+}
+
 function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, mood, location, city }) {
   const details = product.details || {};
   const brand = details.brand || "HANAKO SELECT";
@@ -8471,6 +8552,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
   const poseHairInstruction = buildRoomPoseHairNaturalInstruction(pose, hairStyle);
   const productColorInstruction = buildRoomProductColorInstruction(product);
   const roomHanakoTeacherInstruction = buildRoomHanakoTeacherInstruction(mode);
+  const roomBuyReasonInstruction = buildRoomBuyReasonInstruction(product, mode);
   const signatureLogoInstruction = mode !== "collection"
     ? `【透明ミニロゴ画像・通常投稿だけ必須】
 ・参照画像ボードの「SIGNATURE LOGO」欄にあるロゴ画像を、完成画像の左上へとても小さく上品に入れる
@@ -8555,7 +8637,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・正方形1:1、1536×1536px以上。明るく自然で、商品と着用イメージが一目で分かる1枚にする
 ・本人が商品を自然に身につけ、商品の色、形、丈、柄、素材感をURL画像と一致させる
 ・画像内の文字は、読みやすい場所へ「${oneLiner}」を一字一句そのまま1回だけ入れる。言い換え、追記、造語は禁止
-・メインの手書き一言、海外都市の小さな場所表記、左上の署名ロゴ、ハナコ先生の小さな吹き出し以外の見出し、価格、説明、ランキング、数字、追加ロゴを増やさない
+・メインの手書き一言、海外都市の小さな場所表記、左上の署名ロゴ、ハナコ先生の小さな吹き出し、買う理由ミニタグ、Before→After解決メモ以外の見出し、価格、説明、ランキング、数字、追加ロゴを増やさない
 ・一言は画像幅の28〜38%くらいの存在感で、スマホの一覧でも読める大きさにする
 ・一言は黒または濃いモカブラウンの太め手書きペンで丁寧に書いたような、自然でかわいい日本語にする
 ・手書き文字は崩しすぎず、一文字ずつはっきり読める太さにする。文字を薄く、細く、かすれさせない
@@ -8569,6 +8651,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 
 【添付した参照画像ボード・最優先】
 ・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像、TEACHER欄はハナコ先生の基準画像、TEACHER COMMENT欄は画像へ入れる先生のひとこと
+・BUY REASON TAGS欄は通常投稿へ入れる買う理由ミニタグ、BEFORE → AFTER欄は通常投稿へ入れる課題解決メモ
 ・本人はPERSON欄と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
 ・髪型は下の「髪型」設定に自然に合わせる。ただし顔、髪色、本人らしい雰囲気は変えない
 ・髪型が「元写真の髪型を保つ」の場合は、長さ、前髪、分け目、髪の流れを変えない
@@ -8602,6 +8685,8 @@ ${signatureLogoInstruction}
 
 ${roomHanakoTeacherInstruction}
 
+${roomBuyReasonInstruction}
+
 ${outfitStylingInstruction}
 
 ${formatInstruction}
@@ -8617,7 +8702,9 @@ ${collectionItems}
 ・「STYLE EDIT」の文字を画像内のどこにも入れていない
 ・未確認の人気、効果、使用体験、価格、数字を作っていない
 ・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンと、TEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
+・通常投稿では、BUY REASON TAGS欄と同じ買う理由ミニタグ、BEFORE → AFTER欄と同じ課題解決メモが小さく上品に入っている
 ・ハナコ先生と吹き出しが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
+・買う理由ミニタグとBefore→Afterが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
 ・外周の白い安全余白や白い額縁は不要。写真は端まで広げてよい
 ・ただし統一感のため、画像の最外周に薄ピンクの上品なラインフレームを必ず入れる
 ・ラインフレームは2〜3px相当の主線＋内側に1px相当のごく淡い補助線で、前より少しだけ目立つ程度にする。低彩度の薄ピンクを使い、白枠、太枠、強いピンク、派手な角装飾は禁止
@@ -8686,6 +8773,7 @@ async function drawRoomReferenceBoard(product, mode, selectedPersonSource = "") 
   if (mode !== "collection") {
     await drawRoomSignatureLogoReference(ctx);
     await drawRoomHanakoTeacherReference(ctx, product);
+    drawRoomBuyReasonKitReference(ctx, product);
   }
   ctx.fillStyle = "#6d5b62";
   ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
@@ -8740,6 +8828,49 @@ async function drawRoomHanakoTeacherReference(ctx, product) {
   ctx.fill();
   if (avatar) drawCoverImage(ctx, avatar, avatarX, avatarY, avatarSize, avatarSize, avatarSize / 2);
   else drawPlaceholder(ctx, "先生", avatarX, avatarY, avatarSize, avatarSize);
+  ctx.restore();
+}
+
+function drawRoomBuyReasonKitReference(ctx, product) {
+  const kit = buildRoomBuyReasonKit(product);
+  ctx.save();
+  const tagX = 820;
+  const tagY = 42;
+  ctx.fillStyle = "#6b584b";
+  ctx.font = "700 15px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("BUY REASON TAGS / 小さく上品に", tagX, tagY);
+  let x = tagX;
+  const y = tagY + 14;
+  kit.tags.forEach((tag) => {
+    const width = Math.min(166, Math.max(96, ctx.measureText(tag).width + 36));
+    ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
+    roundRect(ctx, x, y, width, 34, 17);
+    ctx.fill();
+    ctx.strokeStyle = "#e7b6c7";
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, x, y, width, 34, 17);
+    ctx.stroke();
+    ctx.fillStyle = "#a43d64";
+    ctx.font = "800 17px Yu Gothic UI, Meiryo, sans-serif";
+    ctx.fillText(tag, x + 18, y + 23);
+    x += width + 12;
+  });
+  const baX = 820;
+  const baY = 96;
+  const baW = 510;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+  roundRect(ctx, baX, baY, baW, 30, 15);
+  ctx.fill();
+  ctx.strokeStyle = "#ead0da";
+  ctx.lineWidth = 1.2;
+  roundRect(ctx, baX, baY, baW, 30, 15);
+  ctx.stroke();
+  ctx.fillStyle = "#8b6973";
+  ctx.font = "800 14px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("BEFORE → AFTER", baX + 18, baY + 20);
+  ctx.fillStyle = "#3d3035";
+  ctx.font = "800 18px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText(`${kit.before} → ${kit.after}`, baX + 170, baY + 21);
   ctx.restore();
 }
 
