@@ -8104,6 +8104,84 @@ function buildCurrentRoomImagePrompt(product = getSelectedRoomProduct(), mode = 
   }));
 }
 
+function extractRoomProductColorChoices(product) {
+  const details = product?.details || {};
+  const text = [
+    product?.name,
+    product?.category,
+    product?.hook,
+    details.color,
+    details.colors,
+    details.variation,
+    details.variations,
+    details.description,
+    details.caption,
+    details.itemCaption,
+    details.catchcopy,
+  ].filter(Boolean).join(" ");
+  const colorDefinitions = [
+    { label: "アイボリー", pattern: /アイボリー|オフホワイト|オフ白|生成り|エクリュ|クリーム|ivory|ecru|cream/i, score: 96 },
+    { label: "ベージュ", pattern: /ベージュ|グレージュ|モカ|ライトベージュ|beige|greige|mocha/i, score: 94 },
+    { label: "ピンク", pattern: /ピンク|ローズ|サクラ|桜|コーラル|pink|rose|coral/i, score: 93 },
+    { label: "ラベンダー", pattern: /ラベンダー|ライラック|パープル|紫|lavender|lilac|purple/i, score: 92 },
+    { label: "ミント", pattern: /ミント|ライトグリーン|グリーン|緑|カーキ|mint|green|khaki/i, score: 89 },
+    { label: "ブルー", pattern: /ブルー|水色|サックス|ライトブルー|青|blue|sax/i, score: 88 },
+    { label: "ホワイト", pattern: /ホワイト|白|white/i, score: 86 },
+    { label: "ブラウン", pattern: /ブラウン|茶|キャメル|camel|brown/i, score: 82 },
+    { label: "レッド", pattern: /レッド|赤|ボルドー|ワイン|red|bordeaux|wine/i, score: 80 },
+    { label: "イエロー", pattern: /イエロー|黄色|マスタード|yellow|mustard/i, score: 78 },
+    { label: "グレー", pattern: /グレー|ライトグレー|灰|gray|grey/i, score: 72 },
+    { label: "ネイビー", pattern: /ネイビー|紺|navy/i, score: 66 },
+    { label: "ブラック", pattern: /ブラック|黒|black/i, score: 58 },
+  ];
+  const found = colorDefinitions
+    .filter((color) => color.pattern.test(text))
+    .map((color) => ({ ...color }));
+  const unique = [];
+  for (const color of found) {
+    if (!unique.some((item) => item.label === color.label)) unique.push(color);
+  }
+  if (unique.length <= 1) return unique;
+  const category = String(product?.category || "");
+  return unique
+    .map((color) => {
+      let score = color.score;
+      if (/トップス|ワンピース|アウター|フォーマル|浴衣/.test(category) && /アイボリー|ベージュ|ピンク|ラベンダー|ブルー|ホワイト/.test(color.label)) score += 8;
+      if (/バッグ|シューズ|アクセサリー|帽子|ファッション小物/.test(category) && /ピンク|ベージュ|ブラウン|ホワイト|アイボリー/.test(color.label)) score += 7;
+      if (/水着|水際|リゾート/.test(category) && /ホワイト|ブルー|ミント|アイボリー/.test(color.label)) score += 9;
+      if (color.label === "ブラック") score -= 18;
+      if (color.label === "ネイビー") score -= 8;
+      return { ...color, score };
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
+function buildRoomProductColorInstruction(product) {
+  const choices = extractRoomProductColorChoices(product);
+  if (!choices.length) {
+    return `【商品の色選び】
+・商品画像から確認できる主役商品の色をそのまま使う
+・参照画像内に複数の色サンプル、色違い、カラーチップ、色名が見える場合は、その中から一番写真映えする色を選ぶ
+・複数カラー展開が見える場合は、黒や暗色へ自動で寄せず、顔映り、写真映え、ブランド広告としての見え方が一番よい色を選ぶ
+・ブラック、ネイビー、濃いグレーなどの暗色は、商品がその色しか確認できない場合、または暗色が明らかに一番映える場合だけ使う
+・商品ページや参照画像に存在しない色を新しく作らない`;
+  }
+  const selected = choices[0].label;
+  const labels = choices.map((color) => color.label).join(" / ");
+  const blackRule = choices.length >= 2 && choices.some((color) => color.label === "ブラック")
+    ? "・ブラックは候補色の一つにあっても、今回の推奨色ではない限り選ばない。黒しか確認できない場合だけブラックを使う"
+    : "・商品に黒以外の映える色がある場合は、その色を優先する";
+  return `【商品の色選び・最優先】
+・商品に複数カラーがある場合、黒へ自動で寄せない
+・確認できた候補色: ${labels}
+・今回の画像で主役商品に使う推奨カラー: ${selected}
+・主役商品は必ず「${selected}」系の色で作る。別カラー、黒、濃色へ勝手に変更しない
+${blackRule}
+・参照画像内の色サンプルや色違い一覧に、上の候補色以外の映える色が明確に写っている場合は、商品に存在する色の範囲で最も写真映えする色を選び、黒や暗色を安易に選ばない
+・推奨カラーは、顔映り、写真映え、ハナコらしい大人ガーリー感、背景との相性を優先して選んだ色として扱う
+・商品ページや参照画像に存在しない色は作らない。候補色が読み取れない場合だけ、PRODUCT欄の商品画像の色をそのまま使う`;
+}
+
 function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, mood, location, city }) {
   const details = product.details || {};
   const brand = details.brand || "HANAKO SELECT";
@@ -8118,6 +8196,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
   const overseasCities = getRoomOverseasCities();
   const cityOption = overseasCities.find(([name]) => name === city) || overseasCities[0];
   const poseHairInstruction = buildRoomPoseHairNaturalInstruction(pose, hairStyle);
+  const productColorInstruction = buildRoomProductColorInstruction(product);
   const signatureLogoInstruction = mode !== "collection"
     ? `【透明ミニロゴ画像・通常投稿だけ必須】
 ・参照画像ボードの「SIGNATURE LOGO」欄にあるロゴ画像を、完成画像の左上へとても小さく上品に入れる
@@ -8237,6 +8316,8 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 雰囲気: ${mood}
 
 ${poseHairInstruction}
+
+${productColorInstruction}
 
 ${locationInstruction}
 
