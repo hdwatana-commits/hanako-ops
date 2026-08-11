@@ -11068,7 +11068,9 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
 ・先生の真上に、白地とくすみピンク線の吹き出しを1個だけ置き、下向きのしっぽで先生へつなぐ
 ・吹き出しの見出しは必ず「ハナコ先生のズバッとひとこと」
 ・吹き出し本文は必ずこの1文だけ: 「${hanakoComment}」
-・見出しと本文を一字一句変えない。造語、誤字、文字化け、追加の掛け声、別の吹き出しを作らない
+・見出しと本文を一字一句変えない。助詞、語尾、句読点も変えない
+・意味不明な日本語、造語、誤字、文字化け、英字混じり、余計な掛け声を絶対に作らない
+・吹き出し本文が入らない場合は文章を変えず、文字サイズを下げるか吹き出し幅を少し広げて必ず全文を収める
 ・吹き出しと先生を商品、人物、重要な文字へ重ねず、本文の最後まで枠内へ収める
 ・${c.platform === "X" ? "横長画像でも先生と吹き出しを左下の安全域へまとめ、比較情報を隠さない" : "縦長画像の下端から8%以上離し、先生と吹き出しを縦に並べる"}` : `【ハナコ先生】
 ・今回は先生アイコンと吹き出しを入れない`;
@@ -11540,10 +11542,60 @@ function chooseSocialHanakoComment(data, force = false) {
   if (/白|アイボリー|ベージュ|淡色/.test(productText)) contextual.push("淡色の日こそ、輪郭を一つ締めて。");
   if (/リボン|フリル|レース/.test(productText)) contextual.push("甘い要素は主役だけ。小物は静かに。");
   const options = [...new Set([...contextual, ...(categoryComments[product.category] || common), ...common])];
-  const candidates = options.filter((comment) => !recentSocialHanakoComments.includes(comment));
-  currentSocialHanakoComment = candidates[Math.floor(Math.random() * candidates.length)] || options[0];
+  const cleanOptions = options
+    .map(normalizeSocialHanakoComment)
+    .filter(isNaturalSocialHanakoComment);
+  const fallback = getSafeSocialHanakoComments(product.category);
+  const safeOptions = [...new Set([...cleanOptions, ...fallback])];
+  const candidates = safeOptions.filter((comment) => !recentSocialHanakoComments.includes(comment));
+  currentSocialHanakoComment = candidates[Math.floor(Math.random() * candidates.length)] || safeOptions[0] || "見せ場は一つで十分よ。";
   recentSocialHanakoComments = [currentSocialHanakoComment, ...recentSocialHanakoComments].slice(0, 12);
   return currentSocialHanakoComment;
+}
+
+function normalizeSocialHanakoComment(value) {
+  return String(value || "")
+    .replace(/[「」『』]/g, "")
+    .replace(/[♡❤︎♥]/g, "")
+    .replace(/\s+/g, "")
+    .replace(/。{2,}/g, "。")
+    .trim();
+}
+
+function isNaturalSocialHanakoComment(value) {
+  const text = normalizeSocialHanakoComment(value);
+  if (!text) return false;
+  if (text.length < 8 || text.length > 24) return false;
+  if (!/[ぁ-んァ-ヶ一-龠]/.test(text)) return false;
+  if (/[A-Za-z]{3,}|\d{2,}|[?？!！]{2,}|[^\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\p{Number}。、ー・]/u.test(text)) return false;
+  if (/なるん|バー|謎|undefined|null|NaN|ラベンダーの|ピーコ|あんた/.test(text)) return false;
+  if (!/[。よわねで]$/.test(text)) return false;
+  return true;
+}
+
+function getSafeSocialHanakoComments(category) {
+  const base = [
+    "見せ場は一つで十分よ。",
+    "迷ったら色数を減らして。",
+    "主役を決めると整うわ。",
+    "小物は静かに効かせて。",
+    "甘さは一か所で十分よ。",
+    "余白まで含めておしゃれよ。",
+    "買う前に着回しを想像して。",
+    "高見えは色数で決まるわ。",
+  ];
+  const byCategory = {
+    トップス: ["顔まわりは一つだけ盛って。", "袖が主役なら小物は控えて。", "首もとを見せると軽いわ。"],
+    ワンピース: ["一枚の強さを邪魔しないで。", "小物は端正にまとめて。", "丈と靴まで見て完成よ。"],
+    アウター: ["羽織りは縦線を作るものよ。", "中は静かに整えて。", "脱いだ後まで考えて。"],
+    スカート: ["揺れ感を主役にして。", "上半身はすっきりまとめて。", "甘さは足もとで整えて。"],
+    パンツ: ["縦線を味方につけて。", "腰位置で印象は変わるわ。", "丈と靴は必ず確認して。"],
+    バッグ: ["バッグは配色の仕上げよ。", "差し色は一つで十分よ。", "持ち手まで見て選んで。"],
+    シューズ: ["靴でコーデの性格が決まるわ。", "歩ける可愛さを選んで。", "足もとは軽く整えて。"],
+    アクセサリー: ["光は一か所で上品よ。", "耳元は引き算で整えて。", "小さな光ほど効くわ。"],
+    "ホテル・旅行": ["写真より先に立地を見て。", "旅は余白があるほど素敵よ。", "料金は日程まで確認して。"],
+  };
+  return [...(byCategory[category] || []), ...base];
 }
 
 function updateSocialHanakoTeacherPreview() {
