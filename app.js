@@ -10750,6 +10750,9 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
   const details = product.details || {};
   const imageHeadline = buildSocialImageHeadline(c, labels);
   const imagePoints = buildSocialImagePoints(c, labels);
+  const viralBlueprint = buildSocialViralBlueprint(c, labels);
+  const angleBlueprint = buildSocialAngleBlueprint(c, labels);
+  const platformBlueprint = buildSocialPlatformBlueprint(c);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -10798,6 +10801,13 @@ ${c.platform}
 ${visualByPlatform}
 ${topicInstruction}
 
+${platformBlueprint}
+
+${viralBlueprint}
+
+【切り口の作り込み】
+${angleBlueprint}
+
 ${hanakoInstruction}
 
 【画像内へ書く日本語・一字一句固定】
@@ -10814,6 +10824,7 @@ ${hanakoInstruction}
 【投稿文も同時に作る】
 ・画像を生成したあと、同じ回答内に${c.platform}の完成投稿文を1案だけ付ける
 ・投稿文の冒頭は、画像の見出しと同じ悩み・結論から自然につなげる
+・投稿文は上の「投稿型の設計図」と「切り口の作り込み」を必ず反映し、どの投稿型でも同じ文章構成にしない
 ・投稿文は商品情報にない使用感、効果、人気、順位、価格変動を作らない
 ・投稿文には商用投稿として「${c.disclosure}」を自然に入れる
 ・リンク導線は次を使う: ${c.roomLine}
@@ -10936,6 +10947,99 @@ function buildSocialImagePoints(context, labels) {
         : "動きやすいゆとりを確認";
   }
   return points;
+}
+
+function buildSocialViralBlueprint(context, labels) {
+  const product = context.product || {};
+  const category = product.category || "商品";
+  const concern = context.isTravel ? "旅先選び" : labels.fashionConcern;
+  const scene = context.isTravel ? labels.travelCompanion : labels.fashionOccasion;
+  const priority = context.isTravel ? labels.travelPriority : labels.fashionPriority;
+  const blueprints = {
+    microstory: {
+      title: "小さな実話型",
+      copy: `冒頭は、${scene}の前に起きる小さな迷いを1場面で描く。次に「だから${category}を見るならここ」と自然に商品へつなぐ。最後は保存やROOM確認へ静かに誘導する。`,
+      image: "写真の中に日常の一瞬を感じる余白を作り、見出しは会話のように短くする。説明は3ポイント以下で、生活感と上品さを両立する。",
+      avoid: "作り話の体験談、買った断定、長い日記、オチのない独り言",
+    },
+    beforeafter: {
+      title: "Before→After型",
+      copy: `最初に「前は何で困っていたか」を短く置き、次に${category}でどう整うかを具体化する。変化は体型や効果の断定ではなく、色・丈・重心・素材など見た目の整理として書く。`,
+      image: "画像内はBefore/Afterを大きな比較表にせず、悩みから解決への矢印や短い手書きメモで上品に見せる。",
+      avoid: "痩せる、消えるなどの強すぎる断定。商品と関係ない悩み解決",
+    },
+    mistake: {
+      title: "失敗からの学び型",
+      copy: `冒頭で服選びのありがちな失敗を1つだけ出す。すぐに責めず、「ここを見ると失敗しにくい」と${category}の確認点へ落とす。`,
+      image: "失敗例を煽らず、NG風の赤バツではなく、上品なチェックメモとして見せる。",
+      avoid: "読者を責める言い方、強いダメ出し、商品情報にない失敗談",
+    },
+    comparison: {
+      title: "比較型",
+      copy: `比較軸を1つに絞る。例: ${priority}重視なら何を見るか、${concern}ならどこを確認するか。A/Bの違いが読者の判断に使えるように書く。`,
+      image: "画像はA/Bや左右比較にしてよいが、比較対象が実際に見えていない場合は「見るポイント」比較にする。",
+      avoid: "根拠のない優劣、複数商品がないのにランキング化、比較軸の増やしすぎ",
+    },
+    ranking: {
+      title: "目的別ランキング型",
+      copy: "順位を作る場合は、実際に候補数と本文内の項目数を一致させる。候補が少ない場合はランキングではなく「目的別の見る順番」に変える。",
+      image: "数字を出す時は実際の項目数と一致させる。候補が1商品ならランキング画像にせず、選び方の順番画像にする。",
+      avoid: "根拠のない1位、見えていない商品への順位付け、過剰な数字",
+    },
+    checklist: {
+      title: "保存用チェック型",
+      copy: `${category}を見る時の確認点を3つに絞る。各チェックは読者が商品ページで実際に確認できる内容にする。`,
+      image: "画像はチェックリスト風にしてよいが、文字を詰めすぎず3項目まで。手書き下線や小さなチェックでかわいく整理する。",
+      avoid: "一般論だけのリスト、確認できない効果、項目数の増やしすぎ",
+    },
+    costperwear: {
+      title: "コスパ納得型",
+      copy: "価格の安さだけで押さず、出番・着回し・手入れ・合わせやすさのどれで元が取れそうかを書く。未確認の着用回数や実績数字は作らない。",
+      image: "「何回着られるか」の数字ではなく、使える場面の小さなタグで納得感を出す。",
+      avoid: "勝手な回数計算、最安値断定、値引きの断定",
+    },
+    unpopular: {
+      title: "やさしい逆張り型",
+      copy: "冒頭で意外な見方を1つだけ置く。例: 盛るより引く、可愛いより整える、主役を増やさない。すぐ理由を説明し、読者を否定しない。",
+      image: "強い煽りではなく、余白と短い見出しで「ちょっと気になる」違和感を作る。",
+      avoid: "上から目線、過激な断定、流行や読者を下げる言い方",
+    },
+    commentreply: {
+      title: "コメント回答型",
+      copy: "読者から来そうな相談を1つ想定し、丁寧に短く答える。質問、結論、理由、確認点の順にする。",
+      image: "吹き出しやQ&A風にしてよいが、読みにくい会話劇にせず、回答は1つの結論へまとめる。",
+      avoid: "架空コメントの作り込みすぎ、質問が曖昧、答えが長い",
+    },
+  };
+  const selected = blueprints[context.viralPattern] || blueprints.checklist;
+  return `【投稿型の設計図: ${selected.title}】
+・文章構成: ${selected.copy}
+・画像連動: ${selected.image}
+・避けること: ${selected.avoid}`;
+}
+
+function buildSocialAngleBlueprint(context, labels) {
+  const angleText = String(context.angle || labels.hook || "");
+  const category = context.product?.category || "商品";
+  const rules = [
+    [/比較|比べ|どっち|VS/i, `切り口が比較寄りなので、${category}の良し悪しを断定せず「迷った時に見る順番」を作る。比較軸は1つに絞る。`],
+    [/ランキング|順位|ベスト|TOP/i, "切り口がランキング寄りなので、実際の候補数と本文内の項目数を一致させる。根拠のない順位は作らず、足りない場合は「目的別の見る順番」に変換する。"],
+    [/セール|SALE|クーポン|OFF|速報|値下げ/i, "切り口がセール寄りなので、お得感は具体的に見せる。ただし未確認の割引率、在庫、期限は作らない。買う前の確認点を必ず添える。"],
+    [/着回し|着まわし|使い回し/i, "切り口が着回し寄りなので、場面を2〜3つだけ出し、同じ服をどう見え方を変えるかに集中する。"],
+    [/骨格|ウェーブ|ストレート|ナチュラル|体型|二の腕|腰|脚|着痩せ/i, "切り口が悩み解決寄りなので、体型変化の断定を避け、丈・重心・袖・素材・色数で「見え方を整える」説明にする。"],
+    [/旅行|海外|ホテル|旅|カフェ|通勤|大学|デート/i, "切り口がシーン寄りなので、使う場面を最初に見せ、移動・写真・座る/歩くなど具体的な行動へ落とす。"],
+  ];
+  return rules.find(([pattern]) => pattern.test(angleText))?.[1]
+    || `切り口は「${angleText || labels.viralPattern}」。${category}の見た目、使う場面、買う前チェックのうち一番強い1点を主役にする。`;
+}
+
+function buildSocialPlatformBlueprint(context) {
+  const byPlatform = {
+    Instagram: "Instagramでは、1枚目で保存理由が伝わることを最優先にする。画像見出しと投稿文冒頭2行を同じ結論でそろえ、本文は「共感 → 解決 → 選び方 → 確認点 → 保存CTA」。",
+    Threads: "Threadsでは、作り込みすぎた広告感を避ける。短い生活の観察から始め、礼儀正しい女子大生の本音と小さな学びで、返信しやすい自然な余白を残す。",
+    X: "Xでは、冒頭1行で結論を出す。比較軸、チェック点、速報性のどれか1つに絞り、改行で読みやすくし、URL前に情報価値を置く。",
+  };
+  return byPlatform[context.platform] || byPlatform.Instagram;
 }
 
 function bindSocialHanakoTeacher() {
@@ -11156,6 +11260,9 @@ function downloadSocialHanakoTeacher() {
 function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
   const product = c.product;
   const details = product.details || {};
+  const viralBlueprint = buildSocialViralBlueprint(c, labels);
+  const angleBlueprint = buildSocialAngleBlueprint(c, labels);
+  const platformBlueprint = buildSocialPlatformBlueprint(c);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -11171,6 +11278,13 @@ function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
 
 【${c.platform}の書き方】
 ${platformInstruction}
+
+${platformBlueprint}
+
+${viralBlueprint}
+
+【切り口の作り込み】
+${angleBlueprint}
 
 【企画】
 切り口: ${c.angle}
@@ -11205,6 +11319,7 @@ ${currentDraft || "下書きなし。上の情報から新しく作る"}
 
 【作成方法】
 ・内部で冒頭フックを30案、構成を12案考え、媒体と目的に最も合う1案を選ぶ
+・構成12案は、必ず「投稿型の設計図」と「切り口の作り込み」を起点に作る。投稿型が比較なら比較軸、ランキングなら項目数、チェック型なら保存性、逆張りなら意外な気づきを主役にする
 ・選んだ理由や検討過程、別案は出力しない
 ・第1校正で、商品情報にない使用感・効果・数字・人気・体験をすべて削る
 ・第2校正で、意味の通らない言葉、AIらしい総括、同じ語尾、抽象的なほめ言葉、場面と商品の不一致を直す
@@ -11222,6 +11337,7 @@ ${currentDraft || "下書きなし。上の情報から新しく作る"}
 ・同じ商品でも前回と違う場面、比較軸、言葉のリズムを選び、同じ冒頭やCTAを繰り返さない
 ・抽象的な「かわいい」「高見え」を使う場合は、直後に色、形、丈、素材、小物、サイズなど確認できる理由を添える
 ・一投稿に見せ場は一つ。悩み、商品情報、CTAを全部同じ強さで叫ばず、読む順番に強弱をつける
+・選択された投稿型と違う型へ勝手に変えない。比較型なのに日記だけ、チェック型なのに感想だけ、ランキング型なのに項目数が合わない文章にしない
 ・最初の1〜2行で「自分のことかも」と思える具体的な場面か悩みを示す
 ・商品名より先に、読者が止まる情景・違和感・結論のどれかを置く
 ・悩み → 気づき → この商品が候補になる理由 → 次の行動、の流れにする
