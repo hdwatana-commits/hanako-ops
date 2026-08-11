@@ -10820,21 +10820,20 @@ async function shareSocialReferenceToGemini() {
 async function prepareSocialReferenceBoard(existingData = null) {
   const data = existingData || getSocialGeminiPromptData();
   if (!data) return false;
-  if (!data.context.product.image) {
-    showToast("この商品には参照できる商品画像がありません");
-    return false;
-  }
   const photo = getSelectedCoordinatePhoto();
-  if (!photo) {
-    showToast("コーデ画面で本人写真を保存して選んでください");
-    return false;
-  }
   try {
-    await ensureSelectedCoordinatePhotoUrl();
-    await loadCoordinatePhotoPreview(photo);
+    if (photo) {
+      await ensureSelectedCoordinatePhotoUrl();
+      await loadCoordinatePhotoPreview(photo);
+    }
     data.hanakoTeacher = currentSocialHanakoTeacher;
     data.hanakoComment = currentSocialHanakoComment;
     await drawSocialReferenceBoard(data);
+    if (!data.context.product.image) {
+      showToast("商品画像なしのURL参照ボードを作りました");
+    } else if (!photo) {
+      showToast("本人写真なしのSNS参照画像ボードを作りました");
+    }
     return true;
   } catch (error) {
     showToast(error.message || "SNS参照画像を作れませんでした");
@@ -10869,7 +10868,7 @@ async function drawSocialReferenceBoard(data) {
   ctx.fillText("PERSON / 本人", 62, 154);
 
   const products = [data.context.product, ...data.context.products.filter((item) => item.id !== data.context.product.id)]
-    .filter((item, index, items) => item?.image && items.findIndex((other) => other.id === item.id) === index)
+    .filter((item, index, items) => item?.id && items.findIndex((other) => other.id === item.id) === index)
     .slice(0, 4);
   const cardWidth = 350;
   const cardHeight = 330;
@@ -10880,15 +10879,25 @@ async function drawSocialReferenceBoard(data) {
     ctx.fillStyle = "#fff";
     roundRect(ctx, x, y, cardWidth, cardHeight, 16);
     ctx.fill();
-    const productImage = await loadCoordinateProductImage(item.image);
+    const productImage = item.image ? await loadCoordinateProductImage(item.image).catch(() => null) : null;
     if (productImage) drawCoverImage(ctx, productImage, x + 12, y + 40, cardWidth - 24, 238, 9);
-    else drawPlaceholder(ctx, item.category, x + 12, y + 40, cardWidth - 24, 238);
+    else {
+      drawPlaceholder(ctx, item.category || "URL", x + 12, y + 40, cardWidth - 24, 238);
+      ctx.fillStyle = "#6d5b62";
+      ctx.font = "700 13px Yu Gothic UI, Meiryo, sans-serif";
+      wrapCanvasText(ctx, trimText(item.url || item.sourceUrl || "商品URLから内容を参照", 62), x + 24, y + 150, cardWidth - 48, 18, 3);
+    }
     ctx.fillStyle = "#a43d64";
     ctx.font = "700 17px Yu Gothic UI, Meiryo, sans-serif";
     ctx.fillText(`PRODUCT ${index + 1} / ${item.category}`, x + 14, y + 27);
     ctx.fillStyle = "#392f33";
     ctx.font = "700 15px Yu Gothic UI, Meiryo, sans-serif";
     wrapCanvasText(ctx, trimText(item.name, 34), x + 14, y + 300, cardWidth - 28, 20, 2);
+    if (item.price || item.hook) {
+      ctx.fillStyle = "#8f365b";
+      ctx.font = "700 12px Yu Gothic UI, Meiryo, sans-serif";
+      wrapCanvasText(ctx, trimText([item.price, item.hook].filter(Boolean).join(" / "), 46), x + 14, y + 322, cardWidth - 28, 16, 1);
+    }
   }
 
   const imageHeadline = buildSocialImageHeadline(data.context, data.labels);
@@ -11022,9 +11031,12 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
 【参照画像ボード・最優先】
 ・PERSON欄は本人、PRODUCT欄は使用できる商品、TEACHER欄はハナコ先生の基準画像
 ・IMAGE + CAPTION BRIEF欄は、画像の見出し、3ポイント、投稿文の方向性をそろえるための設計メモ
-・商品画像URLや先生画像URLへアクセスしない。添付した参照画像だけを画像の基準にする
+・PRODUCT欄に商品写真がある場合は、その写真を最優先の基準にする
+・PRODUCT欄がプレースホルダーで商品URLだけの場合は、ボードに書かれた商品名、カテゴリ、価格、URL、説明文を基準にする。URLを参照できるAIなら商品URLも補助確認に使う
+・先生画像URLへアクセスしない。TEACHER欄の添付画像だけを基準にする
 ・PERSON、PRODUCT、TEACHERを別人、別商品、別キャラクターへ置き換えない
 ・参照画像が届いていない場合は「参照画像を1枚添付してください」とだけ返し、画像を生成しない
+・商品写真がない場合でも、文章だけで終わらせず、商品名・URL・カテゴリ・投稿型に合うSNS用の情報画像または旅行/商品紹介ビジュアルを1枚作る
 
 【投稿先】
 ${c.platform}
