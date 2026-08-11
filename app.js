@@ -10830,17 +10830,28 @@ async function prepareSocialReferenceBoard(existingData = null) {
   if (!data) return false;
   updateSocialReferenceBoardPreview("SNS画像ボードを作成中...");
   const photo = getSelectedCoordinatePhoto();
+  let photoWarning = "";
   try {
     if (photo) {
-      await ensureSelectedCoordinatePhotoUrl();
-      await loadCoordinatePhotoPreview(photo);
+      try {
+        await loadCoordinatePhotoPreview(photo);
+        if (!coordinatePhotoDataUrl) {
+          await ensureSelectedCoordinatePhotoUrl();
+          await loadCoordinatePhotoPreview(photo);
+        }
+      } catch (photoError) {
+        coordinatePhotoDataUrl = "";
+        photoWarning = `本人写真は読み込めなかったため、PERSON欄なしで作成しました（${photoError?.message || "写真取得失敗"}）`;
+      }
     }
     data.hanakoTeacher = currentSocialHanakoTeacher;
     data.hanakoComment = currentSocialHanakoComment;
     await drawSocialReferenceBoard(data);
-    updateSocialReferenceBoardPreview("SNS画像ボード作成済み。保存または選んだAIへ共有できます。");
+    updateSocialReferenceBoardPreview(photoWarning || "SNS画像ボード作成済み。保存または選んだAIへ共有できます。");
     if (!data.context.product.image) {
       showToast("商品画像なしのURL参照ボードを作りました");
+    } else if (photoWarning) {
+      showToast("本人写真なしでSNS画像ボードを作りました");
     } else if (!photo) {
       showToast("本人写真なしのSNS参照画像ボードを作りました");
     }
