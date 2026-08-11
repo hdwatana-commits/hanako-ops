@@ -247,6 +247,7 @@ let activePlatform = "Instagram";
 let lastGenerated = "";
 let lastGenerationContext = null;
 let generationVariant = 0;
+const SOCIAL_LOTTERY_HISTORY_LIMIT = 30;
 let roomGenerationVariant = 0;
 let suppressCloudSave = false;
 let cloudSaveTimer = null;
@@ -10381,12 +10382,13 @@ function generateEditorialPost(isVariation) {
   const product = state.products.find((item) => item.id === selectedProduct.value) || state.products[0];
   if (!product) return showToast("先に商品を登録してください");
   generationVariant = isVariation ? generationVariant + 1 : 0;
+  applySocialLotterySelections(product, true);
   const context = buildEditorialContext(product);
   lastGenerationContext = context;
   lastGenerated = generatePremiumCopy(context);
   postOutput.value = lastGenerated;
   markSocialGeminiPromptStale();
-  generateBothSocialGeminiPrompts(true);
+  generateBothSocialGeminiPrompts(true, false);
   const learnedLabel = context.learnedPattern.sampleSize >= 2 ? "実績から最適化" : "新規テスト";
   document.querySelector("#outputMeta").textContent = `${activePlatform} / 18構成から自動選抜 / ${viralPatternLabels[context.viralPattern]} / ${learnedLabel} / ${context.ownershipVoice.status}`;
   renderChecks(lastGenerated);
@@ -10401,19 +10403,27 @@ function generateThreeEditorialPosts() {
   const product = state.products.find((item) => item.id === selectedProduct.value) || state.products[0];
   if (!product) return showToast("先に商品を登録してください");
   const versions = [];
+  applySocialLotterySelections(product, true);
   const experimentPatterns = getExperimentPatterns(activePlatform, document.querySelector("#goalSelect").value);
   for (let index = 0; index < 3; index += 1) {
     generationVariant += 1;
     const context = buildEditorialContext(product);
     context.hookType = ["scene", "confession", "question"][index];
     context.viralPattern = experimentPatterns[index];
+    context.products = buildSocialProductSet(product, {
+      angle: context.angle,
+      viralPattern: context.viralPattern,
+      priority: context.fashionPriority,
+      concern: context.fashionConcern,
+      travelPriority: context.travelPriority,
+    });
     versions.push(`━━━━━━━━━━\n案${index + 1}｜${hookTypeLabels[context.hookType]}・${viralPatternLabels[context.viralPattern]}\n━━━━━━━━━━\n${generatePremiumCopy(context)}`);
     lastGenerationContext = context;
   }
   lastGenerated = versions.join("\n\n");
   postOutput.value = lastGenerated;
   markSocialGeminiPromptStale();
-  generateBothSocialGeminiPrompts(true);
+  generateBothSocialGeminiPrompts(true, false);
   document.querySelector("#outputMeta").textContent = `${activePlatform} / 3つの共感アプローチを比較 / 購入状況に合う表現`;
   renderChecks(lastGenerated);
   const teacherIncluded = document.querySelector("#snsIncludeHanakoTeacher")?.checked;
@@ -10432,6 +10442,143 @@ function getExperimentPatterns(platform, goal) {
     ? [learned.pattern, ...(byGoal[goal] || byGoal.save)]
     : byGoal[goal] || byGoal.save;
   return [...new Set(candidates)].concat(["comparison", "checklist", "microstory"]).slice(0, 3);
+}
+
+function getSocialPatternCandidates(goal, platform, learned = null) {
+  const byGoal = {
+    save: ["checklist", "comparison", "beforeafter", "ranking", "microstory"],
+    room: ["comparison", "costperwear", "ranking", "mistake", "beforeafter"],
+    reply: ["commentreply", "microstory", "unpopular", "comparison"],
+    follow: ["microstory", "beforeafter", "unpopular", "commentreply"],
+  };
+  const platformPatterns = platformSafe(platform) === "threads"
+    ? ["microstory", "commentreply", "unpopular", "beforeafter"]
+    : platformSafe(platform) === "instagram"
+      ? ["checklist", "beforeafter", "comparison", "ranking"]
+      : ["comparison", "ranking", "checklist", "costperwear", "unpopular"];
+  const learnedList = learned?.sampleSize >= 2 ? [learned.pattern] : [];
+  return [...new Set([...learnedList, ...(byGoal[goal] || byGoal.save), ...platformPatterns])]
+    .filter((pattern) => viralPatternLabels[pattern]);
+}
+
+function chooseSocialLotteryValue(kind, platform, candidates, salt = "") {
+  const cleanCandidates = [...new Set((candidates || []).filter(Boolean))];
+  if (!cleanCandidates.length) return "";
+  state.socialLotteryHistory ||= { angle: {}, pattern: {} };
+  state.socialLotteryHistory[kind] ||= {};
+  const key = platform || "all";
+  const history = Array.isArray(state.socialLotteryHistory[kind][key])
+    ? state.socialLotteryHistory[kind][key].filter((value) => cleanCandidates.includes(value))
+    : [];
+  const avoidCount = Math.min(Math.max(2, Math.floor(cleanCandidates.length / 2)), 5);
+  const recent = new Set(history.slice(0, avoidCount));
+  let pool = cleanCandidates.filter((value) => !recent.has(value));
+  if (!pool.length) pool = cleanCandidates;
+  const counts = new Map(cleanCandidates.map((value) => [value, history.filter((item) => item === value).length]));
+  const minCount = Math.min(...pool.map((value) => counts.get(value) || 0));
+  pool = pool.filter((value) => (counts.get(value) || 0) === minCount);
+  const index = hashText(`${kind}-${key}-${salt}-${Date.now().toString().slice(0, -3)}-${history.join("|")}`) % pool.length;
+  const selected = pool[index];
+  state.socialLotteryHistory[kind][key] = [selected, ...history.filter((value) => value !== selected)].slice(0, SOCIAL_LOTTERY_HISTORY_LIMIT);
+  return selected;
+}
+
+function applySocialLotterySelections(product, quiet = false) {
+  if (!product) return;
+  const angleSelect = document.querySelector("#angleSelect");
+  const patternSelect = document.querySelector("#viralPatternSelect");
+  const goal = document.querySelector("#goalSelect")?.value || "save";
+  const optimization = document.querySelector("#optimizationSelect")?.value || "balanced";
+  const learned = getPerformanceInsight(activePlatform, optimization);
+  if (angleSelect) {
+    const angleCandidates = [...angleSelect.options].map((option) => option.value).filter(Boolean);
+    const selectedAngle = chooseSocialLotteryValue("angle", activePlatform, angleCandidates, `${product.id}-${goal}`);
+    if (selectedAngle && [...angleSelect.options].some((option) => option.value === selectedAngle)) angleSelect.value = selectedAngle;
+  }
+  if (patternSelect) {
+    const patternCandidates = getSocialPatternCandidates(goal, activePlatform, learned);
+    const selectedPattern = chooseSocialLotteryValue("pattern", activePlatform, patternCandidates, `${product.id}-${goal}-${angleSelect?.value || ""}`);
+    if (selectedPattern && [...patternSelect.options].some((option) => option.value === selectedPattern)) patternSelect.value = selectedPattern;
+  }
+  saveGeneratorPreferences();
+  if (!quiet) showToast("切り口と投稿型を偏りにくいクジで選びました");
+}
+
+function productTextForTheme(product) {
+  const details = product?.details || {};
+  return [
+    product?.name,
+    product?.category,
+    product?.price,
+    product?.hook,
+    details.brand,
+    details.color,
+    details.material,
+    details.description,
+  ].filter(Boolean).join(" ");
+}
+
+function socialComplementCategories(category) {
+  const map = {
+    トップス: ["スカート", "パンツ", "バッグ", "シューズ", "アクセサリー"],
+    ワンピース: ["バッグ", "シューズ", "アクセサリー", "アウター"],
+    アウター: ["トップス", "ワンピース", "パンツ", "バッグ"],
+    スカート: ["トップス", "バッグ", "シューズ", "アクセサリー"],
+    パンツ: ["トップス", "バッグ", "シューズ", "アクセサリー"],
+    バッグ: ["トップス", "ワンピース", "スカート", "シューズ"],
+    シューズ: ["ワンピース", "スカート", "パンツ", "バッグ"],
+    アクセサリー: ["トップス", "ワンピース", "バッグ"],
+  };
+  return map[category] || ["トップス", "スカート", "パンツ", "バッグ", "シューズ", "アクセサリー"];
+}
+
+function scoreSocialSupportingProduct(main, candidate, meta) {
+  if (!candidate || candidate.id === main.id || !candidate.image) return -999;
+  const mainText = productTextForTheme(main);
+  const candidateText = productTextForTheme(candidate);
+  const sameTravelType = (candidate.category === "ホテル・旅行") === (main.category === "ホテル・旅行");
+  if (!sameTravelType) return -999;
+  const sameCategory = candidate.category === main.category;
+  const complementary = socialComplementCategories(main.category).includes(candidate.category);
+  const mainBrand = main.details?.brand || "";
+  const candidateBrand = candidate.details?.brand || "";
+  const pattern = meta.viralPattern;
+  const angle = `${meta.angle || ""} ${meta.priority || ""} ${meta.concern || ""}`;
+  let score = 0;
+  if (["comparison", "ranking", "checklist", "costperwear"].includes(pattern)) score += sameCategory ? 34 : complementary ? 10 : 0;
+  if (["microstory", "beforeafter", "mistake", "commentreply"].includes(pattern)) score += complementary ? 28 : sameCategory ? 12 : 4;
+  if (/着回し|コーデ|組み合わせ|デート|通勤|大学|カフェ|旅行/.test(angle)) score += complementary ? 20 : 0;
+  if (/比較|ランキング|セール|予算|チェック/.test(angle)) score += sameCategory ? 18 : 0;
+  if (mainBrand && candidateBrand && mainBrand === candidateBrand) score += 14;
+  if (main.details?.color && candidate.details?.color && main.details.color === candidate.details.color) score += 5;
+  if (/SALE|セール|OFF|クーポン|値下げ/i.test(mainText) && /SALE|セール|OFF|クーポン|値下げ/i.test(candidateText)) score += 8;
+  if (/高見え|きれいめ|大人|上品/.test(mainText) && /高見え|きれいめ|大人|上品/.test(candidateText)) score += 8;
+  if (/骨格|ウェーブ|細見え|華奢|体型|ウエスト|脚長/.test(mainText) && /骨格|ウェーブ|細見え|華奢|体型|ウエスト|脚長/.test(candidateText)) score += 7;
+  if (candidate.url) score += 3;
+  score += hashText(`${main.id}-${candidate.id}-${meta.viralPattern}-${meta.angle}`) % 5;
+  return score;
+}
+
+function describeSocialProductRelation(main, product, meta) {
+  if (product.id === main.id) return "主役商品。投稿の結論と画像の中心にする";
+  if (product.category === main.category) {
+    if (meta.viralPattern === "comparison") return "同カテゴリ比較候補。違いが分かる軸だけに使う";
+    if (meta.viralPattern === "ranking") return "目的別候補。順位や順番を作る時だけ使う";
+    return "同カテゴリ候補。買う前チェックや選び方の比較に使う";
+  }
+  if (socialComplementCategories(main.category).includes(product.category)) return "主役商品に合わせる補完アイテム。コーデ全体のテーマを作る時に使う";
+  return "関連候補。テーマに合う場合だけ控えめに使う";
+}
+
+function buildSocialProductSet(main, meta) {
+  const ranked = state.products
+    .filter((item) => item?.id && item.id !== main.id)
+    .map((item) => ({ item, score: scoreSocialSupportingProduct(main, item, meta) }))
+    .filter((entry) => entry.score > -100)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map((entry) => ({ ...entry.item, socialRelation: describeSocialProductRelation(main, entry.item, meta), socialFitScore: entry.score }));
+  return [{ ...main, socialRelation: describeSocialProductRelation(main, main, meta), socialFitScore: 100 }, ...ranked];
 }
 
 function buildEditorialContext(product) {
@@ -10453,6 +10600,7 @@ function buildEditorialContext(product) {
   const fashionOccasion = document.querySelector("#fashionOccasionSelect")?.value || "campus";
   const fashionPriority = document.querySelector("#fashionPrioritySelect")?.value || "versatility";
   const fashionConcern = document.querySelector("#fashionConcernSelect")?.value || "upper";
+  const angle = document.querySelector("#angleSelect").value;
   const viralValue = document.querySelector("#viralPatternSelect").value;
   const learnedPattern = getPerformanceInsight(activePlatform, optimization);
   const viralPattern = viralValue === "auto"
@@ -10460,12 +10608,19 @@ function buildEditorialContext(product) {
       ? learnedPattern.pattern
       : inferViralPattern(goal, platformSafe(activePlatform), generationVariant)
     : viralValue;
+  const products = buildSocialProductSet(product, {
+    angle,
+    viralPattern,
+    priority: fashionPriority,
+    concern: fashionConcern,
+    travelPriority,
+  });
   const seed = hashText(`${product.id}-${activePlatform}-${generationVariant}-${Date.now().toString().slice(0, -4)}`);
   return {
     product,
-    products: [product, ...state.products.filter((item) => item.id !== product.id)].slice(0, 4),
+    products,
     platform: activePlatform,
-    angle: document.querySelector("#angleSelect").value,
+    angle,
     audience,
     audienceLabel: audienceLabels[audience],
     goal,
@@ -10505,8 +10660,8 @@ function buildEditorialContext(product) {
   };
 }
 
-function generateSocialGeminiImagePrompt(quiet = false) {
-  const data = getSocialGeminiPromptData();
+function generateSocialGeminiImagePrompt(quiet = false, rerollLottery = true) {
+  const data = getSocialGeminiPromptData(rerollLottery);
   if (!data) return false;
   if (data.includeHanakoTeacher) {
     data.hanakoTeacher = resolveSocialHanakoTeacher(true);
@@ -10523,8 +10678,8 @@ function generateSocialGeminiImagePrompt(quiet = false) {
   return true;
 }
 
-function generateBothSocialGeminiPrompts(quiet = false) {
-  const data = getSocialGeminiPromptData();
+function generateBothSocialGeminiPrompts(quiet = false, rerollLottery = true) {
+  const data = getSocialGeminiPromptData(rerollLottery);
   if (!data) return false;
   if (data.includeHanakoTeacher) {
     data.hanakoTeacher = resolveSocialHanakoTeacher(true);
@@ -10541,8 +10696,8 @@ function generateBothSocialGeminiPrompts(quiet = false) {
   return true;
 }
 
-function generateSocialGeminiCopyPrompt(quiet = false) {
-  const data = getSocialGeminiPromptData();
+function generateSocialGeminiCopyPrompt(quiet = false, rerollLottery = true) {
+  const data = getSocialGeminiPromptData(rerollLottery);
   if (!data) return false;
   snsGeminiCopyPrompt.value = adaptPromptToSelectedAi(buildSocialGeminiCopyPrompt(data));
   socialGeminiPromptNeedsRefresh = false;
@@ -10709,12 +10864,13 @@ async function drawSocialReferenceBoard(data) {
   return socialReferenceBoardDataUrl;
 }
 
-function getSocialGeminiPromptData() {
+function getSocialGeminiPromptData(rerollLottery = true) {
   const product = state.products.find((item) => item.id === selectedProduct.value) || state.products[0];
   if (!product) {
     showToast("先に商品を登録してください");
     return null;
   }
+  if (rerollLottery) applySocialLotterySelections(product, true);
   const context = buildEditorialContext(product);
   const selectedLabel = (selector) => {
     const select = document.querySelector(selector);
@@ -10757,7 +10913,10 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
     .slice(0, 3)
-    .map((item) => `・${item.name} / ${item.category} / ${item.price || "価格未設定"}\n  画像URL: ${item.image || "なし"}`)
+    .map((item, index) => `候補${index + 1}: ${item.name} / ${item.category} / ${item.price || "価格未設定"}
+  テーマ適合: ${item.socialRelation || describeSocialProductRelation(product, item, c)}
+  適合スコア: ${item.socialFitScore ?? "未評価"}
+  画像URL: ${item.image || "なし"}`)
     .join("\n") || "なし";
   const visualByPlatform = {
     Instagram: `縦4:5（1080×1350px）の保存したくなる投稿画像を1枚作る。主役商品を大きく見せ、指定済みの表紙見出し、短いポイント3つ、手書き風の矢印や囲みを上品に配置する。`,
@@ -10800,6 +10959,14 @@ ${c.platform}
 【画像の構成】
 ${visualByPlatform}
 ${topicInstruction}
+
+【複数商品を使う場合のルール】
+・主役商品は必ず「${product.name}」。画像と投稿文の中心を他の商品へ変えない
+・複数商品を使う場合は、下の候補の「テーマ適合」に合う商品だけを使う
+・比較、ランキング、予算別、買う前チェックでは同カテゴリ候補を使い、比較軸を2〜3個に絞る
+・着回し、コーデ、デート、通勤、大学、カフェ、旅行の投稿では補完アイテムだけを使い、同じカテゴリを重ねない
+・候補がテーマに合わない、画像が読めない、数が足りない場合は無理に複数商品化しない。主役商品1点の投稿にする
+・商品名、カテゴリ、価格、色、形、素材感、画像URLから確認できる範囲だけで作る
 
 ${platformBlueprint}
 
@@ -10856,9 +11023,9 @@ ${currentDraft ? currentDraft.slice(0, 1200) : "投稿文はまだ未作成。�
 画像URL: ${product.image || "なし"}
 商品ページURL: ${product.url || "なし"}
 
-【比較・ランキング企画で使える候補】
+【テーマに合わせて使える候補】
 ${supportingProducts}
-企画が比較・ランキングでない場合は無理に使わない。画像が添付されていない候補を実物そっくりに描かない。
+企画に合わない場合は無理に使わない。画像が添付されていない候補を実物そっくりに描かない。
 
 【デザイン】
 ・おしゃれ研究家ハナコらしい、大人ガーリーで甘めきれいめな世界観
@@ -11267,7 +11434,9 @@ function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
     .slice(0, 3)
-    .map((item) => `・${item.name} / ${item.category} / ${item.price || "価格未設定"}`)
+    .map((item, index) => `候補${index + 1}: ${item.name} / ${item.category} / ${item.price || "価格未設定"}
+  テーマ適合: ${item.socialRelation || describeSocialProductRelation(product, item, c)}
+  適合スコア: ${item.socialFitScore ?? "未評価"}`)
     .join("\n") || "なし";
   const platformInstruction = {
     Instagram: `保存したくなるInstagram投稿にする。12〜18文字の表紙見出し、7枚以内のスライド構成、完成キャプションを作る。キャプション冒頭2行で悩みと読む理由を示し、共感、解決、具体的な選び方、正直な確認点、保存CTAの順にする。1段落は1〜3文、ハッシュタグは関連性の高いものを5〜8個。絵文字は表紙・各見出し・保存CTAの目印として6〜12個使い、本文の全行には付けない。`,
@@ -11311,8 +11480,15 @@ ${angleBlueprint}
 重視すること: ${c.isTravel ? labels.travelPriority : labels.fashionPriority}
 気になるポイント: ${c.isTravel ? "料金・空室・条件は最新情報を確認" : labels.fashionConcern}
 
-比較・ランキング企画で使える候補:
+テーマに合わせて使える候補:
 ${supportingProducts}
+
+【複数商品を文章で使う条件】
+・主役商品は必ず「${product.name}」。投稿の結論を他の商品へ移さない
+・比較、ランキング、予算別、買う前チェックでは同カテゴリ候補だけを使い、比較軸を2〜3個に絞る
+・着回し、コーデ、デート、通勤、大学、カフェ、旅行の投稿では補完アイテムだけを使い、同カテゴリを重ねない
+・候補が投稿型に合わない場合は無理に使わず、主役商品1点の投稿にする
+・候補を使う時は「なぜ並べるか」が読者に分かる一文を入れる
 
 【アプリで作った下書き】
 ${currentDraft || "下書きなし。上の情報から新しく作る"}
