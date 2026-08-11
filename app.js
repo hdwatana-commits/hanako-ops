@@ -8901,7 +8901,8 @@ function buildRoomBuyReasonKit(product) {
 
 function buildRoomBuyReasonInstruction(product, mode) {
   if (mode === "collection") return `【買う理由ミニタグ＋Before→After】
-・コレクション表紙には買う理由ミニタグとBefore→After解決メモを入れない`;
+・コレクション表紙には売れるミニタグ、買う理由ミニタグ、Before→After解決メモ、EDITOR'S NOTEを入れない
+・タグ、チップ、比較メモ、課題解決シール、購入理由メモは作らない。表紙はコレクション名とブランド感だけで見せる`;
   const kit = buildRoomBuyReasonKit(product);
   return `【買う理由ミニタグ＋Before→After解決・通常投稿だけ必須】
 ・参照画像ボード右上のEDITOR'S NOTE欄を、完成画像でも右上の余白へ一回り小さめの編集メモとして入れる
@@ -8973,7 +8974,8 @@ function buildRoomKawaiiPoint(product) {
 
 function buildRoomKawaiiPointInstruction(kawaiiPoint, mode, location) {
   if (mode === "collection") return `【可愛さポイント】
-・コレクション表紙には可愛さポイントを入れない`;
+・コレクション表紙には可愛さポイント、ファッションポイント、点数、pt表示、スコア表示を入れない
+・右下や端にもポイント表示を置かない。表紙の余白はブランド感とコレクション名を引き立てるために使う`;
   const position = location === "overseas"
     ? "右下のロケーション表記のすぐ上"
     : "右下の安全な余白";
@@ -9086,6 +9088,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・日本語は読みやすい明朝体または端正なゴシック体、英字は細身のセリフ体を基本にする
 ・売上数、レビュー数、価格、割引、効能などの数字は入れない
 ・コレクション表紙には、海外都市名、ランドマーク名、場所表記、撮影地クレジットを入れない
+・コレクション表紙には、売れるミニタグ、買う理由ミニタグ、Before→After、EDITOR'S NOTE、可愛さポイント、ファッションポイント、点数、pt表示、スコア、右下ポイント表示を絶対に入れない
 ・同ブランド候補が1点だけなら商品を水増しせず、その1点を主役にした表紙へ仕上げる`
     : `【通常投稿画像】
 ・正方形1:1、1536×1536px以上。明るく自然で、商品と着用イメージが一目で分かる1枚にする
@@ -9101,11 +9104,29 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・ファッションノートへ大事な結論を書き込んだような、上品だけど目に留まる手書き感にする。子どもっぽい丸文字や派手な縁取り文字にはしない
 ・一言は商品や顔に重ねず、背景との明暗差が十分にある余白へ配置する
 ・一言は「悩みが解決しそう」「選んでよかった」と思える課題解決型コピーとして見せる。控えめすぎる小さな添え書きにしない`;
+  const referenceBoardInstruction = mode === "collection"
+    ? `・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像
+・コレクション表紙では、TEACHER、TEACHER COMMENT、KAWAII POINT、EDITOR'S NOTE、SIGNATURE LOGOは使わない
+・表紙に必要な文字は下の「コレクション表紙」にある固定テキストだけ。売れるミニタグ、ファッションポイント、点数、メモ欄は足さない`
+    : `・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像、TEACHER欄はハナコ先生の基準画像、TEACHER COMMENT欄は画像へ入れる先生のひとこと、KAWAII POINT欄は右下ロケーション表記の上へ入れる可愛さポイント
+・EDITOR'S NOTE欄は通常投稿へ入れる買う理由ミニタグとBefore→After解決メモの完成デザイン見本`;
+  const qualityModeInstruction = mode === "collection"
+    ? `・コレクション表紙では、売れるミニタグ、買う理由ミニタグ、Before→After、EDITOR'S NOTE、可愛さポイント、ファッションポイント、点数、pt表示、スコアを入れていない
+・コレクション表紙では、表紙テキスト6つ以外の購入理由メモ、タグ、シール、右下ポイント表示を追加していない`
+    : `・未確認の人気、効果、使用体験、価格、数字を作っていない。ただし指定された可愛さポイント「${kawaiiPoint.score}pt」だけは入っている
+・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンが左下にあり、その上にTEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
+・通常投稿では、EDITOR'S NOTE欄と同じ買う理由ミニタグ、Before→After解決メモ、枠内ほぼ透明の薄い紙カード、細い罫線が右上に小さく上品に入っている
+・通常投稿では、右下のロケーション表記の上に「可愛さポイント ${kawaiiPoint.score}pt」が小さく上品に入り、周りは完全透明で主張しすぎていない
+・ハナコ先生と吹き出しが画面左下にまとまり、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
+・EDITOR'S NOTEが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
+・通常投稿では、主役商品が一番目立ち、メイン手書き一言が二番目、EDITOR'S NOTEとハナコ先生は小さな補足になっている`;
+  const teacherReferenceLine = mode === "collection"
+    ? "・コレクション表紙ではTEACHER欄や先生アイコンを使わず、人物と商品と表紙文字だけで構成する"
+    : "・通常投稿ではTEACHER欄の先生アイコンとTEACHER COMMENT欄のひとことも、完成画像へ小さく反映する";
   return `画像を生成してください。楽天ROOM投稿用ですが、画像内に「楽天ROOM」「ROOM」の文字は入れません。添付した参照画像ボード1枚を使い、完成画像を1枚だけ作ってください。
 
 【添付した参照画像ボード・最優先】
-・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像、TEACHER欄はハナコ先生の基準画像、TEACHER COMMENT欄は画像へ入れる先生のひとこと、KAWAII POINT欄は右下ロケーション表記の上へ入れる可愛さポイント
-・EDITOR'S NOTE欄は通常投稿へ入れる買う理由ミニタグとBefore→After解決メモの完成デザイン見本
+${referenceBoardInstruction}
 ・本人はPERSON欄と同じ顔、髪色、体型、肌の雰囲気を保ち、別人にしない
 ・髪型は下の「髪型」設定に自然に合わせる。ただし顔、髪色、本人らしい雰囲気は変えない
 ・髪型が「元写真の髪型を保つ」の場合は、長さ、前髪、分け目、髪の流れを変えない
@@ -9113,7 +9134,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・AIで作ったような不自然な髪の固まり、浮いた毛束、手と髪の融合、顔に食い込む髪、左右で長さが破綻した髪を出さない
 ・PERSON欄でマスクを着けている場合は、色、形、柄、ひもを変えず必ず同じマスクを残す
 ・選んだ主役商品はPRODUCT欄の色、輪郭、丈、袖、襟、柄、装飾、バッグの持ち手、靴の形を変えない
-・通常投稿ではTEACHER欄の先生アイコンとTEACHER COMMENT欄のひとことも、完成画像へ小さく反映する
+${teacherReferenceLine}
 ・商品ページURLや画像URLへアクセスしない。添付した参照画像ボードだけを画像の基準にする
 ・参照画像ボードが届いていない場合は「参照画像を1枚添付してください」とだけ返す
 
@@ -9158,13 +9179,7 @@ ${collectionItems}
 ・日本語に誤字、造語、文字切れがない
 ・画像内の文字は薄くせず、背景と十分な明暗差がある濃い色で読みやすい
 ・「STYLE EDIT」の文字を画像内のどこにも入れていない
-・未確認の人気、効果、使用体験、価格、数字を作っていない。ただし指定された可愛さポイント「${kawaiiPoint.score}pt」だけは入っている
-・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンが左下にあり、その上にTEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
-・通常投稿では、EDITOR'S NOTE欄と同じ買う理由ミニタグ、Before→After解決メモ、枠内ほぼ透明の薄い紙カード、細い罫線が右上に小さく上品に入っている
-・通常投稿では、右下のロケーション表記の上に「可愛さポイント ${kawaiiPoint.score}pt」が小さく上品に入り、周りは完全透明で主張しすぎていない
-・ハナコ先生と吹き出しが画面左下にまとまり、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記を隠していない
-・EDITOR'S NOTEが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
-・通常投稿では、主役商品が一番目立ち、メイン手書き一言が二番目、EDITOR'S NOTEとハナコ先生は小さな補足になっている
+${qualityModeInstruction}
 ・全体がセールチラシ、広告バナー、情報過多の解説画像に見えず、ファッション誌・ブランド広告のような余白と統一感がある
 ・買う理由が一瞬で伝わるが、誇大表現、未確認の実績、価格、割引率、ランキング、レビュー数を勝手に入れていない
 ・外周の白い安全余白や白い額縁は不要。写真は端まで広げてよい
