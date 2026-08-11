@@ -10516,8 +10516,8 @@ function generateSocialGeminiImagePrompt(quiet = false) {
   snsGeminiPrompt.value = adaptPromptToSelectedAi(buildSocialGeminiImagePrompt(data));
   socialGeminiPromptNeedsRefresh = false;
   setSocialGeminiMode("image");
-  setSocialGeminiStatus(`${activePlatform}画像用`);
-  if (!quiet) showToast(`${activePlatform}の画像プロンプトを作りました`);
+  setSocialGeminiStatus(`${activePlatform}画像・投稿文用`);
+  if (!quiet) showToast(`${activePlatform}の画像と投稿文プロンプトを作りました`);
   renderSocialGeminiProgress();
   void prepareSocialReferenceBoard(data);
   return true;
@@ -10577,7 +10577,7 @@ async function shareSocialReferenceToGemini() {
         text: prompt,
         files,
       });
-      showToast(`${getSelectedAiName()}でコピー済みプロンプトを貼ってください`);
+      showToast(`${getSelectedAiName()}でコピー済みプロンプトを貼ると、画像と投稿文を作れます`);
       return;
     } catch (error) {
       if (error?.name === "AbortError") return;
@@ -10586,7 +10586,7 @@ async function shareSocialReferenceToGemini() {
   await copyText(prompt);
   downloadReferenceFile(boardFile, `hanako-${activePlatform.toLowerCase()}-reference.jpg`);
   openGeminiDestination();
-  showToast(`参照画像を保存し、プロンプトをコピーしました。${getSelectedAiName()}へ画像1枚を添付してください`);
+  showToast(`参照画像を保存し、プロンプトをコピーしました。${getSelectedAiName()}へ画像1枚を添付すると画像と投稿文を作れます`);
 }
 
 async function prepareSocialReferenceBoard(existingData = null) {
@@ -10663,6 +10663,30 @@ async function drawSocialReferenceBoard(data) {
     wrapCanvasText(ctx, trimText(item.name, 34), x + 14, y + 300, cardWidth - 28, 20, 2);
   }
 
+  const imageHeadline = buildSocialImageHeadline(data.context, data.labels);
+  const imagePoints = buildSocialImagePoints(data.context, data.labels);
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+  roundRect(ctx, 470, 824, 710, 118, 18);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(224, 174, 191, 0.55)";
+  ctx.lineWidth = 1.6;
+  roundRect(ctx, 470, 824, 710, 118, 18);
+  ctx.stroke();
+  ctx.fillStyle = "#a43d64";
+  ctx.font = "800 17px Yu Gothic UI, Meiryo, sans-serif";
+  ctx.fillText("IMAGE + CAPTION BRIEF", 492, 854);
+  ctx.fillStyle = "#2f2529";
+  ctx.font = "900 21px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, `見出し: ${imageHeadline}`, 492, 883, 666, 25, 1);
+  ctx.fillStyle = "#6d5b62";
+  ctx.font = "700 15px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, `投稿文も同時作成 / ${data.context.platform} / ${data.labels.viralPattern}`, 492, 914, 666, 20, 1);
+  ctx.fillStyle = "#8f365b";
+  ctx.font = "800 13px Yu Gothic UI, Meiryo, sans-serif";
+  wrapCanvasText(ctx, imagePoints.map((point) => `・${point}`).join("  "), 492, 936, 666, 18, 1);
+  ctx.restore();
+
   if (data.includeHanakoTeacher !== false) {
     const teacher = data.hanakoTeacher || currentSocialHanakoTeacher;
     const teacherImage = await loadImage(teacher.avatar).catch(() => null);
@@ -10680,7 +10704,7 @@ async function drawSocialReferenceBoard(data) {
   }
   ctx.fillStyle = "#6d5b62";
   ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("PERSON・PRODUCT・TEACHERを別人・別商品へ置き換えない", 470, 930);
+  ctx.fillText("PERSON・PRODUCT・TEACHERを別人・別商品へ置き換えない", 470, 974);
   socialReferenceBoardDataUrl = canvas.toDataURL("image/jpeg", 0.92);
   return socialReferenceBoardDataUrl;
 }
@@ -10751,10 +10775,18 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
 ・吹き出しと先生を商品、人物、重要な文字へ重ねず、本文の最後まで枠内へ収める
 ・${c.platform === "X" ? "横長画像でも先生と吹き出しを左下の安全域へまとめ、比較情報を隠さない" : "縦長画像の下端から8%以上離し、先生と吹き出しを縦に並べる"}` : `【ハナコ先生】
 ・今回は先生アイコンと吹き出しを入れない`;
-  return `画像を生成してください。これは${c.platform}投稿用の画像生成依頼です。文章だけで回答せず、添付した参照画像ボード1枚を使って完成画像を1枚生成してください。
+  return `これは${c.platform}投稿用の「画像＋投稿文」作成依頼です。文章だけで回答して終わらせず、添付した参照画像ボード1枚を使って、必ず完成画像1枚と完成投稿文1案の両方を作ってください。
+
+【必ず作るもの】
+1. ${c.platform}用の完成画像を1枚生成する
+2. その画像と同じ切り口で使える${c.platform}投稿文を1案作る
+・画像生成が先、投稿文が後。画像を作れないという回答だけで終わらない
+・投稿文は画像内の見出しや3ポイントと矛盾させない
+・画像生成後の説明、制作意図、プロンプト解説は不要。完成画像と完成投稿文だけを返す
 
 【参照画像ボード・最優先】
 ・PERSON欄は本人、PRODUCT欄は使用できる商品、TEACHER欄はハナコ先生の基準画像
+・IMAGE + CAPTION BRIEF欄は、画像の見出し、3ポイント、投稿文の方向性をそろえるための設計メモ
 ・商品画像URLや先生画像URLへアクセスしない。添付した参照画像だけを画像の基準にする
 ・PERSON、PRODUCT、TEACHERを別人、別商品、別キャラクターへ置き換えない
 ・参照画像が届いていない場合は「参照画像を1枚添付してください」とだけ返し、画像を生成しない
@@ -10778,6 +10810,15 @@ ${hanakoInstruction}
 ・実際に複数の着回し画像を見せていないのに「○パターン」「○選」と書かない
 ・見出しと3ポイント以外の説明文を勝手に増やさない。ハナコ先生を入れる場合だけ、指定された先生見出しと本文を追加してよい
 ・生成後に画像内の日本語を一文字ずつ読み直し、意味不明、文法誤り、文字欠け、造語があれば固定文へ修正してから出力する
+
+【投稿文も同時に作る】
+・画像を生成したあと、同じ回答内に${c.platform}の完成投稿文を1案だけ付ける
+・投稿文の冒頭は、画像の見出しと同じ悩み・結論から自然につなげる
+・投稿文は商品情報にない使用感、効果、人気、順位、価格変動を作らない
+・投稿文には商用投稿として「${c.disclosure}」を自然に入れる
+・リンク導線は次を使う: ${c.roomLine}
+・Instagramは保存したくなる本文とハッシュタグ5〜8個、Threadsは80〜180文字程度で自然な短文、Xは120〜240文字以内で結論先出しにする
+・投稿文の前に「投稿文:」のような短いラベルを付けてもよいが、解説や別案は付けない
 
 【今回の企画】
 切り口: ${c.angle}
@@ -10820,7 +10861,7 @@ ${supportingProducts}
 ・確認できない効果、使用感、売上、人気、順位を作らない
 ・実物の商品や施設を別物へ変えない
 
-完成画像だけを生成し、説明文や投稿文は返さないでください。`;
+完成画像1枚と完成投稿文1案だけを出力してください。説明文、制作意図、プロンプト、別案、採点は返さないでください。`;
 }
 
 function resolvePublicTeacherReference(teacher) {

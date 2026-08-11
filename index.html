@@ -995,10 +995,10 @@
                   <div data-sns-step="return"><span>3</span><strong>結果を戻す</strong></div>
                 </div>
                 <p class="sns-gemini-next" id="snsGeminiNextAction">まず商品を確認してください</p>
-                <p class="sns-gemini-guide">本人写真・商品・ハナコ先生を参照画像1枚にまとめて、選んだAIへ共有します。複数画像やURLの読み込みは不要です。</p>
+                <p class="sns-gemini-guide">本人写真・商品・ハナコ先生・投稿設計を参照画像1枚にまとめて、選んだAIへ共有します。画像と投稿文を同じ流れで作れます。</p>
                 <div class="sns-gemini-product-preview" id="snsGeminiProductPreview"></div>
                 <div class="sns-gemini-quick-actions">
-                  <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>参照画像1枚で作る</button>
+                  <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>画像と投稿文を作る</button>
                   <button id="sendSocialGeminiCopy" type="button"><span>2</span>投稿文を作りに行く</button>
                 </div>
                 <details class="sns-gemini-prompt-details">
@@ -1010,8 +1010,8 @@
                           <div><span>IMAGE</span><h4>画像生成プロンプト</h4></div>
                           <button id="copySocialGeminiImagePrompt" type="button">コピー</button>
                         </div>
-                        <textarea id="snsGeminiPrompt" class="sns-gemini-output coord-prompt-output" spellcheck="false" placeholder="商品を選ぶと画像用の指示文が表示されます"></textarea>
-                        <button class="primary sns-prompt-open" id="openSocialGeminiImage" type="button">参照画像を共有して選んだAIへ</button>
+                        <textarea id="snsGeminiPrompt" class="sns-gemini-output coord-prompt-output" spellcheck="false" placeholder="商品を選ぶと画像と投稿文を同時に作る指示文が表示されます"></textarea>
+                        <button class="primary sns-prompt-open" id="openSocialGeminiImage" type="button">参照画像で画像＋投稿文</button>
                       </section>
                       <section class="coord-prompt-card">
                         <div class="coord-prompt-heading">
@@ -1750,7 +1750,7 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="room-review-generator.js?v=251"></script>
-    <script src="app.js?v=251"></script>
+    <script src="room-review-generator.js?v=252"></script>
+    <script src="app.js?v=252"></script>
   </body>
 </html>
