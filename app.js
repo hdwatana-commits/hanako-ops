@@ -2920,6 +2920,10 @@ function bindActions() {
   });
   bindSocialDirectProductImport();
 
+  document.querySelector("#audienceSelect")?.addEventListener("change", (event) => {
+    event.currentTarget.dataset.socialAutoAudience = event.currentTarget.value === "auto" ? "true" : "false";
+    markSocialGeminiPromptStale();
+  });
   document.querySelector("#optimizationSelect").addEventListener("change", renderLearningHint);
 
   document.querySelector("#generatePost").addEventListener("click", () => generateEditorialPost(false));
@@ -4055,15 +4059,6 @@ function applyRecommendedSnsDefaults(product, notify = true) {
     if (select && [...select.options].some((option) => option.value === value)) select.value = value;
   };
   if (product.category !== "ホテル・旅行") {
-    const audience = /骨格|細見え|華奢|ウエスト|脚長/.test(text)
-      ? "wave"
-      : /通勤|オフィス|仕事|ジャケット/.test(text)
-        ? "office"
-        : /デート|カフェ|お呼ばれ/.test(text)
-          ? "date"
-          : /高見え|プチプラ|価格|コスパ|セール/.test(text)
-            ? "budget"
-            : "university";
     const priority = /素材|綿|コットン|リネン|シアー|ニット|着心地/.test(text)
       ? "material"
       : /骨格|細見え|華奢|ウエスト|脚長/.test(text)
@@ -4092,7 +4087,8 @@ function applyRecommendedSnsDefaults(product, notify = true) {
             ? "weekend"
             : "campus";
     const emotion = concern === "weather" ? "weather" : priority === "balance" ? "body" : priority === "cost" ? "budget" : priority === "premium" ? "confidence" : "repeat";
-    setSelect("audienceSelect", audience);
+    setSelect("audienceSelect", "auto");
+    document.querySelector("#audienceSelect")?.setAttribute("data-social-auto-audience", "true");
     setSelect("fashionPrioritySelect", priority);
     setSelect("fashionConcernSelect", concern);
     setSelect("fashionOccasionSelect", occasion);
@@ -10573,6 +10569,7 @@ function chooseSocialLotteryValue(kind, platform, candidates, salt = "") {
 function applySocialLotterySelections(product, quiet = false) {
   if (!product) return;
   const angleSelect = document.querySelector("#angleSelect");
+  const audienceSelect = document.querySelector("#audienceSelect");
   const patternSelect = document.querySelector("#viralPatternSelect");
   const goal = document.querySelector("#goalSelect")?.value || "save";
   const optimization = document.querySelector("#optimizationSelect")?.value || "balanced";
@@ -10581,6 +10578,20 @@ function applySocialLotterySelections(product, quiet = false) {
     const angleCandidates = [...angleSelect.options].map((option) => option.value).filter(Boolean);
     const selectedAngle = chooseSocialLotteryValue("angle", activePlatform, angleCandidates, `${product.id}-${goal}`);
     if (selectedAngle && [...angleSelect.options].some((option) => option.value === selectedAngle)) angleSelect.value = selectedAngle;
+  }
+  if (audienceSelect && (audienceSelect.value === "auto" || !audienceSelect.value || audienceSelect.dataset.socialAutoAudience === "true")) {
+    const audienceCandidates = getSocialAudienceCandidates(product, {
+      platform: activePlatform,
+      angle: angleSelect?.value || "",
+      goal,
+      optimization,
+    });
+    const selectedAudience = chooseSocialLotteryValue("audience", activePlatform, audienceCandidates, `${product.id}-${goal}-${angleSelect?.value || ""}`);
+    if (selectedAudience && [...audienceSelect.options].some((option) => option.value === selectedAudience)) {
+      audienceSelect.dataset.socialAutoAudience = "true";
+      audienceSelect.dataset.socialAutoAudienceValue = selectedAudience;
+      audienceSelect.value = "auto";
+    }
   }
   if (patternSelect) {
     const patternCandidates = getSocialPatternCandidates(goal, activePlatform, learned);
@@ -10673,7 +10684,6 @@ function buildSocialProductSet(main, meta) {
 function buildEditorialContext(product) {
   const seasonValue = document.querySelector("#seasonSelect").value;
   const season = seasonValue === "auto" ? currentSeason() : seasonValue;
-  const audience = document.querySelector("#audienceSelect").value;
   const goal = document.querySelector("#goalSelect").value;
   const optimization = document.querySelector("#optimizationSelect").value;
   const tone = document.querySelector("#toneSelect").value;
@@ -10690,6 +10700,10 @@ function buildEditorialContext(product) {
   const fashionPriority = document.querySelector("#fashionPrioritySelect")?.value || "versatility";
   const fashionConcern = document.querySelector("#fashionConcernSelect")?.value || "upper";
   const angle = document.querySelector("#angleSelect").value;
+  const audienceValue = document.querySelector("#audienceSelect").value;
+  const audience = audienceValue === "auto" || !audienceValue
+    ? document.querySelector("#audienceSelect").dataset.socialAutoAudienceValue || pickSocialAudience(product, { platform: activePlatform, angle, goal, optimization })
+    : audienceValue;
   const viralValue = document.querySelector("#viralPatternSelect").value;
   const learnedPattern = getPerformanceInsight(activePlatform, optimization);
   const viralPattern = viralValue === "auto"
@@ -11015,7 +11029,7 @@ function getSocialGeminiPromptData(rerollLottery = true) {
     context,
     currentDraft: postOutput.value.trim().slice(0, 6000),
     labels: {
-      audience: selectedLabel("#audienceSelect"),
+      audience: context.audienceLabel || selectedLabel("#audienceSelect"),
       goal: selectedLabel("#goalSelect"),
       optimization: selectedLabel("#optimizationSelect"),
       emotion: selectedLabel("#emotionSelect"),
@@ -11216,6 +11230,28 @@ function buildSocialImageHeadline(context, labels) {
     return trimText(`${companion}に合う宿選び`, 18);
   }
   const category = context.product.category || "アイテム";
+  const angleText = `${context.angle || ""} ${labels.viralPattern || ""}`;
+  const audienceText = labels.audience || context.audienceLabel || "";
+  const angleHeadlineGroups = [
+    [/12秒|リール|動画/i, [`3秒で惹かれる${category}`, `動きで見せる${category}`, `一瞬で伝わる可愛さ`]],
+    [/本音|レビュー/i, [`${category}の正直メモ`, `可愛いけどここ確認`, `買う前の本音チェック`]],
+    [/あるある|小話|朝|支度|失敗談/i, [`朝の服迷子あるある`, `鏡前で止まる朝`, `可愛い日の小さな事件`]],
+    [/二択|相談|比較|比べ|VS|2商品/i, [`どっちで可愛く見せる？`, `${category}の迷いどころ`, `予定で印象チェンジ`]],
+    [/ランキング|3選|5選|予算別|ベスト/i, [`目的別に見る${category}`, `比べて選ぶ大人可愛い`, `候補を並べて冷静に`]],
+    [/セール|SALE|クーポン|OFF|速報|値下げ/i, [`セール前にここ確認`, `安さで焦らない${category}`, `お得でも見る順番`]],
+    [/着回し|着まわし|1週間|コーデ/i, [`予定別に着回す${category}`, `同じ服を違って見せる`, `平日も休日も頼れる`]],
+    [/骨格|ウェーブ|体型|二の腕|腰|脚|着痩せ/i, [`重心で可愛く整える`, `隠すより整える${category}`, `見え方を味方にする`]],
+    [/可愛い発掘|ROOM更新|発掘/i, [`今日の可愛い発掘`, `ふと見つけた可愛い`, `ROOMに残したい候補`]],
+  ];
+  const audienceHeadlines = [];
+  if (/女子大生|大学|通学|授業/.test(audienceText)) audienceHeadlines.push(`通学前に頼れる${category}`, `大学の日のきれいめ`);
+  if (/通勤|オフィス|仕事/.test(audienceText)) audienceHeadlines.push(`きちんと可愛い通勤服`, `仕事の日も甘さ少し`);
+  if (/推し|イベント|写真/.test(audienceText)) audienceHeadlines.push(`写真に残る日の可愛い`, `イベント前の高見え支度`);
+  if (/低身長|高身長|骨格|丈感|バランス/.test(audienceText)) audienceHeadlines.push(`丈感で印象を整える`, `重心で変わる可愛さ`);
+  const angleCandidates = angleHeadlineGroups.find(([pattern]) => pattern.test(angleText))?.[1] || [];
+  if (angleCandidates.length || audienceHeadlines.length) {
+    return trimText(pickFresh([...angleCandidates, ...audienceHeadlines], context.seed + generationVariant), 20);
+  }
   const priority = labels.fashionPriority || "";
   const headlineByPriority = [
     [/着回し/, [`着回しやすい${category}の選び方`, `${category}を3倍着回すコツ`, `予定が変わっても頼れる${category}`]],
@@ -11239,6 +11275,20 @@ function buildSocialImagePoints(context, labels) {
     "料金と空室は予約前に確認",
   ];
   const category = context.product.category || "商品";
+  const angleText = `${context.angle || ""} ${labels.viralPattern || ""}`;
+  const anglePointGroups = [
+    [/12秒|リール|動画/i, ["動きで質感を見せる", "寄りで可愛い所を出す", "最後に保存ポイント"]],
+    [/本音|レビュー/i, ["惹かれた理由を先に", "正直ここは確認", "向く人を短く整理"]],
+    [/あるある|小話|朝|支度|失敗談/i, ["朝の迷いに寄り添う", "盛りすぎず整える", "小物で気分を変える"]],
+    [/二択|相談|比較|比べ|VS|2商品/i, ["Aはきれいめ寄り", "Bは抜け感寄り", "予定で選ぶと失敗しにくい"]],
+    [/ランキング|3選|5選|予算別|ベスト/i, ["目的ごとに見る", "価格だけで決めない", "使う予定まで想像"]],
+    [/セール|SALE|クーポン|OFF|速報|値下げ/i, ["安さだけで焦らない", "色とサイズを先に確認", "在庫は最新ページで確認"]],
+    [/着回し|着まわし|1週間|コーデ/i, ["予定を3つ想像", "甘さを一か所に", "小物で印象チェンジ"]],
+    [/骨格|ウェーブ|体型|二の腕|腰|脚|着痩せ/i, ["丈で重心を調整", "袖と首もとを見る", "隠すより流れを作る"]],
+    [/可愛い発掘|ROOM更新|発掘/i, ["第一印象の可愛さ", "手持ち服とのなじみ", "買う前の確認メモ"]],
+  ];
+  const anglePoints = anglePointGroups.find(([pattern]) => pattern.test(angleText))?.[1];
+  if (anglePoints) return [...anglePoints];
   const categoryPoints = {
     バッグ: ["手持ち服との色相性を確認", "大きさと持ち手を確認", "素材と収納力を確認"],
     トップス: ["顔まわりの色を確認", "袖と首もとの形を確認", "手持ちボトムとの相性を確認"],
@@ -11411,7 +11461,7 @@ function buildSocialProductUseDirective(context, labels) {
 ・見出しに「3選」「比較」「ランキング」「4パターン」など、複数商品を想像させる言葉を追加しない`;
   }
   return `・今回の投稿型は複数商品を使ってよい。ただし主役は必ず「${product.name || category}」
-・使う商品数は投稿型と本文の数字に合わせる。候補が足りない場合は、複数商品紹介ではなく主役1点の選び方投稿へ戻す
+・使う商品数は投稿型と本文の数字に合わせる。候補が足りない場合は、複数商品紹介ではなく主役1点の投稿へ戻す
 ・同じカテゴリの商品を並べるのは比較、ランキング、予算別だけ。コーデ型ではトップス同士、バッグ同士などを重ねない
 ・複数商品を使う時は、それぞれを出す理由を1行で説明し、商品数と画像内の番号を一致させる`;
 }
@@ -11427,13 +11477,15 @@ function buildSocialImageLayoutDirective(context, labels) {
     X: "X画像: タイムラインで一瞬で読める情報カードとして作る。横長前提で、見出し、比較軸、チェック項目を左から右へ流れるように配置する。",
   };
   const angleLayouts = [
-    [/比較|比べ|どっち|VS/i, "切り口別画像: A/B比較または見る順番の2カラム。比較対象が足りない場合は、商品ページで確認するポイント比較にする。"],
-    [/ランキング|順位|ベスト|TOP|3選|5選/i, "切り口別画像: 実際に使う商品数だけ番号を付ける。1商品だけならランキングにせず「選ぶ順番」や「確認3点」に変える。"],
-    [/セール|SALE|クーポン|OFF|速報|値下げ/i, "切り口別画像: 速報感は出すが価格や割引率を作らない。『今見る理由』と『確認する場所』を小さく入れる。"],
-    [/着回し|着まわし|使い回し|1週間/i, "切り口別画像: 場面タグを2〜3個並べ、同じ商品が別予定でどう見えるかを整理する。"],
-    [/骨格|ウェーブ|ストレート|ナチュラル|体型|二の腕|腰|脚|着痩せ/i, "切り口別画像: 体型効果を断定せず、丈、袖、重心、色数、素材で『見え方を整える』注釈にする。"],
-    [/女子大生|あるある|朝|支度|小話|失敗談/i, "切り口別画像: 生活の一場面を主役にし、メモは会話調で短く。商品を押し込みすぎない。"],
-    [/旅行|海外|ホテル|旅|カフェ|通勤|大学|デート/i, "切り口別画像: 場面が伝わる背景や小物を使い、歩く、座る、移動、写真を撮るなど行動に合う注釈にする。"],
+    [/本音|レビュー/i, "切り口別画像: EDITOR REVIEW風。主役商品を大きく置き、『惹かれた理由』『正直ここは確認』『向く人』を小さなレビューカードで見せる。"],
+    [/12秒|リール|動画/i, "切り口別画像: リールの表紙風。動きのあるポーズ、寄りカット風の小枠、保存したくなる一言で、動画前のワクワクを作る。"],
+    [/比較|比べ|どっち|VS/i, "切り口別画像: A/B比較は実際に比較商品がある時だけ。1商品なら『きれいめ寄り』『抜け感寄り』など印象の二択で見せる。"],
+    [/ランキング|順位|ベスト|TOP|3選|5選/i, "切り口別画像: 実際に使う商品数だけ番号を付ける。1商品だけなら順位を作らず、目的別のミニガイド風にする。"],
+    [/セール|SALE|クーポン|OFF|速報|値下げ/i, "切り口別画像: 速報ラベルは小さく上品に。安さより『焦らず見る順番』と『買う前の確認』を主役にする。"],
+    [/着回し|着まわし|使い回し|1週間/i, "切り口別画像: 予定タグを2〜3個並べ、同じ商品が大学、カフェ、通勤など別予定でどう見えるかを整理する。"],
+    [/骨格|ウェーブ|ストレート|ナチュラル|体型|二の腕|腰|脚|着痩せ/i, "切り口別画像: シルエット解説風。体型効果を断定せず、丈、袖、重心、色数、素材で『見え方を整える』注釈にする。"],
+    [/女子大生|あるある|朝|支度|小話|失敗談/i, "切り口別画像: 日記の1ページ風。朝の鏡前、大学前、カフェ前など生活の一場面を主役にし、会話調のメモを短く入れる。"],
+    [/旅行|海外|ホテル|旅|カフェ|通勤|大学|デート/i, "切り口別画像: 場面訴求のライフスタイル写真風。歩く、座る、移動、写真を撮るなど行動に合う注釈にする。"],
   ];
   const patternLayouts = {
     microstory: "投稿型別画像: 物語の始まりが見える余白を作り、手書きメモは1〜2個に絞る。",
@@ -12223,12 +12275,75 @@ const empathyLibrary = {
 };
 
 const audienceLabels = {
+  auto: "商品と切り口からランダム",
   university: "きれいめ好きの女子大生",
   office: "20代の通勤・オフィス服",
   date: "デート服を探している人",
   budget: "高見え・予算重視の人",
   wave: "骨格ウェーブを意識する人",
+  campusCasual: "大学にきれいめで行きたい人",
+  commutingBeginner: "初めての通勤服に迷う人",
+  sweetClean: "甘めきれいめが好きな人",
+  otonaGirly: "大人ガーリーを上品に着たい人",
+  cafeGirls: "友達とカフェへ行く人",
+  weekendTrip: "週末のおでかけ服を探す人",
+  petite: "低身長でもバランスよく見せたい人",
+  tall: "高身長で丈感を大事にする人",
+  oshi: "推し活・イベント服を探す人",
+  photoGenic: "写真映えを大事にする人",
+  minimal: "少ない服で着回したい人",
+  trendWatcher: "トレンドをほどよく入れたい人",
+  saleHunter: "セールで失敗したくない人",
+  rainy: "雨の日も可愛くいたい人",
+  hotWeather: "暑い日もきちんと見せたい人",
+  coldOffice: "冷房対策をしたい人",
+  roomBeginner: "ROOMで買う前に見比べたい人",
 };
+
+function getSocialAudienceCandidates(product, meta = {}) {
+  const text = productTextForTheme(product);
+  const category = product?.category || "";
+  const angle = `${meta.angle || ""} ${meta.goal || ""} ${meta.optimization || ""}`;
+  const pool = [
+    "university", "office", "date", "budget", "wave", "campusCasual", "commutingBeginner",
+    "sweetClean", "otonaGirly", "cafeGirls", "weekendTrip", "petite", "tall", "oshi",
+    "photoGenic", "minimal", "trendWatcher", "saleHunter", "rainy", "hotWeather",
+    "coldOffice", "roomBeginner",
+  ];
+  const weighted = [...pool];
+  const pushMany = (...values) => values.forEach((value) => weighted.push(value));
+  if (/通勤|オフィス|仕事|ジャケット|シャツ|ブラウス|パンツ/.test(text + angle)) {
+    pushMany("office", "commutingBeginner", "coldOffice");
+  }
+  if (/大学|授業|キャンパス|女子大生|朝|支度|あるある/.test(text + angle)) {
+    pushMany("university", "campusCasual", "cafeGirls");
+  }
+  if (/デート|カフェ|お呼ばれ|女子会|友達/.test(text + angle)) {
+    pushMany("date", "cafeGirls", "sweetClean", "photoGenic");
+  }
+  if (/旅行|週末|おでかけ|ホテル|海外|リゾート/.test(text + angle)) {
+    pushMany("weekendTrip", "photoGenic", "minimal");
+  }
+  if (/骨格|ウェーブ|細見え|華奢|二の腕|ウエスト|脚長|丈|重心/.test(text + angle)) {
+    pushMany("wave", "petite", "tall");
+  }
+  if (/高見え|プチプラ|価格|コスパ|セール|SALE|クーポン|OFF|予算/.test(text + angle)) {
+    pushMany("budget", "saleHunter", "roomBeginner");
+  }
+  if (/推し|ライブ|イベント|写真|映え|リール|12秒/.test(text + angle)) {
+    pushMany("oshi", "photoGenic", "trendWatcher");
+  }
+  if (/雨|撥水|濡れ|梅雨/.test(text + angle)) pushMany("rainy", "office", "weekendTrip");
+  if (/暑|汗|接触冷感|UV|ノースリーブ|半袖/.test(text + angle)) pushMany("hotWeather", "campusCasual", "office");
+  if (/冷房|羽織|カーデ|アウター/.test(text + angle)) pushMany("coldOffice", "office", "weekendTrip");
+  if (["バッグ", "シューズ", "アクセサリー"].includes(category)) pushMany("photoGenic", "cafeGirls", "roomBeginner");
+  return [...new Set(weighted)].filter((value) => audienceLabels[value]);
+}
+
+function pickSocialAudience(product, meta = {}) {
+  const candidates = getSocialAudienceCandidates(product, meta);
+  return chooseSocialLotteryValue("audience", meta.platform || activePlatform, candidates, `${product?.id || "product"}-${meta.angle || ""}-${meta.goal || ""}-${generationVariant}`);
+}
 
 const seasonLabels = { spring: "春", summer: "夏", autumn: "秋", winter: "冬" };
 
@@ -13617,11 +13732,29 @@ function createEmpathyBridge(c) {
 
 function inferEmotion(audience, category, variant) {
   const candidates = {
+    auto: ["morning", "confidence", "repeat"],
     university: ["morning", "overdress", "budget", "weather"],
     office: ["morning", "overdress", "repeat", "confidence"],
     date: ["confidence", "body", "overdress"],
     budget: ["budget", "repeat", "morning"],
     wave: ["body", "confidence", "overdress"],
+    campusCasual: ["morning", "overdress", "weather"],
+    commutingBeginner: ["confidence", "morning", "repeat"],
+    sweetClean: ["confidence", "overdress", "repeat"],
+    otonaGirly: ["confidence", "overdress", "body"],
+    cafeGirls: ["overdress", "confidence", "morning"],
+    weekendTrip: ["weather", "repeat", "confidence"],
+    petite: ["body", "confidence", "overdress"],
+    tall: ["body", "repeat", "confidence"],
+    oshi: ["confidence", "overdress", "weather"],
+    photoGenic: ["confidence", "body", "overdress"],
+    minimal: ["repeat", "budget", "morning"],
+    trendWatcher: ["confidence", "repeat", "overdress"],
+    saleHunter: ["budget", "repeat", "confidence"],
+    rainy: ["weather", "confidence", "morning"],
+    hotWeather: ["weather", "overdress", "confidence"],
+    coldOffice: ["weather", "repeat", "confidence"],
+    roomBeginner: ["budget", "confidence", "repeat"],
   }[audience] || ["morning"];
   if (category === "シューズ") candidates.push("weather");
   if (category === "バッグ") candidates.push("repeat");
@@ -13672,6 +13805,23 @@ function itemUseCase(category, audience) {
     date: "昼のカフェから夜の食事まで",
     budget: "少ない買い足しで印象を変えたい日",
     wave: "重心とシルエットを意識したい日",
+    campusCasual: "授業の日もきちんと見せたい朝",
+    commutingBeginner: "初めての通勤服を整えたい日",
+    sweetClean: "甘さを清潔感でまとめたい日",
+    otonaGirly: "大人っぽさと可愛さを両立したい日",
+    cafeGirls: "友達とのカフェで写真も残したい日",
+    weekendTrip: "週末のおでかけで歩きやすさも欲しい日",
+    petite: "丈感と重心をすっきり見せたい日",
+    tall: "長め丈をきれいに活かしたい日",
+    oshi: "推し活やイベントで気分を上げたい日",
+    photoGenic: "写真に残る予定がある日",
+    minimal: "少ない服で印象を変えたい日",
+    trendWatcher: "トレンドを少しだけ足したい日",
+    saleHunter: "お得でも失敗したくない日",
+    rainy: "雨の日も服で気分を落としたくない日",
+    hotWeather: "暑くてもきちんと感を残したい日",
+    coldOffice: "冷房対策をしながら可愛くいたい日",
+    roomBeginner: "ROOMで買う前に冷静に比べたい日",
   };
   return `${map[audience]}使いやすい${category}`;
 }
