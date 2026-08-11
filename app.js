@@ -11048,6 +11048,7 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
   const imageLayoutDirective = buildSocialImageLayoutDirective(c, labels);
   const copyStructureDirective = buildSocialCopyStructureDirective(c, labels);
   const productUseDirective = buildSocialProductUseDirective(c, labels);
+  const readabilityDirective = buildSocialReadabilityEmojiDirective(c, labels);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -11143,6 +11144,7 @@ ${hanakoInstruction}
 【投稿文も同時に作る】
 ・画像を生成したあと、同じ回答内に${c.platform}の完成投稿文を1案だけ付ける
 ${copyStructureDirective}
+${readabilityDirective}
 ・投稿文の冒頭は、画像の見出しと同じ悩み・結論から自然につなげる
 ・冒頭1〜2行は「商品名＋かわいい」ではなく、読者が止まる悩み、違和感、結論、比較軸のどれかから始める
 ・投稿文には「保存する理由」「返信する理由」「ROOMで確認する理由」のうち、投稿目的に合うものを1つだけ強く入れる
@@ -11498,6 +11500,34 @@ ${goalCopy}
 ・同じ商品でも、投稿先・切り口・投稿型が変わったら冒頭、文量、CTA、絵文字の数を必ず変える。`;
 }
 
+function buildSocialReadabilityEmojiDirective(context, labels) {
+  const platform = context.platform || "Instagram";
+  const categoryEmoji = socialProductEmoji(context.product);
+  const platformRules = {
+    Instagram: `・Instagramは、冒頭2行を短く強くする。本文は1段落1〜2文、空行で区切り、スマホで流し読みできる形にする
+・絵文字は6〜10個。見出し、チェック、保存CTA、気持ちの切り替えにだけ使う。例: 🌸 ${categoryEmoji} 🪞 🛍️ 📌 ✨
+・キャプションは「共感 → 具体的に見る点 → 正直な確認点 → 保存/ROOM導線」の順で、長い説明を1段落に詰めない`,
+    Threads: `・Threadsは、友だちに話すような短い文を3〜6行で作る。1行は長くしすぎず、会話の余白を残す
+・絵文字は2〜4個。かわいさ、迷い、質問の目印にだけ置く。例: 🌸 ${categoryEmoji} 🪞 💭
+・最後は答えやすい一問にする。「同じ人いますか？」だけで終わらず、A/Bや色、予定、確認点を聞く`,
+    X: `・Xは、1行目だけで意味が通る結論にする。箇条書きは最大3つ、1行は短く、余白で読ませる
+・絵文字は2〜5個。冒頭、A/B、チェック、CTAの視線誘導に使う。例: ${categoryEmoji} 🔍 📌 🛍️
+・URLやPR表記の行には絵文字を付けず、本文の情報価値を先に置く`,
+  };
+  const hookRules = [
+    "・冒頭候補は内部で最低5案考え、商品名から始まる案を避ける",
+    "・一番強い冒頭は、悩み、違和感、結論、二択、買う前チェックのどれかにする",
+    "・『かわいい』『高見え』だけで終わらせず、直後に色、形、丈、素材、予定のどれかを添える",
+    "・女子大生風にするが、幼すぎる言葉、過剰な語尾、絵文字の連打、内輪ノリは避ける",
+    "・読後に、保存する理由、返信する理由、ROOMを見る理由のどれか一つがはっきり残るようにする",
+  ].join("\n");
+  return `【読みやすさ・バズりやすさ・絵文字】
+${platformRules[platform] || platformRules.Instagram}
+${hookRules}
+・絵文字は文章の意味を助けるために使う。飾りだけの連続、同じ絵文字の連発、1行に3個以上は避ける
+・完成後に、スマホ画面で上から読んだ時に「冒頭で止まる」「理由が分かる」「次の行動が分かる」かを確認してから出力する`;
+}
+
 function bindSocialHanakoTeacher() {
   const select = document.querySelector("#snsHanakoTeacher");
   const coverflow = document.querySelector("#snsTeacherCoverflow");
@@ -11772,6 +11802,7 @@ function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
   const strategyDirective = buildSocialPromptStrategy(c, labels);
   const copyStructureDirective = buildSocialCopyStructureDirective(c, labels);
   const productUseDirective = buildSocialProductUseDirective(c, labels);
+  const readabilityDirective = buildSocialReadabilityEmojiDirective(c, labels);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -11795,6 +11826,8 @@ ${strategyDirective}
 
 【文章構成の指定】
 ${copyStructureDirective}
+
+${readabilityDirective}
 
 ${platformBlueprint}
 
@@ -11847,6 +11880,8 @@ ${currentDraft || "下書きなし。上の情報から新しく作る"}
 【作成方法】
 ・内部で冒頭フックを30案、構成を12案考え、媒体と目的に最も合う1案を選ぶ
 ・さらに内部で「思わず止まる冒頭」「保存する理由」「返信したくなる余白」「クリック前の納得感」を各10案ずつ考え、最も自然な組み合わせにする
+・冒頭は、商品名始まり、広告始まり、説明始まりを避ける。まず読者の朝・予定・迷い・違和感・結論のどれかで止める
+・絵文字は女子大生らしい可愛さを少し足す。🌸👗🪞🎀🛍️📌✨💭🔍などを、意味の区切りにだけ適度に使う
 ・構成12案は、必ず「投稿型の設計図」と「切り口の作り込み」を起点に作る。投稿型が比較なら比較軸、ランキングなら項目数、チェック型なら保存性、逆張りなら意外な気づきを主役にする
 ・選んだ理由や検討過程、別案は出力しない
 ・第1校正で、商品情報にない使用感・効果・数字・人気・体験をすべて削る
@@ -12581,6 +12616,7 @@ function polishHumanCopy(text, context) {
     .replace(/([。！？])\1+/g, "$1")
     .replace(/([^\n]{4,18})。\n\1。/g, "$1。")
     .replace(/[ \t]+\n/g, "\n");
+  result = ensurePrBeforeUrls(result);
 
   const unsupportedExperience = /(買ってよかった|着てみた|使ってみた|愛用中|リピートした|届きました)/;
   if (context.ownershipVoice?.status !== "購入済み") {
@@ -12589,7 +12625,11 @@ function polishHumanCopy(text, context) {
       .replace(/実際に着ると/g, "着用写真を見ると")
       .replace(/使ってみると/g, "商品情報では");
   }
-  return cleanGeneratedCopy(result);
+  return cleanGeneratedCopy(ensurePrBeforeUrls(result));
+}
+
+function ensurePrBeforeUrls(text) {
+  return String(text || "").replace(/(^|\n)(?!PR\s)(https?:\/\/\S+)/g, "$1PR $2");
 }
 
 function countSocialEmoji(text) {
@@ -12615,7 +12655,7 @@ function decorateSocialCopy(text, context) {
 
   return lines.map((line) => {
     const trimmed = line.trim();
-    if (!trimmed || /^※|^#|https?:\/\//i.test(trimmed)) return line;
+    if (!trimmed || /^※|^#|^(?:PR\s+)?https?:\/\//i.test(trimmed)) return line;
 
     if (context.platform === "Instagram") {
       if (/^【表紙】/.test(trimmed)) return line.replace("【表紙】", "【表紙】🎀");
