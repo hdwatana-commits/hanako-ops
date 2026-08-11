@@ -10738,8 +10738,8 @@ function buildEditorialContext(product) {
     style: categoryStyles[resolveCategoryStyleKey(product.category)] || categoryStyles.トップス,
     roomLine: product.url
       ? product.category === "ホテル・旅行"
-        ? `楽天トラベルでプランを確認\n${product.url}`
-        : `ROOMはこちら\n${product.url}`
+        ? `楽天トラベルでプランを確認\nPR ${product.url}`
+        : `ROOMはこちら\nPR ${product.url}`
       : ["owned", "favorite"].includes(ownership)
         ? "愛用品はプロフィールの楽天ROOMにまとめています"
         : "気になる候補はプロフィールの楽天ROOMにまとめています",
@@ -11047,6 +11047,7 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
   const strategyDirective = buildSocialPromptStrategy(c, labels);
   const imageLayoutDirective = buildSocialImageLayoutDirective(c, labels);
   const copyStructureDirective = buildSocialCopyStructureDirective(c, labels);
+  const productUseDirective = buildSocialProductUseDirective(c, labels);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -11093,6 +11094,7 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
 ・PRODUCT欄がプレースホルダーで商品URLだけの場合は、ボードに書かれた商品名、カテゴリ、価格、URL、説明文を基準にする。URLを参照できるAIなら商品URLも補助確認に使う
 ・先生画像URLへアクセスしない。TEACHER欄の添付画像だけを基準にする
 ・PERSON、PRODUCT、TEACHERを別人、別商品、別キャラクターへ置き換えない
+・PERSON欄の本人がマスクを着けている場合、完成画像でも必ず同じ雰囲気のマスクを着けたままにする。マスクを外した顔、口元、別の素顔を作らない
 ・参照画像が届いていない場合は「参照画像を1枚添付してください」とだけ返し、画像を生成しない
 ・商品写真がない場合でも、文章だけで終わらせず、商品名・URL・カテゴリ・投稿型に合うSNS用の情報画像または旅行/商品紹介ビジュアルを1枚作る
 
@@ -11108,11 +11110,14 @@ ${imageLayoutDirective}
 ${topicInstruction}
 
 【複数商品を使う場合のルール】
+${productUseDirective}
 ・主役商品は必ず「${product.name}」。画像と投稿文の中心を他の商品へ変えない
-・複数商品を使う場合は、下の候補の「テーマ適合」に合う商品だけを使う
-・比較、ランキング、予算別、買う前チェックでは同カテゴリ候補を使い、比較軸を2〜3個に絞る
-・着回し、コーデ、デート、通勤、大学、カフェ、旅行の投稿では補完アイテムだけを使い、同じカテゴリを重ねない
-・候補がテーマに合わない、画像が読めない、数が足りない場合は無理に複数商品化しない。主役商品1点の投稿にする
+・下の候補は「使ってもよい候補」であり、「必ず出す商品」ではない
+・複数商品OKの投稿型でない限り、完成画像と投稿文に出す商品名は主役商品1点だけにする
+・複数商品OKの場合だけ、下の候補の「テーマ適合」に合う商品を最大3点まで使う
+・比較、ランキング、予算別では同カテゴリ候補を使い、比較軸を2〜3個に絞る
+・着回し、コーデ、デート、通勤、大学、カフェ、旅行の投稿では補完アイテムだけを小さく使い、同じカテゴリを重ねない
+・候補がテーマに合わない、画像が読めない、数が足りない場合は必ず主役商品1点の投稿に戻す
 ・商品名、カテゴリ、価格、色、形、素材感、画像URLから確認できる範囲だけで作る
 
 ${platformBlueprint}
@@ -11145,6 +11150,7 @@ ${copyStructureDirective}
 ・投稿文は商品情報にない使用感、効果、人気、順位、価格変動を作らない
 ・投稿文には商用投稿として「${c.disclosure}」を自然に入れる
 ・リンク導線は次を使う: ${c.roomLine}
+・URLを書く場合は、URLの直前に必ず「PR」を付ける。例: 「PR https://...」。URLだけの行を作らない
 ・Instagramは保存したくなる本文とハッシュタグ5〜8個、Threadsは80〜180文字程度で自然な短文、Xは120〜240文字以内で結論先出しにする
 ・投稿文の前に「投稿文:」のような短いラベルを付けてもよいが、解説や別案は付けない
 
@@ -11383,6 +11389,29 @@ function buildSocialPromptStrategy(context, labels) {
 ・投稿型の役割: 「${pattern}」として見える構成にする。画像も文章も同じ型へ合わせ、別の投稿型へ勝手に変えない
 ・投稿目的: ${goalRole}
 ・出力差分: Instagramなら保存表紙、Threadsなら共感会話、Xなら情報カードに寄せ、同じ商品でも見出し、文字量、CTA、画像の余白を変える`;
+}
+
+function socialAllowsMultipleProducts(context, labels) {
+  const text = `${context.angle || ""} ${context.viralPattern || ""} ${labels.viralPattern || ""} ${labels.hook || ""}`;
+  if (/比較|比べ|どっち|VS|ランキング|順位|ベスト|TOP|[235]選|予算別|まとめ|複数|1週間|着回し|着まわし|コーデ/i.test(text)) return true;
+  if (["comparison", "ranking"].includes(context.viralPattern)) return true;
+  return false;
+}
+
+function buildSocialProductUseDirective(context, labels) {
+  const product = context.product || {};
+  const category = product.category || (context.isTravel ? "ホテル・旅行" : "商品");
+  const allowMulti = socialAllowsMultipleProducts(context, labels);
+  if (!allowMulti) {
+    return `・今回の投稿型は主役1点型。完成画像と投稿文では「${product.name || category}」だけを紹介する
+・参照ボードに候補商品が複数あっても、比較表、ランキング、複数商品紹介、○選、セット紹介にしない
+・背景小物や合わせる服が必要な場合も、商品名や価格を出して紹介するのは主役1点だけにする
+・見出しに「3選」「比較」「ランキング」「4パターン」など、複数商品を想像させる言葉を追加しない`;
+  }
+  return `・今回の投稿型は複数商品を使ってよい。ただし主役は必ず「${product.name || category}」
+・使う商品数は投稿型と本文の数字に合わせる。候補が足りない場合は、複数商品紹介ではなく主役1点の選び方投稿へ戻す
+・同じカテゴリの商品を並べるのは比較、ランキング、予算別だけ。コーデ型ではトップス同士、バッグ同士などを重ねない
+・複数商品を使う時は、それぞれを出す理由を1行で説明し、商品数と画像内の番号を一致させる`;
 }
 
 function buildSocialImageLayoutDirective(context, labels) {
@@ -11742,6 +11771,7 @@ function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
   const platformBlueprint = buildSocialPlatformBlueprint(c);
   const strategyDirective = buildSocialPromptStrategy(c, labels);
   const copyStructureDirective = buildSocialCopyStructureDirective(c, labels);
+  const productUseDirective = buildSocialProductUseDirective(c, labels);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -11802,10 +11832,13 @@ ${angleBlueprint}
 ${supportingProducts}
 
 【複数商品を文章で使う条件】
+${productUseDirective}
 ・主役商品は必ず「${product.name}」。投稿の結論を他の商品へ移さない
-・比較、ランキング、予算別、買う前チェックでは同カテゴリ候補だけを使い、比較軸を2〜3個に絞る
+・上の候補は「使ってもよい候補」であり、「必ず出す商品」ではない
+・複数商品OKの投稿型でない限り、本文に出す商品名は主役商品1点だけにする
+・比較、ランキング、予算別では同カテゴリ候補だけを使い、比較軸を2〜3個に絞る
 ・着回し、コーデ、デート、通勤、大学、カフェ、旅行の投稿では補完アイテムだけを使い、同カテゴリを重ねない
-・候補が投稿型に合わない場合は無理に使わず、主役商品1点の投稿にする
+・候補が投稿型に合わない場合は無理に使わず、必ず主役商品1点の投稿にする
 ・候補を使う時は「なぜ並べるか」が読者に分かる一文を入れる
 
 【アプリで作った下書き】
@@ -11853,6 +11886,7 @@ ${currentDraft || "下書きなし。上の情報から新しく作る"}
 ・完成後に声に出して読んだつもりで、助詞抜け、語順の不自然さ、意味不明語、同じ意味の反復を直す
 ・「バズる」「AIが作成」「プロンプト」という言葉を投稿文に書かない
 ・商用投稿として「${c.disclosure}」を自然に入れる
+・URLを書く場合は、URLの直前に必ず「PR」を付ける。例: 「PR https://...」。URLだけの行を作らない
 ・リンク導線は次を使う:
 ${c.roomLine}
 
