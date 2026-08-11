@@ -11044,6 +11044,9 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
   const viralBlueprint = buildSocialViralBlueprint(c, labels);
   const angleBlueprint = buildSocialAngleBlueprint(c, labels);
   const platformBlueprint = buildSocialPlatformBlueprint(c);
+  const strategyDirective = buildSocialPromptStrategy(c, labels);
+  const imageLayoutDirective = buildSocialImageLayoutDirective(c, labels);
+  const copyStructureDirective = buildSocialCopyStructureDirective(c, labels);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -11096,8 +11099,12 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
 【投稿先】
 ${c.platform}
 
+【今回だけのSNS戦略】
+${strategyDirective}
+
 【画像の構成】
 ${visualByPlatform}
+${imageLayoutDirective}
 ${topicInstruction}
 
 【複数商品を使う場合のルール】
@@ -11130,6 +11137,7 @@ ${hanakoInstruction}
 
 【投稿文も同時に作る】
 ・画像を生成したあと、同じ回答内に${c.platform}の完成投稿文を1案だけ付ける
+${copyStructureDirective}
 ・投稿文の冒頭は、画像の見出しと同じ悩み・結論から自然につなげる
 ・冒頭1〜2行は「商品名＋かわいい」ではなく、読者が止まる悩み、違和感、結論、比較軸のどれかから始める
 ・投稿文には「保存する理由」「返信する理由」「ROOMで確認する理由」のうち、投稿目的に合うものを1つだけ強く入れる
@@ -11350,6 +11358,115 @@ function buildSocialPlatformBlueprint(context) {
     X: "Xでは、冒頭1行で結論を出す。比較軸、チェック点、速報性のどれか1つに絞り、改行で読みやすくし、URL前に情報価値を置く。読み終えた瞬間に保存・比較・返信のどれをすればいいか分かる形にする。",
   };
   return byPlatform[context.platform] || byPlatform.Instagram;
+}
+
+function buildSocialPromptStrategy(context, labels) {
+  const platform = context.platform || "Instagram";
+  const angle = context.angle || labels.hook || "商品紹介";
+  const pattern = labels.viralPattern || viralPatternLabels[context.viralPattern] || "保存用チェック";
+  const goal = labels.goal || "保存・クリック";
+  const category = context.product?.category || (context.isTravel ? "ホテル・旅行" : "商品");
+  const platformRole = {
+    Instagram: "保存される1枚目と、あとで見返したくなる整理力を最優先にする。画像は表紙として強く、文章はカルーセルを読んだ後の納得感を作る。",
+    Threads: "広告感より会話感を優先する。画像は生活の一場面、文章は礼儀正しい女子大生の自然な気づきとして、返信しやすい余白を残す。",
+    X: "3秒で意味が伝わる情報価値を最優先にする。画像は比較・速報・チェックの整理表、文章は結論先出しで拡散されても単体で意味が通る形にする。",
+  }[platform] || "投稿先に合わせ、画像と文章の役割を明確に分ける。";
+  const goalRole = /返信|コメント/.test(goal)
+    ? "目的は返信。最後は広い質問ではなく、A/Bや具体的な体験を聞いて会話を起こす。"
+    : /クリック|ROOM|購入/.test(goal)
+      ? "目的はROOM確認。先に選ぶ理由と確認ポイントを渡し、最後に自然にROOMへ送る。"
+      : /フォロー|継続/.test(goal)
+        ? "目的は継続接触。今回だけで完結させつつ、次も読みたくなるシリーズ感を残す。"
+        : "目的は保存。あとで見返す理由を画像と文章の両方に入れる。";
+  return `・投稿先の役割: ${platformRole}
+・切り口の役割: 「${angle}」を主役にし、${category}の説明を一般論ではなく今回の悩み・場面・判断軸へ寄せる
+・投稿型の役割: 「${pattern}」として見える構成にする。画像も文章も同じ型へ合わせ、別の投稿型へ勝手に変えない
+・投稿目的: ${goalRole}
+・出力差分: Instagramなら保存表紙、Threadsなら共感会話、Xなら情報カードに寄せ、同じ商品でも見出し、文字量、CTA、画像の余白を変える`;
+}
+
+function buildSocialImageLayoutDirective(context, labels) {
+  const platform = context.platform || "Instagram";
+  const angleText = `${context.angle || ""} ${labels.hook || ""}`;
+  const patternText = `${context.viralPattern || ""} ${labels.viralPattern || ""}`;
+  const category = context.product?.category || (context.isTravel ? "ホテル・旅行" : "商品");
+  const platformLayouts = {
+    Instagram: "Instagram画像: 1枚目の保存表紙として作る。上部に短い強見出し、中央に商品、下部に保存したくなる3ポイント。カルーセル化しやすい余白と番号感を少し残す。",
+    Threads: "Threads画像: 日常の投稿に添える自然な1枚として作る。大きな宣伝文字を避け、生活感のある写真に短い本音メモと小さな吹き出しを入れる。",
+    X: "X画像: タイムラインで一瞬で読める情報カードとして作る。横長前提で、見出し、比較軸、チェック項目を左から右へ流れるように配置する。",
+  };
+  const angleLayouts = [
+    [/比較|比べ|どっち|VS/i, "切り口別画像: A/B比較または見る順番の2カラム。比較対象が足りない場合は、商品ページで確認するポイント比較にする。"],
+    [/ランキング|順位|ベスト|TOP|3選|5選/i, "切り口別画像: 実際に使う商品数だけ番号を付ける。1商品だけならランキングにせず「選ぶ順番」や「確認3点」に変える。"],
+    [/セール|SALE|クーポン|OFF|速報|値下げ/i, "切り口別画像: 速報感は出すが価格や割引率を作らない。『今見る理由』と『確認する場所』を小さく入れる。"],
+    [/着回し|着まわし|使い回し|1週間/i, "切り口別画像: 場面タグを2〜3個並べ、同じ商品が別予定でどう見えるかを整理する。"],
+    [/骨格|ウェーブ|ストレート|ナチュラル|体型|二の腕|腰|脚|着痩せ/i, "切り口別画像: 体型効果を断定せず、丈、袖、重心、色数、素材で『見え方を整える』注釈にする。"],
+    [/女子大生|あるある|朝|支度|小話|失敗談/i, "切り口別画像: 生活の一場面を主役にし、メモは会話調で短く。商品を押し込みすぎない。"],
+    [/旅行|海外|ホテル|旅|カフェ|通勤|大学|デート/i, "切り口別画像: 場面が伝わる背景や小物を使い、歩く、座る、移動、写真を撮るなど行動に合う注釈にする。"],
+  ];
+  const patternLayouts = {
+    microstory: "投稿型別画像: 物語の始まりが見える余白を作り、手書きメモは1〜2個に絞る。",
+    beforeafter: "投稿型別画像: Before→Afterは大きな表ではなく、悩みから解決への細い矢印と短いタグで上品に見せる。",
+    mistake: "投稿型別画像: NG演出や赤バツを使わず、『ここだけ見て』のやさしい確認メモにする。",
+    comparison: "投稿型別画像: 比較軸を1つに絞り、A/Bまたは左右の違いが直感で分かる構成にする。",
+    ranking: "投稿型別画像: 数字を出すなら項目数と一致させ、根拠のない順位ではなく目的別の整理にする。",
+    checklist: "投稿型別画像: チェックは最大3個。読者が商品ページで確認できる項目だけにする。",
+    costperwear: "投稿型別画像: 安さではなく、出番、手入れ、合わせやすさのタグで納得感を作る。",
+    unpopular: "投稿型別画像: 余白を多めにして、少し意外な一言を上品に見せる。",
+    commentreply: "投稿型別画像: Q&A風の吹き出しを1つだけ使い、回答は短い結論へまとめる。",
+  };
+  const angleLayout = angleLayouts.find(([pattern]) => pattern.test(angleText))?.[1]
+    || `切り口別画像: 「${context.angle || labels.viralPattern}」が一目で伝わるように、${category}の見どころを1テーマへ絞る。`;
+  const patternLayout = patternLayouts[context.viralPattern] || "投稿型別画像: 画像内の情報量を増やしすぎず、投稿型の特徴が分かる見せ方にする。";
+  return `${platformLayouts[platform] || platformLayouts.Instagram}
+${angleLayout}
+${patternLayout}
+・画像内テキストは固定見出しと3ポイントを優先する。投稿型に合わない余計な見出し、根拠のない数字、意味不明な造語を追加しない。`;
+}
+
+function buildSocialCopyStructureDirective(context, labels) {
+  const platform = context.platform || "Instagram";
+  const angleText = `${context.angle || ""} ${labels.hook || ""}`;
+  const patternText = `${context.viralPattern || ""} ${labels.viralPattern || ""}`;
+  const category = context.product?.category || (context.isTravel ? "ホテル・旅行" : "商品");
+  const platformCopies = {
+    Instagram: "Instagram文章: 冒頭2行で悩みと結論。本文は短い段落で、共感、選び方、正直な確認点、保存理由、ROOM導線の順。ハッシュタグは5〜8個。",
+    Threads: "Threads文章: 80〜180文字を目安に、生活の一瞬、本音、気づき、具体的な質問の順。売り込みは最後に小さく置く。ハッシュタグは0〜2個。",
+    X: "X文章: 120〜240文字を目安に、1行目で結論。改行で比較軸やチェック点を整理し、最後にROOM確認へつなげる。ハッシュタグは0〜2個。",
+  };
+  const angleCopies = [
+    [/比較|比べ|どっち|VS/i, `切り口別文章: ${category}を比べる軸を1つだけ決め、「迷ったらどこを見るか」を先に言う。`],
+    [/ランキング|順位|ベスト|TOP|3選|5選/i, "切り口別文章: 実際に扱う商品数と数字を合わせる。根拠のない順位ではなく、目的別に見る順番として書く。"],
+    [/セール|SALE|クーポン|OFF|速報|値下げ/i, "切り口別文章: お得感は最新確認前提で書く。価格、期限、在庫は作らず、商品ページで確認する一文を入れる。"],
+    [/着回し|着まわし|使い回し|1週間/i, "切り口別文章: 予定を2〜3個出し、同じ商品がどう使えるかを短く整理する。"],
+    [/骨格|ウェーブ|ストレート|ナチュラル|体型|二の腕|腰|脚|着痩せ/i, "切り口別文章: 体型が変わる断定ではなく、袖、丈、重心、色で見え方が整う理由を書く。"],
+    [/女子大生|あるある|朝|支度|小話|失敗談/i, "切り口別文章: 礼儀正しい女子大生の自然な観察として書く。大げさな流行語より、毎日の服選びの小さな迷いを使う。"],
+    [/旅行|海外|ホテル|旅|カフェ|通勤|大学|デート/i, "切り口別文章: 場面を最初に置き、読者が自分の予定に当てはめられるようにする。"],
+  ];
+  const patternCopies = {
+    microstory: "投稿型別文章: 小さな場面から始め、最後に商品を見る理由へ落とす。",
+    beforeafter: "投稿型別文章: Beforeの悩みとAfterの整い方を短く対比する。",
+    mistake: "投稿型別文章: ありがちな失敗を責めず、次に見るポイントへ変換する。",
+    comparison: "投稿型別文章: A/Bまたは見る順番を明確にして、返信しやすい一問を置く。",
+    ranking: "投稿型別文章: 数字と項目数を一致させ、順位の根拠を商品情報の範囲へ限定する。",
+    checklist: "投稿型別文章: 保存用の確認点を3つ以内にする。",
+    costperwear: "投稿型別文章: 価格だけでなく出番と合わせやすさで納得感を作る。",
+    unpopular: "投稿型別文章: やさしい逆張りを一つだけ置き、読者を否定しない。",
+    commentreply: "投稿型別文章: 読者の相談に答える形で、質問、結論、理由、確認点の順にする。",
+  };
+  const angleCopy = angleCopies.find(([pattern]) => pattern.test(angleText))?.[1]
+    || `切り口別文章: 「${context.angle || labels.viralPattern}」を本文の骨組みにし、${category}の説明を一般論で終わらせない。`;
+  const patternCopy = patternCopies[context.viralPattern] || "投稿型別文章: 選んだ投稿型が読んで分かる構成にする。";
+  const goalCopy = /返信|コメント/.test(labels.goal || "")
+    ? "CTA: 最後は『どっち派？』『この予定なら何色？』のように答えやすい質問にする。"
+    : /クリック|ROOM|購入/.test(`${labels.goal || ""} ${labels.optimization || ""}`)
+      ? "CTA: 先に選ぶ理由を伝え、最後に『サイズ・色・在庫はROOMから確認』へ自然につなぐ。"
+      : "CTA: あとで見返す理由を作り、保存を自然に促す。";
+  return `${platformCopies[platform] || platformCopies.Instagram}
+${angleCopy}
+${patternCopy}
+${goalCopy}
+・同じ商品でも、投稿先・切り口・投稿型が変わったら冒頭、文量、CTA、絵文字の数を必ず変える。`;
 }
 
 function bindSocialHanakoTeacher() {
@@ -11623,6 +11740,8 @@ function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
   const viralBlueprint = buildSocialViralBlueprint(c, labels);
   const angleBlueprint = buildSocialAngleBlueprint(c, labels);
   const platformBlueprint = buildSocialPlatformBlueprint(c);
+  const strategyDirective = buildSocialPromptStrategy(c, labels);
+  const copyStructureDirective = buildSocialCopyStructureDirective(c, labels);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -11640,6 +11759,12 @@ function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
 
 【${c.platform}の書き方】
 ${platformInstruction}
+
+【今回だけのSNS戦略】
+${strategyDirective}
+
+【文章構成の指定】
+${copyStructureDirective}
 
 ${platformBlueprint}
 
