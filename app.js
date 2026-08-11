@@ -10533,7 +10533,7 @@ function socialComplementCategories(category) {
 }
 
 function scoreSocialSupportingProduct(main, candidate, meta) {
-  if (!candidate || candidate.id === main.id || !candidate.image) return -999;
+  if (!candidate || candidate.id === main.id) return -999;
   const mainText = productTextForTheme(main);
   const candidateText = productTextForTheme(candidate);
   const sameTravelType = (candidate.category === "ホテル・旅行") === (main.category === "ホテル・旅行");
@@ -10554,6 +10554,8 @@ function scoreSocialSupportingProduct(main, candidate, meta) {
   if (/SALE|セール|OFF|クーポン|値下げ/i.test(mainText) && /SALE|セール|OFF|クーポン|値下げ/i.test(candidateText)) score += 8;
   if (/高見え|きれいめ|大人|上品/.test(mainText) && /高見え|きれいめ|大人|上品/.test(candidateText)) score += 8;
   if (/骨格|ウェーブ|細見え|華奢|体型|ウエスト|脚長/.test(mainText) && /骨格|ウェーブ|細見え|華奢|体型|ウエスト|脚長/.test(candidateText)) score += 7;
+  if (candidate.image) score += 4;
+  else score -= 6;
   if (candidate.url) score += 3;
   score += hashText(`${main.id}-${candidate.id}-${meta.viralPattern}-${meta.angle}`) % 5;
   return score;
@@ -10991,6 +10993,8 @@ ${hanakoInstruction}
 【投稿文も同時に作る】
 ・画像を生成したあと、同じ回答内に${c.platform}の完成投稿文を1案だけ付ける
 ・投稿文の冒頭は、画像の見出しと同じ悩み・結論から自然につなげる
+・冒頭1〜2行は「商品名＋かわいい」ではなく、読者が止まる悩み、違和感、結論、比較軸のどれかから始める
+・投稿文には「保存する理由」「返信する理由」「ROOMで確認する理由」のうち、投稿目的に合うものを1つだけ強く入れる
 ・投稿文は上の「投稿型の設計図」と「切り口の作り込み」を必ず反映し、どの投稿型でも同じ文章構成にしない
 ・投稿文は商品情報にない使用感、効果、人気、順位、価格変動を作らない
 ・投稿文には商用投稿として「${c.disclosure}」を自然に入れる
@@ -11182,6 +11186,7 @@ function buildSocialViralBlueprint(context, labels) {
   return `【投稿型の設計図: ${selected.title}】
 ・文章構成: ${selected.copy}
 ・画像連動: ${selected.image}
+・バズらせる工夫: 冒頭1行は「読者の悩み」「意外な気づき」「比較したくなる軸」のどれかで止める。本文では保存・返信・クリックの理由を1つに絞り、最後の行で自然に行動へつなげる。
 ・避けること: ${selected.avoid}`;
 }
 
@@ -11202,9 +11207,9 @@ function buildSocialAngleBlueprint(context, labels) {
 
 function buildSocialPlatformBlueprint(context) {
   const byPlatform = {
-    Instagram: "Instagramでは、1枚目で保存理由が伝わることを最優先にする。画像見出しと投稿文冒頭2行を同じ結論でそろえ、本文は「共感 → 解決 → 選び方 → 確認点 → 保存CTA」。",
-    Threads: "Threadsでは、作り込みすぎた広告感を避ける。短い生活の観察から始め、礼儀正しい女子大生の本音と小さな学びで、返信しやすい自然な余白を残す。",
-    X: "Xでは、冒頭1行で結論を出す。比較軸、チェック点、速報性のどれか1つに絞り、改行で読みやすくし、URL前に情報価値を置く。",
+    Instagram: "Instagramでは、1枚目で保存理由が伝わることを最優先にする。画像見出しと投稿文冒頭2行を同じ結論でそろえ、本文は「共感 → 解決 → 選び方 → 正直な確認点 → 保存CTA」。1投稿1テーマに絞り、あとで見返す価値を必ず作る。",
+    Threads: "Threadsでは、作り込みすぎた広告感を避ける。短い生活の観察から始め、礼儀正しい女子大生の本音と小さな学びで、返信しやすい自然な余白を残す。最後は広すぎる質問ではなく、A/Bや具体的な体験を聞く。",
+    X: "Xでは、冒頭1行で結論を出す。比較軸、チェック点、速報性のどれか1つに絞り、改行で読みやすくし、URL前に情報価値を置く。読み終えた瞬間に保存・比較・返信のどれをすればいいか分かる形にする。",
   };
   return byPlatform[context.platform] || byPlatform.Instagram;
 }
@@ -11439,9 +11444,9 @@ function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
   適合スコア: ${item.socialFitScore ?? "未評価"}`)
     .join("\n") || "なし";
   const platformInstruction = {
-    Instagram: `保存したくなるInstagram投稿にする。12〜18文字の表紙見出し、7枚以内のスライド構成、完成キャプションを作る。キャプション冒頭2行で悩みと読む理由を示し、共感、解決、具体的な選び方、正直な確認点、保存CTAの順にする。1段落は1〜3文、ハッシュタグは関連性の高いものを5〜8個。絵文字は表紙・各見出し・保存CTAの目印として6〜12個使い、本文の全行には付けない。`,
-    Threads: `自然なThreads投稿にする。礼儀正しい女子大生の具体的な朝・大学・カフェなどの一場面から入り、観察、本音、小さな気づきをつなぐ。80〜180文字程度、短い段落、売り込みは最後の1行だけ。誰でも答えられる曖昧な質問ではなく、A/Bや具体的な経験を聞く。絵文字は感情・問い・保存の目印として2〜4個、ハッシュタグは0〜2個。`,
-    X: `役に立つX投稿を1本作る。120〜240文字以内で結論を先に置き、比較、ランキング、速報、着回し、買う前チェックのどれか一つに絞る。数字またはA/B、具体的な確認点を入れ、1行を短くする。絵文字は冒頭・比較軸・CTAの視線誘導として2〜5個、URLや導線より本文の情報価値を優先し、ハッシュタグは0〜2個。`,
+    Instagram: `保存したくなるInstagram投稿にする。12〜18文字の表紙見出し、7枚以内のスライド構成、完成キャプションを作る。1枚目は「悩みが自分ごと化する言葉」か「買う前に知りたい結論」で止める。キャプション冒頭2行で悩みと読む理由を示し、共感、解決、具体的な選び方、正直な確認点、保存CTAの順にする。1段落は1〜3文、ハッシュタグは関連性の高いものを5〜8個。絵文字は表紙・各見出し・保存CTAの目印として6〜12個使い、本文の全行には付けない。`,
+    Threads: `自然なThreads投稿にする。礼儀正しい女子大生の具体的な朝・大学・カフェなどの一場面から入り、観察、本音、小さな気づきをつなぐ。80〜180文字程度、短い段落、売り込みは最後の1行だけ。冒頭は「わかる」「それ私も」と思える小さな違和感にする。誰でも答えられる曖昧な質問ではなく、A/Bや具体的な経験を聞く。絵文字は感情・問い・保存の目印として2〜4個、ハッシュタグは0〜2個。`,
+    X: `役に立つX投稿を1本作る。120〜240文字以内で結論を先に置き、比較、ランキング、速報、着回し、買う前チェックのどれか一つに絞る。冒頭1行は単体で拡散されても意味が通る強い結論にする。数字またはA/B、具体的な確認点を入れ、1行を短くする。絵文字は冒頭・比較軸・CTAの視線誘導として2〜5個、URLや導線より本文の情報価値を優先し、ハッシュタグは0〜2個。`,
   }[c.platform];
   return `あなたは「おしゃれ研究家ハナコ」。礼儀正しく、ファッションが大好きな女子大生です。次の選択内容をすべて参考に、${c.platform}で共感され、保存・返信・クリックにつながりやすい完成投稿文を1案作ってください。
 
@@ -11495,11 +11500,14 @@ ${currentDraft || "下書きなし。上の情報から新しく作る"}
 
 【作成方法】
 ・内部で冒頭フックを30案、構成を12案考え、媒体と目的に最も合う1案を選ぶ
+・さらに内部で「思わず止まる冒頭」「保存する理由」「返信したくなる余白」「クリック前の納得感」を各10案ずつ考え、最も自然な組み合わせにする
 ・構成12案は、必ず「投稿型の設計図」と「切り口の作り込み」を起点に作る。投稿型が比較なら比較軸、ランキングなら項目数、チェック型なら保存性、逆張りなら意外な気づきを主役にする
 ・選んだ理由や検討過程、別案は出力しない
 ・第1校正で、商品情報にない使用感・効果・数字・人気・体験をすべて削る
 ・第2校正で、意味の通らない言葉、AIらしい総括、同じ語尾、抽象的なほめ言葉、場面と商品の不一致を直す
 ・第3校正で、媒体の文字量、冒頭の停止力、具体性、共感、信頼、CTA、広告表記、過去によくある表現との重複を確認する
+・第4校正で、冒頭1〜2行だけを読み返し、読者が「自分のことかも」と止まらない場合は書き直す
+・第5校正で、最後の行だけを読み返し、保存・返信・ROOM確認のどれをすればよいか曖昧なら書き直す
 ・各校正で弱い場合は内部で書き直し、自然に声に出して読める完成稿だけを返す
 
 【文章の絶対条件】
@@ -11516,6 +11524,7 @@ ${currentDraft || "下書きなし。上の情報から新しく作る"}
 ・選択された投稿型と違う型へ勝手に変えない。比較型なのに日記だけ、チェック型なのに感想だけ、ランキング型なのに項目数が合わない文章にしない
 ・最初の1〜2行で「自分のことかも」と思える具体的な場面か悩みを示す
 ・商品名より先に、読者が止まる情景・違和感・結論のどれかを置く
+・冒頭は「商品名＋かわいい」から始めない。商品名を出す前に、読者の悩み・迷い・判断軸を置く
 ・悩み → 気づき → この商品が候補になる理由 → 次の行動、の流れにする
 ・くすっとする面白さと愛のある鋭いひと言を少しだけ入れる
 ・面白さは大げさな比喩や流行語ではなく、服選びで本当に起こる小さな迷いや観察から作る
@@ -11961,12 +11970,94 @@ function generatePremiumCopyCandidate(context) {
   if (!context.isTravel && !isThreadsSet) result = enrichFashionCopy(result, context);
   if (!isThreadsSet) result = applyViralPattern(result, context);
   if (!isThreadsSet) result = weaveEmpathy(result, context);
+  if (!isThreadsSet) result = applyBuzzLift(result, context);
   if (context.platform === "Instagram") result += originalContentDirections(context);
   if (context.platform === "X" && result.length > 240) result = buildCompactXCopy(context);
   if (context.platform === "Threads" && result.length > 320 && !["1日5本セット", "骨格ウェーブ目線"].includes(context.angle)) result = buildCompactThreadsCopy(context);
   result = decorateSocialCopy(result, context);
   if (context.platform === "X" && result.length > 240) result = decorateSocialCopy(buildCompactXCopy(context), context);
   return polishHumanCopy(cleanGeneratedCopy(result), context);
+}
+
+function applyBuzzLift(text, c) {
+  const opening = createBuzzOpening(c);
+  const action = createBuzzActionLine(c);
+  let result = String(text || "").trim();
+
+  if (c.platform === "Instagram") {
+    if (result.includes("【キャプション】")) {
+      result = result.replace("【キャプション】", `【キャプション】\n${opening}`);
+    }
+    if (!/保存|見返|比較/.test(result)) {
+      result = result.replace(/(\n#|\n※|\nROOMはこちら|\n楽天トラベル)/, `\n${action}\n$1`);
+    }
+    return result;
+  }
+
+  if (c.platform === "Threads") {
+    const lines = result.split("\n").filter(Boolean);
+    const first = lines[0] || "";
+    if (!characterSimilarity(first, opening) || characterSimilarity(first, opening) < 0.35) {
+      result = `${opening}\n\n${result}`;
+    }
+    if (!/どちら|教えて|迷いますか|ありますか|いますか/.test(result)) {
+      result = `${result}\n\n${createReplyQuestion(c)}`;
+    }
+    return result;
+  }
+
+  const compactOpening = trimText(opening.replace(/[。！？!?]$/, ""), 34);
+  if (!result.startsWith(compactOpening) && result.length + compactOpening.length + 2 <= 240) {
+    result = `${compactOpening}\n\n${result}`;
+  }
+  if (!/保存|比較|確認|どちら|ROOM/.test(result) && result.length + action.length + 2 <= 240) {
+    result = `${result}\n\n${trimText(action, 46)}`;
+  }
+  return result;
+}
+
+function createBuzzOpening(c) {
+  if (c.isTravel) {
+    const travelHooks = [
+      `ホテル選び、写真の可愛さだけで決めると当日ちょっと困ることがあります。`,
+      `${c.travelCompanionLabel}なら、まず見るべきは${c.travelPriorityLabel}かもしれません。`,
+      `旅先で疲れない宿は、予約前の確認がもう半分勝負です。`,
+      `可愛い宿ほど、アクセスと条件まで見てから候補に残したいです。`,
+    ];
+    return pickFresh(travelHooks, c.seed + 17);
+  }
+  const category = c.product.category || "服";
+  const hooks = [
+    `可愛いのに出番が少ない服、だいたい買う前の確認が一つ足りません。`,
+    `${c.fashionOccasionLabel}の服選びは、盛るより「迷わない理由」を作る方が強いです。`,
+    `朝の着替えを短くしたい日は、${category}の見せ場を一つに決めます。`,
+    `高見えは値段より、色・形・素材のまとまりでかなり変わります。`,
+    `${c.fashionConcernLabel}が気になる日は、可愛さより先に重心を見ます。`,
+    `買ってから着ない服を減らすなら、先に3コーデ浮かぶかが大事です。`,
+  ];
+  return pickFresh(hooks, c.seed + 23);
+}
+
+function createBuzzActionLine(c) {
+  if (c.isTravel) {
+    if (c.goal === "reply") return "立地・客室・食事なら、どれを先に見ますか？";
+    if (c.goal === "room") return "最新料金と空室は、日程を入れて楽天トラベルで確認してください。";
+    return "あとで宿を比べる時のために、保存しておくと見返しやすいです。";
+  }
+  if (c.goal === "reply") return createReplyQuestion(c);
+  if (c.goal === "room") return "サイズ・色・在庫は、プロフィールの楽天ROOMから確認できます。";
+  if (c.goal === "follow") return "毎日、買う前に迷いにくい可愛い候補を研究しています。";
+  return "買う前に見返せるよう、保存して比較用に使ってください。";
+}
+
+function createReplyQuestion(c) {
+  if (c.isTravel) return `宿選びは、${c.travelPriorityLabel}と写真の可愛さならどちらを先に見ますか？`;
+  if (c.viralPattern === "comparison" || /二択|比較/.test(c.angle || "")) {
+    return `${c.style.pairings[0]}と${c.style.pairings[2]}なら、どちらに合わせたいですか？`;
+  }
+  if (c.fashionConcern === "upper") return "顔まわりの服選び、襟・袖・色ならどこを一番見ますか？";
+  if (c.fashionConcern === "waist") return "腰まわりは、丈と素材感ならどちらを先に確認しますか？";
+  return "買う前に、サイズ・素材・手持ち服との相性ならどれを一番確認しますか？";
 }
 
 function scorePlatformCopy(text, context) {
@@ -11984,6 +12075,11 @@ function scorePlatformCopy(text, context) {
   if (/確認|個人差|変わる|購入前|最新|気になる/.test(text)) score += 9;
   if (/通学|大学|通勤|デート|カフェ|休日|旅行|推し活|イベント/.test(text)) score += 9;
   if (/保存|ROOM|教えて|どちら|コメント|フォロー|見返/.test(text)) score += 10;
+  if (/可愛いのに|買う前|朝の着替え|写真の可愛さだけ|迷わない理由|出番が少ない|一つ足りません/.test(firstLine)) score += 14;
+  if (/先に|まず|結論|見るべき|減らすなら|決めると/.test(firstLine)) score += 7;
+  if (/悩み|気づき|理由|確認|保存|比較/.test(text) && /ROOM|プロフィール|楽天/.test(text)) score += 8;
+  if (/A｜|B｜|どちら|教えて|選びますか|見ますか/.test(text) && context.goal === "reply") score += 10;
+  if (/保存して|見返せる|比較用|買う前/.test(text) && context.goal === "save") score += 10;
   if (!/絶対|100%|最安|誰でも|優勝|爆売れ|買わないと損/.test(text)) score += 10;
   const cannedPhrases = (text.match(/ご紹介します|魅力が満載|いかがでしたか|ぜひチェック|間違いなし|要チェック/g) || []).length;
   score -= cannedPhrases * 11;
@@ -12229,10 +12325,16 @@ function buildCompactXCopy(c) {
     : "サイズ・在庫はプロフィールの楽天ROOMから確認。";
   if (c.angle === "2商品比較") {
     const second = c.products[1] || p;
+    if (!c.products[1] || second.id === p.id) {
+      return `${c.fashionOccasionLabel}で使うなら、買う前にここだけ確認。\n\n${shortName(p.name)}\n・${trimText(naturalHook(p.hook), 38)}\n・${trimText(c.style.checks[0], 34)}\n・${trimText(c.style.checks[1], 34)}\n\n比較候補が少ない時ほど、まずは手持ち服で3コーデ浮かぶか。\n${disclosure}\n${roomCta}`;
+    }
     return `迷ったら、この2つを比較。\n\nA｜${trimText(shortName(p.name), 24)}\n${trimText(naturalHook(p.hook), 34)}\n\nB｜${trimText(shortName(second.name), 24)}\n${trimText(naturalHook(second.hook), 34)}\n\n華やかさならA、着回しならB。どちらが好みですか？\n${disclosure}\n${roomCta}`;
   }
   if (["ランキング", "予算別3選"].includes(c.angle)) {
     const items = c.products.slice(0, 3);
+    if (items.length < 2) {
+      return `${c.seasonLabel}の買う前チェック。\n\n${shortName(p.name)}\n1. ${trimText(c.style.checks[0], 32)}\n2. ${trimText(c.style.checks[1], 32)}\n3. 手持ち服で3コーデ作れるか\n\n可愛い気持ちは残しつつ、届いた後に迷わない選び方を。\n${disclosure}\n${roomCta}`;
+    }
     return `${c.seasonLabel}の大人可愛い候補3選。\n\n${items.map((item, index) => `${index + 1}. ${trimText(shortName(item.name), 22)}`).join("\n")}\n\n基準は着回し・確認しやすさ・手持ち服との相性。保存して比較用に。\n${disclosure}\n${roomCta}`;
   }
   const title = c.angle === "セール速報"
@@ -12903,6 +13005,18 @@ function generatePremiumX(c) {
   }
   if (c.angle === "2商品比較") {
     const second = c.products[1] || p;
+    if (!c.products[1] || second.id === p.id) {
+      return `${shortName(p.name)}を買う前の3確認。
+
+1. ${c.style.checks[0]}
+2. ${c.style.checks[1]}
+3. 手持ち服と3コーデ作れるか
+
+比較候補が少ない時ほど、主役商品の使い道を先に決めたい。
+
+${c.disclosure}
+${c.roomLine}`;
+    }
     return `楽天ROOM候補を比較。
 
 A｜${shortName(p.name)}
@@ -12917,6 +13031,18 @@ ${c.disclosure}
 ${c.roomLine}`;
   }
   if (c.angle === "ランキング") {
+    if (c.products.length < 2) {
+      return `${shortName(p.name)}、ランキングにするより買う前チェック向き。
+
+・${naturalHook(p.hook)}
+・${c.style.checks[0]}
+・${c.style.checks[1]}
+
+候補が少ない時は、順位より「本当に着る場面」が大事。
+
+${c.disclosure}
+${c.roomLine}`;
+    }
     return `今週の大人ガーリー候補3選
 
 1. ${shortName(c.products[0]?.name)}
