@@ -8818,7 +8818,8 @@ function chooseRoomHanakoComment(product, force = false) {
 
 function buildRoomHanakoTeacherInstruction(mode) {
   if (mode === "collection") return `【ハナコ先生】
-・コレクション表紙にはハナコ先生のアイコンと吹き出しを入れない`;
+・コレクション表紙にはハナコ先生のアイコン、吹き出し、ハナコ先生のひとこと、先生コメント、辛口コメントを入れない
+・表紙は本人、商品、コレクション名、ブランド感だけで見せる。解説キャラクターやコメント欄を足さない`;
   const teacher = currentRoomHanakoTeacher || hanakoTeacherGuides[0];
   const comment = currentRoomHanakoComment || "主役を決めて。全部目立つと全部ぼやけるわ。";
   return `【ハナコ先生の辛口ひとこと・通常投稿だけ必須】
@@ -9088,7 +9089,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・日本語は読みやすい明朝体または端正なゴシック体、英字は細身のセリフ体を基本にする
 ・売上数、レビュー数、価格、割引、効能などの数字は入れない
 ・コレクション表紙には、海外都市名、ランドマーク名、場所表記、撮影地クレジットを入れない
-・コレクション表紙には、売れるミニタグ、買う理由ミニタグ、Before→After、EDITOR'S NOTE、可愛さポイント、ファッションポイント、点数、pt表示、スコア、右下ポイント表示を絶対に入れない
+・コレクション表紙には、ハナコ先生のアイコン、ハナコ先生のひとこと、先生コメント、吹き出し、売れるミニタグ、買う理由ミニタグ、Before→After、EDITOR'S NOTE、可愛さポイント、ファッションポイント、点数、pt表示、スコア、右下ポイント表示を絶対に入れない
 ・同ブランド候補が1点だけなら商品を水増しせず、その1点を主役にした表紙へ仕上げる`
     : `【通常投稿画像】
 ・正方形1:1、1536×1536px以上。明るく自然で、商品と着用イメージが一目で分かる1枚にする
@@ -9106,13 +9107,13 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・一言は「悩みが解決しそう」「選んでよかった」と思える課題解決型コピーとして見せる。控えめすぎる小さな添え書きにしない`;
   const referenceBoardInstruction = mode === "collection"
     ? `・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像
-・コレクション表紙では、TEACHER、TEACHER COMMENT、KAWAII POINT、EDITOR'S NOTE、SIGNATURE LOGOは使わない
+・コレクション表紙では、TEACHER、TEACHER COMMENT、ハナコ先生のひとこと、先生吹き出し、KAWAII POINT、EDITOR'S NOTE、SIGNATURE LOGOは使わない
 ・表紙に必要な文字は下の「コレクション表紙」にある固定テキストだけ。売れるミニタグ、ファッションポイント、点数、メモ欄は足さない`
     : `・PERSON欄は本人、PRODUCT欄は使用できる商品の基準画像、TEACHER欄はハナコ先生の基準画像、TEACHER COMMENT欄は画像へ入れる先生のひとこと、KAWAII POINT欄は右下ロケーション表記の上へ入れる可愛さポイント
 ・EDITOR'S NOTE欄は通常投稿へ入れる買う理由ミニタグとBefore→After解決メモの完成デザイン見本`;
   const qualityModeInstruction = mode === "collection"
-    ? `・コレクション表紙では、売れるミニタグ、買う理由ミニタグ、Before→After、EDITOR'S NOTE、可愛さポイント、ファッションポイント、点数、pt表示、スコアを入れていない
-・コレクション表紙では、表紙テキスト6つ以外の購入理由メモ、タグ、シール、右下ポイント表示を追加していない`
+    ? `・コレクション表紙では、ハナコ先生のアイコン、ハナコ先生のひとこと、先生コメント、吹き出し、売れるミニタグ、買う理由ミニタグ、Before→After、EDITOR'S NOTE、可愛さポイント、ファッションポイント、点数、pt表示、スコアを入れていない
+・コレクション表紙では、表紙テキスト6つ以外の購入理由メモ、タグ、シール、右下ポイント表示、先生コメント欄を追加していない`
     : `・未確認の人気、効果、使用体験、価格、数字を作っていない。ただし指定された可愛さポイント「${kawaiiPoint.score}pt」だけは入っている
 ・通常投稿では、TEACHER欄と同じハナコ先生の丸いアイコンが左下にあり、その上にTEACHER COMMENT欄と同じ「ハナコ先生のひとこと」吹き出しが小さく入っている
 ・通常投稿では、EDITOR'S NOTE欄と同じ買う理由ミニタグ、Before→After解決メモ、枠内ほぼ透明の薄い紙カード、細い罫線が右上に小さく上品に入っている
@@ -9121,7 +9122,7 @@ function buildRoomImagePrompt({ product, personPhotoUrl, mode, pose, hairStyle, 
 ・EDITOR'S NOTEが、主役商品、本人の顔、手書き一言、署名ロゴ、ロケーション表記、ハナコ先生を隠していない
 ・通常投稿では、主役商品が一番目立ち、メイン手書き一言が二番目、EDITOR'S NOTEとハナコ先生は小さな補足になっている`;
   const teacherReferenceLine = mode === "collection"
-    ? "・コレクション表紙ではTEACHER欄や先生アイコンを使わず、人物と商品と表紙文字だけで構成する"
+    ? "・コレクション表紙ではTEACHER欄、先生アイコン、ハナコ先生のひとこと、先生吹き出しを使わず、人物と商品と表紙文字だけで構成する"
     : "・通常投稿ではTEACHER欄の先生アイコンとTEACHER COMMENT欄のひとことも、完成画像へ小さく反映する";
   return `画像を生成してください。楽天ROOM投稿用ですが、画像内に「楽天ROOM」「ROOM」の文字は入れません。添付した参照画像ボード1枚を使い、完成画像を1枚だけ作ってください。
 
