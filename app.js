@@ -11080,6 +11080,15 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
   const topicInstruction = c.isTravel
     ? `参照画像ボードのPRODUCT欄にある宿泊施設の写真を主役にし、確認できる魅力だけを整理する。写真にない設備や景色を作らない。`
     : `参照画像ボードのPRODUCT欄にある商品を主役にし、色・形・素材感を変えず、${labels.fashionOccasion}で使うイメージが自然に伝わるようにする。`;
+  const tryOnInstruction = c.isTravel ? "" : `【本人が出る画像の着せ替え・必須】
+・完成画像にPERSON欄の本人を出す場合は、本人が主役商品「${product.name}」を自然に身につけた着用イメージにする
+・主役商品がトップス、ワンピース、スカート、パンツ、アウターなら、PRODUCT欄の商品を本人に着せる。元写真の服をそのまま残さない
+・主役商品がバッグなら、本人がそのバッグを手持ち、肩掛け、斜め掛けのいずれかで自然に持つ。バッグの形、色、持ち手、金具を変えない
+・主役商品がシューズなら、本人がその靴を履く。靴の形、色、ヒール、つま先、素材感を変えない
+・主役商品がアクセサリーなら、本人が顔まわり、手元、首元など自然な位置に身につける。大きさ、色、金具、モチーフを変えない
+・主役商品以外の服や小物は、主役商品に合う上品な全身コーデへ整えてよい。ただし主役商品の邪魔をせず、同じカテゴリの商品を勝手に追加しない
+・本人の顔、髪色、体型、肌の雰囲気、マスクはPERSON欄を保ち、別人にしない
+・本人を出さない商品単体の情報画像にする場合だけ、着せ替えは不要。ただし人物を出すなら必ず上の着せ替えルールを守る`;
   const hanakoInstruction = includeHanakoTeacher ? `【ハナコ先生の吹き出し・必須】
 ・参照画像ボードのTEACHER欄にある「${hanakoTeacher.name}」を、丸いアイコンとして完成画像へ入れる
 ・TEACHER欄の顔、髪型、髪色、服、目の色、表情を変えず、別人に描き直さない
@@ -11123,6 +11132,7 @@ ${strategyDirective}
 ${visualByPlatform}
 ${imageLayoutDirective}
 ${topicInstruction}
+${tryOnInstruction}
 
 【複数商品を使う場合のルール】
 ${productUseDirective}
