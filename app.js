@@ -2927,6 +2927,11 @@ function bindActions() {
   document.querySelector("#generateThree").addEventListener("click", generateThreeEditorialPosts);
   document.querySelector("#sendSocialGeminiImage")?.addEventListener("click", shareSocialReferenceToGemini);
   document.querySelector("#sendSocialGeminiCopy")?.addEventListener("click", () => sendSocialGeminiToGemini("copy"));
+  document.querySelector("#snsCoordPhotoLibrary")?.addEventListener("click", handleCoordinatePhotoLibraryClick);
+  document.querySelector("#goToHomePhotoLibrary")?.addEventListener("click", () => {
+    activateView("brief");
+    window.setTimeout(() => document.querySelector("#homePhotoLibraryTitle")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  });
   document.querySelector("#goToSocialGemini")?.addEventListener("click", () => {
     generateBothSocialGeminiPrompts(true);
     renderSocialGeminiProgress();
@@ -4372,6 +4377,7 @@ async function uploadCoordinatePhotos(event) {
     if (!uploadedCount) throw new Error("写真を読み込めませんでした。写真アプリから画像を選び直してください");
     saveState();
     markRoomImagePromptStale();
+    markSocialGeminiPromptStale();
     coordinateBoardDataUrl = "";
     coordinateBoardHasPerson = false;
     renderCoordinatePhotoLibrary();
@@ -4400,6 +4406,7 @@ async function handleCoordinatePhotoLibraryClick(event) {
       if (state.selectedCoordinatePhotoId === photo.id) state.selectedCoordinatePhotoId = state.coordinatePhotos[0]?.id || "";
       saveState();
       markRoomImagePromptStale();
+      markSocialGeminiPromptStale();
       coordinateBoardDataUrl = "";
       coordinateBoardHasPerson = false;
       renderCoordinatePhotoLibrary();
@@ -4414,6 +4421,7 @@ async function handleCoordinatePhotoLibraryClick(event) {
   state.selectedCoordinatePhotoId = selectButton.dataset.selectCoordinatePhoto;
   saveState();
   markRoomImagePromptStale();
+  markSocialGeminiPromptStale();
   coordinateBoardDataUrl = "";
   coordinateBoardHasPerson = false;
   renderCoordinatePhotoLibrary();
@@ -4425,7 +4433,7 @@ async function handleCoordinatePhotoLibraryClick(event) {
     if (coordinateOutput.value.trim()) drawCoordinateBoard(getSelectedCoordinate(), coordinateOutput.value);
   } catch (error) {
     const message = "写真は選択済みです。画像URLは生成時にもう一度更新します。";
-    document.querySelectorAll("#coordPhotoStatus, #homeCoordPhotoStatus").forEach((status) => {
+    document.querySelectorAll("#coordPhotoStatus, #homeCoordPhotoStatus, #snsCoordPhotoStatus").forEach((status) => {
       status.textContent = message;
       status.classList.add("error");
     });
@@ -4445,14 +4453,14 @@ function renderCoordinatePhotoLibrary() {
         </button>
         <button class="coord-photo-delete" type="button" data-delete-coordinate-photo="${escapeHtml(photo.id)}" aria-label="この写真を削除">×</button>
       </div>`).join("") : `<p class="muted">まだ写真がありません。「写真を追加」から登録してください。</p>`;
-  document.querySelectorAll("#coordPhotoLibrary, #homeCoordPhotoLibrary").forEach((target) => {
+  document.querySelectorAll("#coordPhotoLibrary, #homeCoordPhotoLibrary, #snsCoordPhotoLibrary").forEach((target) => {
     target.innerHTML = libraryHtml;
   });
   const selectedName = selected?.name || "未選択";
   const statusText = cloudSync.signedIn
     ? `${state.coordinatePhotos.length}/${COORDINATE_PHOTO_LIMIT}枚保存中。今回使う写真：${selectedName}`
     : "写真を追加・更新するには、クラウド同期へログインしてください。";
-  document.querySelectorAll("#coordPhotoStatus, #homeCoordPhotoStatus").forEach((status) => {
+  document.querySelectorAll("#coordPhotoStatus, #homeCoordPhotoStatus, #snsCoordPhotoStatus").forEach((status) => {
     status.textContent = statusText;
     status.classList.remove("error");
   });

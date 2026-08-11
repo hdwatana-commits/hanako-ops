@@ -997,6 +997,17 @@
                 <p class="sns-gemini-next" id="snsGeminiNextAction">まず商品を確認してください</p>
                 <p class="sns-gemini-guide">本人写真・商品・ハナコ先生・投稿設計を参照画像1枚にまとめて、選んだAIへ共有します。画像と投稿文を同じ流れで作れます。</p>
                 <div class="sns-gemini-product-preview" id="snsGeminiProductPreview"></div>
+                <div class="sns-photo-picker">
+                  <div class="sns-photo-picker-head">
+                    <div>
+                      <span>PERSON PHOTO</span>
+                      <strong>SNS画像に使う本人写真</strong>
+                    </div>
+                    <button id="goToHomePhotoLibrary" type="button">写真を追加</button>
+                  </div>
+                  <div class="coord-photo-grid sns-photo-grid" id="snsCoordPhotoLibrary" aria-live="polite"></div>
+                  <p id="snsCoordPhotoStatus">ホームで保存した写真から、SNS画像ボードに使う1枚を選べます。</p>
+                </div>
                 <div class="sns-reference-board-preview" id="snsReferenceBoardPreview">
                   <div class="sns-reference-board-heading">
                     <div>
@@ -1767,6 +1778,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=259"></script>
+    <script src="app.js?v=260"></script>
   </body>
 </html>
