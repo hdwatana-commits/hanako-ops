@@ -2936,6 +2936,13 @@ function bindActions() {
   document.querySelector("#copySocialGeminiCopyPrompt")?.addEventListener("click", () => copyText(snsGeminiCopyPrompt?.value || ""));
   document.querySelector("#openSocialGeminiImage")?.addEventListener("click", shareSocialReferenceToGemini);
   document.querySelector("#openSocialGeminiCopy")?.addEventListener("click", () => copyAndOpenSocialGemini("copy"));
+  document.querySelector("#snsRefreshReferenceBoard")?.addEventListener("click", async () => {
+    const generated = generateBothSocialGeminiPrompts(true, false);
+    if (!generated) return;
+    const prepared = await prepareSocialReferenceBoard();
+    showToast(prepared ? "SNS画像ボードを再作成しました" : "SNS画像ボードを作れませんでした");
+  });
+  document.querySelector("#snsDownloadReferenceBoard")?.addEventListener("click", downloadSocialReferenceBoard);
   document.querySelector("#snsGeneratedImage")?.addEventListener("change", previewSocialGeminiImage);
   document.querySelector("#snsGeminiResult")?.addEventListener("input", renderSocialGeminiProgress);
   document.querySelector("#applySocialGeminiCopy")?.addEventListener("click", applySocialGeminiCopy);
@@ -4204,6 +4211,7 @@ function renderSocialGeminiProductPreview() {
       ${productUrl ? `<a href="${escapeHtml(productUrl)}" target="_blank" rel="noopener noreferrer">商品ページ</a>` : ""}
     </div>`;
   renderSocialGeminiProgress();
+  updateSocialReferenceBoardPreview();
 }
 
 function safeHttpUrl(value) {
@@ -10820,6 +10828,7 @@ async function shareSocialReferenceToGemini() {
 async function prepareSocialReferenceBoard(existingData = null) {
   const data = existingData || getSocialGeminiPromptData();
   if (!data) return false;
+  updateSocialReferenceBoardPreview("SNS画像ボードを作成中...");
   const photo = getSelectedCoordinatePhoto();
   try {
     if (photo) {
@@ -10829,6 +10838,7 @@ async function prepareSocialReferenceBoard(existingData = null) {
     data.hanakoTeacher = currentSocialHanakoTeacher;
     data.hanakoComment = currentSocialHanakoComment;
     await drawSocialReferenceBoard(data);
+    updateSocialReferenceBoardPreview("SNS画像ボード作成済み。保存または選んだAIへ共有できます。");
     if (!data.context.product.image) {
       showToast("商品画像なしのURL参照ボードを作りました");
     } else if (!photo) {
@@ -10836,9 +10846,33 @@ async function prepareSocialReferenceBoard(existingData = null) {
     }
     return true;
   } catch (error) {
+    updateSocialReferenceBoardPreview(error.message || "SNS画像ボードを作れませんでした");
     showToast(error.message || "SNS参照画像を作れませんでした");
     return false;
   }
+}
+
+function updateSocialReferenceBoardPreview(message = "") {
+  const frame = document.querySelector("#snsReferenceBoardCanvas");
+  const status = document.querySelector("#snsReferenceBoardStatus");
+  const downloadButton = document.querySelector("#snsDownloadReferenceBoard");
+  if (!frame) return;
+  if (socialReferenceBoardDataUrl) {
+    frame.innerHTML = `<img src="${socialReferenceBoardDataUrl}" alt="SNS画像ボードのプレビュー">`;
+    if (downloadButton) downloadButton.disabled = false;
+    if (status) status.textContent = message || "SNS画像ボード作成済み。AIへ渡す前に内容を確認できます。";
+    return;
+  }
+  frame.innerHTML = `<span>${escapeHtml(message || "まだ画像ボードは作られていません")}</span>`;
+  if (downloadButton) downloadButton.disabled = true;
+  if (status) status.textContent = message || "「画像と投稿文を作る」を押すと、ここにAIへ渡す画像ボードが表示されます。";
+}
+
+function downloadSocialReferenceBoard() {
+  if (!socialReferenceBoardDataUrl) return showToast("先にSNS画像ボードを作ってください");
+  const boardFile = dataUrlToFile(socialReferenceBoardDataUrl, `hanako-${activePlatform.toLowerCase()}-reference.jpg`);
+  downloadReferenceFile(boardFile, `hanako-${activePlatform.toLowerCase()}-reference.jpg`);
+  showToast("SNS画像ボードを保存しました");
 }
 
 async function drawSocialReferenceBoard(data) {
@@ -11701,6 +11735,7 @@ function downloadSocialGeminiImage() {
 function markSocialGeminiPromptStale(event) {
   if (event?.target?.closest?.(".sns-gemini-tools")) return;
   socialReferenceBoardDataUrl = "";
+  updateSocialReferenceBoardPreview("条件が変わったため、SNS画像ボードを再作成してください。");
   if (snsGeminiPrompt?.value.trim() || snsGeminiCopyPrompt?.value.trim()) {
     socialGeminiPromptNeedsRefresh = true;
     setSocialGeminiStatus("条件変更あり");

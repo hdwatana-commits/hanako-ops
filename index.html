@@ -997,6 +997,22 @@
                 <p class="sns-gemini-next" id="snsGeminiNextAction">まず商品を確認してください</p>
                 <p class="sns-gemini-guide">本人写真・商品・ハナコ先生・投稿設計を参照画像1枚にまとめて、選んだAIへ共有します。画像と投稿文を同じ流れで作れます。</p>
                 <div class="sns-gemini-product-preview" id="snsGeminiProductPreview"></div>
+                <div class="sns-reference-board-preview" id="snsReferenceBoardPreview">
+                  <div class="sns-reference-board-heading">
+                    <div>
+                      <span>REFERENCE BOARD</span>
+                      <strong>SNS画像ボード</strong>
+                    </div>
+                    <div class="sns-reference-board-actions">
+                      <button id="snsRefreshReferenceBoard" type="button">再作成</button>
+                      <button id="snsDownloadReferenceBoard" type="button" disabled>保存</button>
+                    </div>
+                  </div>
+                  <div class="sns-reference-board-canvas" id="snsReferenceBoardCanvas">
+                    <span>まだ画像ボードは作られていません</span>
+                  </div>
+                  <p id="snsReferenceBoardStatus">「画像と投稿文を作る」を押すと、ここにAIへ渡す画像ボードが表示されます。</p>
+                </div>
                 <div class="sns-gemini-quick-actions">
                   <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>画像と投稿文を作る</button>
                   <button id="sendSocialGeminiCopy" type="button"><span>2</span>投稿文を作りに行く</button>
@@ -1751,6 +1767,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=257"></script>
+    <script src="app.js?v=258"></script>
   </body>
 </html>
