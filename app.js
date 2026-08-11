@@ -7948,7 +7948,7 @@ async function importProductForRoom(urlInput, button) {
 async function importProductForSocial(urlInput, button) {
   const url = normalizeRakutenImportUrl(urlInput?.value.trim());
   if (!url) {
-    showSocialImportStatus("楽天ROOMまたは楽天市場の商品URLを入力してください", true);
+    showSocialImportStatus("楽天ROOM、楽天市場、楽天トラベルの商品URLを入力してください", true);
     urlInput?.focus();
     return;
   }
@@ -7966,16 +7966,18 @@ async function importProductForSocial(urlInput, button) {
     let usedFallback = false;
     let imported;
     try {
-      imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
+      imported = normalizeSocialImportedProduct(await fetchRakutenProduct(url), url);
     } catch (error) {
       if (!isRakutenQuotaError(error) && !isRakutenImportNetworkError(error)) throw error;
       usedFallback = true;
-      imported = buildRoomImportFallbackProduct(url, error);
+      imported = normalizeSocialImportedProduct(buildRoomImportFallbackProduct(url, error), url);
       showSocialImportStatus(isRakutenQuotaError(error)
         ? "楽天APIの取得上限に当たったため、URLから仮登録してSNS投稿を作ります..."
         : "商品取得サーバーに接続できないため、URLから仮登録してSNS投稿を作ります...");
     }
-    if (isDefiniteTravelProduct(imported, url)) throw new Error("SNS投稿では楽天市場のファッション商品URLを入力してください");
+    if (isDefiniteTravelProduct(imported, url) && !isExplicitRakutenTravelUrl(url)) {
+      throw new Error("SNS投稿で旅行内容を作る場合は、楽天トラベルのURLを入力してください");
+    }
     let product = findExistingProductForRoomImport(imported, url);
     if (product) {
       Object.assign(product, {
@@ -8000,7 +8002,7 @@ async function importProductForSocial(urlInput, button) {
         details: imported.details || {},
         category: imported.category || "その他",
         price: imported.price || "",
-        hook: imported.hook || "SNSで紹介しやすい、気になる楽天アイテム",
+        hook: imported.hook || (imported.category === "ホテル・旅行" ? "予約前に条件を確認したい楽天トラベル候補" : "SNSで紹介しやすい、気になる楽天アイテム"),
         socialExplicitOverride: true,
       });
       state.products.unshift(product);
@@ -8018,7 +8020,9 @@ async function importProductForSocial(urlInput, button) {
     showSocialImportStatus(usedFallback
       ? `取得上限のため仮情報で「${product.name}」のSNS投稿と画像プロンプトを作りました。あとで再読込すると商品名や画像を更新できます。`
       : `「${product.name}」のSNS投稿と画像プロンプトを作りました`);
-    showToast(usedFallback ? "仮情報でSNS投稿を作りました" : "URLからSNS投稿を作りました");
+    showToast(product.category === "ホテル・旅行"
+      ? "楽天トラベル向けSNS投稿を作りました"
+      : usedFallback ? "仮情報でSNS投稿を作りました" : "URLからSNS投稿を作りました");
   } catch (error) {
     showSocialImportStatus(error.message || "商品情報を読み込めませんでした", true);
   } finally {
@@ -8027,6 +8031,32 @@ async function importProductForSocial(urlInput, button) {
       button.textContent = originalLabel;
     }
   }
+}
+
+function normalizeSocialImportedProduct(imported, originalUrl) {
+  const product = normalizeCoordinateImportedProduct(imported, originalUrl);
+  if (!isExplicitRakutenTravelUrl(originalUrl)) return product;
+  const text = `${product.name || ""} ${product.hook || ""} ${product.details?.location || ""}`.trim();
+  const fallbackName = deriveRakutenTravelFallbackName(originalUrl);
+  return {
+    ...product,
+    name: product.name && product.name !== "楽天ROOMの商品" ? product.name : fallbackName,
+    url: originalUrl,
+    sourceUrl: product.sourceUrl || originalUrl,
+    resolvedUrl: product.resolvedUrl || originalUrl,
+    category: "ホテル・旅行",
+    kind: "travel",
+    price: product.price || "料金は日程・プランで変動",
+    hook: product.hook && !/商品情報の取得上限/.test(product.hook)
+      ? product.hook
+      : "写真の可愛さだけでなく、立地・客室・料金を予約前に確認したい楽天トラベル候補",
+    details: {
+      ...(product.details || {}),
+      source: product.details?.source || "rakuten-travel-url",
+      location: product.details?.location || extractTravelLocationHint(text) || "アクセスは楽天トラベルの予約画面で確認",
+      importType: "rakuten-travel",
+    },
+  };
 }
 
 function isRakutenQuotaError(error) {
@@ -8043,6 +8073,25 @@ function isRakutenImportNetworkError(error) {
 
 function buildRoomImportFallbackProduct(url, error) {
   const urlText = String(url || "");
+  if (isExplicitRakutenTravelUrl(urlText)) {
+    return {
+      name: deriveRakutenTravelFallbackName(urlText),
+      url: urlText,
+      sourceUrl: urlText,
+      resolvedUrl: urlText,
+      image: "",
+      category: "ホテル・旅行",
+      kind: "travel",
+      price: "料金は日程・プランで変動",
+      hook: "写真映え、アクセス、客室、料金を予約前に確認したい楽天トラベル候補",
+      details: {
+        source: "rakuten-travel-url-fallback",
+        importWarning: String(error?.message || "Rakuten API quota exceeded"),
+        location: extractTravelLocationHint(urlText) || "アクセスは楽天トラベルの予約画面で確認",
+        importType: "rakuten-travel",
+      },
+    };
+  }
   const roomMatch = urlText.match(/room\.rakuten\.co\.jp\/([^/?#]+)\/(?:items\/)?([^/?#]+)/i);
   const itemMatch = parseRakutenItemCodeFromUrl(urlText);
   const label = roomMatch?.[2] || itemMatch.itemCode || "楽天ROOMの商品";
@@ -8065,6 +8114,28 @@ function buildRoomImportFallbackProduct(url, error) {
       itemCode: itemMatch.itemCode || "",
     },
   };
+}
+
+function deriveRakutenTravelFallbackName(value) {
+  try {
+    const url = new URL(String(value || ""));
+    const parts = url.pathname.split("/").filter(Boolean);
+    const last = parts.at(-1) || parts.at(-2) || "";
+    const readable = decodeURIComponent(last)
+      .replace(/\.(html?|php)$/i, "")
+      .replace(/[-_]+/g, " ")
+      .trim();
+    if (readable && !/^\d+$/.test(readable)) return `楽天トラベル候補 ${readable}`;
+  } catch {
+    // generic label below
+  }
+  return "楽天トラベルの宿候補";
+}
+
+function extractTravelLocationHint(value) {
+  const text = String(value || "");
+  const match = text.match(/(東京|大阪|京都|神戸|横浜|札幌|函館|仙台|金沢|名古屋|軽井沢|箱根|熱海|伊豆|鎌倉|日光|長野|飛騨|高山|広島|宮島|福岡|長崎|熊本|鹿児島|沖縄|那覇|石垣|宮古島|ハワイ|ソウル|釜山|台北|バンコク|パリ|ロンドン|ローマ|ミラノ|ニューヨーク)/);
+  return match?.[1] || "";
 }
 
 function findExistingProductForRoomImport(imported, originalUrl) {
