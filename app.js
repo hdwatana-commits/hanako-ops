@@ -4077,15 +4077,7 @@ function applyRecommendedSnsDefaults(product, notify = true) {
           : /ストレッチ|歩き|軽量|締め付け/.test(text)
             ? "comfort"
             : "upper";
-    const occasion = /通勤|オフィス|仕事|ジャケット/.test(text)
-      ? "office"
-      : /デート|カフェ|お呼ばれ/.test(text)
-        ? "date"
-        : /推し|ライブ|イベント/.test(text)
-          ? "oshi"
-          : ["バッグ", "シューズ", "アクセサリー"].includes(product.category)
-            ? "weekend"
-            : "campus";
+    const occasion = recommendSocialFashionOccasion(product, text, { priority, concern });
     const emotion = concern === "weather" ? "weather" : priority === "balance" ? "body" : priority === "cost" ? "budget" : priority === "premium" ? "confidence" : "repeat";
     setSelect("audienceSelect", "auto");
     document.querySelector("#audienceSelect")?.setAttribute("data-social-auto-audience", "true");
@@ -4104,6 +4096,40 @@ function applyRecommendedSnsDefaults(product, notify = true) {
   renderSocialGeminiProductPreview();
   markSocialGeminiPromptStale();
   if (notify) showToast(`${product.name}に合うSNS設定を自動で選びました`);
+}
+
+function recommendSocialFashionOccasion(product, text = "", meta = {}) {
+  const base = ["campus", "office", "date", "weekend", "cafeGirls"].filter((value) => fashionOccasionLabels[value]);
+  const candidates = [...base];
+  const push = (...values) => values.forEach((value) => {
+    if (fashionOccasionLabels[value]) candidates.push(value);
+  });
+  const source = `${text || ""} ${product?.category || ""} ${product?.name || ""}`;
+  if (/通勤|オフィス|仕事|ジャケット|ブラウス|シャツ|パンツ|きちんと/.test(source)) {
+    push("office", "presentation", "internship", "afterWork", "coldOffice");
+  }
+  if (/大学|授業|ゼミ|発表|通学|キャンパス/.test(source)) {
+    push("campus", "seminar", "library", "presentation");
+  }
+  if (/デート|カフェ|レストラン|ワンピ|スカート|ブラウス|お呼ばれ/.test(source)) {
+    push("date", "dinner", "museum", "brunch", "movie", "hotelLunch");
+  }
+  if (/推し|ライブ|イベント|遠征|写真|映え/.test(source)) {
+    push("oshi", "concert", "photoDay", "girlsNight");
+  }
+  if (/旅行|トラベル|街歩き|リゾート|海|空港|軽量|歩きやす/.test(source)) {
+    push("travel", "airport", "resort", "weekend", "photoDay");
+  }
+  if (/雨|撥水|濡れ|梅雨/.test(source) || meta.concern === "weather") push("rainyCommute", "office", "oneMile");
+  if (/暑|汗|接触冷感|UV|半袖|ノースリーブ/.test(source)) push("hotDay", "picnic", "shopping");
+  if (/冷房|カーデ|羽織|アウター/.test(source)) push("coldOffice", "afterWork", "movie");
+  if (/結婚式|二次会|パーティ|お呼ばれ/.test(source)) push("weddingGuest", "dinner", "hotelLunch");
+  if (/親|家族|帰省|上品|清楚/.test(source)) push("familyMeet", "brunch", "office");
+  if (["バッグ", "シューズ", "アクセサリー"].includes(product?.category)) {
+    push("shopping", "museum", "date", "girlsNight", "photoDay", "oneMile");
+  }
+  const unique = [...new Set(candidates)].filter((value) => fashionOccasionLabels[value]);
+  return chooseSocialLotteryValue("fashionOccasion", activePlatform, unique, `${product?.id || "product"}-${meta.priority || ""}-${meta.concern || ""}`);
 }
 
 function scheduleProductRecommendation(product, recommendation) {
@@ -12155,6 +12181,31 @@ const fashionOccasionLabels = {
   date: "デート・カフェ",
   oshi: "推し活・イベント",
   weekend: "休日・近所のお出かけ",
+  seminar: "ゼミ・授業発表",
+  library: "図書館・自習日",
+  presentation: "プレゼン・面談",
+  internship: "インターン・説明会",
+  afterWork: "仕事帰りの予定",
+  dinner: "夜ごはん・レストラン",
+  museum: "美術館・展示会",
+  brunch: "ブランチ・ホテルカフェ",
+  shopping: "ショッピング",
+  movie: "映画館・室内デート",
+  picnic: "公園・ピクニック",
+  travel: "国内旅行・街歩き",
+  airport: "空港・移動日",
+  resort: "海辺・リゾート",
+  hotelLunch: "ホテルランチ",
+  weddingGuest: "結婚式二次会・お呼ばれ",
+  familyMeet: "家族・親戚に会う日",
+  girlsNight: "女子会・夜カフェ",
+  themePark: "テーマパーク",
+  concert: "ライブ・推し活遠征",
+  photoDay: "写真を撮る日",
+  rainyCommute: "雨の日のおでかけ",
+  hotDay: "暑い日の外出",
+  coldOffice: "冷房が強い室内",
+  oneMile: "ワンマイル・近所カフェ",
 };
 
 const fashionPriorityLabels = {
@@ -13654,6 +13705,31 @@ function createFashionEmpathyLead(c) {
     date: "可愛くしたい日ほど、服が気になって落ち着かないのは避けたいです。",
     oshi: "写真には可愛く残したい。でも長時間でも疲れない服でいたいです。",
     weekend: "近所のお出かけでも、少しだけ気分が上がる服を選びたいです。",
+    seminar: "発表の日は、目立ちすぎず、でもちゃんと印象に残る服でいたいです。",
+    library: "自習の日ほど楽ちんに寄せたいけれど、だらしなく見えるのは避けたいです。",
+    presentation: "面談やプレゼンの日は、可愛さより先に信頼感を整えたくなります。",
+    internship: "説明会やインターンの日は、浮かないきちんと感と自分らしさの境目で迷います。",
+    afterWork: "仕事帰りに予定がある日は、朝から夜まで崩れない可愛さが欲しいです。",
+    dinner: "夜ごはんの日は、座った時まできれいに見える服を選びたくなります。",
+    museum: "美術館の日は、静かな場所になじむ上品さと写真に残る可愛さを両方欲しくなります。",
+    brunch: "ホテルカフェやブランチの日は、朝から頑張りすぎない華やかさがちょうどいいです。",
+    shopping: "ショッピングの日は、歩けることと試着しやすさまで考えて服を選びます。",
+    movie: "映画館の日は、座りっぱなしでも苦しくなくて、隣で見ても可愛い服がいいです。",
+    picnic: "公園の日は、動きやすさに寄せすぎると可愛さが消えがちで迷います。",
+    travel: "旅行の街歩きは、写真に残る可愛さと一日歩ける安心感を両方見たいです。",
+    airport: "移動日は楽ちんにしたいけれど、到着してすぐ写真を撮れる服だと嬉しいです。",
+    resort: "リゾートの日は、抜け感を出したいのにラフすぎると不安になります。",
+    hotelLunch: "ホテルランチの日は、甘さを残しながらきちんと見える服が頼れます。",
+    weddingGuest: "お呼ばれの日は、華やかさと品のよさのちょうどいい場所を探したくなります。",
+    familyMeet: "家族や親戚に会う日は、可愛いけれど清潔感もある服が一番落ち着きます。",
+    girlsNight: "女子会の日は、少しだけ盛りたいけれど頑張りすぎには見せたくないです。",
+    themePark: "テーマパークの日は、写真も歩きやすさも妥協したくないです。",
+    concert: "ライブや遠征の日は、可愛さ、動きやすさ、荷物の持ちやすさまで大事です。",
+    photoDay: "写真を撮る日は、近くで見ても全身で見ても可愛いバランスにしたいです。",
+    rainyCommute: "雨の日は気分が下がりやすいから、濡れても崩れにくい可愛さが助かります。",
+    hotDay: "暑い日の外出は、涼しさだけでなく、きちんと見える一枚があると安心です。",
+    coldOffice: "冷房が強い日は、羽織っても脱いでも可愛いバランスが欲しくなります。",
+    oneMile: "近所カフェの日ほど、手抜きに見えない楽ちん服がうれしいです。",
   };
   const hooks = {
     scene: [
