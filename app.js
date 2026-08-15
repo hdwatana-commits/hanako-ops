@@ -11097,6 +11097,11 @@ function getSocialGeminiPromptData(rerollLottery = true) {
   }
   if (rerollLottery) applySocialLotterySelections(product, true);
   const context = buildEditorialContext(product);
+  const socialCity = chooseBalancedOverseasCity("social");
+  const socialCityOption = getRoomOverseasCities().find(([name]) => name === socialCity) || getRoomOverseasCities()[0];
+  context.socialCity = socialCityOption?.[0] || "パリ";
+  context.socialLandmark = socialCityOption?.[1] || "エッフェル塔";
+  context.socialLocationStamp = `${context.socialCity} / ${context.socialLandmark}`;
   const selectedLabel = (selector) => {
     const select = document.querySelector(selector);
     return select?.selectedOptions?.[0]?.textContent?.trim() || "自動";
@@ -11140,6 +11145,7 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
   const productUseDirective = buildSocialProductUseDirective(c, labels);
   const productCountDirective = buildSocialProductCountDirective(c, labels);
   const readabilityDirective = buildSocialReadabilityEmojiDirective(c, labels);
+  const worldLocationDirective = buildSocialWorldLocationDirective(c);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -11211,6 +11217,8 @@ ${imageLayoutDirective}
 ${topicInstruction}
 ${tryOnInstruction}
 
+${worldLocationDirective}
+
 【複数商品を使う場合のルール】
 ${productUseDirective}
 ${productCountDirective}
@@ -11239,10 +11247,11 @@ ${hanakoInstruction}
 ポイント1: 「${imagePoints[0]}」
 ポイント2: 「${imagePoints[1]}」
 ポイント3: 「${imagePoints[2]}」
-・上の4文は意味と文法を確認済みの完成文。言い換え、要約、語順変更、単語追加、数字追加をしない
+右下の場所表記: 「${c.socialLocationStamp}」
+・上の5文は意味と文法を確認済みの完成文。言い換え、要約、語順変更、単語追加、数字追加をしない
 ・投稿文や企画名から別の見出しを新しく作らない。「予定別」「4パターン」「ランキング」など、上の固定文にない言葉や数字を追加しない
 ・実際に複数の着回し画像を見せていないのに「○パターン」「○選」と書かない
-・見出しと3ポイント以外の説明文を勝手に増やさない。ハナコ先生を入れる場合だけ、指定された先生見出しと本文を追加してよい
+・見出しと3ポイントと右下の場所表記以外の説明文を勝手に増やさない。ハナコ先生を入れる場合だけ、指定された先生見出しと本文を追加してよい
 ・生成後に画像内の日本語を一文字ずつ読み直し、意味不明、文法誤り、文字欠け、造語があれば固定文へ修正してから出力する
 
 【投稿文も同時に作る】
@@ -11295,6 +11304,7 @@ ${supportingProducts}
 ・文字は読みやすい自然な日本語。誤字、文字化け、意味のない文字を出さない
 ・商品名を長く載せず、見出しは上で指定した完成文だけを使い、説明は指定した3ポイントだけにする
 ・商品や人物の大切な部分へ文字を重ねない
+・右下の場所表記は必ず残し、商品、人物、ポイント、先生の吹き出しと重ねない
 ・文字を薄くしない。見出しと3ポイント、先生の吹き出しは濃く、背景と十分なコントラストを付ける
 ・「STYLE EDIT」という文字は、見出し、ラベル、装飾、透かしのどこにも入れない
 ・サービス名、URL、値段、ブランドロゴを新しく画像内へ追加しない
@@ -11302,6 +11312,24 @@ ${supportingProducts}
 ・実物の商品や施設を別物へ変えない
 
 完成画像1枚と完成投稿文1案だけを出力してください。説明文、制作意図、プロンプト、別案、採点は返さないでください。`;
+}
+
+function buildSocialWorldLocationDirective(context) {
+  const city = context.socialCity || "パリ";
+  const landmark = context.socialLandmark || "エッフェル塔";
+  const stamp = context.socialLocationStamp || `${city} / ${landmark}`;
+  const travelSafety = context.isTravel
+    ? "・主役が宿泊施設の場合、背景都市はSNS画像の編集上の世界観として使い、その施設がこの都市に実在するとは書かない。施設写真にない設備や眺望も作らない"
+    : "・人物を出す場合は、現地の安全な歩道、広場、展望場所などに自然に立たせ、危険な崖、車道、立入禁止区域、水上へ配置しない";
+  return `【世界都市背景・くじ選択済み】
+・今回の背景は「${city}」。ROOM投稿と同じ世界都市候補から、直前の使用場所と重なりにくいくじ方式で選択済み
+・背景に「${landmark}」の景観を、その場所だと自然に分かる大きさで入れる
+・${city}の実際の地形、建築、自然、光と矛盾しない写真的な背景にし、別都市の名所を混ぜない
+・商品と人物が主役。絶景は判別できるが主役を飲み込まない奥行きと情報量にする
+${travelSafety}
+・画像の右下、安全域の内側へ「${stamp}」と一字一句そのまま小さく上品に入れる
+・場所表記は濃いブラウンまたは白で十分なコントラストを確保し、背景帯や大きなカードを付けない
+・場所表記に「mood」「イメージ」「撮影地」などを足さず、別の都市名、英語だけの表記、略称へ変えない`;
 }
 
 function resolvePublicTeacherReference(teacher) {
