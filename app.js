@@ -256,15 +256,15 @@ let lastCloudSyncError = "";
 const cloudSync = new window.HanakoCloudSync(window.HANAKO_CLOUD_CONFIG || {});
 
 const anglePresets = {
-  Instagram: ["季節の3選カルーセル", "高見え深掘り", "12秒リール", "着回し保存版", "失敗しない選び方", "本音レビュー", "1週間コーデ", "予算別比較", "女子大生あるある"],
-  Threads: ["1日5本セット", "今日の可愛い発掘", "骨格ウェーブ目線", "ファッション小話", "小さな失敗談", "朝の支度", "二択で相談", "本音レビュー", "女子大生あるある", "ROOM更新メモ"],
-  X: ["2商品比較", "ランキング", "セール速報", "着回し案", "買う前チェック", "予算別3選", "二択で相談", "女子大生あるある"],
+  Instagram: ["季節の観察ノート", "1分ミニ講座", "着回し保存版", "編集部の今週推し", "思い込み外し図解", "トレンド解説", "12秒リール", "本音レビュー", "女子大生の場面ストーリー", "季節の3選カルーセル"],
+  Threads: ["朝の観察メモ", "今日の可愛い発掘", "ファッション小話", "小さな場面ストーリー", "思い込み外し", "編集部推しメモ", "トレンドの小話", "骨格ウェーブ目線", "本音レビュー", "ROOM更新メモ"],
+  X: ["30秒ミニ講座", "トレンド要点解説", "買う前の観察メモ", "思い込み外し", "編集部の1点推し", "セール速報", "着回し案", "買う前チェック", "2商品比較", "ランキング"],
 };
 
 const travelAnglePresets = {
-  Instagram: ["女子旅ホテル保存版", "客室・食事・アクセス比較", "週末旅行モデルプラン", "予約前チェック", "宿泊本音レビュー"],
-  Threads: ["次の旅の候補", "ホテル選びの小話", "立地と客室の二択", "予約前の確認", "宿泊本音レビュー"],
-  X: ["宿泊プラン比較", "女子旅ホテル3選", "セール・クーポン確認", "予約前チェック", "アクセス重視比較"],
+  Instagram: ["宿の観察ノート", "予約前ミニ講座", "週末旅行の場面ストーリー", "編集部推しの一宿", "ホテル選びの思い込み外し", "旅トレンド解説", "女子旅ホテル保存版", "宿泊本音レビュー"],
+  Threads: ["旅支度の観察メモ", "ホテル選びの小話", "到着日の場面ストーリー", "編集部推しメモ", "宿選びの思い込み外し", "旅トレンドの小話", "予約前の確認", "宿泊本音レビュー"],
+  X: ["宿選びミニ講座", "旅トレンド要点解説", "予約前の観察メモ", "宿選びの思い込み外し", "編集部の一宿推し", "セール・クーポン確認", "予約前チェック", "宿泊プラン比較"],
 };
 
 const views = {
@@ -10555,16 +10555,16 @@ function getExperimentPatterns(platform, goal) {
 
 function getSocialPatternCandidates(goal, platform, learned = null) {
   const byGoal = {
-    save: ["checklist", "comparison", "beforeafter", "ranking", "microstory"],
-    room: ["comparison", "costperwear", "ranking", "mistake", "beforeafter"],
-    reply: ["commentreply", "microstory", "unpopular", "comparison"],
-    follow: ["microstory", "beforeafter", "unpopular", "commentreply"],
+    save: ["minilesson", "observation", "checklist", "trendbrief", "beforeafter", "ranking"],
+    room: ["editorpick", "scenestory", "costperwear", "mistake", "mythbuster"],
+    reply: ["observation", "commentreply", "scenestory", "mythbuster", "unpopular"],
+    follow: ["trendbrief", "scenestory", "observation", "editorpick", "microstory"],
   };
   const platformPatterns = platformSafe(platform) === "threads"
-    ? ["microstory", "commentreply", "unpopular", "beforeafter"]
+    ? ["observation", "scenestory", "commentreply", "mythbuster", "microstory"]
     : platformSafe(platform) === "instagram"
-      ? ["checklist", "beforeafter", "comparison", "ranking"]
-      : ["comparison", "ranking", "checklist", "costperwear", "unpopular"];
+      ? ["minilesson", "editorpick", "trendbrief", "checklist", "beforeafter"]
+      : ["trendbrief", "mythbuster", "observation", "minilesson", "checklist"];
   const learnedList = learned?.sampleSize >= 2 ? [learned.pattern] : [];
   return [...new Set([...learnedList, ...(byGoal[goal] || byGoal.save), ...platformPatterns])]
     .filter((pattern) => viralPatternLabels[pattern]);
@@ -11088,6 +11088,7 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
   const imageLayoutDirective = buildSocialImageLayoutDirective(c, labels);
   const copyStructureDirective = buildSocialCopyStructureDirective(c, labels);
   const productUseDirective = buildSocialProductUseDirective(c, labels);
+  const productCountDirective = buildSocialProductCountDirective(c, labels);
   const readabilityDirective = buildSocialReadabilityEmojiDirective(c, labels);
   const supportingProducts = c.products
     .slice(1)
@@ -11162,6 +11163,7 @@ ${tryOnInstruction}
 
 【複数商品を使う場合のルール】
 ${productUseDirective}
+${productCountDirective}
 ・主役商品は必ず「${product.name}」。画像と投稿文の中心を他の商品へ変えない
 ・下の候補は「使ってもよい候補」であり、「必ず出す商品」ではない
 ・複数商品OKの投稿型でない限り、完成画像と投稿文に出す商品名は主役商品1点だけにする
@@ -11169,6 +11171,8 @@ ${productUseDirective}
 ・比較、ランキング、予算別では同カテゴリ候補を使い、比較軸を2〜3個に絞る
 ・着回し、コーデ、デート、通勤、大学、カフェ、旅行の投稿では補完アイテムだけを小さく使い、同じカテゴリを重ねない
 ・候補がテーマに合わない、画像が読めない、数が足りない場合は必ず主役商品1点の投稿に戻す
+・Web検索を利用できるAIは、複数商品が企画成立に不可欠な場合だけ、商品名・カテゴリ・ブランド・価格帯を手掛かりに補助候補を探してよい。公式商品ページまたは楽天の商品ページで実在と仕様を確認できた候補だけを使う
+・Web検索で十分な候補を確認できない場合は比較やランキングを続行せず、主役商品1点の観察メモ、ミニ講座、場面ストーリー、編集部推し、思い込み外し、トレンド解説のいずれかへ戻す
 ・商品名、カテゴリ、価格、色、形、素材感、画像URLから確認できる範囲だけで作る
 
 ${platformBlueprint}
@@ -11421,6 +11425,42 @@ function buildSocialViralBlueprint(context, labels) {
       image: "吹き出しやQ&A風にしてよいが、読みにくい会話劇にせず、回答は1つの結論へまとめる。",
       avoid: "架空コメントの作り込みすぎ、質問が曖昧、答えが長い",
     },
+    observation: {
+      title: "観察メモ型",
+      copy: `商品ページや写真から確認できる小さな特徴を1つ観察し、「見えた事実 → そこから考えたこと → ${scene}で確認したい点」の順で書く。評価や勝敗にしない。`,
+      image: "余白のある観察ノート風。主役1点の寄りと全体を見せ、矢印や短い欄外メモで視線を案内する。左右比較にしない。",
+      avoid: "未確認の使用感、他商品との優劣、観察できない効果",
+    },
+    minilesson: {
+      title: "ミニ講座型",
+      copy: `${category}を選ぶ時に使える知識を1テーマだけ教える。「結論 → 理由 → この商品で見る箇所 → 自分で確認する方法」の順にする。`,
+      image: "図解カード風。主役商品を教材にし、注目箇所を最大3つの番号や矢印で示す。商品一覧や順位表にしない。",
+      avoid: "一般論の詰め込み、専門家を装う断定、商品と結び付かない知識",
+    },
+    scenestory: {
+      title: "場面ストーリー型",
+      copy: `${scene}の一場面を時間の流れで描き、そこで生まれる迷いと${category}を見る理由をつなぐ。主役商品は1点、出来事は1場面に絞る。`,
+      image: "場面写真のような一枚絵。人物の動作、場所、時間帯が伝わる構図にし、文字は短い情景見出しとメモだけにする。",
+      avoid: "購入・使用していない体験の捏造、複数場面の詰め込み、ドラマの作りすぎ",
+    },
+    editorpick: {
+      title: "編集部推し型",
+      copy: "編集メモのように「今回注目した理由 → 推したい1点 → 向く場面 → 正直な確認点」でまとめる。主役商品への選定理由を具体化する。",
+      image: "雑誌のEDITOR'S PICK風。主役1点を大きく置き、選定理由・向く人・確認点を小さなカードで整理する。ランキングにしない。",
+      avoid: "根拠のない人気表現、受賞や売上の捏造、何でも推す広告口調",
+    },
+    mythbuster: {
+      title: "思い込み外し型",
+      copy: `${category}についてありがちな思い込みを1つだけ取り上げ、「実は一律ではない → 条件で変わる理由 → 今回見る箇所」の順でやさしく解く。`,
+      image: "大きな思い込みの一文から、矢印で新しい見方へ導く構成。対決や赤いバツではなく、余白と注釈で知的に見せる。",
+      avoid: "読者を否定する言葉、根拠のない逆張り、医療・体型効果の断定",
+    },
+    trendbrief: {
+      title: "トレンド解説型",
+      copy: `トレンド名だけで煽らず、「今見かける要素 → 取り入れやすい理由 → ${category}での見方 → 長く使うための確認点」の順に解説する。`,
+      image: "小さなトレンドレポート風。主役商品を中心に、色・形・素材など確認できる要素を3つ以内で注釈する。複数商品の流行ランキングにしない。",
+      avoid: "最新・大流行の未確認断定、出典のない数字、流行だけを理由にした購入煽り",
+    },
   };
   const selected = blueprints[context.viralPattern] || blueprints.checklist;
   return `【投稿型の設計図: ${selected.title}】
@@ -11502,6 +11542,26 @@ function buildSocialProductUseDirective(context, labels) {
 ・複数商品を使う時は、それぞれを出す理由を1行で説明し、商品数と画像内の番号を一致させる`;
 }
 
+function buildSocialProductCountDirective(context, labels) {
+  const available = (context.products || []).filter((item) => item?.id).length;
+  const requestedMulti = socialAllowsMultipleProducts(context, labels);
+  if (!requestedMulti || available <= 1) {
+    return `【商品数別構成: 1商品】
+・主役商品の寄り、使用場面、確認ポイントの3層で見せる。画面を左右に割らず、A/B、VS、順位、○選を使わない
+・文章は「気づきまたは場面 → 主役の理由 → 正直な確認点 → CTA」。比較相手を想像で補わない
+・元の切り口が比較・ランキングでも候補不足なら、単品主役の観察メモ、ミニ講座、場面ストーリー、編集部推し、思い込み外し、トレンド解説へ変換する`;
+  }
+  if (available === 2) {
+    return `【商品数別構成: 2商品】
+・比較企画の時だけ左右2分割を使い、共通の比較軸を1〜2個に限定する。それ以外の投稿型では主役を大きく、補助商品を小さく置く
+・文章は「選ぶ場面 → A/Bそれぞれが向く条件 → 主役を選ぶ理由 → CTA」。勝敗や総合順位は作らない`;
+  }
+  return `【商品数別構成: ${Math.min(available, 4)}商品候補】
+・ランキング・まとめ・着回しで必要な数だけ使う。商品数と画像の番号、本文の項目数を一致させる
+・比較なら同一軸のカード、コーデなら主役＋補完アイテム、講座や観察なら主役1点へ絞る
+・文章は商品列挙ではなく、企画の結論 → 各商品の役割 → 主役の理由 → CTAの順にする`;
+}
+
 function buildSocialImageLayoutDirective(context, labels) {
   const platform = context.platform || "Instagram";
   const angleText = `${context.angle || ""} ${labels.hook || ""}`;
@@ -11533,6 +11593,12 @@ function buildSocialImageLayoutDirective(context, labels) {
     costperwear: "投稿型別画像: 安さではなく、出番、手入れ、合わせやすさのタグで納得感を作る。",
     unpopular: "投稿型別画像: 余白を多めにして、少し意外な一言を上品に見せる。",
     commentreply: "投稿型別画像: Q&A風の吹き出しを1つだけ使い、回答は短い結論へまとめる。",
+    observation: "投稿型別画像: 主役1点を観察ノート風に見せ、寄り・全体・短い欄外メモで構成する。",
+    minilesson: "投稿型別画像: 主役1点を教材にしたミニ図解。番号や矢印は最大3つにする。",
+    scenestory: "投稿型別画像: 一つの場所と時間帯が伝わる場面写真風。文字より動作と空気感を主役にする。",
+    editorpick: "投稿型別画像: EDITOR'S PICK風に、主役・選定理由・正直な確認点の3ブロックで見せる。",
+    mythbuster: "投稿型別画像: 思い込みから新しい見方へ、一本の矢印で導く。対決構図にはしない。",
+    trendbrief: "投稿型別画像: トレンドレポート風に、主役商品の確認できる要素を最大3つ注釈する。",
   };
   const angleLayout = angleLayouts.find(([pattern]) => pattern.test(angleText))?.[1]
     || `切り口別画像: 「${context.angle || labels.viralPattern}」が一目で伝わるように、${category}の見どころを1テーマへ絞る。`;
@@ -11572,6 +11638,12 @@ function buildSocialCopyStructureDirective(context, labels) {
     costperwear: "投稿型別文章: 価格だけでなく出番と合わせやすさで納得感を作る。",
     unpopular: "投稿型別文章: やさしい逆張りを一つだけ置き、読者を否定しない。",
     commentreply: "投稿型別文章: 読者の相談に答える形で、質問、結論、理由、確認点の順にする。",
+    observation: "投稿型別文章: 見えた事実、気づき、使う場面、確認したい点の順。評価や二択にしない。",
+    minilesson: "投稿型別文章: 結論、理由、商品で見る箇所、自分で確認する方法の順に教える。",
+    scenestory: "投稿型別文章: 一場面の始まり、迷い、商品を見る理由、余韻の順に描く。",
+    editorpick: "投稿型別文章: 注目した理由、推す一点、向く場面、正直な確認点の順にする。",
+    mythbuster: "投稿型別文章: 思い込み、条件で変わる理由、新しい見方、確認点の順にする。",
+    trendbrief: "投稿型別文章: 見かける要素、背景、取り入れ方、長く使うための確認点の順にする。",
   };
   const angleCopy = angleCopies.find(([pattern]) => pattern.test(angleText))?.[1]
     || `切り口別文章: 「${context.angle || labels.viralPattern}」を本文の骨組みにし、${category}の説明を一般論で終わらせない。`;
@@ -11890,6 +11962,7 @@ function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
   const strategyDirective = buildSocialPromptStrategy(c, labels);
   const copyStructureDirective = buildSocialCopyStructureDirective(c, labels);
   const productUseDirective = buildSocialProductUseDirective(c, labels);
+  const productCountDirective = buildSocialProductCountDirective(c, labels);
   const readabilityDirective = buildSocialReadabilityEmojiDirective(c, labels);
   const supportingProducts = c.products
     .slice(1)
@@ -11954,12 +12027,15 @@ ${supportingProducts}
 
 【複数商品を文章で使う条件】
 ${productUseDirective}
+${productCountDirective}
 ・主役商品は必ず「${product.name}」。投稿の結論を他の商品へ移さない
 ・上の候補は「使ってもよい候補」であり、「必ず出す商品」ではない
 ・複数商品OKの投稿型でない限り、本文に出す商品名は主役商品1点だけにする
 ・比較、ランキング、予算別では同カテゴリ候補だけを使い、比較軸を2〜3個に絞る
 ・着回し、コーデ、デート、通勤、大学、カフェ、旅行の投稿では補完アイテムだけを使い、同カテゴリを重ねない
 ・候補が投稿型に合わない場合は無理に使わず、必ず主役商品1点の投稿にする
+・Web検索を利用できるAIは、比較・ランキングの成立に必要な時だけ公式商品ページまたは楽天の商品ページから補助候補を探してよい。実在、カテゴリ、仕様、価格帯を確認できない候補は使わない
+・検索しても必要数がそろわない場合は比較やランキングにせず、主役商品1点の観察メモ、ミニ講座、場面ストーリー、編集部推し、思い込み外し、トレンド解説へ戻す
 ・候補を使う時は「なぜ並べるか」が読者に分かる一文を入れる
 
 【アプリで作った下書き】
@@ -12267,6 +12343,12 @@ const viralPatternLabels = {
   costperwear: "コスパ",
   unpopular: "やさしい逆張り",
   commentreply: "コメント回答",
+  observation: "観察メモ",
+  minilesson: "ミニ講座",
+  scenestory: "場面ストーリー",
+  editorpick: "編集部推し",
+  mythbuster: "思い込み外し",
+  trendbrief: "トレンド解説",
 };
 
 function platformSafe(platform) {
@@ -12275,16 +12357,16 @@ function platformSafe(platform) {
 
 function inferViralPattern(goal, platform, variant) {
   const byGoal = {
-    save: ["checklist", "comparison", "ranking", "beforeafter", "costperwear"],
-    room: ["comparison", "ranking", "mistake", "costperwear", "microstory"],
-    reply: ["commentreply", "comparison", "unpopular", "microstory"],
-    follow: ["microstory", "unpopular", "beforeafter", "commentreply"],
+    save: ["minilesson", "observation", "trendbrief", "checklist", "beforeafter"],
+    room: ["editorpick", "scenestory", "costperwear", "mistake", "mythbuster"],
+    reply: ["observation", "commentreply", "scenestory", "mythbuster", "microstory"],
+    follow: ["trendbrief", "scenestory", "editorpick", "observation", "microstory"],
   };
   const platformPatterns = platform === "threads"
-    ? ["commentreply", "microstory", "unpopular"]
+    ? ["observation", "scenestory", "commentreply", "mythbuster"]
     : platform === "instagram"
-      ? ["checklist", "beforeafter", "comparison"]
-      : ["comparison", "ranking", "unpopular", "costperwear"];
+      ? ["minilesson", "editorpick", "trendbrief", "checklist"]
+      : ["trendbrief", "mythbuster", "observation", "minilesson"];
   return pick([...(byGoal[goal] || byGoal.save), ...platformPatterns], variant + goal.length);
 }
 
