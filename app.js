@@ -11663,8 +11663,21 @@ function getSocialGeminiPromptData(rerollLottery = true) {
 
 function buildHanakoLifestyleImagePrompt(c, currentDraft) {
   const creative = buildSocialCreativeDirective(c);
-  const world = buildSocialWorldLocationDirective(c);
-  const count = Math.max(2, Math.min(5, Number(c.creativeProfile?.threadsImageCount || 4)));
+  const locationPreset = c.creativeProfile?.locationPreset || "world";
+  const locationSelect = document.querySelector("#snsLocationPreset");
+  const locationLabel = c.creativeProfile?.location || [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "選択した場所";
+  const world = locationPreset === "world" ? buildSocialWorldLocationDirective(c) : `【選択した場所】
+・背景は「${locationLabel}」。場所の雰囲気を具体的に写し、別の場所や世界都市の名所を混ぜない
+・住所、店名、看板、窓外の特徴、郵便物、家族写真など、個人や正確な場所を特定できる情報を写さない
+・画像右下の安全域に「${locationLabel}」と小さく上品に表示する`;
+  const count = Math.max(1, Math.min(5, Number(c.creativeProfile?.threadsImageCount || 4)));
+  const imageRoles = [
+    "1枚目: 選択した表情、服装、場所、投稿テーマを1枚で自然に伝える主役写真",
+    "2枚目: 服装と場面が分かる全身または上半身",
+    "3枚目: 手元、食べ物、野菜、ピアノ、小物などテーマのディテール",
+    "4枚目: 選択した場所の空気と投稿の余韻が残る風景",
+    "5枚目: 同じ人物・服装・場所を保った自然な別アングル",
+  ].slice(0, count).join("\n");
   return `SNS投稿用の完成画像を${count}枚生成してください。これは楽天商品紹介ではなく、ハナの日常と世界観を伝えるThreads投稿です。商品画像、価格、楽天ROOM、購入導線、アフィリエイト表記、比較表は入れません。
 
 ${creative}
@@ -11672,11 +11685,7 @@ ${creative}
 ${world}
 
 【画像構成】
-1枚目: 選択した表情と投稿テーマが伝わる自然な主役写真
-2枚目: 服装と場面が分かる全身または上半身
-3枚目: 手元、食べ物、野菜、ピアノ、小物などテーマのディテール
-4枚目: 世界都市の空気と投稿の余韻が残る風景
-${count >= 5 ? "5枚目: 同じ人物・服装・場所を保った自然な別アングル" : ""}
+${imageRoles}
 ・コラージュではなく、個別保存できる独立画像を指定枚数作る
 ・同じ成人女性、同じ服装、同じ場所、同じ色調を保つ
 ・画像内テキストは右下の場所情報だけ。商品名、価格、ロゴ、宣伝文句は入れない
@@ -11726,7 +11735,7 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
   const creativeDirective = buildSocialCreativeDirective(c);
   const performanceDirective = buildSocialPerformanceDirective(c);
   const worldLocationDirective = buildSocialWorldLocationDirective(c);
-  const imageCount = c.platform === "Threads" ? Math.max(2, Math.min(5, Number(c.creativeProfile?.threadsImageCount || 4))) : 1;
+  const imageCount = c.platform === "Threads" ? Math.max(1, Math.min(5, Number(c.creativeProfile?.threadsImageCount || 4))) : 1;
   const threadImageRoles = [
     "1枚目: 投稿の感情と主役商品が一目で伝わるメイン画像",
     "2枚目: 主役商品を身につけた全身コーデまたは全景",
@@ -11938,7 +11947,12 @@ function buildSocialCreativeDirective(context) {
     location: { grocer: "店名を見せない八百屋の作業場", pianoBar: "場所を特定しないバーのピアノ", noodle: "店名を見せないつけ麺カウンター", street: "街角", cafe: "カフェ", campus: "キャンパス", office: "オフィス", hotel: "ホテル", museum: "美術館", seaside: "海辺", station: "駅・空港", room: "部屋" },
     carousel: { story: "場面ストーリー（導入→発見→詳細→余韻）", lesson: "ミニ講座（結論→理由→実例→保存メモ）", styling: "コーデ展開（全身→上半身→小物→別角度）", review: "観察レビュー（主役→良い点→注意点→まとめ）", trend: "トレンド解説（兆し→特徴→取り入れ方→結論）" },
   };
-  const preset = (group, key, fallback) => labels[group]?.[key] || fallback;
+  const presetSelectIds = { scene: "snsScenePreset", outfit: "snsOutfitPreset", hair: "snsHairPreset", pose: "snsPosePreset", composition: "snsCompositionPreset", lighting: "snsLightingPreset", location: "snsLocationPreset", carousel: "snsCarouselPreset" };
+  const preset = (group, key, fallback) => {
+    if (labels[group]?.[key]) return labels[group][key];
+    const select = document.querySelector(`#${presetSelectIds[group] || ""}`);
+    return [...(select?.options || [])].find((option) => option.value === key)?.textContent?.trim() || fallback;
+  };
   const location = profile.location || (profile.locationPreset === "world" ? `${context.socialCity}・${context.socialLandmark}` : preset("location", profile.locationPreset, `${context.socialCity}・${context.socialLandmark}`));
   const concept = socialConceptCatalog.find((item) => item.id === profile.selectedConcept);
   const hanakoExpression = hanakoExpressionOptions[profile.hanakoExpression] || hanakoExpressionOptions.bashful;
