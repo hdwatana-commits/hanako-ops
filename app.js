@@ -11698,10 +11698,14 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft) {
   const locationPreset = c.creativeProfile?.locationPreset || "world";
   const locationSelect = document.querySelector("#snsLocationPreset");
   const locationLabel = c.creativeProfile?.location || [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "選択した場所";
-  const world = locationPreset === "world" ? buildSocialWorldLocationDirective(c) : `【選択した場所】
+  const world = locationPreset === "world" ? `【世界都市背景・くじ選択済み】
+・今回の背景は「${c.socialCity || "パリ"}」。ROOM投稿と同じ世界都市候補から、直前の使用場所と重なりにくいくじ方式で選択済み
+・背景に「${c.socialLandmark || "エッフェル塔"}」の景観を、その場所だと自然に分かる大きさで入れる
+・実際の地形、建築、自然、光と矛盾しない写真的な背景にし、別都市の名所を混ぜない
+・都市名、国名、ランドマーク名、撮影地、位置情報などの文字は画像内に一切表示しない` : `【選択した場所】
 ・背景は「${locationLabel}」。場所の雰囲気を具体的に写し、別の場所や世界都市の名所を混ぜない
 ・住所、店名、看板、窓外の特徴、郵便物、家族写真など、個人や正確な場所を特定できる情報を写さない
-・画像右下の安全域に「${locationLabel}」と小さく上品に表示する`;
+・「${locationLabel}」を含む場所の文字情報は画像内に表示しない`;
   const count = Math.max(1, Math.min(5, Number(c.creativeProfile?.threadsImageCount || 4)));
   const imageRoles = [
     "1枚目: 選択した表情、服装、場所、投稿テーマを1枚で自然に伝える主役写真",
@@ -11721,15 +11725,15 @@ ${world}
 【画像構成】
 ${imageRoles}
 ・コラージュではなく、個別保存できる独立画像を指定枚数作る
-・各画像は必ず縦4:5、1080×1350px。重要な顔、手、小物、右下の場所情報を安全域に収める
+・各画像は必ず縦4:5、1080×1350px。重要な顔、手、小物を安全域に収める
 ・同じ成人女性、同じ服装、同じ場所、同じ色調を保つ
-・画像内テキストは右下の場所情報だけ。商品名、価格、ロゴ、宣伝文句は入れない
+・画像内には文字を一切入れない。場所名、都市名、ランドマーク名、投稿本文、見出し、キャプション、ハッシュタグ、商品名、価格、ロゴ、透かし、宣伝文句を描かない
 ・店名、住所、勤務日、家族情報が特定できる文字や背景は入れない
 
 【対応する投稿文】
 ${currentDraft || generateHanakoLifestyleCopy(c, 0)}
 
-完成画像${count}枚と、上の世界観に合う短いThreads本文1案だけを返してください。`;
+完成画像${count}枚と、上の世界観に合う短いThreads本文1案を別々に返してください。Threads本文は画像の外に通常テキストとして出力し、画像へ重ねないでください。`;
 }
 
 function buildHanakoLifestyleCopyPrompt(c, currentDraft) {
