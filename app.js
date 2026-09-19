@@ -2906,7 +2906,67 @@ const socialCreativeDefaults = {
   location: "",
   threadsImageCount: 4,
   extra: "",
+  scenePreset: "auto",
+  outfitPreset: "auto",
+  hairPreset: "keep",
+  posePreset: "auto",
+  compositionPreset: "auto",
+  lightingPreset: "auto",
+  locationPreset: "world",
+  carouselPreset: "story",
+  selectedConcept: "",
 };
+
+const socialConceptCatalog = [
+  { id: "observation", type: "観察メモ", title: "使う場面から見えた小さな発見", reason: "商品を一つの主役として、細部や使いどころを等身大に伝えます。", pattern: "observation", scene: "trend", pose: "detail", composition: "detail", carousel: "review" },
+  { id: "minilesson", type: "ミニ講座", title: "選ぶ前に知っておきたい3つの視点", reason: "保存したくなる知識に、商品を自然な実例として登場させます。", pattern: "minilesson", scene: "room", pose: "hold", composition: "sequence", carousel: "lesson" },
+  { id: "scenestory", type: "場面ストーリー", title: "予定のある日の支度から始める", reason: "朝・通学・通勤・おでかけの一場面で、商品の役割を物語にします。", pattern: "scenestory", scene: "morning", pose: "walk", composition: "full", carousel: "story" },
+  { id: "editorpick", type: "編集部推し", title: "今週の一品を深掘り", reason: "推す理由と確認ポイントを分け、煽らずに魅力を整理します。", pattern: "editorpick", scene: "cafe", pose: "hold", composition: "waist", carousel: "review" },
+  { id: "mythbuster", type: "思い込み外し", title: "“似合わないかも”をほどく見方", reason: "よくある思い込みを、コーデや選び方の具体策へ変えます。", pattern: "mythbuster", scene: "season", pose: "mirror", composition: "full", carousel: "lesson" },
+  { id: "trendbrief", type: "トレンド解説", title: "今っぽさを一点だけ取り入れる", reason: "流行の特徴と長く使うコツを、主役商品でわかりやすく見せます。", pattern: "trendbrief", scene: "trend", pose: "walk", composition: "wide", carousel: "trend" },
+  { id: "comparison", type: "候補比較", title: "予定別に候補を選び分ける", reason: "複数の商品候補がある時だけ、勝ち負けではなく用途別に整理します。", pattern: "comparison", scene: "cafe", pose: "hold", composition: "sequence", carousel: "lesson", requiresMultiple: true },
+];
+
+function getSocialConceptCandidates() {
+  const productCount = (state.products || []).filter((product) => product?.name).length;
+  return socialConceptCatalog.filter((concept) => !concept.requiresMultiple || productCount >= 2);
+}
+
+function renderSocialConcepts(refresh = false) {
+  const target = document.querySelector("#snsConceptCards");
+  if (!target) return;
+  const profile = getSocialCreativeProfile();
+  const candidates = getSocialConceptCandidates();
+  const offset = refresh ? ((state.socialConceptOffset || 0) + 1) % candidates.length : (state.socialConceptOffset || 0) % candidates.length;
+  if (refresh) state.socialConceptOffset = offset;
+  const ordered = [...candidates.slice(offset), ...candidates.slice(0, offset)];
+  const goal = document.querySelector("#goalSelect")?.value || "save";
+  const product = state.products.find((item) => item.id === selectedProduct?.value) || state.products[0];
+  const goalPreferred = { save: "minilesson", room: "editorpick", reply: "scenestory", follow: "trendbrief" }[goal];
+  const platformPreferred = product?.category === "ホテル・旅行" ? "scenestory" : (goalPreferred || (activePlatform === "Threads" ? "scenestory" : activePlatform === "X" ? "observation" : "editorpick"));
+  const preferred = ordered.find((item) => item.id === platformPreferred);
+  const visible = [preferred, ...ordered.filter((item) => item !== preferred)].filter(Boolean).slice(0, 3);
+  target.innerHTML = visible.map((concept, index) => `<button type="button" class="sns-concept-card ${profile.selectedConcept === concept.id ? "selected" : ""}" data-sns-concept="${concept.id}"><span>${index === 0 ? "おすすめ · " : ""}${concept.type}</span><strong>${concept.title}</strong><small>${concept.reason}</small></button>`).join("");
+  target.querySelectorAll("[data-sns-concept]").forEach((button) => button.addEventListener("click", () => applySocialConcept(button.dataset.snsConcept)));
+  if (refresh) saveState();
+}
+
+function applySocialConcept(id) {
+  const concept = getSocialConceptCandidates().find((item) => item.id === id);
+  if (!concept) return;
+  const setValue = (selector, value) => { const input = document.querySelector(selector); if (input && [...(input.options || [])].some((option) => option.value === value)) input.value = value; };
+  setValue("#viralPatternSelect", concept.pattern);
+  setValue("#snsScenePreset", concept.scene);
+  setValue("#snsPosePreset", concept.pose);
+  setValue("#snsCompositionPreset", concept.composition);
+  setValue("#snsCarouselPreset", concept.carousel);
+  state.socialCreativeProfile = { ...getSocialCreativeProfile(), selectedConcept: concept.id };
+  saveSocialCreativeProfile();
+  const selected = document.querySelector("#snsSelectedConcept");
+  if (selected) selected.textContent = `選択中：${concept.type}「${concept.title}」｜${concept.reason}`;
+  renderSocialConcepts();
+  showToast(`「${concept.type}」を投稿設計へ反映しました`);
+}
 
 function getSocialCreativeProfile() {
   return { ...socialCreativeDefaults, ...(state.socialCreativeProfile || {}) };
@@ -2927,12 +2987,24 @@ function populateSocialPatternStudio() {
     snsVisualLocation: "location",
     snsThreadsImageCount: "threadsImageCount",
     snsCreativeExtra: "extra",
+    snsScenePreset: "scenePreset",
+    snsOutfitPreset: "outfitPreset",
+    snsHairPreset: "hairPreset",
+    snsPosePreset: "posePreset",
+    snsCompositionPreset: "compositionPreset",
+    snsLightingPreset: "lightingPreset",
+    snsLocationPreset: "locationPreset",
+    snsCarouselPreset: "carouselPreset",
   };
   Object.entries(fields).forEach(([id, key]) => {
     const input = document.querySelector(`#${id}`);
     if (input) input.value = profile[key] ?? "";
   });
   renderSocialPatternAnalysis();
+  renderSocialConcepts();
+  const concept = socialConceptCatalog.find((item) => item.id === profile.selectedConcept);
+  const selected = document.querySelector("#snsSelectedConcept");
+  if (selected && concept) selected.textContent = `選択中：${concept.type}「${concept.title}」｜${concept.reason}`;
 }
 
 function saveSocialCreativeProfile() {
@@ -2950,6 +3022,15 @@ function saveSocialCreativeProfile() {
     location: value("snsVisualLocation"),
     threadsImageCount: Number(value("snsThreadsImageCount") || 4),
     extra: value("snsCreativeExtra"),
+    scenePreset: value("snsScenePreset") || "auto",
+    outfitPreset: value("snsOutfitPreset") || "auto",
+    hairPreset: value("snsHairPreset") || "keep",
+    posePreset: value("snsPosePreset") || "auto",
+    compositionPreset: value("snsCompositionPreset") || "auto",
+    lightingPreset: value("snsLightingPreset") || "auto",
+    locationPreset: value("snsLocationPreset") || "world",
+    carouselPreset: value("snsCarouselPreset") || "story",
+    selectedConcept: getSocialCreativeProfile().selectedConcept || "",
   };
   saveState();
   markSocialGeminiPromptStale();
@@ -3059,9 +3140,10 @@ function renderSocialPatternAnalysis() {
 function bindSocialPatternStudio() {
   populateSocialPatternStudio();
   document.querySelector("#snsPatternCsvFile")?.addEventListener("change", importSocialPatternCsv);
-  ["snsCharacterRole", "snsCharacterVoice", "snsSafetyBoundary", "snsSceneTheme", "snsOutfit", "snsHairStyle", "snsPose", "snsComposition", "snsLighting", "snsVisualLocation", "snsThreadsImageCount", "snsCreativeExtra"].forEach((id) => {
+  ["snsCharacterRole", "snsCharacterVoice", "snsSafetyBoundary", "snsSceneTheme", "snsOutfit", "snsHairStyle", "snsPose", "snsComposition", "snsLighting", "snsVisualLocation", "snsThreadsImageCount", "snsCreativeExtra", "snsScenePreset", "snsOutfitPreset", "snsHairPreset", "snsPosePreset", "snsCompositionPreset", "snsLightingPreset", "snsLocationPreset", "snsCarouselPreset"].forEach((id) => {
     document.querySelector(`#${id}`)?.addEventListener("change", saveSocialCreativeProfile);
   });
+  document.querySelector("#refreshSnsConcepts")?.addEventListener("click", () => renderSocialConcepts(true));
 }
 
 function bindActions() {
@@ -3084,6 +3166,7 @@ function bindActions() {
       activePlatform = button.dataset.platform;
       renderAngleOptions();
       renderLearningHint();
+      renderSocialConcepts();
       renderSocialGeminiProductPreview();
       saveGeneratorPreferences();
       markSocialGeminiPromptStale();
@@ -3092,6 +3175,7 @@ function bindActions() {
   selectedProduct.addEventListener("change", () => {
     const product = state.products.find((item) => item.id === selectedProduct.value);
     applyRecommendedSnsDefaults(product);
+    renderSocialConcepts();
   });
   bindSocialDirectProductImport();
   bindSocialPatternStudio();
@@ -3101,6 +3185,7 @@ function bindActions() {
     markSocialGeminiPromptStale();
   });
   document.querySelector("#optimizationSelect").addEventListener("change", renderLearningHint);
+  document.querySelector("#goalSelect")?.addEventListener("change", () => renderSocialConcepts());
 
   document.querySelector("#generatePost").addEventListener("click", () => generateEditorialPost(false));
   document.querySelector("#generateVariation").addEventListener("click", () => generateEditorialPost(true));
@@ -11528,18 +11613,32 @@ ${travelSafety}
 
 function buildSocialCreativeDirective(context) {
   const profile = { ...socialCreativeDefaults, ...(context.creativeProfile || {}) };
-  const location = profile.location || `${context.socialCity}・${context.socialLandmark}`;
+  const labels = {
+    scene: { auto: "選択した投稿案・商品・切り口から自動", morning: "朝の支度", campus: "キャンパス・通学", office: "オフィス・通勤", cafe: "カフェ・街歩き", date: "デート・おでかけ", rain: "雨の日", travel: "旅先・秘境", season: "季節の変わり目", trend: "トレンド観察", room: "部屋で商品を発見" },
+    outfit: { auto: "商品から自動", hero: "主役商品を引き立てる", sweetclean: "甘めきれいめ", adultgirly: "大人ガーリー", office: "上品オフィス", campus: "きれいめ通学", monochrome: "淡色・ワントーン", trend: "トレンドを一点", resort: "旅・リゾート", layered: "温度調整レイヤード" },
+    hair: { keep: "本人らしさを保つ", straight: "ストレート", wave: "やわらかな巻き髪", lowpony: "ローポニー", halfup: "ハーフアップ", bun: "まとめ髪", wind: "風になびく自然な髪" },
+    pose: { auto: "場面から自動", walk: "自然に歩く", hold: "商品を手に持つ", mirror: "鏡越し", seated: "自然に座る", lookback: "振り返る", detail: "手元・ディテール" },
+    composition: { auto: "媒体と枚数から自動", full: "全身", waist: "ウエストアップ", detail: "商品クローズアップ", wide: "絶景を含む引き", eye: "自然な目線", low: "少しローアングル", sequence: "複数枚で順番に見せる" },
+    lighting: { auto: "場面から自動", morning: "朝の窓辺", cloudy: "曇天の柔らかい光", golden: "夕暮れ・ゴールデンアワー", blue: "青い時間", cafe: "カフェの窓光", warm: "室内の暖色光", neon: "夜景・ネオン" },
+    location: { street: "街角", cafe: "カフェ", campus: "キャンパス", office: "オフィス", hotel: "ホテル", museum: "美術館", seaside: "海辺", station: "駅・空港", room: "部屋" },
+    carousel: { story: "場面ストーリー（導入→発見→詳細→余韻）", lesson: "ミニ講座（結論→理由→実例→保存メモ）", styling: "コーデ展開（全身→上半身→小物→別角度）", review: "観察レビュー（主役→良い点→注意点→まとめ）", trend: "トレンド解説（兆し→特徴→取り入れ方→結論）" },
+  };
+  const preset = (group, key, fallback) => labels[group]?.[key] || fallback;
+  const location = profile.location || (profile.locationPreset === "world" ? `${context.socialCity}・${context.socialLandmark}` : preset("location", profile.locationPreset, `${context.socialCity}・${context.socialLandmark}`));
+  const concept = socialConceptCatalog.find((item) => item.id === profile.selectedConcept);
   return `【発信キャラクターと制作設計】
 ・公開上の役割: ${profile.characterRole}
 ・人柄・話し方: ${profile.characterVoice}
 ・公開・安全境界: ${profile.safetyBoundary}
-・投稿シーン・テーマ: ${profile.sceneTheme || context.brief || "選択した商品と切り口から自然に設計"}
-・服装: ${profile.outfit || "主役商品を中心に大人ガーリーで甘めきれいめに整える"}
-・髪型: ${profile.hairStyle || "PERSON欄の本人らしさを保ち、場面に合う自然な髪型"}
-・ポーズ: ${profile.pose || "商品と場面が自然に伝わる無理のない動作"}
-・構図・視点: ${profile.composition || "人物と商品が見やすく、背景にも奥行きがある構図"}
-・光・時間帯: ${profile.lighting || "選択された都市と場面に合う自然な光"}
+・選択した投稿案: ${concept ? `${concept.type}「${concept.title}」` : "自動提案"}
+・投稿シーン・テーマ: ${profile.sceneTheme || context.brief || preset("scene", profile.scenePreset, "選択した商品と切り口から自然に設計")}
+・服装: ${profile.outfit || preset("outfit", profile.outfitPreset, "主役商品を中心に大人ガーリーで甘めきれいめに整える")}
+・髪型: ${profile.hairStyle || preset("hair", profile.hairPreset, "PERSON欄の本人らしさを保つ")}
+・ポーズ: ${profile.pose || preset("pose", profile.posePreset, "商品と場面が自然に伝わる無理のない動作")}
+・構図・視点: ${profile.composition || preset("composition", profile.compositionPreset, "人物と商品が見やすく、背景にも奥行きがある構図")}
+・光・時間帯: ${profile.lighting || preset("lighting", profile.lightingPreset, "選択された都市と場面に合う自然な光")}
 ・場所: ${location}
+・複数枚の見せ方: ${preset("carousel", profile.carouselPreset, "場面ストーリー")}
 ・追加指定: ${profile.extra || "なし"}
 ・未確認の実体験や個人情報は補完せず、創作の情景は投稿文で事実として断定しない`;
 }

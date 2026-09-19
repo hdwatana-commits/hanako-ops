@@ -896,6 +896,18 @@
                 <option value="reply">共感・返信を増やす</option>
                 <option value="follow">フォローにつなげる</option>
               </select>
+              <section class="sns-concept-studio" aria-labelledby="snsConceptStudioTitle">
+                <div class="sns-concept-studio-head">
+                  <div>
+                    <p class="eyebrow">投稿案を選ぶ</p>
+                    <strong id="snsConceptStudioTitle">今の条件に合うおすすめ</strong>
+                    <small>商品・媒体・目的・過去投稿の傾向から、比較に偏らない企画を提案します</small>
+                  </div>
+                  <button id="refreshSnsConcepts" type="button">おすすめを更新</button>
+                </div>
+                <div class="sns-concept-cards" id="snsConceptCards" aria-live="polite"></div>
+                <div class="sns-selected-concept" id="snsSelectedConcept">おすすめ案を選ぶと、下の画像・文章設計へ反映します。</div>
+              </section>
               <details class="generator-advanced">
                 <summary><span>細かく調整</span><small>必要なときだけ</small></summary>
                 <div class="generator-advanced-body">
@@ -987,20 +999,25 @@
               <textarea id="snsCharacterVoice" class="brief-input" placeholder="例: 気取らない短文。煽らず、会話に入れる余白を残す"></textarea>
               <label class="field-label" for="snsSafetyBoundary">公開・安全境界</label>
               <textarea id="snsSafetyBoundary" class="brief-input" placeholder="例: 未確認の体験、住所、勤務日、家族情報を作らない"></textarea>
-              <label class="field-label" for="snsSceneTheme">投稿シーン・画像テーマ</label>
-              <textarea id="snsSceneTheme" class="brief-input" placeholder="例: 夕方の街で服と小物の配色を楽しむ一枚"></textarea>
+              <label class="field-label" for="snsScenePreset">投稿シーン・画像テーマ</label>
+              <select id="snsScenePreset">
+                <option value="auto">おすすめ案から自動</option><option value="morning">朝の支度</option><option value="campus">キャンパス・通学</option><option value="office">オフィス・通勤</option><option value="cafe">カフェ・街歩き</option><option value="date">デート・おでかけ</option><option value="rain">雨の日</option><option value="travel">旅先・秘境</option><option value="season">季節の変わり目</option><option value="trend">トレンド観察</option><option value="room">部屋で商品発見</option>
+              </select>
+              <textarea id="snsSceneTheme" class="brief-input" placeholder="自由指定があれば追加（例: 夕方の街で服と小物の配色を楽しむ）"></textarea>
               <div class="generator-pair">
-                <div><label class="field-label" for="snsOutfit">服装</label><input id="snsOutfit" placeholder="例: 甘めきれいめな秋コーデ"></div>
-                <div><label class="field-label" for="snsHairStyle">髪型</label><input id="snsHairStyle" placeholder="例: やわらかな巻き髪"></div>
+                <div><label class="field-label" for="snsOutfitPreset">服装</label><select id="snsOutfitPreset"><option value="auto">商品から自動</option><option value="hero">主役商品を引き立てる</option><option value="sweetclean">甘めきれいめ</option><option value="adultgirly">大人ガーリー</option><option value="office">上品オフィス</option><option value="campus">きれいめ通学</option><option value="monochrome">淡色・ワントーン</option><option value="trend">トレンドを一点</option><option value="resort">旅・リゾート</option><option value="layered">温度調整レイヤード</option></select><input id="snsOutfit" placeholder="服装の自由指定"></div>
+                <div><label class="field-label" for="snsHairPreset">髪型</label><select id="snsHairPreset"><option value="keep">本人らしさを保つ</option><option value="straight">ストレート</option><option value="wave">やわらかな巻き髪</option><option value="lowpony">ローポニー</option><option value="halfup">ハーフアップ</option><option value="bun">まとめ髪</option><option value="wind">風になびく自然な髪</option></select><input id="snsHairStyle" placeholder="髪型の自由指定"></div>
               </div>
               <div class="generator-pair">
-                <div><label class="field-label" for="snsPose">ポーズ</label><input id="snsPose" placeholder="例: バッグを持って自然に歩く"></div>
-                <div><label class="field-label" for="snsComposition">構図・視点</label><input id="snsComposition" placeholder="例: 少し引いた全身構図"></div>
+                <div><label class="field-label" for="snsPosePreset">ポーズ</label><select id="snsPosePreset"><option value="auto">場面から自動</option><option value="walk">自然に歩く</option><option value="hold">商品を手に持つ</option><option value="mirror">鏡越し</option><option value="seated">自然に座る</option><option value="lookback">振り返る</option><option value="detail">手元・ディテール</option></select><input id="snsPose" placeholder="ポーズの自由指定"></div>
+                <div><label class="field-label" for="snsCompositionPreset">構図・視点</label><select id="snsCompositionPreset"><option value="auto">媒体と枚数から自動</option><option value="full">全身</option><option value="waist">ウエストアップ</option><option value="detail">商品クローズアップ</option><option value="wide">絶景を含む引き</option><option value="eye">自然な目線</option><option value="low">少しローアングル</option><option value="sequence">複数枚で順番に見せる</option></select><input id="snsComposition" placeholder="構図の自由指定"></div>
               </div>
               <div class="generator-pair">
-                <div><label class="field-label" for="snsLighting">光・時間帯</label><input id="snsLighting" placeholder="例: 夕暮れの柔らかな逆光"></div>
-                <div><label class="field-label" for="snsVisualLocation">場所</label><input id="snsVisualLocation" placeholder="空欄なら世界都市くじを使用"></div>
+                <div><label class="field-label" for="snsLightingPreset">光・時間帯</label><select id="snsLightingPreset"><option value="auto">場面から自動</option><option value="morning">朝の窓辺</option><option value="cloudy">曇天の柔らかい光</option><option value="golden">夕暮れ・ゴールデンアワー</option><option value="blue">青い時間</option><option value="cafe">カフェの窓光</option><option value="warm">室内の暖色光</option><option value="neon">夜景・ネオン</option></select><input id="snsLighting" placeholder="光の自由指定"></div>
+                <div><label class="field-label" for="snsLocationPreset">場所</label><select id="snsLocationPreset"><option value="world">世界都市くじ（おすすめ）</option><option value="street">街角</option><option value="cafe">カフェ</option><option value="campus">キャンパス</option><option value="office">オフィス</option><option value="hotel">ホテル</option><option value="museum">美術館</option><option value="seaside">海辺</option><option value="station">駅・空港</option><option value="room">部屋</option></select><input id="snsVisualLocation" placeholder="場所の自由指定（空欄なら選択肢を使用）"></div>
               </div>
+              <label class="field-label" for="snsCarouselPreset">複数枚の見せ方</label>
+              <select id="snsCarouselPreset"><option value="story">場面ストーリー（導入→発見→詳細→余韻）</option><option value="lesson">ミニ講座（結論→理由→実例→保存メモ）</option><option value="styling">コーデ展開（全身→上半身→小物→別角度）</option><option value="review">観察レビュー（主役→良い点→注意点→まとめ）</option><option value="trend">トレンド解説（兆し→特徴→取り入れ方→結論）</option></select>
               <label class="field-label" for="snsThreadsImageCount">Threadsの画像枚数</label>
               <select id="snsThreadsImageCount">
                 <option value="2">2枚</option>
@@ -1859,6 +1876,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=271"></script>
+    <script src="app.js?v=272"></script>
   </body>
 </html>
