@@ -1338,6 +1338,9 @@ textarea {
 .sns-hanako-idea strong, .sns-hanako-idea small { display: block; }
 .sns-hanako-idea small { margin-top: 3px; color: var(--muted); line-height: 1.45; }
 .sns-hanako-idea.selected { border-color: #b85b70; background: #fff4f6; box-shadow: 0 6px 18px rgba(122, 70, 48, .1); }
+#generator.hanako-mode-active .social-commerce-only,
+#generator.hanako-mode-active #fashionSettings,
+#generator.hanako-mode-active #travelSettings { display: none !important; }
 @media (max-width: 620px) { .sns-hanako-idea-grid { grid-template-columns: 1fr; } }
 .sns-concept-card { text-align: left; padding: 14px; border: 1px solid rgba(169, 116, 92, .18); border-radius: 14px; background: #fff; color: inherit; }
 .sns-concept-card:hover, .sns-concept-card.selected { border-color: #b9785b; box-shadow: 0 8px 22px rgba(122, 70, 48, .12); transform: translateY(-1px); }

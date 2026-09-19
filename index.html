@@ -782,8 +782,8 @@
                 <div class="sns-hanako-idea-grid" id="snsHanakoIdeaCards" aria-live="polite"></div>
                 <div class="sns-selected-concept" id="snsSelectedHanakoIdea">投稿案を選ぶと、本文と画像の設定へ反映します。</div>
               </section>
-              <label class="field-label">商品</label>
-              <div class="coord-url-import social-url-import">
+              <label class="field-label social-commerce-only">商品</label>
+              <div class="coord-url-import social-url-import social-commerce-only">
                 <label class="field-label" for="socialProductUrl">楽天ROOM / 楽天市場の商品URLから直接作成</label>
                 <div class="coord-url-row">
                   <input id="socialProductUrl" type="url" inputmode="url" placeholder="ROOMまたは item.rakuten.co.jp のURL">
@@ -794,23 +794,23 @@
                 </div>
                 <p class="coord-import-status" id="socialImportStatus">URLを貼るだけで、商品を読み込みSNS投稿文と画像プロンプトを作ります。</p>
               </div>
-              <select id="selectedProduct"></select>
+              <select id="selectedProduct" class="social-commerce-only"></select>
               <label class="field-label">投稿先</label>
               <div class="segmented" id="platformTabs">
                 <button data-platform="Instagram">Instagram</button>
                 <button class="active" data-platform="Threads">Threads</button>
                 <button data-platform="X">X</button>
               </div>
-              <label class="field-label">切り口 / 投稿型</label>
-              <select id="angleSelect">
+              <label class="field-label social-commerce-only">切り口 / 投稿型</label>
+              <select id="angleSelect" class="social-commerce-only">
                 <option>高見え発掘</option>
                 <option>大人ガーリー着回し</option>
                 <option>甘めきれいめ通勤</option>
                 <option>週末デート服</option>
                 <option>セール速報</option>
               </select>
-              <label class="field-label">届けたい相手</label>
-              <select id="audienceSelect">
+              <label class="field-label social-commerce-only">届けたい相手</label>
+              <select id="audienceSelect" class="social-commerce-only">
                 <option value="auto" selected>商品と切り口からランダム</option>
                 <option value="university">きれいめ好きの女子大生</option>
                 <option value="office">20代の通勤・オフィス服</option>
@@ -927,7 +927,7 @@
                 <option value="reply">共感・返信を増やす</option>
                 <option value="follow">フォローにつなげる</option>
               </select>
-              <section class="sns-concept-studio" aria-labelledby="snsConceptStudioTitle">
+              <section class="sns-concept-studio social-commerce-only" aria-labelledby="snsConceptStudioTitle">
                 <div class="sns-concept-studio-head">
                   <div>
                     <p class="eyebrow">投稿案を選ぶ</p>
@@ -1909,6 +1909,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=277"></script>
+    <script src="app.js?v=278"></script>
   </body>
 </html>

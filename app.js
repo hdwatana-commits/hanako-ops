@@ -2989,10 +2989,25 @@ function renderHanakoExpressionControl() {
   const select = document.querySelector("#snsHanakoExpression");
   const hint = document.querySelector("#snsHanakoExpressionHint");
   if (control) control.hidden = !profile.hanakoMode;
+  document.querySelector("#generator")?.classList.toggle("hanako-mode-active", Boolean(profile.hanakoMode));
   if (select && select.value !== profile.hanakoExpression) select.value = profile.hanakoExpression || "bashful";
   const expression = hanakoExpressionOptions[select?.value || profile.hanakoExpression] || hanakoExpressionOptions.bashful;
   if (hint) hint.textContent = `${expression.prompt}。`;
   renderHanakoIdeas();
+}
+
+function getSocialPrimarySubject() {
+  if (getSocialCreativeProfile().hanakoMode) return {
+    id: "hanako-lifestyle",
+    name: "ハナの日常",
+    category: "ライフスタイル",
+    price: "",
+    hook: "商品紹介ではなく、ハナの小さな発見と気分を主役にする",
+    url: "",
+    image: "",
+    details: {},
+  };
+  return state.products.find((item) => item.id === selectedProduct.value) || state.products[0] || null;
 }
 
 const hanakoThreadsProfile = {
@@ -10978,13 +10993,13 @@ function renderFashionFacts(product) {
 }
 
 function generateEditorialPost(isVariation) {
-  const product = state.products.find((item) => item.id === selectedProduct.value) || state.products[0];
+  const product = getSocialPrimarySubject();
   if (!product) return showToast("先に商品を登録してください");
   generationVariant = isVariation ? generationVariant + 1 : 0;
-  applySocialLotterySelections(product, true);
+  if (!getSocialCreativeProfile().hanakoMode) applySocialLotterySelections(product, true);
   const context = buildEditorialContext(product);
   lastGenerationContext = context;
-  lastGenerated = generatePremiumCopy(context);
+  lastGenerated = context.isHanakoMode ? generateHanakoLifestyleCopy(context, generationVariant) : generatePremiumCopy(context);
   postOutput.value = lastGenerated;
   markSocialGeminiPromptStale();
   generateBothSocialGeminiPrompts(true, false);
@@ -10999,10 +11014,10 @@ function generateEditorialPost(isVariation) {
 }
 
 function generateThreeEditorialPosts() {
-  const product = state.products.find((item) => item.id === selectedProduct.value) || state.products[0];
+  const product = getSocialPrimarySubject();
   if (!product) return showToast("先に商品を登録してください");
   const versions = [];
-  applySocialLotterySelections(product, true);
+  if (!getSocialCreativeProfile().hanakoMode) applySocialLotterySelections(product, true);
   const experimentPatterns = getExperimentPatterns(activePlatform, document.querySelector("#goalSelect").value);
   for (let index = 0; index < 3; index += 1) {
     generationVariant += 1;
@@ -11016,7 +11031,7 @@ function generateThreeEditorialPosts() {
       concern: context.fashionConcern,
       travelPriority: context.travelPriority,
     });
-    versions.push(`━━━━━━━━━━\n案${index + 1}｜${hookTypeLabels[context.hookType]}・${viralPatternLabels[context.viralPattern]}\n━━━━━━━━━━\n${generatePremiumCopy(context)}`);
+    versions.push(`━━━━━━━━━━\n案${index + 1}｜${hookTypeLabels[context.hookType]}・${viralPatternLabels[context.viralPattern]}\n━━━━━━━━━━\n${context.isHanakoMode ? generateHanakoLifestyleCopy(context, index) : generatePremiumCopy(context)}`);
     lastGenerationContext = context;
   }
   lastGenerated = versions.join("\n\n");
@@ -11198,6 +11213,7 @@ function buildSocialProductSet(main, meta) {
 }
 
 function buildEditorialContext(product) {
+  const isHanakoMode = getSocialCreativeProfile().hanakoMode;
   const seasonValue = document.querySelector("#seasonSelect").value;
   const season = seasonValue === "auto" ? currentSeason() : seasonValue;
   const goal = document.querySelector("#goalSelect").value;
@@ -11227,7 +11243,7 @@ function buildEditorialContext(product) {
       ? learnedPattern.pattern
       : inferViralPattern(goal, platformSafe(activePlatform), generationVariant)
     : viralValue;
-  const products = buildSocialProductSet(product, {
+  const products = isHanakoMode ? [product] : buildSocialProductSet(product, {
     angle,
     viralPattern,
     priority: fashionPriority,
@@ -11238,6 +11254,7 @@ function buildEditorialContext(product) {
   return {
     product,
     products,
+    isHanakoMode,
     platform: activePlatform,
     angle,
     audience,
@@ -11266,17 +11283,32 @@ function buildEditorialContext(product) {
     seasonLabel: seasonLabels[season],
     seed,
     style: categoryStyles[resolveCategoryStyleKey(product.category)] || categoryStyles.トップス,
-    roomLine: product.url
+    roomLine: isHanakoMode ? "" : product.url
       ? product.category === "ホテル・旅行"
         ? `楽天トラベルでプランを確認\nPR ${product.url}`
         : `ROOMはこちら\nPR ${product.url}`
       : ["owned", "favorite"].includes(ownership)
         ? "愛用品はプロフィールの楽天ROOMにまとめています"
         : "気になる候補はプロフィールの楽天ROOMにまとめています",
-    disclosure: "※アフィリエイトを含みます",
+    disclosure: isHanakoMode ? "" : "※アフィリエイトを含みます",
     empathy: empathyLibrary[emotion],
     ownershipVoice: product.category === "ホテル・旅行" ? travelOwnershipVoices[ownership] : ownershipVoices[ownership],
   };
+}
+
+function generateHanakoLifestyleCopy(context, variant = 0) {
+  const idea = hanakoIdeaCatalog.find((item) => item.id === getSocialCreativeProfile().hanakoIdea) || hanakoIdeaCatalog[0];
+  const copies = {
+    vegetable: ["今日の色、なんだか元気が出る🥬\n旬って見ているだけでも楽しいね。", "形も色も、ひとつずつ違うのが好き。\n今日いちばん気になる野菜はどれ？", "朝の野菜って、少しだけ光って見える。\n今日もゆっくり始めよう☺️"],
+    piano: ["弾く前の静かな時間が、けっこう好き🎹\n今夜はどんな音が似合うかな。", "一日の終わりに、鍵盤へ触れる時間。\n少しだけ気持ちが整う。", "この音を出す前から、もう好き。\nおつかれさまの夜です🌙"],
+    tsukemen: ["ひと口目で、今日ちょっと幸せ🍜\n濃いめとあっさり、どっち派？", "つけ麺の日は朝から少しごきげん。\n今日はどんな味が食べたい？", "麺を持ち上げた瞬間がいちばんわくわくする。\nいただきます☺️"],
+    fashion: ["鏡の前で最後まで迷ったのは、この色。\n今日は甘めときれいめ、どっち寄り？", "小物ひとつで、いつもの服が少し違って見える👜", "頑張りすぎない日の服が、いちばん自分らしいかも。"],
+    citywalk: ["夕方の風がちょうどよくて、少しだけ遠回り。", "街の光が変わる時間、なんとなく歩きたくなる。\n今日はどんな一日だった？", "知らない角を曲がるだけで、ちょっと旅みたい☺️"],
+    travel: ["いつかこの景色の中を歩いてみたい。\n旅ならどんな服で行く？", "次の旅で見たい色を、ひとつ見つけた。", "知らない街の朝を想像する時間も、旅の一部かも✈️"],
+    reset: ["少し立ち止まるだけで、気分が戻ってくる。\n今日は何でひと休みする？", "あたたかい飲み物と、静かな時間。\nそれだけで今日は充分☺️", "急がない時間を、ちゃんと作る日。"],
+    bar: ["間接照明の下だと、一日が少しやさしく見える。", "夜の静けさに、グラスの音がひとつ。\n今日もおつかれさま。", "一日の終わりに似合う音を探してる🌙"],
+  };
+  return (copies[idea.id] || copies.reset)[variant % 3];
 }
 
 function generateSocialGeminiImagePrompt(quiet = false, rerollLottery = true) {
@@ -11386,7 +11418,9 @@ async function prepareSocialReferenceBoard(existingData = null) {
     data.hanakoComment = currentSocialHanakoComment;
     await drawSocialReferenceBoard(data);
     updateSocialReferenceBoardPreview(photoWarning || "SNS画像ボード作成済み。保存または選んだAIへ共有できます。");
-    if (!data.context.product.image) {
+    if (data.context.isHanakoMode) {
+      showToast("商品なしのハナ日常投稿ボードを作りました");
+    } else if (!data.context.product.image) {
       showToast("商品画像なしのURL参照ボードを作りました");
     } else if (photoWarning) {
       showToast("本人写真なしでSNS画像ボードを作りました");
@@ -11450,7 +11484,7 @@ async function drawSocialReferenceBoard(data) {
   ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
   ctx.fillText("PERSON / 本人", 62, 154);
 
-  const products = [data.context.product, ...data.context.products.filter((item) => item.id !== data.context.product.id)]
+  const products = (data.context.isHanakoMode ? [] : [data.context.product, ...data.context.products.filter((item) => item.id !== data.context.product.id)])
     .filter((item, index, items) => item?.id && items.findIndex((other) => other.id === item.id) === index)
     .slice(0, 4);
   const cardWidth = 350;
@@ -11524,18 +11558,18 @@ async function drawSocialReferenceBoard(data) {
   }
   ctx.fillStyle = "#6d5b62";
   ctx.font = "700 18px Yu Gothic UI, Meiryo, sans-serif";
-  ctx.fillText("PERSON・PRODUCT・TEACHERを別人・別商品へ置き換えない", 470, 974);
+  ctx.fillText(data.context.isHanakoMode ? "PERSONの本人らしさと選択した世界観を保つ" : "PERSON・PRODUCT・TEACHERを別人・別商品へ置き換えない", 470, 974);
   socialReferenceBoardDataUrl = canvas.toDataURL("image/jpeg", 0.92);
   return socialReferenceBoardDataUrl;
 }
 
 function getSocialGeminiPromptData(rerollLottery = true) {
-  const product = state.products.find((item) => item.id === selectedProduct.value) || state.products[0];
+  const product = getSocialPrimarySubject();
   if (!product) {
     showToast("先に商品を登録してください");
     return null;
   }
-  if (rerollLottery) applySocialLotterySelections(product, true);
+  if (rerollLottery && !getSocialCreativeProfile().hanakoMode) applySocialLotterySelections(product, true);
   const context = buildEditorialContext(product);
   const socialCity = chooseBalancedOverseasCity("social");
   const socialCityOption = getRoomOverseasCities().find(([name]) => name === socialCity) || getRoomOverseasCities()[0];
@@ -11573,7 +11607,55 @@ function getSocialGeminiPromptData(rerollLottery = true) {
   };
 }
 
+function buildHanakoLifestyleImagePrompt(c, currentDraft) {
+  const creative = buildSocialCreativeDirective(c);
+  const world = buildSocialWorldLocationDirective(c);
+  const count = Math.max(2, Math.min(5, Number(c.creativeProfile?.threadsImageCount || 4)));
+  return `SNS投稿用の完成画像を${count}枚生成してください。これは楽天商品紹介ではなく、ハナの日常と世界観を伝えるThreads投稿です。商品画像、価格、楽天ROOM、購入導線、アフィリエイト表記、比較表は入れません。
+
+${creative}
+
+${world}
+
+【画像構成】
+1枚目: 選択した表情と投稿テーマが伝わる自然な主役写真
+2枚目: 服装と場面が分かる全身または上半身
+3枚目: 手元、食べ物、野菜、ピアノ、小物などテーマのディテール
+4枚目: 世界都市の空気と投稿の余韻が残る風景
+${count >= 5 ? "5枚目: 同じ人物・服装・場所を保った自然な別アングル" : ""}
+・コラージュではなく、個別保存できる独立画像を指定枚数作る
+・同じ成人女性、同じ服装、同じ場所、同じ色調を保つ
+・画像内テキストは右下の場所情報だけ。商品名、価格、ロゴ、宣伝文句は入れない
+・店名、住所、勤務日、家族情報が特定できる文字や背景は入れない
+
+【対応する投稿文】
+${currentDraft || generateHanakoLifestyleCopy(c, 0)}
+
+完成画像${count}枚と、上の世界観に合う短いThreads本文1案だけを返してください。`;
+}
+
+function buildHanakoLifestyleCopyPrompt(c, currentDraft) {
+  return `ハナのThreads投稿文を1案作ってください。楽天商品紹介ではありません。商品名、価格、ROOM誘導、購入CTA、アフィリエイト表記は一切入れません。
+
+${buildSocialCreativeDirective(c)}
+
+【文章条件】
+・23〜43文字を目安に1〜3行
+・絵文字は0〜2個、基本は1個
+・短い感情、近況、小さな発見から始める
+・余韻、軽いユーモア、答えやすい質問のいずれかで締める
+・質問や二択は毎回使わない
+・未確認の来店、旅行、購入、勤務予定を事実として作らない
+・既存投稿の固有表現をコピーしない
+
+現在の下書き:
+${currentDraft || generateHanakoLifestyleCopy(c, 0)}
+
+完成本文だけを出力してください。解説、別案、ハッシュタグは不要です。`;
+}
+
 function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includeHanakoTeacher, hanakoTeacher, hanakoComment }) {
+  if (c.isHanakoMode) return buildHanakoLifestyleImagePrompt(c, currentDraft);
   const product = c.product;
   const details = product.details || {};
   const imageHeadline = buildSocialImageHeadline(c, labels);
@@ -12558,6 +12640,7 @@ function downloadSocialHanakoTeacher() {
 }
 
 function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
+  if (c.isHanakoMode) return buildHanakoLifestyleCopyPrompt(c, currentDraft);
   const product = c.product;
   const details = product.details || {};
   const viralBlueprint = buildSocialViralBlueprint(c, labels);
