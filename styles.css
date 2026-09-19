@@ -1322,6 +1322,10 @@ textarea {
 .sns-concept-studio-head strong, .sns-concept-studio-head small { display: block; }
 .sns-concept-studio-head small { margin-top: 4px; color: var(--muted); }
 .sns-concept-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.sns-hanako-mode { display: flex; gap: 10px; align-items: center; margin-top: 14px; padding: 11px 13px; border-radius: 12px; background: #fff0f3; cursor: pointer; }
+.sns-hanako-mode input { width: auto; }
+.sns-hanako-mode span, .sns-hanako-mode small { display: block; }
+.sns-hanako-mode small { margin-top: 2px; color: var(--muted); }
 .sns-concept-card { text-align: left; padding: 14px; border: 1px solid rgba(169, 116, 92, .18); border-radius: 14px; background: #fff; color: inherit; }
 .sns-concept-card:hover, .sns-concept-card.selected { border-color: #b9785b; box-shadow: 0 8px 22px rgba(122, 70, 48, .12); transform: translateY(-1px); }
 .sns-concept-card span, .sns-concept-card small { display: block; }

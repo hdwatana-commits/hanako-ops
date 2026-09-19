@@ -2915,6 +2915,16 @@ const socialCreativeDefaults = {
   locationPreset: "world",
   carouselPreset: "story",
   selectedConcept: "",
+  hanakoMode: false,
+};
+
+const hanakoThreadsProfile = {
+  handle: "@hanako47258",
+  displayName: "ハナ｜着回しと日々のメモ",
+  verifiedSampleSize: 4,
+  targetLength: "18〜55文字",
+  voice: "飾りすぎない日常会話。やわらかく、少し照れや遊びを残す。説明より今の気分を先に置く",
+  themes: "甘めきれいめの着回し、気分で選ぶ小物、おでかけ、家での小さな出来事、音楽や季節のひとこと",
 };
 
 const socialConceptCatalog = [
@@ -2968,6 +2978,30 @@ function applySocialConcept(id) {
   showToast(`「${concept.type}」を投稿設計へ反映しました`);
 }
 
+function toggleHanakoPostMode(enabled, notify = true) {
+  state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoMode: enabled };
+  if (enabled) {
+    activePlatform = "Threads";
+    document.querySelectorAll("#platformTabs button").forEach((button) => button.classList.toggle("active", button.dataset.platform === "Threads"));
+    const setValue = (id, value) => { const input = document.querySelector(`#${id}`); if (input && [...(input.options || [])].some((option) => option.value === value)) input.value = value; };
+    setValue("goalSelect", "reply");
+    setValue("hookSelect", "question");
+    setValue("viralPatternSelect", "scenestory");
+    setValue("toneSelect", "natural");
+    setValue("snsScenePreset", "cafe");
+    setValue("snsPosePreset", "walk");
+    setValue("snsCompositionPreset", "sequence");
+    setValue("snsLightingPreset", "golden");
+    setValue("snsCarouselPreset", "story");
+    const count = document.querySelector("#snsThreadsImageCount");
+    if (count) count.value = "4";
+    renderAngleOptions();
+  }
+  saveSocialCreativeProfile();
+  renderSocialConcepts();
+  if (notify) showToast(enabled ? "ハナ投稿モードを有効にしました" : "通常のSNS投稿モードに戻しました");
+}
+
 function getSocialCreativeProfile() {
   return { ...socialCreativeDefaults, ...(state.socialCreativeProfile || {}) };
 }
@@ -3000,6 +3034,8 @@ function populateSocialPatternStudio() {
     const input = document.querySelector(`#${id}`);
     if (input) input.value = profile[key] ?? "";
   });
+  const hanakoMode = document.querySelector("#snsHanakoMode");
+  if (hanakoMode) hanakoMode.checked = Boolean(profile.hanakoMode);
   renderSocialPatternAnalysis();
   renderSocialConcepts();
   const concept = socialConceptCatalog.find((item) => item.id === profile.selectedConcept);
@@ -3031,6 +3067,7 @@ function saveSocialCreativeProfile() {
     locationPreset: value("snsLocationPreset") || "world",
     carouselPreset: value("snsCarouselPreset") || "story",
     selectedConcept: getSocialCreativeProfile().selectedConcept || "",
+    hanakoMode: Boolean(document.querySelector("#snsHanakoMode")?.checked),
   };
   saveState();
   markSocialGeminiPromptStale();
@@ -3144,6 +3181,7 @@ function bindSocialPatternStudio() {
     document.querySelector(`#${id}`)?.addEventListener("change", saveSocialCreativeProfile);
   });
   document.querySelector("#refreshSnsConcepts")?.addEventListener("click", () => renderSocialConcepts(true));
+  document.querySelector("#snsHanakoMode")?.addEventListener("change", (event) => toggleHanakoPostMode(event.currentTarget.checked));
 }
 
 function bindActions() {
@@ -11626,6 +11664,18 @@ function buildSocialCreativeDirective(context) {
   const preset = (group, key, fallback) => labels[group]?.[key] || fallback;
   const location = profile.location || (profile.locationPreset === "world" ? `${context.socialCity}・${context.socialLandmark}` : preset("location", profile.locationPreset, `${context.socialCity}・${context.socialLandmark}`));
   const concept = socialConceptCatalog.find((item) => item.id === profile.selectedConcept);
+  const hanakoDirective = profile.hanakoMode ? `
+【ハナ投稿モード｜${hanakoThreadsProfile.handle}】
+・アカウントの核: 服と日常の小さな「好き」。${hanakoThreadsProfile.themes}
+・本文は${hanakoThreadsProfile.targetLength}を目安に1〜3行。${hanakoThreadsProfile.voice}
+・最初の1行に、その瞬間の気分・音・季節・小さな出来事のどれかを置く
+・絵文字は気持ちに合うものを1〜3個。ハッシュタグ、長い前置き、説明過多、広告調のCTAは避ける
+・返信を増やす時は「今日は何して過ごす？」「どっちが好き？」のように、1秒で答えられる質問を最後に一つだけ置く。毎投稿を二択にはしない
+・商品名やROOM誘導は本文の主役にせず、必要な時だけ最後に「愛用品はROOMにそっと」の距離感で添える
+・画像は自然なスナップ写真の空気。本人・コーデ・手元・風景の順で変化をつけ、同じ構図を複製しない
+・甘めきれいめ、柔らかい自然光、生活の途中を切り取った表情。過度な広告バナー、情報カード、派手な比較レイアウトは使わない
+・Threadsは4枚を基本に、1枚目は感情が伝わる主役写真、2枚目は全身または場面、3枚目は小物や手元、4枚目は余韻のある風景にする
+・公開表示で確認できた直近${hanakoThreadsProfile.verifiedSampleSize}件と、取り込み済みの過去投稿分析があればその統計を使う。既存投稿の文章をコピーせず、世界観と構造だけを再現する` : "";
   return `【発信キャラクターと制作設計】
 ・公開上の役割: ${profile.characterRole}
 ・人柄・話し方: ${profile.characterVoice}
@@ -11640,7 +11690,7 @@ function buildSocialCreativeDirective(context) {
 ・場所: ${location}
 ・複数枚の見せ方: ${preset("carousel", profile.carouselPreset, "場面ストーリー")}
 ・追加指定: ${profile.extra || "なし"}
-・未確認の実体験や個人情報は補完せず、創作の情景は投稿文で事実として断定しない`;
+・未確認の実体験や個人情報は補完せず、創作の情景は投稿文で事実として断定しない${hanakoDirective}`;
 }
 
 function buildSocialPerformanceDirective(context) {
