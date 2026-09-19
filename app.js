@@ -489,10 +489,12 @@ function initialize() {
   profileText.value = state.profile || defaultProfile;
   document.querySelector('input[name="date"]').valueAsDate = new Date();
   hydrateCustomBrandAssets();
+  restorePersistedCustomBrandAssets();
   applyAppearance();
   bindAppearancePicker();
   bindAiProviderSelectors();
   bindHomeAvatarCoverflow();
+  requestPersistentPhotoStorage();
   registerPwa();
   checkPublishedAppVersion();
   bindNavigation();
@@ -643,6 +645,7 @@ async function uploadCustomAvatar(event) {
     validateCustomImage(file);
     const dataUrl = await resizeCustomImage(file, 512, 512);
     state.appearance = { ...state.appearance, customAvatar: dataUrl, avatarTheme: "custom" };
+    await persistCustomBrandAsset("avatar", dataUrl);
     hydrateCustomBrandAssets();
     applyAppearance();
     saveState();
@@ -662,6 +665,7 @@ async function uploadCustomCover(event) {
   try {
     validateCustomImage(file);
     state.appearance = { ...state.appearance, customCover: await resizeCustomImage(file, 1600, 562) };
+    await persistCustomBrandAsset("cover", state.appearance.customCover);
     hydrateCustomBrandAssets();
     saveState();
     showToast("自作カバーを設定しました");
@@ -690,17 +694,74 @@ async function resizeCustomImage(file, targetWidth, targetHeight) {
   return canvas.toDataURL("image/jpeg", targetWidth === targetHeight ? 0.9 : 0.86);
 }
 
-function resetCustomBrandAssets() {
+async function resetCustomBrandAssets() {
   state.appearance ||= {};
   delete state.appearance.customAvatar;
   delete state.appearance.customCover;
   if (state.appearance.avatarTheme === "custom") state.appearance.avatarTheme = "original";
+  await removePersistedCustomBrandAssets();
   hydrateCustomBrandAssets();
   applyAppearance();
   saveState();
   renderHomeAvatarCoverflow();
   syncHanakoTeacherCoverflow(false);
   showToast("自作画像を外しました");
+}
+
+async function persistCustomBrandAsset(kind, dataUrl) {
+  if (!("caches" in window) || !dataUrl) return;
+  try {
+    const cache = await caches.open(COORDINATE_PHOTO_CACHE);
+    const file = dataUrlToFile(dataUrl, `custom-${kind}.jpg`);
+    await cache.put(new URL(`./__brand_asset__/${kind}`, location.href).href, new Response(file, { headers: { "Content-Type": file.type || "image/jpeg" } }));
+  } catch {
+    // localStorage側の画像はそのまま利用する。
+  }
+}
+
+async function restorePersistedCustomBrandAssets() {
+  if (!("caches" in window)) return;
+  try {
+    const cache = await caches.open(COORDINATE_PHOTO_CACHE);
+    const [avatarResponse, coverResponse] = await Promise.all([
+      cache.match(new URL("./__brand_asset__/avatar", location.href).href),
+      cache.match(new URL("./__brand_asset__/cover", location.href).href),
+    ]);
+    state.appearance ||= { avatarTheme: "original" };
+    let restored = false;
+    if (state.appearance.customAvatar && !avatarResponse) await persistCustomBrandAsset("avatar", state.appearance.customAvatar);
+    if (state.appearance.customCover && !coverResponse) await persistCustomBrandAsset("cover", state.appearance.customCover);
+    if (!state.appearance.customAvatar && avatarResponse) {
+      state.appearance.customAvatar = await readOriginalFileAsDataUrl(await avatarResponse.blob());
+      state.appearance.avatarTheme = "custom";
+      restored = true;
+    }
+    if (!state.appearance.customCover && coverResponse) {
+      state.appearance.customCover = await readOriginalFileAsDataUrl(await coverResponse.blob());
+      restored = true;
+    }
+    if (!restored) return;
+    persistAppStateSafely();
+    hydrateCustomBrandAssets();
+    applyAppearance();
+    renderHomeAvatarCoverflow();
+    syncHanakoTeacherCoverflow(false);
+  } catch {
+    // 復元できない場合も標準画像でアプリを継続する。
+  }
+}
+
+async function removePersistedCustomBrandAssets() {
+  if (!("caches" in window)) return;
+  try {
+    const cache = await caches.open(COORDINATE_PHOTO_CACHE);
+    await Promise.all([
+      cache.delete(new URL("./__brand_asset__/avatar", location.href).href),
+      cache.delete(new URL("./__brand_asset__/cover", location.href).href),
+    ]);
+  } catch {
+    // 既に削除済みなら何もしない。
+  }
 }
 
 function bindHomeAvatarCoverflow() {
@@ -5048,7 +5109,7 @@ async function hydrateCoordinatePhotoPreviews() {
         changed = true;
         continue;
       }
-      if (photo.signedUrl && Number(photo.expiresAt || 0) - Date.now() > 60 * 1000) {
+      if ((photo.signedUrl && Number(photo.expiresAt || 0) - Date.now() > 60 * 1000) || (cloudSync.signedIn && photo.path)) {
         try {
           await loadCoordinatePhotoPreview(photo);
           changed = true;
@@ -5096,13 +5157,32 @@ async function loadCoordinatePhotoPreview(photo = getSelectedCoordinatePhoto()) 
     coordinatePhotoDataUrl = localPreview;
     return localPreview;
   }
+  if (!photo.signedUrl && cloudSync.signedIn && photo.path) Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
   if (!photo.signedUrl) return "";
-  const response = await fetch(photo.signedUrl, { cache: "no-store" });
-  if (!response.ok) throw new Error("保存した写真を読み込めませんでした");
+  let response;
+  try {
+    response = await fetch(photo.signedUrl, { cache: "no-store" });
+    if (!response.ok) throw new Error(`photo fetch ${response.status}`);
+  } catch (error) {
+    if (!cloudSync.signedIn || !photo.path) throw new Error("保存した写真を読み込めませんでした");
+    Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
+    response = await fetch(photo.signedUrl, { cache: "no-store" });
+    if (!response.ok) throw new Error("保存した写真を読み込めませんでした");
+  }
   const dataUrl = await persistCoordinatePhotoPreview(photo.id, await response.blob());
   coordinatePhotoPreviewCache.set(photo.id, dataUrl);
   coordinatePhotoDataUrl = dataUrl;
+  persistAppStateSafely();
   return dataUrl;
+}
+
+async function requestPersistentPhotoStorage() {
+  if (!navigator.storage?.persist) return false;
+  try {
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
 }
 
 async function persistCoordinatePhotoPreview(photoId, sourceBlob) {
@@ -5161,20 +5241,23 @@ async function createCanvasCompatiblePhotoPreview(sourceBlob) {
 
 async function refreshCoordinatePhotoLibraryUrls() {
   if (!cloudSync.signedIn || !state.coordinatePhotos?.length) return;
-  try {
-    for (const photo of state.coordinatePhotos) {
-      if (!photo.signedUrl || Number(photo.expiresAt || 0) - Date.now() <= 10 * 60 * 1000) {
+  for (const photo of state.coordinatePhotos) {
+    try {
+      const persisted = await readPersistedCoordinatePhotoPreview(photo.id);
+      if (persisted) {
+        coordinatePhotoPreviewCache.set(photo.id, persisted);
+        continue;
+      }
+      if (photo.path && (!photo.signedUrl || Number(photo.expiresAt || 0) - Date.now() <= 10 * 60 * 1000)) {
         Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
       }
+      await loadCoordinatePhotoPreview(photo);
+    } catch {
+      // 1枚の復元失敗で残りの本人画像の復元を止めない。
     }
-    for (const photo of state.coordinatePhotos) {
-      await loadCoordinatePhotoPreview(photo).catch(() => "");
-    }
-    persistAppStateSafely();
-    renderCoordinatePhotoLibrary();
-  } catch {
-    renderCoordinatePhotoLibrary();
   }
+  persistAppStateSafely();
+  renderCoordinatePhotoLibrary();
 }
 
 function chooseRandomHanakoTeacher() {
