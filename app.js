@@ -2918,6 +2918,7 @@ const socialCreativeDefaults = {
   selectedConcept: "",
   hanakoMode: true,
   hanakoExpression: "bashful",
+  hanakoSensualMode: false,
   hanakoIdea: "vegetable",
 };
 
@@ -2925,14 +2926,25 @@ const hanakoExpressionOptions = {
   bashful: { label: "少し恥じらう「はにかみ笑顔」", prompt: "視線を一度下に落とし、照れくさそうにふっと笑ってから視線を合わせる。控えめでピュアな、自然なはにかみ笑顔" },
   bigsmile: { label: "クシャッとした満面の笑み", prompt: "目が自然に細くなるほど思い切り笑う、飾らず安心感のある満面の笑み" },
   upward: { label: "さりげない上目遣い", prompt: "あごを少し引き、首をわずかに傾けて自然に見上げる。瞳が柔らかく見える控えめな上目遣い" },
+  coveredLaugh: { label: "口元に手を添えた照れ笑い", prompt: "笑いながら片手を口元へ軽く添える、親しみと奥ゆかしさのある自然な照れ笑い" },
+  surpriseSmile: { label: "少し驚いてからほどける笑顔", prompt: "少し目を丸くした驚きが、すぐ柔らかな笑顔へほどける自然な瞬間" },
+  softEyeContact: { label: "目を合わせた柔らかな微笑み", prompt: "カメラと自然に目を合わせ、安心感と親近感が伝わる柔らかな微笑み" },
+  cheekRest: { label: "頬杖をついた親しげな笑顔", prompt: "頬杖を軽くつき、近くで会話しているように目を合わせる親しげな笑顔" },
+  hairTuckSmile: { label: "髪を耳にかけながら微笑む", prompt: "髪を耳へ自然にかける仕草の途中で、少し照れながら優しく微笑む" },
+  gentlePout: { label: "少しだけ頬をふくらませた甘い表情", prompt: "頬をほんの少しだけふくらませた、幼くなりすぎない愛嬌のある甘い表情" },
+  overShoulderSmile: { label: "振り返りながら目を合わせる笑顔", prompt: "肩越しに自然に振り返り、視線が合った瞬間に見せる控えめで嬉しそうな笑顔" },
   straw: { label: "ストローをくわえた口元", prompt: "飲み物を飲む流れでストローを自然にくわえた、わざとらしくない軽いアヒル口" },
   wink: { label: "少し不器用なウインク", prompt: "完璧に作り込まず、少し照れながら片目を閉じる、愛嬌のある不器用なウインク" },
   tehepero: { label: "失敗したときの「てへぺろ」", prompt: "軽く舌先を見せておどける、明るくコミカルで親しみやすい表情。舌を過度に強調しない" },
   eating: { label: "幸せそうに頬張る顔", prompt: "おいしいものを自然に頬張り、喜びでぱっと明るくなる無邪気な表情" },
   blank: { label: "少し口が開いた「ぽかん」顔", prompt: "驚きや気の抜けた瞬間に唇が少しだけ開いた、リラックスした柔らかい表情" },
   sleepy: { label: "眠そうなトロンとした目", prompt: "安心してくつろぎ、まぶたが少し下がった眠そうな目。疲労や不健康さではなく穏やかなリラックス感" },
+  morningSoft: { label: "起きたての柔らかな微笑み", prompt: "朝の光の中で力の抜けた目元と口元を見せる、清潔感のある起きたて風の柔らかな微笑み" },
+  windowDaydream: { label: "窓の外を見てふと微笑む", prompt: "窓の外へ視線を向けて物思いにふけり、ふと口元がほころぶ穏やかな表情" },
   sideglance: { label: "伏し目からの流し目", prompt: "一度視線を落としてから静かに横へ視線を向ける、知的で落ち着いた表情。過度に誘惑的にしない" },
   subtlesmile: { label: "口角だけを上げた余裕のある微笑み", prompt: "歯を見せず口角をわずかに上げ、優しく見つめる上品で洗練された微笑み" },
+  calmGaze: { label: "静かに見つめる落ち着いた眼差し", prompt: "力みのない真っすぐな視線と穏やかな口元で、知性と余裕を感じさせる落ち着いた眼差し" },
+  confidentSmile: { label: "自信を感じる控えめな微笑み", prompt: "姿勢を整え、口角をわずかに上げた、華美ではない自信と品を感じる控えめな微笑み" },
 };
 
 const hanakoIdeaCatalog = [
@@ -3000,8 +3012,11 @@ const hanakoGasFieldMap = {
 
 function renderHanakoGasSettings() {
   const section = document.querySelector("#snsHanakoGasSettings");
-  const enabled = getSocialCreativeProfile().hanakoMode;
+  const profile = getSocialCreativeProfile();
+  const enabled = profile.hanakoMode;
   if (section) section.hidden = !enabled;
+  const sensual = document.querySelector("#snsHanakoSensualMode");
+  if (sensual) sensual.checked = Boolean(profile.hanakoSensualMode);
   Object.entries(hanakoGasFieldMap).forEach(([mirrorId, sourceId]) => {
     const mirror = document.querySelector(`#${mirrorId}`);
     const source = document.querySelector(`#${sourceId}`);
@@ -3209,6 +3224,8 @@ function populateSocialPatternStudio() {
   });
   const hanakoMode = document.querySelector("#snsHanakoMode");
   if (hanakoMode) hanakoMode.checked = Boolean(profile.hanakoMode);
+  const sensualMode = document.querySelector("#snsHanakoSensualMode");
+  if (sensualMode) sensualMode.checked = Boolean(profile.hanakoSensualMode);
   renderHanakoExpressionControl();
   renderSocialPatternAnalysis();
   renderSocialConcepts();
@@ -3243,6 +3260,7 @@ function saveSocialCreativeProfile() {
     selectedConcept: getSocialCreativeProfile().selectedConcept || "",
     hanakoMode: Boolean(document.querySelector("#snsHanakoMode")?.checked),
     hanakoExpression: value("snsHanakoExpression") || "bashful",
+    hanakoSensualMode: Boolean(document.querySelector("#snsHanakoSensualMode")?.checked),
     hanakoIdea: getSocialCreativeProfile().hanakoIdea || "vegetable",
   };
   saveState();
@@ -3390,6 +3408,7 @@ function bindSocialPatternStudio() {
   document.querySelector("#refreshSnsConcepts")?.addEventListener("click", () => renderSocialConcepts(true));
   document.querySelector("#snsHanakoMode")?.addEventListener("change", (event) => toggleHanakoPostMode(event.currentTarget.checked));
   document.querySelector("#snsHanakoExpression")?.addEventListener("change", renderHanakoExpressionControl);
+  document.querySelector("#snsHanakoSensualMode")?.addEventListener("change", saveSocialCreativeProfile);
   document.querySelector("#refreshHanakoIdeas")?.addEventListener("click", () => renderHanakoIdeas(true));
   document.querySelector("#downloadHanakoCsvTemplate")?.addEventListener("click", downloadHanakoCsvTemplate);
 }
@@ -11663,6 +11682,13 @@ function getSocialGeminiPromptData(rerollLottery = true) {
 
 function buildHanakoLifestyleImagePrompt(c, currentDraft) {
   const creative = buildSocialCreativeDirective(c);
+  const sensualMode = Boolean(c.creativeProfile?.hanakoSensualMode);
+  const sensualDirective = sensualMode ? `【大人の色気モード｜ON】
+・被写体は成人女性。上品なファッションポートレートの範囲で、視線、首の傾き、髪へ触れる自然な仕草、姿勢、柔らかな陰影によって落ち着いた色気を表現する
+・服装は不透明で身体を適切に覆い、選択済みの服装と全画像の一貫性を保つ
+・裸、下着、水着への置換、透け、胸や臀部の誇張、脚を過度に開くポーズ、性的行為を連想させるポーズ、フェティッシュ表現は不可
+・寝室やベッド上でも日常のくつろぎと洗練を保ち、性的な場面にはしない` : `【大人の色気モード｜OFF】
+・通常の親しみやすいライフスタイル写真にする。身体の部位や性的な魅力を強調しない`;
   const locationPreset = c.creativeProfile?.locationPreset || "world";
   const locationSelect = document.querySelector("#snsLocationPreset");
   const locationLabel = c.creativeProfile?.location || [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "選択した場所";
@@ -11678,15 +11704,18 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft) {
     "4枚目: 選択した場所の空気と投稿の余韻が残る風景",
     "5枚目: 同じ人物・服装・場所を保った自然な別アングル",
   ].slice(0, count).join("\n");
-  return `SNS投稿用の完成画像を${count}枚生成してください。これは楽天商品紹介ではなく、ハナの日常と世界観を伝えるThreads投稿です。商品画像、価格、楽天ROOM、購入導線、アフィリエイト表記、比較表は入れません。
+  return `SNS投稿用の完成画像を${count}枚生成してください。すべてInstagramフィード投稿サイズの縦4:5、1080×1350pxで作成してください。正方形、横長、9:16へ変更しません。これは楽天商品紹介ではなく、ハナの日常と世界観を伝えるThreads投稿です。商品画像、価格、楽天ROOM、購入導線、アフィリエイト表記、比較表は入れません。
 
 ${creative}
+
+${sensualDirective}
 
 ${world}
 
 【画像構成】
 ${imageRoles}
 ・コラージュではなく、個別保存できる独立画像を指定枚数作る
+・各画像は必ず縦4:5、1080×1350px。重要な顔、手、小物、右下の場所情報を安全域に収める
 ・同じ成人女性、同じ服装、同じ場所、同じ色調を保つ
 ・画像内テキストは右下の場所情報だけ。商品名、価格、ロゴ、宣伝文句は入れない
 ・店名、住所、勤務日、家族情報が特定できる文字や背景は入れない

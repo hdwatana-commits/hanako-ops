@@ -1327,7 +1327,7 @@ textarea {
 .sns-hanako-mode span, .sns-hanako-mode small { display: block; }
 .sns-hanako-mode small { margin-top: 2px; color: var(--muted); }
 .sns-hanako-mode-primary { margin: 0 0 18px; border: 1px solid rgba(184, 91, 112, .22); }
-.sns-hanako-expression { margin: -8px 0 18px; padding: 12px 13px; border: 1px solid rgba(169, 116, 92, .16); border-radius: 12px; background: #fffaf8; }
+.sns-hanako-expression { margin: 12px 0 14px; padding: 12px 13px; border: 1px solid rgba(169, 116, 92, .16); border-radius: 12px; background: #fffaf8; }
 .sns-hanako-expression small { display: block; margin-top: 7px; color: var(--muted); line-height: 1.55; }
 .sns-hanako-expression[hidden] { display: none; }
 .sns-hanako-ideas { margin: -8px 0 20px; padding: 14px; border: 1px solid rgba(169, 116, 92, .18); border-radius: 16px; background: linear-gradient(145deg, #fffaf5, #fff); }
@@ -1341,6 +1341,11 @@ textarea {
 .sns-hanako-gas { margin: 0 0 20px; padding: 16px; border: 1px solid rgba(67, 103, 91, .2); border-radius: 16px; background: #f8fcfa; }
 .sns-hanako-gas[hidden] { display: none; }
 .sns-hanako-gas .primary { width: 100%; margin-top: 12px; }
+.sns-hanako-sensual { display: flex; gap: 10px; align-items: center; margin-top: 14px; padding: 11px 13px; border: 1px solid rgba(169, 116, 92, .2); border-radius: 12px; background: #fff; cursor: pointer; }
+.sns-hanako-sensual:has(input:checked) { border-color: #b85b70; background: #fff1f4; box-shadow: 0 5px 16px rgba(122, 70, 48, .08); }
+.sns-hanako-sensual input { width: auto; }
+.sns-hanako-sensual span, .sns-hanako-sensual small { display: block; }
+.sns-hanako-sensual small { margin-top: 2px; color: var(--muted); }
 #generator.hanako-mode-active .social-commerce-only,
 #generator.hanako-mode-active #fashionSettings,
 #generator.hanako-mode-active #travelSettings { display: none !important; }

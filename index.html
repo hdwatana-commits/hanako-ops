@@ -752,31 +752,6 @@
                 <h3>素材</h3>
               </div>
               <label class="sns-hanako-mode sns-hanako-mode-primary"><input id="snsHanakoMode" type="checkbox" checked><span><strong>ハナ投稿モード（標準）</strong><small>八百屋・夜のピアノ・つけ麺・ファッション・旅の世界観でThreads投稿を作成</small></span></label>
-              <div class="sns-hanako-expression" id="snsHanakoExpressionControl">
-                <label class="field-label" for="snsHanakoExpression">ハナの表情</label>
-                <select id="snsHanakoExpression">
-                  <optgroup label="王道・ナチュラル（親しみやすさ）">
-                    <option value="bashful" selected>少し恥じらう「はにかみ笑顔」</option>
-                    <option value="bigsmile">クシャッとした満面の笑み</option>
-                    <option value="upward">さりげない上目遣い</option>
-                  </optgroup>
-                  <optgroup label="あざと可愛い・小悪魔（遊び心）">
-                    <option value="straw">ストローをくわえた口元</option>
-                    <option value="wink">少し不器用なウインク</option>
-                    <option value="tehepero">失敗したときの「てへぺろ」</option>
-                  </optgroup>
-                  <optgroup label="無防備・リラックス（ギャップ萌え）">
-                    <option value="eating">幸せそうに頬張る顔</option>
-                    <option value="blank">少し口が開いた「ぽかん」顔</option>
-                    <option value="sleepy">眠そうなトロンとした目</option>
-                  </optgroup>
-                  <optgroup label="大人っぽさ・上品（洗練された魅力）">
-                    <option value="sideglance">伏し目からの流し目</option>
-                    <option value="subtlesmile">口角だけを上げた余裕のある微笑み</option>
-                  </optgroup>
-                </select>
-                <small id="snsHanakoExpressionHint">視線を一度下に落とし、照れくさそうにふっと笑ってから視線を合わせる、控えめで自然な表情。</small>
-              </div>
               <section class="sns-hanako-ideas" id="snsHanakoIdeas" aria-labelledby="snsHanakoIdeasTitle">
                 <div class="sns-hanako-ideas-head"><div><p class="eyebrow">スプレッドシートの投稿案</p><strong id="snsHanakoIdeasTitle">今日は何を投稿する？</strong></div><button id="refreshHanakoIdeas" type="button">並び替え</button></div>
                 <div class="sns-hanako-idea-grid" id="snsHanakoIdeaCards" aria-live="polite"></div>
@@ -784,12 +759,23 @@
               </section>
               <section class="sns-hanako-gas" id="snsHanakoGasSettings" aria-labelledby="snsHanakoGasTitle">
                 <div><p class="eyebrow">GASアプリの画像設定</p><strong id="snsHanakoGasTitle">画像の内容を選ぶ</strong></div>
+                <div class="sns-hanako-expression" id="snsHanakoExpressionControl">
+                  <label class="field-label" for="snsHanakoExpression">ハナの表情</label>
+                  <select id="snsHanakoExpression">
+                    <optgroup label="王道・ナチュラル（親しみやすさ）"><option value="bashful" selected>少し恥じらう「はにかみ笑顔」</option><option value="bigsmile">クシャッとした満面の笑み</option><option value="upward">さりげない上目遣い</option><option value="coveredLaugh">口元に手を添えた照れ笑い</option><option value="surpriseSmile">少し驚いてからほどける笑顔</option></optgroup>
+                    <optgroup label="モテ・あざと可愛い（親近感）"><option value="softEyeContact">目を合わせた柔らかな微笑み</option><option value="cheekRest">頬杖をついた親しげな笑顔</option><option value="hairTuckSmile">髪を耳にかけながら微笑む</option><option value="gentlePout">少しだけ頬をふくらませた甘い表情</option><option value="overShoulderSmile">振り返りながら目を合わせる笑顔</option><option value="straw">ストローをくわえた口元</option><option value="wink">少し不器用なウインク</option><option value="tehepero">失敗したときの「てへぺろ」</option></optgroup>
+                    <optgroup label="無防備・リラックス（ギャップ）"><option value="eating">幸せそうに頬張る顔</option><option value="blank">少し口が開いた「ぽかん」顔</option><option value="sleepy">眠そうなトロンとした目</option><option value="morningSoft">起きたての柔らかな微笑み</option><option value="windowDaydream">窓の外を見てふと微笑む</option></optgroup>
+                    <optgroup label="大人っぽさ・上品（洗練された魅力）"><option value="sideglance">伏し目からの流し目</option><option value="subtlesmile">口角だけを上げた余裕のある微笑み</option><option value="calmGaze">静かに見つめる落ち着いた眼差し</option><option value="confidentSmile">自信を感じる控えめな微笑み</option></optgroup>
+                  </select>
+                  <small id="snsHanakoExpressionHint">視線を一度下に落とし、照れくさそうにふっと笑ってから視線を合わせる、控えめで自然な表情。</small>
+                </div>
                 <div class="generator-pair"><div><label class="field-label" for="hanakoGasScene">投稿シーン・テーマ</label><select id="hanakoGasScene"></select></div><div><label class="field-label" for="hanakoGasOutfit">服装</label><select id="hanakoGasOutfit"></select></div></div>
                 <div class="generator-pair"><div><label class="field-label" for="hanakoGasHair">髪型</label><select id="hanakoGasHair"></select></div><div><label class="field-label" for="hanakoGasPose">ポーズ</label><select id="hanakoGasPose"></select></div></div>
                 <div class="generator-pair"><div><label class="field-label" for="hanakoGasComposition">構図・視点</label><select id="hanakoGasComposition"></select></div><div><label class="field-label" for="hanakoGasLighting">光・時間帯</label><select id="hanakoGasLighting"></select></div></div>
                 <div class="generator-pair"><div><label class="field-label" for="hanakoGasLocation">場所</label><select id="hanakoGasLocation"></select></div><div><label class="field-label" for="hanakoGasImageCount">画像枚数</label><select id="hanakoGasImageCount"></select></div></div>
                 <label class="field-label" for="hanakoGasCarousel">複数枚の見せ方</label><select id="hanakoGasCarousel"></select>
                 <label class="field-label" for="hanakoGasExtra">追加の自由指定</label><textarea id="hanakoGasExtra" class="brief-input" placeholder="例: 顔のアップ、野菜の手元、ピアノの鍵盤、世界都市の順"></textarea>
+                <label class="sns-hanako-sensual"><input id="snsHanakoSensualMode" type="checkbox"><span><strong>大人の色気モード</strong><small>デフォルトOFF。露出なしで視線・姿勢・光を色っぽく調整</small></span></label>
                 <button class="primary" id="generateHanakoGasImage" type="button">この設定で画像と本文を作る</button>
               </section>
               <label class="field-label social-commerce-only">商品</label>
@@ -1057,7 +1043,7 @@
               </div>
               <div class="generator-pair">
                 <div><label class="field-label" for="snsLightingPreset">光・時間帯</label><select id="snsLightingPreset"><option value="auto">場面から自動</option><option value="produce">野菜の色が自然に見える昼の柔らかな光</option><option value="bar">バーの落ち着いた間接照明</option><option value="morning">朝の窓辺</option><option value="cloudy">曇天の柔らかい光</option><option value="golden">夕暮れ・ゴールデンアワー</option><option value="blue">青い時間</option><option value="cafe">カフェの窓光</option><option value="warm">室内の暖色光</option><option value="neon">夜景・ネオン</option></select><input id="snsLighting" placeholder="光の自由指定"></div>
-                <div><label class="field-label" for="snsLocationPreset">場所</label><select id="snsLocationPreset"><option value="world">世界都市くじ（おすすめ）</option><option value="homeLiving">自宅・自然光の入るリビング</option><option value="homeSofa">自宅・落ち着いたソファまわり</option><option value="homeBedroom">自宅・生成りの寝室</option><option value="homeKitchen">自宅・清潔感のあるキッチン</option><option value="homeWindow">自宅・朝夕の窓辺</option><option value="homeDesk">自宅・本や小物のあるデスク</option><option value="homeVanity">自宅・鏡とドレッサー</option><option value="homeBalcony">自宅・場所を特定できないベランダ</option><option value="grocer">店名を見せない八百屋の作業場</option><option value="marketBackyard">野菜箱のある非公開の作業スペース</option><option value="pianoBar">場所を特定しないバーのピアノ</option><option value="barCounter">店名を見せないバーのカウンター</option><option value="noodle">店名を見せないつけ麺カウンター</option><option value="street">都会の街角</option><option value="alley">光のきれいな路地</option><option value="rooftop">安全な屋上・展望テラス</option><option value="riverside">川沿いの遊歩道</option><option value="park">緑のある公園</option><option value="cafe">自然光のカフェ</option><option value="cafeTerrace">カフェテラス</option><option value="bookstore">静かな書店</option><option value="museum">美術館・ギャラリー</option><option value="hotel">ホテルラウンジ</option><option value="station">駅・空港</option><option value="train">移動中の車窓</option><option value="seaside">海辺・港</option><option value="forest">森や高原の遊歩道</option><option value="temple">静かな寺社の参道</option><option value="observatory">絶景の展望台</option><option value="campus">キャンパス</option><option value="office">オフィス</option><option value="room">室内を自動選択</option></select><input id="snsVisualLocation" placeholder="場所の自由指定（空欄なら選択肢を使用）"></div>
+                <div><label class="field-label" for="snsLocationPreset">場所</label><select id="snsLocationPreset"><option value="world">世界都市くじ（おすすめ）</option><option value="homeLiving">自宅・自然光の入るリビング</option><option value="homeSofa">自宅・落ち着いたソファまわり</option><option value="homeBedroom">自宅・生成りの寝室</option><option value="homeBed">自宅・生成りのベッドの上</option><option value="homeKitchen">自宅・清潔感のあるキッチン</option><option value="homeWindow">自宅・朝夕の窓辺</option><option value="homeDesk">自宅・本や小物のあるデスク</option><option value="homeVanity">自宅・鏡とドレッサー</option><option value="homeBalcony">自宅・場所を特定できないベランダ</option><option value="grocer">店名を見せない八百屋の作業場</option><option value="marketBackyard">野菜箱のある非公開の作業スペース</option><option value="pianoBar">場所を特定しないバーのピアノ</option><option value="barCounter">店名を見せないバーのカウンター</option><option value="noodle">店名を見せないつけ麺カウンター</option><option value="street">都会の街角</option><option value="alley">光のきれいな路地</option><option value="rooftop">安全な屋上・展望テラス</option><option value="riverside">川沿いの遊歩道</option><option value="park">緑のある公園</option><option value="cafe">自然光のカフェ</option><option value="cafeTerrace">カフェテラス</option><option value="bookstore">静かな書店</option><option value="museum">美術館・ギャラリー</option><option value="hotel">ホテルラウンジ</option><option value="station">駅・空港</option><option value="train">移動中の車窓</option><option value="seaside">海辺・港</option><option value="forest">森や高原の遊歩道</option><option value="temple">静かな寺社の参道</option><option value="observatory">絶景の展望台</option><option value="campus">キャンパス</option><option value="office">オフィス</option><option value="room">室内を自動選択</option></select><input id="snsVisualLocation" placeholder="場所の自由指定（空欄なら選択肢を使用）"></div>
               </div>
               <label class="field-label" for="snsCarouselPreset">複数枚の見せ方</label>
               <select id="snsCarouselPreset"><option value="story">場面ストーリー（導入→発見→詳細→余韻）</option><option value="lesson">ミニ講座（結論→理由→実例→保存メモ）</option><option value="styling">コーデ展開（全身→上半身→小物→別角度）</option><option value="review">観察レビュー（主役→良い点→注意点→まとめ）</option><option value="trend">トレンド解説（兆し→特徴→取り入れ方→結論）</option></select>
@@ -1920,6 +1906,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=280"></script>
+    <script src="app.js?v=281"></script>
   </body>
 </html>
