@@ -2936,14 +2936,14 @@ const hanakoExpressionOptions = {
 };
 
 const hanakoIdeaCatalog = [
-  { id: "vegetable", title: "八百屋の小さな発見", description: "旬の色や形から始まる朝の観察メモ", brief: "旬の野菜や果物から見つけた小さな発見を、店名や住所を出さずに等身大の短文で共有する", pattern: "observation", scene: "morning", pose: "detail", composition: "detail", lighting: "morning", carousel: "review" },
-  { id: "piano", title: "夜のピアノ", description: "演奏前後の気分とバーの静かな余韻", brief: "夜のピアノを弾く前後の気分や音の余韻を、店を特定できる情報なしで短く切り取る", pattern: "scenestory", scene: "room", pose: "seated", composition: "waist", lighting: "warm", carousel: "story" },
-  { id: "tsukemen", title: "今日のつけ麺", description: "ひと口目の感想や好みを会話の入口に", brief: "実際に公開してよい範囲のつけ麺の感想を、食感や気分を中心に短く伝える。未確認の店名や来店体験は作らない", pattern: "observation", scene: "cafe", pose: "seated", composition: "detail", lighting: "cafe", carousel: "review" },
-  { id: "fashion", title: "服選びの迷い", description: "甘めきれいめの着回しと小物の気分", brief: "今日の服選びで迷った点や、色・丈・小物の小さな発見を読者が返信しやすい言葉で共有する", pattern: "observation", scene: "trend", pose: "walk", composition: "full", lighting: "golden", carousel: "styling" },
-  { id: "citywalk", title: "街歩きメモ", description: "夕方の光、風、音を一場面にする", brief: "街歩きで気づいた光、風、音、景色のどれか一つを、場所を特定しすぎない短い日常メモにする", pattern: "scenestory", scene: "cafe", pose: "walk", composition: "wide", lighting: "golden", carousel: "story" },
-  { id: "travel", title: "海外旅行・秘境", description: "世界都市くじの絶景を旅の憧れとして紹介", brief: "世界都市くじで選んだ絶景や秘境を、実際に訪れたと断定せず、行ってみたい気分や装いのイメージとして表現する", pattern: "editorpick", scene: "travel", pose: "lookback", composition: "wide", lighting: "golden", carousel: "story" },
-  { id: "reset", title: "気分を整える時間", description: "飲み物や静かな時間をやさしい短文に", brief: "飲み物、音楽、窓辺など、気分を整える小さな時間を説明しすぎず余韻のある短文にする", pattern: "scenestory", scene: "room", pose: "seated", composition: "waist", lighting: "morning", carousel: "story" },
-  { id: "bar", title: "バーの空気", description: "間接照明と一日の終わりを大人っぽく", brief: "バーの間接照明や一日の終わりの空気を、店名、住所、勤務日を出さずに上品な一場面として表現する", pattern: "scenestory", scene: "room", pose: "seated", composition: "waist", lighting: "warm", carousel: "story" },
+  { id: "vegetable", title: "八百屋の小さな発見", description: "旬の色や形から始まる朝の観察メモ", brief: "旬の野菜や果物から見つけた小さな発見を、店名や住所を出さずに等身大の短文で共有する", pattern: "observation", scene: "vegetableMorning", outfit: "grocer", pose: "vegetable", composition: "detail", lighting: "produce", carousel: "review" },
+  { id: "piano", title: "夜のピアノ", description: "演奏前後の気分とバーの静かな余韻", brief: "夜のピアノを弾く前後の気分や音の余韻を、店を特定できる情報なしで短く切り取る", pattern: "scenestory", scene: "pianoNight", outfit: "piano", pose: "piano", composition: "waist", lighting: "bar", carousel: "story" },
+  { id: "tsukemen", title: "今日のつけ麺", description: "ひと口目の感想や好みを会話の入口に", brief: "実際に公開してよい範囲のつけ麺の感想を、食感や気分を中心に短く伝える。未確認の店名や来店体験は作らない", pattern: "observation", scene: "tsukemenMoment", outfit: "tsukemen", pose: "eating", composition: "detail", lighting: "cafe", carousel: "review" },
+  { id: "fashion", title: "服選びの迷い", description: "甘めきれいめの着回しと小物の気分", brief: "今日の服選びで迷った点や、色・丈・小物の小さな発見を読者が返信しやすい言葉で共有する", pattern: "observation", scene: "cityDusk", outfit: "city", pose: "bag", composition: "full", lighting: "golden", carousel: "styling" },
+  { id: "citywalk", title: "街歩きメモ", description: "夕方の光、風、音を一場面にする", brief: "街歩きで気づいた光、風、音、景色のどれか一つを、場所を特定しすぎない短い日常メモにする", pattern: "scenestory", scene: "cityDusk", outfit: "city", pose: "walk", composition: "wide", lighting: "golden", carousel: "story" },
+  { id: "travel", title: "海外旅行・秘境", description: "世界都市くじの絶景を旅の憧れとして紹介", brief: "世界都市くじで選んだ絶景や秘境を、実際に訪れたと断定せず、行ってみたい気分や装いのイメージとして表現する", pattern: "editorpick", scene: "travelScenic", outfit: "travel", pose: "lookback", composition: "wide", lighting: "golden", carousel: "story" },
+  { id: "reset", title: "気分を整える時間", description: "飲み物や静かな時間をやさしい短文に", brief: "飲み物、音楽、窓辺など、気分を整える小さな時間を説明しすぎず余韻のある短文にする", pattern: "scenestory", scene: "quietReset", outfit: "sweetclean", pose: "seated", composition: "waist", lighting: "morning", carousel: "story" },
+  { id: "bar", title: "バーの空気", description: "間接照明と一日の終わりを大人っぽく", brief: "バーの間接照明や一日の終わりの空気を、店名、住所、勤務日を出さずに上品な一場面として表現する", pattern: "scenestory", scene: "pianoNight", outfit: "piano", pose: "seated", composition: "editorial", lighting: "bar", carousel: "story" },
 ];
 
 function renderHanakoIdeas(refresh = false) {
@@ -2971,6 +2971,7 @@ function applyHanakoIdea(id) {
   if (brief) brief.value = idea.brief;
   setSelect("#viralPatternSelect", idea.pattern);
   setSelect("#snsScenePreset", idea.scene);
+  setSelect("#snsOutfitPreset", idea.outfit || "auto");
   setSelect("#snsPosePreset", idea.pose);
   setSelect("#snsCompositionPreset", idea.composition);
   setSelect("#snsLightingPreset", idea.lighting);
@@ -2980,7 +2981,58 @@ function applyHanakoIdea(id) {
   saveSocialCreativeProfile();
   saveGeneratorPreferences();
   renderHanakoIdeas();
+  renderHanakoGasSettings();
   showToast(`「${idea.title}」を投稿設定へ反映しました`);
+}
+
+const hanakoGasFieldMap = {
+  hanakoGasScene: "snsScenePreset",
+  hanakoGasOutfit: "snsOutfitPreset",
+  hanakoGasHair: "snsHairPreset",
+  hanakoGasPose: "snsPosePreset",
+  hanakoGasComposition: "snsCompositionPreset",
+  hanakoGasLighting: "snsLightingPreset",
+  hanakoGasLocation: "snsLocationPreset",
+  hanakoGasImageCount: "snsThreadsImageCount",
+  hanakoGasCarousel: "snsCarouselPreset",
+  hanakoGasExtra: "snsCreativeExtra",
+};
+
+function renderHanakoGasSettings() {
+  const section = document.querySelector("#snsHanakoGasSettings");
+  const enabled = getSocialCreativeProfile().hanakoMode;
+  if (section) section.hidden = !enabled;
+  Object.entries(hanakoGasFieldMap).forEach(([mirrorId, sourceId]) => {
+    const mirror = document.querySelector(`#${mirrorId}`);
+    const source = document.querySelector(`#${sourceId}`);
+    if (!mirror || !source) return;
+    if (mirror.tagName === "SELECT" && !mirror.options.length) mirror.innerHTML = source.innerHTML;
+    mirror.value = source.value;
+  });
+}
+
+function bindHanakoGasSettings() {
+  Object.entries(hanakoGasFieldMap).forEach(([mirrorId, sourceId]) => {
+    const mirror = document.querySelector(`#${mirrorId}`);
+    const source = document.querySelector(`#${sourceId}`);
+    if (!mirror || !source || mirror.dataset.bound) return;
+    mirror.dataset.bound = "true";
+    mirror.addEventListener("change", () => {
+      source.value = mirror.value;
+      saveSocialCreativeProfile();
+    });
+    if (mirror.tagName === "TEXTAREA") mirror.addEventListener("input", () => {
+      source.value = mirror.value;
+      saveSocialCreativeProfile();
+    });
+  });
+  document.querySelector("#generateHanakoGasImage")?.addEventListener("click", () => {
+    generateBothSocialGeminiPrompts(true, true);
+    renderSocialGeminiProgress();
+    document.querySelector("#snsGeminiTools")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    showToast("選択したGAS設定で画像と本文の指示を作りました");
+  });
+  renderHanakoGasSettings();
 }
 
 function renderHanakoExpressionControl() {
@@ -2994,6 +3046,7 @@ function renderHanakoExpressionControl() {
   const expression = hanakoExpressionOptions[select?.value || profile.hanakoExpression] || hanakoExpressionOptions.bashful;
   if (hint) hint.textContent = `${expression.prompt}。`;
   renderHanakoIdeas();
+  renderHanakoGasSettings();
 }
 
 function getSocialPrimarySubject() {
@@ -3329,6 +3382,7 @@ function renderSocialPatternAnalysis() {
 
 function bindSocialPatternStudio() {
   populateSocialPatternStudio();
+  bindHanakoGasSettings();
   document.querySelector("#snsPatternCsvFile")?.addEventListener("change", importSocialPatternCsv);
   ["snsCharacterRole", "snsCharacterVoice", "snsSafetyBoundary", "snsSceneTheme", "snsOutfit", "snsHairStyle", "snsPose", "snsComposition", "snsLighting", "snsVisualLocation", "snsThreadsImageCount", "snsCreativeExtra", "snsScenePreset", "snsOutfitPreset", "snsHairPreset", "snsPosePreset", "snsCompositionPreset", "snsLightingPreset", "snsLocationPreset", "snsCarouselPreset", "snsHanakoExpression"].forEach((id) => {
     document.querySelector(`#${id}`)?.addEventListener("change", saveSocialCreativeProfile);
@@ -11875,13 +11929,13 @@ ${travelSafety}
 function buildSocialCreativeDirective(context) {
   const profile = { ...socialCreativeDefaults, ...(context.creativeProfile || {}) };
   const labels = {
-    scene: { auto: "選択した投稿案・商品・切り口から自動", morning: "朝の支度", campus: "キャンパス・通学", office: "オフィス・通勤", cafe: "カフェ・街歩き", date: "デート・おでかけ", rain: "雨の日", travel: "旅先・秘境", season: "季節の変わり目", trend: "トレンド観察", room: "部屋で商品を発見" },
-    outfit: { auto: "商品から自動", hero: "主役商品を引き立てる", sweetclean: "甘めきれいめ", adultgirly: "大人ガーリー", office: "上品オフィス", campus: "きれいめ通学", monochrome: "淡色・ワントーン", trend: "トレンドを一点", resort: "旅・リゾート", layered: "温度調整レイヤード" },
-    hair: { keep: "本人らしさを保つ", straight: "ストレート", wave: "やわらかな巻き髪", lowpony: "ローポニー", halfup: "ハーフアップ", bun: "まとめ髪", wind: "風になびく自然な髪" },
-    pose: { auto: "場面から自動", walk: "自然に歩く", hold: "商品を手に持つ", mirror: "鏡越し", seated: "自然に座る", lookback: "振り返る", detail: "手元・ディテール" },
-    composition: { auto: "媒体と枚数から自動", full: "全身", waist: "ウエストアップ", detail: "商品クローズアップ", wide: "絶景を含む引き", eye: "自然な目線", low: "少しローアングル", sequence: "複数枚で順番に見せる" },
-    lighting: { auto: "場面から自動", morning: "朝の窓辺", cloudy: "曇天の柔らかい光", golden: "夕暮れ・ゴールデンアワー", blue: "青い時間", cafe: "カフェの窓光", warm: "室内の暖色光", neon: "夜景・ネオン" },
-    location: { street: "街角", cafe: "カフェ", campus: "キャンパス", office: "オフィス", hotel: "ホテル", museum: "美術館", seaside: "海辺", station: "駅・空港", room: "部屋" },
+    scene: { auto: "選択した投稿案から自動", vegetableMorning: "瑞々しい野菜と一日の始まり", pianoNight: "演奏前後の夜のピアノ", tsukemenMoment: "つけ麺を楽しむひととき", cityDusk: "夕方の色と都会の街歩き", travelScenic: "海外旅行・秘境の絶景", quietReset: "静かに気分を整える時間", morning: "朝の支度", campus: "キャンパス・通学", office: "オフィス・通勤", cafe: "カフェ・街歩き", date: "デート・おでかけ", rain: "雨の日", travel: "旅先・秘境", season: "季節の変わり目", trend: "トレンド観察", room: "部屋で過ごす時間" },
+    outfit: { auto: "テーマから自動", grocer: "白シャツ、無地のデニムエプロン、濃色パンツ", piano: "ネイビーまたは黒の上品なピアノ衣装", tsukemen: "気取らないきれいめカジュアル", city: "都会的な甘めきれいめコーデ", travel: "歩きやすい洗練された旅コーデ", hero: "主役を引き立てる", sweetclean: "甘めきれいめ", adultgirly: "大人ガーリー", office: "上品オフィス", campus: "きれいめ通学", monochrome: "淡色・ワントーン", trend: "トレンドを一点", resort: "旅・リゾート", layered: "温度調整レイヤード" },
+    hair: { keep: "本人らしさを保つ", center: "センターパートのストレート", headband: "黒または深緑の細いヘアバンド", straight: "ストレート", wave: "やわらかな巻き髪", lowpony: "ローポニー", halfup: "ハーフアップ", bun: "まとめ髪", wind: "風になびく自然な髪" },
+    pose: { auto: "場面から自動", vegetable: "旬の野菜を自然に手に取る", piano: "鍵盤へ手を添えて演奏する", eating: "料理を幸せそうに頬張る", straw: "飲み物のストローを自然にくわえる", bag: "片手でバッグを持ち、もう片方の手は力を抜く", walk: "自然に歩く", hold: "小物を手に持つ", mirror: "鏡越し", seated: "自然に座る", lookback: "振り返る", detail: "手元・ディテール" },
+    composition: { auto: "媒体と枚数から自動", face: "顔と表情が伝わるアップ", editorial: "背景を簡潔にした編集的ポートレート", full: "全身", waist: "ウエストアップ", detail: "手元・テーマのディテール", wide: "絶景を含む引き", eye: "自然な目線", low: "少しローアングル", sequence: "複数枚で順番に見せる" },
+    lighting: { auto: "場面から自動", produce: "野菜の色が自然に見える昼の柔らかな光", bar: "バーの落ち着いた間接照明", morning: "朝の窓辺", cloudy: "曇天の柔らかい光", golden: "夕暮れ・ゴールデンアワー", blue: "青い時間", cafe: "カフェの窓光", warm: "室内の暖色光", neon: "夜景・ネオン" },
+    location: { grocer: "店名を見せない八百屋の作業場", pianoBar: "場所を特定しないバーのピアノ", noodle: "店名を見せないつけ麺カウンター", street: "街角", cafe: "カフェ", campus: "キャンパス", office: "オフィス", hotel: "ホテル", museum: "美術館", seaside: "海辺", station: "駅・空港", room: "部屋" },
     carousel: { story: "場面ストーリー（導入→発見→詳細→余韻）", lesson: "ミニ講座（結論→理由→実例→保存メモ）", styling: "コーデ展開（全身→上半身→小物→別角度）", review: "観察レビュー（主役→良い点→注意点→まとめ）", trend: "トレンド解説（兆し→特徴→取り入れ方→結論）" },
   };
   const preset = (group, key, fallback) => labels[group]?.[key] || fallback;
