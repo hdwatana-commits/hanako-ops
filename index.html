@@ -994,6 +994,8 @@
               <div class="learning-hint" id="snsPatternAnalysisSummary">過去投稿CSVを読み込むと、文量・テーマ・反応上位の型を投稿生成へ反映します。</div>
               <label class="field-label" for="snsPatternCsvFile">過去投稿データ</label>
               <input id="snsPatternCsvFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values">
+              <div class="button-row"><button id="downloadHanakoCsvTemplate" type="button">最新20件CSVテンプレート</button></div>
+              <div class="learning-hint" id="snsHanakoLearningStatus">ハナ投稿モードの再学習：0 / 20件</div>
               <label class="field-label" for="snsCharacterRole">発信キャラクター・役割</label>
               <textarea id="snsCharacterRole" class="brief-input" placeholder="例: 大人ガーリーを研究する等身大のファッション発信者"></textarea>
               <label class="field-label" for="snsCharacterVoice">人柄・話し方</label>
@@ -1877,6 +1879,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=273"></script>
+    <script src="app.js?v=274"></script>
   </body>
 </html>

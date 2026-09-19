@@ -3153,25 +3153,55 @@ async function importSocialPatternCsv(event) {
   if (!file) return;
   const rows = parseSocialDelimitedText(await file.text());
   if (!rows.length) return showToast("投稿データを読み取れませんでした");
-  const analysis = analyzeSocialPatternPosts(rows);
+  const completedRows = rows.filter((post) => String(post.本文 || post.body || post.画像テーマ || post.theme || "").trim());
+  if (!completedRows.length) return showToast("本文または画像テーマを入力した投稿がありません");
+  const threadsRows = completedRows.filter((post) => /threads/i.test(String(post.媒体 || post.platform || "")));
+  const trainingRows = (threadsRows.length ? threadsRows : completedRows)
+    .map((post, index) => ({ post, index, time: Date.parse(post.投稿日 || post.date || "") || 0 }))
+    .sort((a, b) => b.time - a.time || a.index - b.index)
+    .slice(0, 20)
+    .map((item) => item.post);
+  const analysis = analyzeSocialPatternPosts(trainingRows);
   state.socialPatternPosts = analysis.posts;
-  state.socialPatternAnalysis = { ...analysis, posts: undefined, importedAt: new Date().toISOString(), fileName: file.name };
+  state.socialPatternAnalysis = { ...analysis, posts: undefined, importedAt: new Date().toISOString(), fileName: file.name, isThreadsTraining: Boolean(threadsRows.length), targetSize: 20 };
   saveState();
   renderSocialPatternAnalysis();
   markSocialGeminiPromptStale();
-  showToast(`${analysis.sampleSize}件の投稿パターンを分析しました`);
+  showToast(analysis.sampleSize >= 20 ? "最新20件でハナ投稿モードを再学習しました" : `${analysis.sampleSize}件を分析しました。あと${20 - analysis.sampleSize}件で20件学習です`);
+}
+
+function downloadHanakoCsvTemplate() {
+  const headers = ["媒体", "投稿日", "本文", "ハッシュタグ", "メディア種別", "投稿URL", "いいね", "コメント", "リポスト", "シェア", "画像テーマ", "メモ"];
+  const rows = Array.from({ length: 20 }, (_, index) => ["Threads", "", "", "", "画像", "", "", "", "", "", "", `最新${index + 1}件目`]);
+  const escape = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const csv = `\uFEFF${[headers, ...rows].map((row) => row.map(escape).join(",")).join("\r\n")}`;
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "hanako_threads_latest20_template.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast("最新20件用CSVテンプレートを保存しました");
 }
 
 function renderSocialPatternAnalysis() {
   const target = document.querySelector("#snsPatternAnalysisSummary");
+  const hanakoStatus = document.querySelector("#snsHanakoLearningStatus");
   if (!target) return;
   const analysis = state.socialPatternAnalysis || {};
   if (!analysis.sampleSize) {
     target.textContent = "過去投稿CSVを読み込むと、文量・テーマ・反応上位の型を投稿生成へ反映します。";
+    if (hanakoStatus) hanakoStatus.textContent = "ハナ投稿モードの再学習：0 / 20件";
     return;
   }
   const themes = (analysis.themes || []).slice(0, 3).map(([name, count]) => `${name}(${count})`).join("、");
   target.textContent = `${analysis.sampleSize}件を分析｜平均${analysis.averageLength}字｜平均反応${analysis.averageReactions}件｜上位テーマ ${themes || "未分類"}`;
+  if (hanakoStatus) {
+    const learned = Math.min(analysis.sampleSize || 0, 20);
+    hanakoStatus.textContent = learned >= 20
+      ? `ハナ投稿モードの再学習：20 / 20件 完了｜${analysis.fileName || "CSV"}`
+      : `ハナ投稿モードの再学習：${learned} / 20件｜あと${20 - learned}件`;
+  }
 }
 
 function bindSocialPatternStudio() {
@@ -3182,6 +3212,7 @@ function bindSocialPatternStudio() {
   });
   document.querySelector("#refreshSnsConcepts")?.addEventListener("click", () => renderSocialConcepts(true));
   document.querySelector("#snsHanakoMode")?.addEventListener("change", (event) => toggleHanakoPostMode(event.currentTarget.checked));
+  document.querySelector("#downloadHanakoCsvTemplate")?.addEventListener("click", downloadHanakoCsvTemplate);
 }
 
 function bindActions() {
