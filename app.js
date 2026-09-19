@@ -2918,7 +2918,7 @@ const socialCreativeDefaults = {
   selectedConcept: "",
   hanakoMode: true,
   hanakoExpression: "bashful",
-  hanakoSensualMode: false,
+  hanakoSensualLevel: "off",
   hanakoIdea: "vegetable",
 };
 
@@ -3015,8 +3015,8 @@ function renderHanakoGasSettings() {
   const profile = getSocialCreativeProfile();
   const enabled = profile.hanakoMode;
   if (section) section.hidden = !enabled;
-  const sensual = document.querySelector("#snsHanakoSensualMode");
-  if (sensual) sensual.checked = Boolean(profile.hanakoSensualMode);
+  const sensual = document.querySelector("#snsHanakoSensualLevel");
+  if (sensual) sensual.value = profile.hanakoSensualLevel || "off";
   Object.entries(hanakoGasFieldMap).forEach(([mirrorId, sourceId]) => {
     const mirror = document.querySelector(`#${mirrorId}`);
     const source = document.querySelector(`#${sourceId}`);
@@ -3190,7 +3190,9 @@ function toggleHanakoPostMode(enabled, notify = true) {
 }
 
 function getSocialCreativeProfile() {
-  return { ...socialCreativeDefaults, ...(state.socialCreativeProfile || {}) };
+  const saved = state.socialCreativeProfile || {};
+  const migratedSensualLevel = saved.hanakoSensualLevel || (saved.hanakoSensualMode ? "standard" : "off");
+  return { ...socialCreativeDefaults, ...saved, hanakoSensualLevel: migratedSensualLevel };
 }
 
 function populateSocialPatternStudio() {
@@ -3224,8 +3226,8 @@ function populateSocialPatternStudio() {
   });
   const hanakoMode = document.querySelector("#snsHanakoMode");
   if (hanakoMode) hanakoMode.checked = Boolean(profile.hanakoMode);
-  const sensualMode = document.querySelector("#snsHanakoSensualMode");
-  if (sensualMode) sensualMode.checked = Boolean(profile.hanakoSensualMode);
+  const sensualLevel = document.querySelector("#snsHanakoSensualLevel");
+  if (sensualLevel) sensualLevel.value = profile.hanakoSensualLevel || "off";
   renderHanakoExpressionControl();
   renderSocialPatternAnalysis();
   renderSocialConcepts();
@@ -3260,7 +3262,7 @@ function saveSocialCreativeProfile() {
     selectedConcept: getSocialCreativeProfile().selectedConcept || "",
     hanakoMode: Boolean(document.querySelector("#snsHanakoMode")?.checked),
     hanakoExpression: value("snsHanakoExpression") || "bashful",
-    hanakoSensualMode: Boolean(document.querySelector("#snsHanakoSensualMode")?.checked),
+    hanakoSensualLevel: value("snsHanakoSensualLevel") || "off",
     hanakoIdea: getSocialCreativeProfile().hanakoIdea || "vegetable",
   };
   saveState();
@@ -3408,7 +3410,7 @@ function bindSocialPatternStudio() {
   document.querySelector("#refreshSnsConcepts")?.addEventListener("click", () => renderSocialConcepts(true));
   document.querySelector("#snsHanakoMode")?.addEventListener("change", (event) => toggleHanakoPostMode(event.currentTarget.checked));
   document.querySelector("#snsHanakoExpression")?.addEventListener("change", renderHanakoExpressionControl);
-  document.querySelector("#snsHanakoSensualMode")?.addEventListener("change", saveSocialCreativeProfile);
+  document.querySelector("#snsHanakoSensualLevel")?.addEventListener("change", saveSocialCreativeProfile);
   document.querySelector("#refreshHanakoIdeas")?.addEventListener("click", () => renderHanakoIdeas(true));
   document.querySelector("#downloadHanakoCsvTemplate")?.addEventListener("click", downloadHanakoCsvTemplate);
 }
@@ -11682,8 +11684,12 @@ function getSocialGeminiPromptData(rerollLottery = true) {
 
 function buildHanakoLifestyleImagePrompt(c, currentDraft) {
   const creative = buildSocialCreativeDirective(c);
-  const sensualMode = Boolean(c.creativeProfile?.hanakoSensualMode);
-  const sensualDirective = sensualMode ? `【大人の色気モード｜ON】
+  const sensualLevel = c.creativeProfile?.hanakoSensualLevel || (c.creativeProfile?.hanakoSensualMode ? "standard" : "off");
+  const sensualDirective = sensualLevel === "intense" ? `【大人の色気モード｜強め】
+・被写体は成人女性。上品で成熟したファッションポートレートとして、長めのアイコンタクト、伏し目からの視線、髪や首元へ触れる自然な仕草、肩越しの振り返り、近めのカメラ距離を使う
+・身体の自然なライン、布のドレープ、深い陰影、暖かな間接光、余裕のある表情で色気を一段強く表現する。選択した表情と場面構成は維持する
+・服装は不透明で身体を適切に覆う。裸、下着、透け、露骨な性的ポーズ、性的行為やフェティッシュ表現は含めない
+・ベッド上では座る、横向きにくつろぐ、読書する、朝の光を浴びるなど、親密だが品のある成人の日常場面にする` : sensualLevel === "standard" ? `【大人の色気モード｜ON】
 ・被写体は成人女性。上品なファッションポートレートの範囲で、視線、首の傾き、髪へ触れる自然な仕草、姿勢、柔らかな陰影によって落ち着いた色気を表現する
 ・服装は不透明で身体を適切に覆い、選択済みの服装と全画像の一貫性を保つ
 ・裸、下着、水着への置換、透け、胸や臀部の誇張、脚を過度に開くポーズ、性的行為を連想させるポーズ、フェティッシュ表現は不可
