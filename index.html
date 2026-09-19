@@ -777,6 +777,11 @@
                 </select>
                 <small id="snsHanakoExpressionHint">視線を一度下に落とし、照れくさそうにふっと笑ってから視線を合わせる、控えめで自然な表情。</small>
               </div>
+              <section class="sns-hanako-ideas" id="snsHanakoIdeas" aria-labelledby="snsHanakoIdeasTitle">
+                <div class="sns-hanako-ideas-head"><div><p class="eyebrow">スプレッドシートの投稿案</p><strong id="snsHanakoIdeasTitle">今日は何を投稿する？</strong></div><button id="refreshHanakoIdeas" type="button">並び替え</button></div>
+                <div class="sns-hanako-idea-grid" id="snsHanakoIdeaCards" aria-live="polite"></div>
+                <div class="sns-selected-concept" id="snsSelectedHanakoIdea">投稿案を選ぶと、本文と画像の設定へ反映します。</div>
+              </section>
               <label class="field-label">商品</label>
               <div class="coord-url-import social-url-import">
                 <label class="field-label" for="socialProductUrl">楽天ROOM / 楽天市場の商品URLから直接作成</label>
@@ -1904,6 +1909,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=276"></script>
+    <script src="app.js?v=277"></script>
   </body>
 </html>

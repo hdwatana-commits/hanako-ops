@@ -2918,6 +2918,7 @@ const socialCreativeDefaults = {
   selectedConcept: "",
   hanakoMode: true,
   hanakoExpression: "bashful",
+  hanakoIdea: "vegetable",
 };
 
 const hanakoExpressionOptions = {
@@ -2934,6 +2935,54 @@ const hanakoExpressionOptions = {
   subtlesmile: { label: "口角だけを上げた余裕のある微笑み", prompt: "歯を見せず口角をわずかに上げ、優しく見つめる上品で洗練された微笑み" },
 };
 
+const hanakoIdeaCatalog = [
+  { id: "vegetable", title: "八百屋の小さな発見", description: "旬の色や形から始まる朝の観察メモ", brief: "旬の野菜や果物から見つけた小さな発見を、店名や住所を出さずに等身大の短文で共有する", pattern: "observation", scene: "morning", pose: "detail", composition: "detail", lighting: "morning", carousel: "review" },
+  { id: "piano", title: "夜のピアノ", description: "演奏前後の気分とバーの静かな余韻", brief: "夜のピアノを弾く前後の気分や音の余韻を、店を特定できる情報なしで短く切り取る", pattern: "scenestory", scene: "room", pose: "seated", composition: "waist", lighting: "warm", carousel: "story" },
+  { id: "tsukemen", title: "今日のつけ麺", description: "ひと口目の感想や好みを会話の入口に", brief: "実際に公開してよい範囲のつけ麺の感想を、食感や気分を中心に短く伝える。未確認の店名や来店体験は作らない", pattern: "observation", scene: "cafe", pose: "seated", composition: "detail", lighting: "cafe", carousel: "review" },
+  { id: "fashion", title: "服選びの迷い", description: "甘めきれいめの着回しと小物の気分", brief: "今日の服選びで迷った点や、色・丈・小物の小さな発見を読者が返信しやすい言葉で共有する", pattern: "observation", scene: "trend", pose: "walk", composition: "full", lighting: "golden", carousel: "styling" },
+  { id: "citywalk", title: "街歩きメモ", description: "夕方の光、風、音を一場面にする", brief: "街歩きで気づいた光、風、音、景色のどれか一つを、場所を特定しすぎない短い日常メモにする", pattern: "scenestory", scene: "cafe", pose: "walk", composition: "wide", lighting: "golden", carousel: "story" },
+  { id: "travel", title: "海外旅行・秘境", description: "世界都市くじの絶景を旅の憧れとして紹介", brief: "世界都市くじで選んだ絶景や秘境を、実際に訪れたと断定せず、行ってみたい気分や装いのイメージとして表現する", pattern: "editorpick", scene: "travel", pose: "lookback", composition: "wide", lighting: "golden", carousel: "story" },
+  { id: "reset", title: "気分を整える時間", description: "飲み物や静かな時間をやさしい短文に", brief: "飲み物、音楽、窓辺など、気分を整える小さな時間を説明しすぎず余韻のある短文にする", pattern: "scenestory", scene: "room", pose: "seated", composition: "waist", lighting: "morning", carousel: "story" },
+  { id: "bar", title: "バーの空気", description: "間接照明と一日の終わりを大人っぽく", brief: "バーの間接照明や一日の終わりの空気を、店名、住所、勤務日を出さずに上品な一場面として表現する", pattern: "scenestory", scene: "room", pose: "seated", composition: "waist", lighting: "warm", carousel: "story" },
+];
+
+function renderHanakoIdeas(refresh = false) {
+  const profile = getSocialCreativeProfile();
+  const section = document.querySelector("#snsHanakoIdeas");
+  const target = document.querySelector("#snsHanakoIdeaCards");
+  if (section) section.hidden = !profile.hanakoMode;
+  if (!target) return;
+  const offset = refresh ? ((state.hanakoIdeaOffset || 0) + 1) % hanakoIdeaCatalog.length : (state.hanakoIdeaOffset || 0);
+  if (refresh) state.hanakoIdeaOffset = offset;
+  const ideas = [...hanakoIdeaCatalog.slice(offset), ...hanakoIdeaCatalog.slice(0, offset)];
+  target.innerHTML = ideas.map((idea) => `<button type="button" class="sns-hanako-idea ${profile.hanakoIdea === idea.id ? "selected" : ""}" data-hanako-idea="${idea.id}"><strong>${idea.title}</strong><small>${idea.description}</small></button>`).join("");
+  target.querySelectorAll("[data-hanako-idea]").forEach((button) => button.addEventListener("click", () => applyHanakoIdea(button.dataset.hanakoIdea)));
+  const selected = hanakoIdeaCatalog.find((idea) => idea.id === profile.hanakoIdea);
+  const summary = document.querySelector("#snsSelectedHanakoIdea");
+  if (summary && selected) summary.textContent = `選択中：${selected.title}｜${selected.description}`;
+  if (refresh) saveState();
+}
+
+function applyHanakoIdea(id) {
+  const idea = hanakoIdeaCatalog.find((item) => item.id === id);
+  if (!idea) return;
+  const setSelect = (selector, value) => { const input = document.querySelector(selector); if (input && [...input.options].some((option) => option.value === value)) input.value = value; };
+  const brief = document.querySelector("#postBrief");
+  if (brief) brief.value = idea.brief;
+  setSelect("#viralPatternSelect", idea.pattern);
+  setSelect("#snsScenePreset", idea.scene);
+  setSelect("#snsPosePreset", idea.pose);
+  setSelect("#snsCompositionPreset", idea.composition);
+  setSelect("#snsLightingPreset", idea.lighting);
+  setSelect("#snsLocationPreset", "world");
+  setSelect("#snsCarouselPreset", idea.carousel);
+  state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoIdea: idea.id };
+  saveSocialCreativeProfile();
+  saveGeneratorPreferences();
+  renderHanakoIdeas();
+  showToast(`「${idea.title}」を投稿設定へ反映しました`);
+}
+
 function renderHanakoExpressionControl() {
   const profile = getSocialCreativeProfile();
   const control = document.querySelector("#snsHanakoExpressionControl");
@@ -2943,6 +2992,7 @@ function renderHanakoExpressionControl() {
   if (select && select.value !== profile.hanakoExpression) select.value = profile.hanakoExpression || "bashful";
   const expression = hanakoExpressionOptions[select?.value || profile.hanakoExpression] || hanakoExpressionOptions.bashful;
   if (hint) hint.textContent = `${expression.prompt}。`;
+  renderHanakoIdeas();
 }
 
 const hanakoThreadsProfile = {
@@ -3125,6 +3175,7 @@ function saveSocialCreativeProfile() {
     selectedConcept: getSocialCreativeProfile().selectedConcept || "",
     hanakoMode: Boolean(document.querySelector("#snsHanakoMode")?.checked),
     hanakoExpression: value("snsHanakoExpression") || "bashful",
+    hanakoIdea: getSocialCreativeProfile().hanakoIdea || "vegetable",
   };
   saveState();
   markSocialGeminiPromptStale();
@@ -3270,6 +3321,7 @@ function bindSocialPatternStudio() {
   document.querySelector("#refreshSnsConcepts")?.addEventListener("click", () => renderSocialConcepts(true));
   document.querySelector("#snsHanakoMode")?.addEventListener("change", (event) => toggleHanakoPostMode(event.currentTarget.checked));
   document.querySelector("#snsHanakoExpression")?.addEventListener("change", renderHanakoExpressionControl);
+  document.querySelector("#refreshHanakoIdeas")?.addEventListener("click", () => renderHanakoIdeas(true));
   document.querySelector("#downloadHanakoCsvTemplate")?.addEventListener("click", downloadHanakoCsvTemplate);
 }
 
@@ -11754,10 +11806,12 @@ function buildSocialCreativeDirective(context) {
   const location = profile.location || (profile.locationPreset === "world" ? `${context.socialCity}・${context.socialLandmark}` : preset("location", profile.locationPreset, `${context.socialCity}・${context.socialLandmark}`));
   const concept = socialConceptCatalog.find((item) => item.id === profile.selectedConcept);
   const hanakoExpression = hanakoExpressionOptions[profile.hanakoExpression] || hanakoExpressionOptions.bashful;
+  const hanakoIdea = hanakoIdeaCatalog.find((item) => item.id === profile.hanakoIdea) || hanakoIdeaCatalog[0];
   const hanakoDirective = profile.hanakoMode ? `
 【ハナ投稿モード｜${hanakoThreadsProfile.handle}】
 ・アカウントの核: 日常の小さな発見と好きなもの。${hanakoThreadsProfile.themes}
 ・届けたい相手: ${hanakoThreadsProfile.audience}
+・選択した投稿案: ${hanakoIdea.title}。${hanakoIdea.brief}
 ・本文は${hanakoThreadsProfile.targetLength}を目安に1〜3行。${hanakoThreadsProfile.voice}
 ・最初の1行に、その瞬間の気分・音・季節・小さな出来事のどれかを置く
 ・絵文字は平均1個を目安に0〜2個。ハッシュタグ、長い前置き、説明過多、広告調のCTAは避ける

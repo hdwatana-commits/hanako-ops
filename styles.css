@@ -1330,6 +1330,15 @@ textarea {
 .sns-hanako-expression { margin: -8px 0 18px; padding: 12px 13px; border: 1px solid rgba(169, 116, 92, .16); border-radius: 12px; background: #fffaf8; }
 .sns-hanako-expression small { display: block; margin-top: 7px; color: var(--muted); line-height: 1.55; }
 .sns-hanako-expression[hidden] { display: none; }
+.sns-hanako-ideas { margin: -8px 0 20px; padding: 14px; border: 1px solid rgba(169, 116, 92, .18); border-radius: 16px; background: linear-gradient(145deg, #fffaf5, #fff); }
+.sns-hanako-ideas[hidden] { display: none; }
+.sns-hanako-ideas-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.sns-hanako-idea-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.sns-hanako-idea { padding: 11px 12px; text-align: left; border: 1px solid rgba(169, 116, 92, .18); border-radius: 12px; background: #fff; color: inherit; }
+.sns-hanako-idea strong, .sns-hanako-idea small { display: block; }
+.sns-hanako-idea small { margin-top: 3px; color: var(--muted); line-height: 1.45; }
+.sns-hanako-idea.selected { border-color: #b85b70; background: #fff4f6; box-shadow: 0 6px 18px rgba(122, 70, 48, .1); }
+@media (max-width: 620px) { .sns-hanako-idea-grid { grid-template-columns: 1fr; } }
 .sns-concept-card { text-align: left; padding: 14px; border: 1px solid rgba(169, 116, 92, .18); border-radius: 14px; background: #fff; color: inherit; }
 .sns-concept-card:hover, .sns-concept-card.selected { border-color: #b9785b; box-shadow: 0 8px 22px rgba(122, 70, 48, .12); transform: translateY(-1px); }
 .sns-concept-card span, .sns-concept-card small { display: block; }
