@@ -5247,10 +5247,28 @@ body {
 }
 
 .sns-generated-image {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  padding: 10px;
   overflow: hidden;
   background: #f8f5f6;
   border: 1px solid #eadde2;
   border-radius: 8px;
+}
+
+.sns-generated-image figure {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.sns-generated-image figcaption {
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
 }
 
 .sns-generated-image img {

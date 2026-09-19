@@ -978,6 +978,38 @@
               </div>
               <label class="field-label">今回だけ入れたい情報</label>
               <textarea id="postBrief" class="brief-input" placeholder="例: 雨の日の通学、白スニーカー合わせ、6月のセール"></textarea>
+              <div class="learning-hint" id="snsPatternAnalysisSummary">過去投稿CSVを読み込むと、文量・テーマ・反応上位の型を投稿生成へ反映します。</div>
+              <label class="field-label" for="snsPatternCsvFile">過去投稿データ</label>
+              <input id="snsPatternCsvFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values">
+              <label class="field-label" for="snsCharacterRole">発信キャラクター・役割</label>
+              <textarea id="snsCharacterRole" class="brief-input" placeholder="例: 大人ガーリーを研究する等身大のファッション発信者"></textarea>
+              <label class="field-label" for="snsCharacterVoice">人柄・話し方</label>
+              <textarea id="snsCharacterVoice" class="brief-input" placeholder="例: 気取らない短文。煽らず、会話に入れる余白を残す"></textarea>
+              <label class="field-label" for="snsSafetyBoundary">公開・安全境界</label>
+              <textarea id="snsSafetyBoundary" class="brief-input" placeholder="例: 未確認の体験、住所、勤務日、家族情報を作らない"></textarea>
+              <label class="field-label" for="snsSceneTheme">投稿シーン・画像テーマ</label>
+              <textarea id="snsSceneTheme" class="brief-input" placeholder="例: 夕方の街で服と小物の配色を楽しむ一枚"></textarea>
+              <div class="generator-pair">
+                <div><label class="field-label" for="snsOutfit">服装</label><input id="snsOutfit" placeholder="例: 甘めきれいめな秋コーデ"></div>
+                <div><label class="field-label" for="snsHairStyle">髪型</label><input id="snsHairStyle" placeholder="例: やわらかな巻き髪"></div>
+              </div>
+              <div class="generator-pair">
+                <div><label class="field-label" for="snsPose">ポーズ</label><input id="snsPose" placeholder="例: バッグを持って自然に歩く"></div>
+                <div><label class="field-label" for="snsComposition">構図・視点</label><input id="snsComposition" placeholder="例: 少し引いた全身構図"></div>
+              </div>
+              <div class="generator-pair">
+                <div><label class="field-label" for="snsLighting">光・時間帯</label><input id="snsLighting" placeholder="例: 夕暮れの柔らかな逆光"></div>
+                <div><label class="field-label" for="snsVisualLocation">場所</label><input id="snsVisualLocation" placeholder="空欄なら世界都市くじを使用"></div>
+              </div>
+              <label class="field-label" for="snsThreadsImageCount">Threadsの画像枚数</label>
+              <select id="snsThreadsImageCount">
+                <option value="2">2枚</option>
+                <option value="3">3枚</option>
+                <option value="4" selected>4枚</option>
+                <option value="5">5枚</option>
+              </select>
+              <label class="field-label" for="snsCreativeExtra">画像への追加指定</label>
+              <textarea id="snsCreativeExtra" class="brief-input" placeholder="例: 人物、全身コーデ、手元、場所の順で見せる"></textarea>
                 </div>
               </details>
               <div class="sns-teacher-control sns-teacher-control-main">
@@ -1103,14 +1135,14 @@
                 <details class="sns-gemini-result-details" id="snsGeminiResultDetails">
                   <summary><span>AIの完成結果を戻す</span><small>画像と投稿文</small></summary>
                 <div class="sns-gemini-result-tools">
-                  <label class="field-label" for="snsGeneratedImage">完成画像を添付</label>
-                  <input id="snsGeneratedImage" type="file" accept="image/*">
+                  <label class="field-label" for="snsGeneratedImage">完成画像を添付（複数選択可）</label>
+                  <input id="snsGeneratedImage" type="file" accept="image/*" multiple>
                   <div class="sns-generated-image" id="snsGeneratedImagePreview" hidden></div>
                   <label class="field-label" for="snsGeminiResult">完成した投稿文を貼り付け</label>
                   <textarea id="snsGeminiResult" class="sns-gemini-result-output" spellcheck="false" placeholder="AIが作った投稿文をここへ貼り付けてください"></textarea>
                   <div class="button-row">
                     <button class="primary" id="applySocialGeminiCopy" type="button">完成稿へ反映</button>
-                    <button id="downloadSocialGeminiImage" type="button" disabled>画像を保存</button>
+                    <button id="downloadSocialGeminiImage" type="button" disabled>画像をまとめて保存</button>
                   </div>
                 </div>
                 </details>
@@ -1827,6 +1859,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=270"></script>
+    <script src="app.js?v=271"></script>
   </body>
 </html>

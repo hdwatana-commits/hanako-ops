@@ -316,6 +316,7 @@ let lastBalancedOverseasCity = "";
 let currentCoordinateHandwrittenPoints = new Map();
 let socialGeminiGeneratedImageDataUrl = "";
 let socialGeminiGeneratedImageExtension = "png";
+let socialGeminiGeneratedImages = [];
 let socialGeminiAwaitingReturn = false;
 let socialGeminiPromptNeedsRefresh = false;
 let selectedAiProvider = localStorage.getItem("hanako-ai-provider") === "chatgpt" ? "chatgpt" : "gemini";
@@ -819,6 +820,9 @@ function normalizeState(value) {
     drafts: Array.isArray(source.drafts) ? source.drafts : [],
     calendar: Array.isArray(source.calendar) ? source.calendar : [],
     metrics: Array.isArray(source.metrics) ? source.metrics : [],
+    socialPatternPosts: Array.isArray(source.socialPatternPosts) ? source.socialPatternPosts : [],
+    socialPatternAnalysis: source.socialPatternAnalysis && typeof source.socialPatternAnalysis === "object" ? source.socialPatternAnalysis : {},
+    socialCreativeProfile: source.socialCreativeProfile && typeof source.socialCreativeProfile === "object" ? source.socialCreativeProfile : {},
     roomQueue: Array.isArray(source.roomQueue) ? source.roomQueue : [],
     ownRoomUrl: typeof source.ownRoomUrl === "string" ? source.ownRoomUrl : "",
     ownRoomPostedItems: Array.isArray(source.ownRoomPostedItems) ? source.ownRoomPostedItems : [],
@@ -2889,6 +2893,177 @@ function bindForms() {
   });
 }
 
+const socialCreativeDefaults = {
+  characterRole: "大人ガーリーと甘めきれいめを研究する、等身大のファッション発信者",
+  characterVoice: "礼儀正しく親しみやすい短文。自慢や煽りを避け、読者が会話へ入れる余白を残す",
+  safetyBoundary: "未確認の購入・使用・旅行体験、住所、勤務日、移動経路、家族情報、効果や人気を事実として作らない",
+  sceneTheme: "",
+  outfit: "",
+  hairStyle: "",
+  pose: "",
+  composition: "",
+  lighting: "",
+  location: "",
+  threadsImageCount: 4,
+  extra: "",
+};
+
+function getSocialCreativeProfile() {
+  return { ...socialCreativeDefaults, ...(state.socialCreativeProfile || {}) };
+}
+
+function populateSocialPatternStudio() {
+  const profile = getSocialCreativeProfile();
+  const fields = {
+    snsCharacterRole: "characterRole",
+    snsCharacterVoice: "characterVoice",
+    snsSafetyBoundary: "safetyBoundary",
+    snsSceneTheme: "sceneTheme",
+    snsOutfit: "outfit",
+    snsHairStyle: "hairStyle",
+    snsPose: "pose",
+    snsComposition: "composition",
+    snsLighting: "lighting",
+    snsVisualLocation: "location",
+    snsThreadsImageCount: "threadsImageCount",
+    snsCreativeExtra: "extra",
+  };
+  Object.entries(fields).forEach(([id, key]) => {
+    const input = document.querySelector(`#${id}`);
+    if (input) input.value = profile[key] ?? "";
+  });
+  renderSocialPatternAnalysis();
+}
+
+function saveSocialCreativeProfile() {
+  const value = (id) => document.querySelector(`#${id}`)?.value.trim() || "";
+  state.socialCreativeProfile = {
+    characterRole: value("snsCharacterRole"),
+    characterVoice: value("snsCharacterVoice"),
+    safetyBoundary: value("snsSafetyBoundary"),
+    sceneTheme: value("snsSceneTheme"),
+    outfit: value("snsOutfit"),
+    hairStyle: value("snsHairStyle"),
+    pose: value("snsPose"),
+    composition: value("snsComposition"),
+    lighting: value("snsLighting"),
+    location: value("snsVisualLocation"),
+    threadsImageCount: Number(value("snsThreadsImageCount") || 4),
+    extra: value("snsCreativeExtra"),
+  };
+  saveState();
+  markSocialGeminiPromptStale();
+}
+
+function parseSocialDelimitedText(text) {
+  const delimiter = String(text || "").split("\n", 1)[0].includes("\t") ? "\t" : ",";
+  const rows = [];
+  let row = [];
+  let value = "";
+  let quoted = false;
+  const source = String(text || "").replace(/^\uFEFF/, "");
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === '"' && quoted && source[index + 1] === '"') {
+      value += '"';
+      index += 1;
+    } else if (char === '"') quoted = !quoted;
+    else if (char === delimiter && !quoted) {
+      row.push(value.trim());
+      value = "";
+    } else if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && source[index + 1] === "\n") index += 1;
+      row.push(value.trim());
+      if (row.some(Boolean)) rows.push(row);
+      row = [];
+      value = "";
+    } else value += char;
+  }
+  row.push(value.trim());
+  if (row.some(Boolean)) rows.push(row);
+  if (rows.length < 2) return [];
+  const headers = rows[0].map((item) => item.replace(/\s+/g, ""));
+  return rows.slice(1).map((items) => Object.fromEntries(headers.map((header, index) => [header, items[index] || ""])));
+}
+
+function analyzeSocialPatternPosts(posts) {
+  const countMap = (values) => values.filter(Boolean).reduce((map, item) => ((map[item] = (map[item] || 0) + 1), map), {});
+  const top = (map, limit = 5) => Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, limit);
+  const number = (value) => Number(String(value || 0).replace(/[,，]/g, "")) || 0;
+  const normalized = posts.map((post, index) => {
+    const body = post.本文 || post.body || "";
+    const reactions = number(post.いいね || post.likes) + number(post.コメント || post.comments) + number(post.リポスト || post.reposts) + number(post.シェア || post.shares);
+    return {
+      id: `${Date.now()}-${index}`,
+      platform: post.媒体 || post.platform || "未設定",
+      date: post.投稿日 || post.date || "",
+      body,
+      hashtags: post.ハッシュタグ || post.hashtags || "",
+      media: post.メディア種別 || post.media || "未設定",
+      url: post.投稿URL || post.url || "",
+      likes: number(post.いいね || post.likes),
+      comments: number(post.コメント || post.comments),
+      reposts: number(post.リポスト || post.reposts),
+      shares: number(post.シェア || post.shares),
+      theme: post.画像テーマ || post.theme || "その他",
+      memo: post.メモ || post.memo || "",
+      reactions,
+    };
+  }).filter((post) => post.body || post.theme);
+  const total = normalized.length || 1;
+  const emojiCount = normalized.reduce((sum, post) => sum + ((post.body.match(/\p{Extended_Pictographic}/gu) || []).length), 0);
+  const reactions = normalized.reduce((sum, post) => sum + post.reactions, 0);
+  const themes = top(countMap(normalized.flatMap((post) => post.theme.split(/[・、,/]/).map((item) => item.trim()))), 8);
+  const platforms = top(countMap(normalized.map((post) => post.platform)), 5);
+  const media = top(countMap(normalized.map((post) => post.media)), 5);
+  const topPosts = [...normalized].sort((a, b) => b.reactions - a.reactions).slice(0, 5);
+  return {
+    sampleSize: normalized.length,
+    averageLength: Math.round(normalized.reduce((sum, post) => sum + post.body.length, 0) / total),
+    averageEmoji: Math.round((emojiCount / total) * 10) / 10,
+    averageReactions: Math.round(reactions / total),
+    themes,
+    platforms,
+    media,
+    topPosts,
+    posts: normalized.slice(0, 500),
+  };
+}
+
+async function importSocialPatternCsv(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const rows = parseSocialDelimitedText(await file.text());
+  if (!rows.length) return showToast("投稿データを読み取れませんでした");
+  const analysis = analyzeSocialPatternPosts(rows);
+  state.socialPatternPosts = analysis.posts;
+  state.socialPatternAnalysis = { ...analysis, posts: undefined, importedAt: new Date().toISOString(), fileName: file.name };
+  saveState();
+  renderSocialPatternAnalysis();
+  markSocialGeminiPromptStale();
+  showToast(`${analysis.sampleSize}件の投稿パターンを分析しました`);
+}
+
+function renderSocialPatternAnalysis() {
+  const target = document.querySelector("#snsPatternAnalysisSummary");
+  if (!target) return;
+  const analysis = state.socialPatternAnalysis || {};
+  if (!analysis.sampleSize) {
+    target.textContent = "過去投稿CSVを読み込むと、文量・テーマ・反応上位の型を投稿生成へ反映します。";
+    return;
+  }
+  const themes = (analysis.themes || []).slice(0, 3).map(([name, count]) => `${name}(${count})`).join("、");
+  target.textContent = `${analysis.sampleSize}件を分析｜平均${analysis.averageLength}字｜平均反応${analysis.averageReactions}件｜上位テーマ ${themes || "未分類"}`;
+}
+
+function bindSocialPatternStudio() {
+  populateSocialPatternStudio();
+  document.querySelector("#snsPatternCsvFile")?.addEventListener("change", importSocialPatternCsv);
+  ["snsCharacterRole", "snsCharacterVoice", "snsSafetyBoundary", "snsSceneTheme", "snsOutfit", "snsHairStyle", "snsPose", "snsComposition", "snsLighting", "snsVisualLocation", "snsThreadsImageCount", "snsCreativeExtra"].forEach((id) => {
+    document.querySelector(`#${id}`)?.addEventListener("change", saveSocialCreativeProfile);
+  });
+}
+
 function bindActions() {
   profileText.addEventListener("input", saveState);
   bindInstallButton();
@@ -2919,6 +3094,7 @@ function bindActions() {
     applyRecommendedSnsDefaults(product);
   });
   bindSocialDirectProductImport();
+  bindSocialPatternStudio();
 
   document.querySelector("#audienceSelect")?.addEventListener("change", (event) => {
     event.currentTarget.dataset.socialAutoAudience = event.currentTarget.value === "auto" ? "true" : "false";
@@ -11102,6 +11278,8 @@ function getSocialGeminiPromptData(rerollLottery = true) {
   context.socialCity = socialCityOption?.[0] || "パリ";
   context.socialLandmark = socialCityOption?.[1] || "エッフェル塔";
   context.socialLocationStamp = `${context.socialCity} / ${context.socialLandmark}`;
+  context.creativeProfile = getSocialCreativeProfile();
+  context.patternAnalysis = state.socialPatternAnalysis || {};
   const selectedLabel = (selector) => {
     const select = document.querySelector(selector);
     return select?.selectedOptions?.[0]?.textContent?.trim() || "自動";
@@ -11145,7 +11323,17 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
   const productUseDirective = buildSocialProductUseDirective(c, labels);
   const productCountDirective = buildSocialProductCountDirective(c, labels);
   const readabilityDirective = buildSocialReadabilityEmojiDirective(c, labels);
+  const creativeDirective = buildSocialCreativeDirective(c);
+  const performanceDirective = buildSocialPerformanceDirective(c);
   const worldLocationDirective = buildSocialWorldLocationDirective(c);
+  const imageCount = c.platform === "Threads" ? Math.max(2, Math.min(5, Number(c.creativeProfile?.threadsImageCount || 4))) : 1;
+  const threadImageRoles = [
+    "1枚目: 投稿の感情と主役商品が一目で伝わるメイン画像",
+    "2枚目: 主役商品を身につけた全身コーデまたは全景",
+    "3枚目: 素材、手元、小物、商品の特徴が分かる寄り",
+    "4枚目: 選ばれた世界都市の空気と人物または商品がつながる情景",
+    "5枚目: 投稿の余韻を残す別アングル。新しい商品や別人は追加しない",
+  ].slice(0, imageCount).join("\n");
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -11157,7 +11345,7 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
     .join("\n") || "なし";
   const visualByPlatform = {
     Instagram: `縦4:5（1080×1350px）の保存したくなる投稿画像を1枚作る。主役商品を大きく見せ、指定済みの表紙見出し、短いポイント3つ、手書き風の矢印や囲みを上品に配置する。`,
-    Threads: `縦4:5（1080×1350px）の自然なライフスタイル画像を1枚作る。日常の一場面らしい親しみと共感を優先し、文字は短いひと言と手書きポイント2つまでにする。`,
+    Threads: `縦4:5（1080×1350px）の自然なライフスタイル画像を${imageCount}枚作る。すべて同じ人物、商品、服装、都市、色調を保つ。コラージュやコンタクトシートではなく、投稿へ順番に添付できる${imageCount}個の独立した完成画像として連続生成する。\n${threadImageRoles}`,
     X: `横16:9（1600×900px）の一目で内容が分かる情報画像を1枚作る。比較・ランキング・速報・チェック項目が3秒で読める構成にし、見出しは短く強くする。`,
   }[c.platform];
   const topicInstruction = c.isTravel
@@ -11185,12 +11373,14 @@ function buildSocialGeminiImagePrompt({ context: c, labels, currentDraft, includ
 ・吹き出しと先生を商品、人物、重要な文字へ重ねず、本文の最後まで枠内へ収める
 ・${c.platform === "X" ? "横長画像でも先生と吹き出しを左下の安全域へまとめ、比較情報を隠さない" : "縦長画像の下端から8%以上離し、先生と吹き出しを縦に並べる"}` : `【ハナコ先生】
 ・今回は先生アイコンと吹き出しを入れない`;
-  return `これは${c.platform}投稿用の「画像＋投稿文」作成依頼です。文章だけで回答して終わらせず、添付した参照画像ボード1枚を使って、必ず完成画像1枚と完成投稿文1案の両方を作ってください。
+  return `これは${c.platform}投稿用の「画像＋投稿文」作成依頼です。文章だけで回答して終わらせず、添付した参照画像ボード1枚を使って、必ず完成画像${imageCount}枚と完成投稿文1案の両方を作ってください。
 
 【必ず作るもの】
-1. ${c.platform}用の完成画像を1枚生成する
+1. ${c.platform}用の完成画像を${imageCount}枚生成する
 2. その画像と同じ切り口で使える${c.platform}投稿文を1案作る
 ・画像生成が先、投稿文が後。画像を作れないという回答だけで終わらない
+・画像が2枚以上の時は、1枚のコラージュ、分割画面、一覧、コンタクトシートにまとめず、個別の完成画像を${imageCount}枚返す
+・指定枚数を減らさない。各画像は単独保存できる解像度で、順番が分かるよう回答内で並べる
 ・投稿文は画像内の見出しや3ポイントと矛盾させない
 ・画像生成後の説明、制作意図、プロンプト解説は不要。完成画像と完成投稿文だけを返す
 
@@ -11218,6 +11408,10 @@ ${topicInstruction}
 ${tryOnInstruction}
 
 ${worldLocationDirective}
+
+${creativeDirective}
+
+${performanceDirective}
 
 【複数商品を使う場合のルール】
 ${productUseDirective}
@@ -11311,7 +11505,7 @@ ${supportingProducts}
 ・確認できない効果、使用感、売上、人気、順位を作らない
 ・実物の商品や施設を別物へ変えない
 
-完成画像1枚と完成投稿文1案だけを出力してください。説明文、制作意図、プロンプト、別案、採点は返さないでください。`;
+完成画像${imageCount}枚と完成投稿文1案だけを出力してください。説明文、制作意図、プロンプト、別案、採点は返さないでください。`;
 }
 
 function buildSocialWorldLocationDirective(context) {
@@ -11330,6 +11524,41 @@ ${travelSafety}
 ・画像の右下、安全域の内側へ「${stamp}」と一字一句そのまま小さく上品に入れる
 ・場所表記は濃いブラウンまたは白で十分なコントラストを確保し、背景帯や大きなカードを付けない
 ・場所表記に「mood」「イメージ」「撮影地」などを足さず、別の都市名、英語だけの表記、略称へ変えない`;
+}
+
+function buildSocialCreativeDirective(context) {
+  const profile = { ...socialCreativeDefaults, ...(context.creativeProfile || {}) };
+  const location = profile.location || `${context.socialCity}・${context.socialLandmark}`;
+  return `【発信キャラクターと制作設計】
+・公開上の役割: ${profile.characterRole}
+・人柄・話し方: ${profile.characterVoice}
+・公開・安全境界: ${profile.safetyBoundary}
+・投稿シーン・テーマ: ${profile.sceneTheme || context.brief || "選択した商品と切り口から自然に設計"}
+・服装: ${profile.outfit || "主役商品を中心に大人ガーリーで甘めきれいめに整える"}
+・髪型: ${profile.hairStyle || "PERSON欄の本人らしさを保ち、場面に合う自然な髪型"}
+・ポーズ: ${profile.pose || "商品と場面が自然に伝わる無理のない動作"}
+・構図・視点: ${profile.composition || "人物と商品が見やすく、背景にも奥行きがある構図"}
+・光・時間帯: ${profile.lighting || "選択された都市と場面に合う自然な光"}
+・場所: ${location}
+・追加指定: ${profile.extra || "なし"}
+・未確認の実体験や個人情報は補完せず、創作の情景は投稿文で事実として断定しない`;
+}
+
+function buildSocialPerformanceDirective(context) {
+  const analysis = context.patternAnalysis || {};
+  if (!analysis.sampleSize) return "【過去投稿分析】\n・分析データ未登録。媒体の標準構成と今回の条件を優先する";
+  const list = (items) => (items || []).map(([name, count]) => `${name}(${count})`).join("、") || "未分類";
+  const topPosts = (analysis.topPosts || []).slice(0, 3).map((post, index) => `${index + 1}. ${post.platform} / ${post.theme} / 反応${post.reactions} / 本文${post.body.length}字`).join("\n");
+  return `【過去投稿分析・構造だけを利用】
+・分析件数: ${analysis.sampleSize}件
+・媒体構成: ${list(analysis.platforms)}
+・頻出テーマ: ${list(analysis.themes)}
+・メディア構成: ${list(analysis.media)}
+・平均本文: ${analysis.averageLength}字 / 平均絵文字: ${analysis.averageEmoji}個 / 平均可視反応: ${analysis.averageReactions}件
+・反応上位の構造:
+${topPosts || "なし"}
+・元投稿の本文、固有フレーズ、人物設定、店名、出来事をコピー・言い換え・補完しない。文量、テーマ、媒体適合、反応シグナルだけを成功仮説として使う
+・分析対象にない媒体の実績があるように断定しない`;
 }
 
 function resolvePublicTeacherReference(teacher) {
@@ -12042,6 +12271,8 @@ function buildSocialGeminiCopyPrompt({ context: c, labels, currentDraft }) {
   const productUseDirective = buildSocialProductUseDirective(c, labels);
   const productCountDirective = buildSocialProductCountDirective(c, labels);
   const readabilityDirective = buildSocialReadabilityEmojiDirective(c, labels);
+  const creativeDirective = buildSocialCreativeDirective(c);
+  const performanceDirective = buildSocialPerformanceDirective(c);
   const supportingProducts = c.products
     .slice(1)
     .filter((item) => (item.category === "ホテル・旅行") === c.isTravel)
@@ -12067,6 +12298,10 @@ ${strategyDirective}
 ${copyStructureDirective}
 
 ${readabilityDirective}
+
+${creativeDirective}
+
+${performanceDirective}
 
 ${platformBlueprint}
 
@@ -12196,25 +12431,31 @@ function handleSocialGeminiReturn() {
 }
 
 async function previewSocialGeminiImage(event) {
-  const file = event.target.files?.[0];
+  const files = [...(event.target.files || [])].slice(0, 5);
   const preview = document.querySelector("#snsGeneratedImagePreview");
   const downloadButton = document.querySelector("#downloadSocialGeminiImage");
-  if (!file) {
+  if (!files.length) {
     socialGeminiGeneratedImageDataUrl = "";
+    socialGeminiGeneratedImages = [];
     preview.hidden = true;
     preview.innerHTML = "";
     downloadButton.disabled = true;
     return;
   }
-  socialGeminiGeneratedImageDataUrl = await readOriginalFileAsDataUrl(file);
-  socialGeminiGeneratedImageExtension = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
+  socialGeminiGeneratedImages = await Promise.all(files.map(async (file, index) => ({
+    dataUrl: await readOriginalFileAsDataUrl(file),
+    extension: file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg",
+    index: index + 1,
+  })));
+  socialGeminiGeneratedImageDataUrl = socialGeminiGeneratedImages[0].dataUrl;
+  socialGeminiGeneratedImageExtension = socialGeminiGeneratedImages[0].extension;
   preview.hidden = false;
-  preview.innerHTML = `<img src="${socialGeminiGeneratedImageDataUrl}" alt="AIで作った${escapeHtml(activePlatform)}投稿画像">`;
+  preview.innerHTML = socialGeminiGeneratedImages.map((image) => `<figure><img src="${image.dataUrl}" alt="AIで作った${escapeHtml(activePlatform)}投稿画像 ${image.index}枚目"><figcaption>${image.index}枚目</figcaption></figure>`).join("");
   downloadButton.disabled = false;
   document.querySelector("#snsGeminiResultDetails").open = true;
-  setSocialGeminiStatus("完成画像あり");
+  setSocialGeminiStatus(`完成画像${socialGeminiGeneratedImages.length}枚`);
   renderSocialGeminiProgress();
-  showToast("完成画像を読み込みました");
+  showToast(`完成画像${socialGeminiGeneratedImages.length}枚を読み込みました`);
 }
 
 function applySocialGeminiCopy() {
@@ -12232,11 +12473,20 @@ function applySocialGeminiCopy() {
 }
 
 function downloadSocialGeminiImage() {
-  if (!socialGeminiGeneratedImageDataUrl) return showToast("先に完成画像を添付してください");
-  const link = document.createElement("a");
-  link.href = socialGeminiGeneratedImageDataUrl;
-  link.download = `hanako-${activePlatform.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.${socialGeminiGeneratedImageExtension}`;
-  link.click();
+  const images = socialGeminiGeneratedImages.length
+    ? socialGeminiGeneratedImages
+    : socialGeminiGeneratedImageDataUrl
+      ? [{ dataUrl: socialGeminiGeneratedImageDataUrl, extension: socialGeminiGeneratedImageExtension, index: 1 }]
+      : [];
+  if (!images.length) return showToast("先に完成画像を添付してください");
+  const date = new Date().toISOString().slice(0, 10);
+  images.forEach((image) => {
+    const link = document.createElement("a");
+    link.href = image.dataUrl;
+    link.download = `hanako-${activePlatform.toLowerCase()}-${date}-${String(image.index).padStart(2, "0")}.${image.extension}`;
+    link.click();
+  });
+  showToast(`${images.length}枚の画像を保存しました`);
 }
 
 function markSocialGeminiPromptStale(event) {
@@ -12254,7 +12504,7 @@ function renderSocialGeminiProgress() {
   const product = state.products.find((item) => item.id === selectedProduct?.value) || state.products[0];
   const hasProduct = Boolean(product);
   const hasPrompt = Boolean(snsGeminiPrompt?.value.trim() && snsGeminiCopyPrompt?.value.trim()) && !socialGeminiPromptNeedsRefresh;
-  const hasReturnedResult = Boolean(socialGeminiGeneratedImageDataUrl || document.querySelector("#snsGeminiResult")?.value.trim());
+  const hasReturnedResult = Boolean(socialGeminiGeneratedImages.length || socialGeminiGeneratedImageDataUrl || document.querySelector("#snsGeminiResult")?.value.trim());
   const steps = {
     product: hasProduct,
     create: hasPrompt,
