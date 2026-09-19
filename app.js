@@ -2917,7 +2917,33 @@ const socialCreativeDefaults = {
   carouselPreset: "story",
   selectedConcept: "",
   hanakoMode: true,
+  hanakoExpression: "bashful",
 };
+
+const hanakoExpressionOptions = {
+  bashful: { label: "少し恥じらう「はにかみ笑顔」", prompt: "視線を一度下に落とし、照れくさそうにふっと笑ってから視線を合わせる。控えめでピュアな、自然なはにかみ笑顔" },
+  bigsmile: { label: "クシャッとした満面の笑み", prompt: "目が自然に細くなるほど思い切り笑う、飾らず安心感のある満面の笑み" },
+  upward: { label: "さりげない上目遣い", prompt: "あごを少し引き、首をわずかに傾けて自然に見上げる。瞳が柔らかく見える控えめな上目遣い" },
+  straw: { label: "ストローをくわえた口元", prompt: "飲み物を飲む流れでストローを自然にくわえた、わざとらしくない軽いアヒル口" },
+  wink: { label: "少し不器用なウインク", prompt: "完璧に作り込まず、少し照れながら片目を閉じる、愛嬌のある不器用なウインク" },
+  tehepero: { label: "失敗したときの「てへぺろ」", prompt: "軽く舌先を見せておどける、明るくコミカルで親しみやすい表情。舌を過度に強調しない" },
+  eating: { label: "幸せそうに頬張る顔", prompt: "おいしいものを自然に頬張り、喜びでぱっと明るくなる無邪気な表情" },
+  blank: { label: "少し口が開いた「ぽかん」顔", prompt: "驚きや気の抜けた瞬間に唇が少しだけ開いた、リラックスした柔らかい表情" },
+  sleepy: { label: "眠そうなトロンとした目", prompt: "安心してくつろぎ、まぶたが少し下がった眠そうな目。疲労や不健康さではなく穏やかなリラックス感" },
+  sideglance: { label: "伏し目からの流し目", prompt: "一度視線を落としてから静かに横へ視線を向ける、知的で落ち着いた表情。過度に誘惑的にしない" },
+  subtlesmile: { label: "口角だけを上げた余裕のある微笑み", prompt: "歯を見せず口角をわずかに上げ、優しく見つめる上品で洗練された微笑み" },
+};
+
+function renderHanakoExpressionControl() {
+  const profile = getSocialCreativeProfile();
+  const control = document.querySelector("#snsHanakoExpressionControl");
+  const select = document.querySelector("#snsHanakoExpression");
+  const hint = document.querySelector("#snsHanakoExpressionHint");
+  if (control) control.hidden = !profile.hanakoMode;
+  if (select && select.value !== profile.hanakoExpression) select.value = profile.hanakoExpression || "bashful";
+  const expression = hanakoExpressionOptions[select?.value || profile.hanakoExpression] || hanakoExpressionOptions.bashful;
+  if (hint) hint.textContent = `${expression.prompt}。`;
+}
 
 const hanakoThreadsProfile = {
   handle: "@hanako47258",
@@ -3025,6 +3051,7 @@ function toggleHanakoPostMode(enabled, notify = true) {
     renderAngleOptions();
   }
   saveSocialCreativeProfile();
+  renderHanakoExpressionControl();
   renderSocialConcepts();
   if (notify) showToast(enabled ? "ハナ投稿モードを有効にしました" : "通常のSNS投稿モードに戻しました");
 }
@@ -3056,6 +3083,7 @@ function populateSocialPatternStudio() {
     snsLightingPreset: "lightingPreset",
     snsLocationPreset: "locationPreset",
     snsCarouselPreset: "carouselPreset",
+    snsHanakoExpression: "hanakoExpression",
   };
   Object.entries(fields).forEach(([id, key]) => {
     const input = document.querySelector(`#${id}`);
@@ -3063,6 +3091,7 @@ function populateSocialPatternStudio() {
   });
   const hanakoMode = document.querySelector("#snsHanakoMode");
   if (hanakoMode) hanakoMode.checked = Boolean(profile.hanakoMode);
+  renderHanakoExpressionControl();
   renderSocialPatternAnalysis();
   renderSocialConcepts();
   const concept = socialConceptCatalog.find((item) => item.id === profile.selectedConcept);
@@ -3095,6 +3124,7 @@ function saveSocialCreativeProfile() {
     carouselPreset: value("snsCarouselPreset") || "story",
     selectedConcept: getSocialCreativeProfile().selectedConcept || "",
     hanakoMode: Boolean(document.querySelector("#snsHanakoMode")?.checked),
+    hanakoExpression: value("snsHanakoExpression") || "bashful",
   };
   saveState();
   markSocialGeminiPromptStale();
@@ -3234,11 +3264,12 @@ function renderSocialPatternAnalysis() {
 function bindSocialPatternStudio() {
   populateSocialPatternStudio();
   document.querySelector("#snsPatternCsvFile")?.addEventListener("change", importSocialPatternCsv);
-  ["snsCharacterRole", "snsCharacterVoice", "snsSafetyBoundary", "snsSceneTheme", "snsOutfit", "snsHairStyle", "snsPose", "snsComposition", "snsLighting", "snsVisualLocation", "snsThreadsImageCount", "snsCreativeExtra", "snsScenePreset", "snsOutfitPreset", "snsHairPreset", "snsPosePreset", "snsCompositionPreset", "snsLightingPreset", "snsLocationPreset", "snsCarouselPreset"].forEach((id) => {
+  ["snsCharacterRole", "snsCharacterVoice", "snsSafetyBoundary", "snsSceneTheme", "snsOutfit", "snsHairStyle", "snsPose", "snsComposition", "snsLighting", "snsVisualLocation", "snsThreadsImageCount", "snsCreativeExtra", "snsScenePreset", "snsOutfitPreset", "snsHairPreset", "snsPosePreset", "snsCompositionPreset", "snsLightingPreset", "snsLocationPreset", "snsCarouselPreset", "snsHanakoExpression"].forEach((id) => {
     document.querySelector(`#${id}`)?.addEventListener("change", saveSocialCreativeProfile);
   });
   document.querySelector("#refreshSnsConcepts")?.addEventListener("click", () => renderSocialConcepts(true));
   document.querySelector("#snsHanakoMode")?.addEventListener("change", (event) => toggleHanakoPostMode(event.currentTarget.checked));
+  document.querySelector("#snsHanakoExpression")?.addEventListener("change", renderHanakoExpressionControl);
   document.querySelector("#downloadHanakoCsvTemplate")?.addEventListener("click", downloadHanakoCsvTemplate);
 }
 
@@ -11722,6 +11753,7 @@ function buildSocialCreativeDirective(context) {
   const preset = (group, key, fallback) => labels[group]?.[key] || fallback;
   const location = profile.location || (profile.locationPreset === "world" ? `${context.socialCity}・${context.socialLandmark}` : preset("location", profile.locationPreset, `${context.socialCity}・${context.socialLandmark}`));
   const concept = socialConceptCatalog.find((item) => item.id === profile.selectedConcept);
+  const hanakoExpression = hanakoExpressionOptions[profile.hanakoExpression] || hanakoExpressionOptions.bashful;
   const hanakoDirective = profile.hanakoMode ? `
 【ハナ投稿モード｜${hanakoThreadsProfile.handle}】
 ・アカウントの核: 日常の小さな発見と好きなもの。${hanakoThreadsProfile.themes}
@@ -11733,6 +11765,8 @@ function buildSocialCreativeDirective(context) {
 ・商品名やROOM誘導は本文の主役にせず、必要な時だけ最後に「愛用品はROOMにそっと」の距離感で添える
 ・画像は自然なスナップ写真の空気。本人・コーデ・手元・風景の順で変化をつけ、同じ構図を複製しない
 ・ビジュアル方針: ${hanakoThreadsProfile.visualStyle}
+・選択した表情: ${hanakoExpression.label}。${hanakoExpression.prompt}
+・選択した表情は人物が主役のカットで最も明確に見せる。全画像を同じ顔に固定せず、ほかのカットはその感情につながる自然な表情変化にする
 ・甘めきれいめ、柔らかい自然光、生活の途中を切り取った表情。過度な広告バナー、情報カード、派手な比較レイアウトは使わない
 ・Threadsは4枚を基本に、1枚目は感情が伝わる主役写真、2枚目は全身または場面、3枚目は小物や手元、4枚目は余韻のある風景にする
 ・スプレッドシートの分析${hanakoThreadsProfile.sheetSampleSize}件と、最新20件CSVを取り込んだ場合はその新しい統計を優先する。既存投稿の文章をコピーせず、世界観と構造だけを再現する` : "";
