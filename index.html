@@ -751,6 +751,7 @@
               <div class="panel-heading">
                 <h3>素材</h3>
               </div>
+              <label class="sns-hanako-mode sns-hanako-mode-primary"><input id="snsHanakoMode" type="checkbox" checked><span><strong>ハナ投稿モード（標準）</strong><small>八百屋・夜のピアノ・つけ麺・ファッション・旅の世界観でThreads投稿を作成</small></span></label>
               <label class="field-label">商品</label>
               <div class="coord-url-import social-url-import">
                 <label class="field-label" for="socialProductUrl">楽天ROOM / 楽天市場の商品URLから直接作成</label>
@@ -766,8 +767,8 @@
               <select id="selectedProduct"></select>
               <label class="field-label">投稿先</label>
               <div class="segmented" id="platformTabs">
-                <button class="active" data-platform="Instagram">Instagram</button>
-                <button data-platform="Threads">Threads</button>
+                <button data-platform="Instagram">Instagram</button>
+                <button class="active" data-platform="Threads">Threads</button>
                 <button data-platform="X">X</button>
               </div>
               <label class="field-label">切り口 / 投稿型</label>
@@ -905,7 +906,6 @@
                   </div>
                   <button id="refreshSnsConcepts" type="button">おすすめを更新</button>
                 </div>
-                <label class="sns-hanako-mode"><input id="snsHanakoMode" type="checkbox"><span><strong>ハナ投稿モード</strong><small>@hanako47258の短い日常メモ・会話型Threadsへ自動調整</small></span></label>
                 <div class="sns-concept-cards" id="snsConceptCards" aria-live="polite"></div>
                 <div class="sns-selected-concept" id="snsSelectedConcept">おすすめ案を選ぶと、下の画像・文章設計へ反映します。</div>
               </section>
@@ -1879,6 +1879,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=274"></script>
+    <script src="app.js?v=275"></script>
   </body>
 </html>

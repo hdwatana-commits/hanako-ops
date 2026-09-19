@@ -243,7 +243,7 @@ const avatarThemes = {
   ribbonresort: { avatar: "icons/hanako-avatar-ribbonresort.png", icon: "icons/hanako-avatar-ribbonresort.png", manifest: "manifest-ribbonresort.webmanifest", label: "リボンリゾート水着" },
   marineswim: { avatar: "icons/hanako-avatar-marineswim.png", icon: "icons/hanako-avatar-marineswim.png", manifest: "manifest-marineswim.webmanifest", label: "マリン水着" },
 };
-let activePlatform = "Instagram";
+let activePlatform = "Threads";
 let lastGenerated = "";
 let lastGenerationContext = null;
 let generationVariant = 0;
@@ -509,6 +509,7 @@ function initialize() {
   renderOwnRoomPostedPanel();
   renderProductOptions();
   restoreGeneratorPreferences();
+  initializeHanakoDefaultMode();
   renderRoomProductOptions();
   renderCoordinateOptions();
   renderCoordinatePhotoLibrary();
@@ -2894,9 +2895,9 @@ function bindForms() {
 }
 
 const socialCreativeDefaults = {
-  characterRole: "大人ガーリーと甘めきれいめを研究する、等身大のファッション発信者",
-  characterVoice: "礼儀正しく親しみやすい短文。自慢や煽りを避け、読者が会話へ入れる余白を残す",
-  safetyBoundary: "未確認の購入・使用・旅行体験、住所、勤務日、移動経路、家族情報、効果や人気を事実として作らない",
+  characterRole: "昼は家業の八百屋を手伝い、夜はバーでピアノを弾く。海外旅行とつけ麺とファッションが好きなライフスタイルクリエイター",
+  characterVoice: "明るく親しみやすく、無理に背伸びをしない。気取らない短文と心地よい改行で、食・音楽・服の楽しさを自然に伝え、自慢や煽りを避けて会話の余白を残す",
+  safetyBoundary: "店名、正確な住所、営業時間、勤務日、移動ルート、家族の個人情報を補完・公開しない。未確認の職業、居住地、交友関係、旅行、恋愛、購入、実績を事実として作らず、AI画像や創作の情景は必要に応じて明示する",
   sceneTheme: "",
   outfit: "",
   hairStyle: "",
@@ -2915,17 +2916,43 @@ const socialCreativeDefaults = {
   locationPreset: "world",
   carouselPreset: "story",
   selectedConcept: "",
-  hanakoMode: false,
+  hanakoMode: true,
 };
 
 const hanakoThreadsProfile = {
   handle: "@hanako47258",
   displayName: "ハナ｜着回しと日々のメモ",
   verifiedSampleSize: 4,
-  targetLength: "18〜55文字",
-  voice: "飾りすぎない日常会話。やわらかく、少し照れや遊びを残す。説明より今の気分を先に置く",
-  themes: "甘めきれいめの着回し、気分で選ぶ小物、おでかけ、家での小さな出来事、音楽や季節のひとこと",
+  sheetSampleSize: 23,
+  targetLength: "23〜43文字（平均32字）",
+  voice: "短い感情・宣言や時間・近況から始める。気取らない短文と心地よい改行で、余韻、絵文字、軽いユーモアのいずれかで柔らかく締める",
+  themes: "つけ麺、旬の野菜、家業の八百屋、夜のピアノ、バーの空気、ファッション、街歩き、気分を整える時間、海外旅行、秘境",
+  audience: "食・音楽・ファッションのある日常を楽しみ、自分らしい時間を大切にしたい人",
+  visualStyle: "都会的で清潔感のあるライフスタイル写真。ネイビー、黒、白、生成り、深いグリーンを基調に、旬の野菜の色、バーの間接照明、ピアノの質感、海外旅行や洗練されたファッションを自然に組み合わせる",
 };
+
+function initializeHanakoDefaultMode() {
+  if (state.hanakoDefaultVersion === 1) return;
+  state.hanakoDefaultVersion = 1;
+  state.socialCreativeProfile = {
+    ...getSocialCreativeProfile(),
+    characterRole: socialCreativeDefaults.characterRole,
+    characterVoice: socialCreativeDefaults.characterVoice,
+    safetyBoundary: socialCreativeDefaults.safetyBoundary,
+    hanakoMode: true,
+  };
+  const currentValues = state.generatorSettings?.values || {};
+  state.generatorSettings = {
+    platform: "Threads",
+    values: { ...currentValues, goalSelect: "reply", hookSelect: "auto", viralPatternSelect: "scenestory", toneSelect: "natural" },
+  };
+  activePlatform = "Threads";
+  const checkbox = document.querySelector("#snsHanakoMode");
+  if (checkbox) checkbox.checked = true;
+  saveState();
+  restoreGeneratorPreferences();
+  populateSocialPatternStudio();
+}
 
 const socialConceptCatalog = [
   { id: "observation", type: "観察メモ", title: "使う場面から見えた小さな発見", reason: "商品を一つの主役として、細部や使いどころを等身大に伝えます。", pattern: "observation", scene: "trend", pose: "detail", composition: "detail", carousel: "review" },
@@ -2985,10 +3012,10 @@ function toggleHanakoPostMode(enabled, notify = true) {
     document.querySelectorAll("#platformTabs button").forEach((button) => button.classList.toggle("active", button.dataset.platform === "Threads"));
     const setValue = (id, value) => { const input = document.querySelector(`#${id}`); if (input && [...(input.options || [])].some((option) => option.value === value)) input.value = value; };
     setValue("goalSelect", "reply");
-    setValue("hookSelect", "question");
+    setValue("hookSelect", "auto");
     setValue("viralPatternSelect", "scenestory");
     setValue("toneSelect", "natural");
-    setValue("snsScenePreset", "cafe");
+    setValue("snsScenePreset", "auto");
     setValue("snsPosePreset", "walk");
     setValue("snsCompositionPreset", "sequence");
     setValue("snsLightingPreset", "golden");
@@ -11697,16 +11724,18 @@ function buildSocialCreativeDirective(context) {
   const concept = socialConceptCatalog.find((item) => item.id === profile.selectedConcept);
   const hanakoDirective = profile.hanakoMode ? `
 【ハナ投稿モード｜${hanakoThreadsProfile.handle}】
-・アカウントの核: 服と日常の小さな「好き」。${hanakoThreadsProfile.themes}
+・アカウントの核: 日常の小さな発見と好きなもの。${hanakoThreadsProfile.themes}
+・届けたい相手: ${hanakoThreadsProfile.audience}
 ・本文は${hanakoThreadsProfile.targetLength}を目安に1〜3行。${hanakoThreadsProfile.voice}
 ・最初の1行に、その瞬間の気分・音・季節・小さな出来事のどれかを置く
-・絵文字は気持ちに合うものを1〜3個。ハッシュタグ、長い前置き、説明過多、広告調のCTAは避ける
+・絵文字は平均1個を目安に0〜2個。ハッシュタグ、長い前置き、説明過多、広告調のCTAは避ける
 ・返信を増やす時は「今日は何して過ごす？」「どっちが好き？」のように、1秒で答えられる質問を最後に一つだけ置く。毎投稿を二択にはしない
 ・商品名やROOM誘導は本文の主役にせず、必要な時だけ最後に「愛用品はROOMにそっと」の距離感で添える
 ・画像は自然なスナップ写真の空気。本人・コーデ・手元・風景の順で変化をつけ、同じ構図を複製しない
+・ビジュアル方針: ${hanakoThreadsProfile.visualStyle}
 ・甘めきれいめ、柔らかい自然光、生活の途中を切り取った表情。過度な広告バナー、情報カード、派手な比較レイアウトは使わない
 ・Threadsは4枚を基本に、1枚目は感情が伝わる主役写真、2枚目は全身または場面、3枚目は小物や手元、4枚目は余韻のある風景にする
-・公開表示で確認できた直近${hanakoThreadsProfile.verifiedSampleSize}件と、取り込み済みの過去投稿分析があればその統計を使う。既存投稿の文章をコピーせず、世界観と構造だけを再現する` : "";
+・スプレッドシートの分析${hanakoThreadsProfile.sheetSampleSize}件と、最新20件CSVを取り込んだ場合はその新しい統計を優先する。既存投稿の文章をコピーせず、世界観と構造だけを再現する` : "";
   return `【発信キャラクターと制作設計】
 ・公開上の役割: ${profile.characterRole}
 ・人柄・話し方: ${profile.characterVoice}
