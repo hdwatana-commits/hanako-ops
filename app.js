@@ -476,6 +476,16 @@ function enhanceCoordinateSelectOptions() {
       existing.add(value);
     });
   });
+  const poseSelect = document.querySelector("#snsPosePreset");
+  if (poseSelect && ![...poseSelect.options].some((option) => option.value === "highKick")) {
+    const actionGroup = document.createElement("optgroup");
+    actionGroup.label = "アクション";
+    actionGroup.innerHTML = '<option value="highKick">ハイキックのポーズ</option><option value="spiderHero">スパイダーマン風ヒーロー着地ポーズ</option>';
+    poseSelect.insertBefore(actionGroup, poseSelect.querySelector("optgroup"));
+    const savedPose = getSocialCreativeProfile().posePreset;
+    if ([...poseSelect.options].some((option) => option.value === savedPose)) poseSelect.value = savedPose;
+    renderHanakoGasSettings();
+  }
 }
 
 queueMicrotask(initialize);
@@ -12078,8 +12088,11 @@ function buildSocialCreativeDirective(context) {
     dateShirtDress: "清潔感のある襟付きシャツワンピースと細いベルト。膝下丈で上品にまとめる",
     dateMermaid: "柔らかなブラウスと、身体のラインを強調しすぎないマーメイドスカート",
     dateLace: "透けを抑えた繊細なレースブラウスと上品な膝下スカート。小ぶりなアクセサリーを合わせる",
+    fittedRecruitSuit: "成人女性向けの身体に沿う細身のリクルートスーツ。黒またはネイビーのコンパクトなジャケット、白ブラウス、膝丈タイトスカート。生地が食い込むほど過度に小さくしない",
   });
   Object.assign(labels.pose, {
+    highKick: "成人女性の全身を収めた、バランスの良いダイナミックなハイキック。軸足と関節を自然にし、スカートの場合はインナーパンツまたはタイツで下着が見えない構成にする",
+    spiderHero: "成人女性が片膝を深く曲げ、片手を床へ添え、もう片腕を後方へ伸ばすスパイダーマン風の低いヒーロー着地ポーズ。手足を自然な数と形に保つ",
     stairs: "安全な階段を上りながら、片手を手すりに添えて自然に振り返る",
     stairsSitSide: "幅の広い安全な階段に横向きで座り、膝と足元を自然にそろえてカメラを見る",
     stairsPause: "階段の踊り場で立ち止まり、片手を手すりへ軽く添えて余裕のある表情を見せる",
