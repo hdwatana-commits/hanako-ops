@@ -300,6 +300,8 @@ let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
 const coordinatePhotoPreviewCache = new Map();
 const COORDINATE_PHOTO_CACHE = "hanako-private-photo-previews-v1";
+const PRIVATE_MEDIA_DB = "hanako-private-media-v1";
+const PRIVATE_MEDIA_STORE = "assets";
 let coordinatePhotoPreviewHydrating = false;
 let coordinateBoardDataUrl = "";
 let coordinateBoardHasPerson = false;
@@ -727,10 +729,12 @@ async function resetCustomBrandAssets() {
 }
 
 async function persistCustomBrandAsset(kind, dataUrl) {
-  if (!("caches" in window) || !dataUrl) return;
+  if (!dataUrl) return;
+  const file = dataUrlToFile(dataUrl, `custom-${kind}.jpg`);
+  await writePrivateMediaAsset(`brand:${kind}`, file);
+  if (!("caches" in window)) return;
   try {
     const cache = await caches.open(COORDINATE_PHOTO_CACHE);
-    const file = dataUrlToFile(dataUrl, `custom-${kind}.jpg`);
     await cache.put(new URL(`./__brand_asset__/${kind}`, location.href).href, new Response(file, { headers: { "Content-Type": file.type || "image/jpeg" } }));
   } catch {
     // localStorage側の画像はそのまま利用する。
@@ -738,24 +742,29 @@ async function persistCustomBrandAsset(kind, dataUrl) {
 }
 
 async function restorePersistedCustomBrandAssets() {
-  if (!("caches" in window)) return;
   try {
-    const cache = await caches.open(COORDINATE_PHOTO_CACHE);
-    const [avatarResponse, coverResponse] = await Promise.all([
-      cache.match(new URL("./__brand_asset__/avatar", location.href).href),
-      cache.match(new URL("./__brand_asset__/cover", location.href).href),
+    const cache = "caches" in window ? await caches.open(COORDINATE_PHOTO_CACHE) : null;
+    const [avatarIndexed, coverIndexed, avatarResponse, coverResponse] = await Promise.all([
+      readPrivateMediaAsset("brand:avatar"),
+      readPrivateMediaAsset("brand:cover"),
+      cache?.match(new URL("./__brand_asset__/avatar", location.href).href),
+      cache?.match(new URL("./__brand_asset__/cover", location.href).href),
     ]);
+    const avatarBlob = avatarIndexed || (avatarResponse ? await avatarResponse.blob() : null);
+    const coverBlob = coverIndexed || (coverResponse ? await coverResponse.blob() : null);
+    if (!avatarIndexed && avatarBlob) await writePrivateMediaAsset("brand:avatar", avatarBlob);
+    if (!coverIndexed && coverBlob) await writePrivateMediaAsset("brand:cover", coverBlob);
     state.appearance ||= { avatarTheme: "original" };
     let restored = false;
-    if (state.appearance.customAvatar && !avatarResponse) await persistCustomBrandAsset("avatar", state.appearance.customAvatar);
-    if (state.appearance.customCover && !coverResponse) await persistCustomBrandAsset("cover", state.appearance.customCover);
-    if (!state.appearance.customAvatar && avatarResponse) {
-      state.appearance.customAvatar = await readOriginalFileAsDataUrl(await avatarResponse.blob());
+    if (state.appearance.customAvatar && !avatarBlob) await persistCustomBrandAsset("avatar", state.appearance.customAvatar);
+    if (state.appearance.customCover && !coverBlob) await persistCustomBrandAsset("cover", state.appearance.customCover);
+    if (!state.appearance.customAvatar && avatarBlob) {
+      state.appearance.customAvatar = await readOriginalFileAsDataUrl(avatarBlob);
       state.appearance.avatarTheme = "custom";
       restored = true;
     }
-    if (!state.appearance.customCover && coverResponse) {
-      state.appearance.customCover = await readOriginalFileAsDataUrl(await coverResponse.blob());
+    if (!state.appearance.customCover && coverBlob) {
+      state.appearance.customCover = await readOriginalFileAsDataUrl(coverBlob);
       restored = true;
     }
     if (!restored) return;
@@ -770,6 +779,7 @@ async function restorePersistedCustomBrandAssets() {
 }
 
 async function removePersistedCustomBrandAssets() {
+  await Promise.all([deletePrivateMediaAsset("brand:avatar"), deletePrivateMediaAsset("brand:cover")]);
   if (!("caches" in window)) return;
   try {
     const cache = await caches.open(COORDINATE_PHOTO_CACHE);
@@ -5189,6 +5199,7 @@ function getSelectedCoordinatePhoto() {
 async function ensureSelectedCoordinatePhotoUrl() {
   const photo = getSelectedCoordinatePhoto();
   if (!photo) return "";
+  photo.path ||= recoverPrivatePhotoPath(photo.signedUrl);
   if (photo.signedUrl && Number(photo.expiresAt || 0) - Date.now() > 10 * 60 * 1000) {
     await loadCoordinatePhotoPreview(photo);
     return photo.signedUrl;
@@ -5215,6 +5226,7 @@ async function loadCoordinatePhotoPreview(photo = getSelectedCoordinatePhoto()) 
     coordinatePhotoDataUrl = localPreview;
     return localPreview;
   }
+  photo.path ||= recoverPrivatePhotoPath(photo.signedUrl);
   if (!photo.signedUrl && cloudSync.signedIn && photo.path) Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
   if (!photo.signedUrl) return "";
   let response;
@@ -5243,13 +5255,69 @@ async function requestPersistentPhotoStorage() {
   }
 }
 
+function openPrivateMediaDb() {
+  if (!("indexedDB" in window)) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const request = indexedDB.open(PRIVATE_MEDIA_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(PRIVATE_MEDIA_STORE)) db.createObjectStore(PRIVATE_MEDIA_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+    request.onblocked = () => resolve(null);
+  });
+}
+
+async function writePrivateMediaAsset(key, blob) {
+  const db = await openPrivateMediaDb();
+  if (!db || !blob) return false;
+  return new Promise((resolve) => {
+    const transaction = db.transaction(PRIVATE_MEDIA_STORE, "readwrite");
+    transaction.objectStore(PRIVATE_MEDIA_STORE).put(blob, key);
+    transaction.oncomplete = () => { db.close(); resolve(true); };
+    transaction.onerror = () => { db.close(); resolve(false); };
+    transaction.onabort = () => { db.close(); resolve(false); };
+  });
+}
+
+async function readPrivateMediaAsset(key) {
+  const db = await openPrivateMediaDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    const transaction = db.transaction(PRIVATE_MEDIA_STORE, "readonly");
+    const request = transaction.objectStore(PRIVATE_MEDIA_STORE).get(key);
+    request.onsuccess = () => resolve(request.result instanceof Blob ? request.result : null);
+    request.onerror = () => resolve(null);
+    transaction.oncomplete = () => db.close();
+    transaction.onerror = () => db.close();
+  });
+}
+
+async function deletePrivateMediaAsset(key) {
+  const db = await openPrivateMediaDb();
+  if (!db) return false;
+  return new Promise((resolve) => {
+    const transaction = db.transaction(PRIVATE_MEDIA_STORE, "readwrite");
+    transaction.objectStore(PRIVATE_MEDIA_STORE).delete(key);
+    transaction.oncomplete = () => { db.close(); resolve(true); };
+    transaction.onerror = () => { db.close(); resolve(false); };
+    transaction.onabort = () => { db.close(); resolve(false); };
+  });
+}
+
+function privatePhotoAssetKey(photoId) {
+  return `photo:${photoId}`;
+}
+
 async function persistCoordinatePhotoPreview(photoId, sourceBlob) {
   const dataUrl = await createCanvasCompatiblePhotoPreview(sourceBlob);
   coordinatePhotoPreviewCache.set(photoId, dataUrl);
+  const file = dataUrlToFile(dataUrl, `${photoId}.jpg`);
+  await writePrivateMediaAsset(privatePhotoAssetKey(photoId), file);
   if ("caches" in window) {
     try {
       const cache = await caches.open(COORDINATE_PHOTO_CACHE);
-      const file = dataUrlToFile(dataUrl, `${photoId}.jpg`);
       await cache.put(coordinatePhotoCacheKey(photoId), new Response(file, { headers: { "Content-Type": file.type || "image/jpeg" } }));
     } catch {
       // メモリ上のプレビューは使えるため、端末保存だけ失敗しても続行する。
@@ -5259,11 +5327,16 @@ async function persistCoordinatePhotoPreview(photoId, sourceBlob) {
 }
 
 async function readPersistedCoordinatePhotoPreview(photoId) {
+  const indexedBlob = await readPrivateMediaAsset(privatePhotoAssetKey(photoId));
+  if (indexedBlob) return readOriginalFileAsDataUrl(indexedBlob);
   if (!("caches" in window)) return "";
   try {
     const cache = await caches.open(COORDINATE_PHOTO_CACHE);
     const response = await cache.match(coordinatePhotoCacheKey(photoId));
-    return response ? await readOriginalFileAsDataUrl(await response.blob()) : "";
+    if (!response) return "";
+    const blob = await response.blob();
+    await writePrivateMediaAsset(privatePhotoAssetKey(photoId), blob);
+    return readOriginalFileAsDataUrl(blob);
   } catch {
     return "";
   }
@@ -5271,6 +5344,7 @@ async function readPersistedCoordinatePhotoPreview(photoId) {
 
 async function removeCoordinatePhotoPreview(photoId) {
   coordinatePhotoPreviewCache.delete(photoId);
+  await deletePrivateMediaAsset(privatePhotoAssetKey(photoId));
   if (!("caches" in window)) return;
   try {
     const cache = await caches.open(COORDINATE_PHOTO_CACHE);
@@ -5282,6 +5356,18 @@ async function removeCoordinatePhotoPreview(photoId) {
 
 function coordinatePhotoCacheKey(photoId) {
   return new URL(`./__photo_preview__/${encodeURIComponent(photoId)}`, location.href).href;
+}
+
+function recoverPrivatePhotoPath(signedUrl) {
+  try {
+    const url = new URL(signedUrl || "", location.href);
+    const marker = "/object/sign/hanako-private-photos/";
+    const index = url.pathname.indexOf(marker);
+    if (index < 0) return "";
+    return url.pathname.slice(index + marker.length).split("/").map(decodeURIComponent).join("/");
+  } catch {
+    return "";
+  }
 }
 
 async function createCanvasCompatiblePhotoPreview(sourceBlob) {
@@ -5301,6 +5387,7 @@ async function refreshCoordinatePhotoLibraryUrls() {
   if (!cloudSync.signedIn || !state.coordinatePhotos?.length) return;
   for (const photo of state.coordinatePhotos) {
     try {
+      photo.path ||= recoverPrivatePhotoPath(photo.signedUrl);
       const persisted = await readPersistedCoordinatePhotoPreview(photo.id);
       if (persisted) {
         coordinatePhotoPreviewCache.set(photo.id, persisted);
