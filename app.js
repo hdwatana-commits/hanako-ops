@@ -12069,6 +12069,24 @@ function buildSocialCreativeDirective(context) {
     location: { grocer: "店名を見せない八百屋の作業場", pianoBar: "場所を特定しないバーのピアノ", noodle: "店名を見せないつけ麺カウンター", street: "街角", cafe: "カフェ", campus: "キャンパス", office: "オフィス", hotel: "ホテル", museum: "美術館", seaside: "海辺", station: "駅・空港", room: "部屋" },
     carousel: { story: "場面ストーリー（導入→発見→詳細→余韻）", lesson: "ミニ講座（結論→理由→実例→保存メモ）", styling: "コーデ展開（全身→上半身→小物→別角度）", review: "観察レビュー（主役→良い点→注意点→まとめ）", trend: "トレンド解説（兆し→特徴→取り入れ方→結論）" },
   };
+  Object.assign(labels.outfit, {
+    dateKnitDress: "身体のラインを拾いすぎない柔らかなニットワンピース。膝下丈、淡いベージュまたはくすみピンク",
+    dateOffShoulder: "鎖骨が少し見える上品なオフショルダーニットと、揺れ感のある膝下フレアスカート",
+    dateWrapDress: "胸元が開きすぎない淡色の上品なラップワンピース。ウエストを自然に整える",
+    dateCamiCardigan: "不透明なキャミソールに、肩からずれないふんわりカーディガンとハイウエストボトム",
+    dateRibFlare: "細かなリブの長袖ニットと、歩くと柔らかく揺れるフレアスカート",
+    dateShirtDress: "清潔感のある襟付きシャツワンピースと細いベルト。膝下丈で上品にまとめる",
+    dateMermaid: "柔らかなブラウスと、身体のラインを強調しすぎないマーメイドスカート",
+    dateLace: "透けを抑えた繊細なレースブラウスと上品な膝下スカート。小ぶりなアクセサリーを合わせる",
+  });
+  Object.assign(labels.pose, {
+    stairs: "安全な階段を上りながら、片手を手すりに添えて自然に振り返る",
+    stairsSitSide: "幅の広い安全な階段に横向きで座り、膝と足元を自然にそろえてカメラを見る",
+    stairsPause: "階段の踊り場で立ち止まり、片手を手すりへ軽く添えて余裕のある表情を見せる",
+    stairsLookUp: "安全な階段の一段上に立ち、身体をひねりすぎず自然に振り返ってカメラを見る",
+    stairsLookBack: "階段をゆっくり下りながら、肩越しに柔らかく振り返る。足元と手すりを安全に保つ",
+    stairsShoes: "階段に片足ずつ自然に置き、靴と脚のラインがきれいに見えるファッション誌風ポーズ",
+  });
   const presetSelectIds = { scene: "snsScenePreset", outfit: "snsOutfitPreset", hair: "snsHairPreset", pose: "snsPosePreset", composition: "snsCompositionPreset", lighting: "snsLightingPreset", location: "snsLocationPreset", carousel: "snsCarouselPreset" };
   const preset = (group, key, fallback) => {
     if (labels[group]?.[key]) return labels[group][key];
