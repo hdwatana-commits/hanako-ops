@@ -11826,7 +11826,7 @@ function getSocialGeminiPromptData(rerollLottery = true) {
 function buildHanakoLifestyleImagePrompt(c, currentDraft) {
   const creative = buildSocialCreativeDirective(c);
   const sensualLevel = c.creativeProfile?.hanakoSensualLevel || (c.creativeProfile?.hanakoSensualMode ? "standard" : "off");
-  const sensualDirective = sensualLevel === "mishap" ? `【ドキッと強め・ハプニング風モード｜露出なし】
+  const sensualDirective = sensualLevel === "mishap" ? `【ハプニングモード｜露出なし】
 ・被写体は成人女性。相手を意識した合意あるファッション撮影として、男性にも好印象な親密さ、守ってあげたくなる隙、少し照れた反応を最大限に引き出す
 ・近い距離でふいに目が合う、風で髪と服の表面が揺れて慌てて押さえる、持ち物を落としてこちらを振り返る、バランスを崩して壁やベッドへ手をつく、階段で急に立ち止まる、クッションや上着を抱え直す瞬間を映画的に切り取る
 ・長めのアイコンタクト、振り返り際の驚き、はにかみ、少し開いた口元、髪に触れる指先、布の揺れ、近めのカメラ距離、浅い被写界深度を組み合わせ、露出に頼らず『あと一瞬見ていたい』緊張感を作る
