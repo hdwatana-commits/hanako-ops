@@ -11826,7 +11826,12 @@ function getSocialGeminiPromptData(rerollLottery = true) {
 function buildHanakoLifestyleImagePrompt(c, currentDraft) {
   const creative = buildSocialCreativeDirective(c);
   const sensualLevel = c.creativeProfile?.hanakoSensualLevel || (c.creativeProfile?.hanakoSensualMode ? "standard" : "off");
-  const sensualDirective = sensualLevel === "intense" ? `【大人の色気モード｜強め】
+  const sensualDirective = sensualLevel === "mishap" ? `【ハプニング風モード｜露出なし】
+・被写体は成人女性。風で髪やスカートの表面が揺れる、持ち物を落として振り返る、階段で足を止める、クッションや上着を抱え直す、急にカメラと目が合って照れるなど、偶然を切り取った映画的な瞬間にする
+・視線、表情、動き、布の揺れ、近めのカメラ距離でドキッとする空気を強めるが、衣服は身体へ適切に留まり、下着と胸元を完全に隠す
+・スカートやワンピースはインナーパンツまたはタイツを合わせ、裾が風で揺れても下着や脚の付け根が見えない。トップスの襟やボタンも開かない
+・盗撮、覗き込み、下着が見えそうな構図、胸元を上から見る構図、着替え、衣服のずれ、性的な事故、羞恥を強いる場面にはしない
+・あくまで上品なファッション誌の『不意の可愛い瞬間』として、本人が安心して楽しんでいる表情にする` : sensualLevel === "intense" ? `【大人の色気モード｜強め】
 ・被写体は成人女性。上品で成熟したファッションポートレートとして、長めのアイコンタクト、伏し目からの視線、髪や首元へ触れる自然な仕草、肩越しの振り返り、近めのカメラ距離を使う
 ・身体の自然なライン、布のドレープ、深い陰影、暖かな間接光、余裕のある表情で色気を一段強く表現する。選択した表情と場面構成は維持する
 ・服装は不透明で身体を適切に覆う。裸、下着、透け、露骨な性的ポーズ、性的行為やフェティッシュ表現は含めない
