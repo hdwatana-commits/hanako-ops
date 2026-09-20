@@ -482,6 +482,14 @@ function enhanceCoordinateSelectOptions() {
     actionGroup.label = "アクション";
     actionGroup.innerHTML = '<option value="highKick">ハイキックのポーズ</option><option value="spiderHero">スパイダーマン風ヒーロー着地ポーズ</option>';
     poseSelect.insertBefore(actionGroup, poseSelect.querySelector("optgroup"));
+    const floorGroup = document.createElement("optgroup");
+    floorGroup.label = "寝転がる・床ポーズ";
+    floorGroup.innerHTML = '<option value="supineRelax">仰向けで寝転がりカメラを見る</option><option value="playfulCrawl">四つん這いで可愛くハイハイする</option>';
+    actionGroup.after(floorGroup);
+    const cuteGroup = document.createElement("optgroup");
+    cuteGroup.label = "可愛いポーズ";
+    cuteGroup.innerHTML = '<option value="heartHands">両手でハートを作る</option><option value="cheekHands">両手を頬に添える</option><option value="doublePeace">顔の横でダブルピース</option><option value="sleeveCover">萌え袖で口元を隠す</option><option value="toeIn">つま先を内向きにして首をかしげる</option><option value="hugCushion">クッションを抱えて微笑む</option>';
+    floorGroup.after(cuteGroup);
     const savedPose = getSocialCreativeProfile().posePreset;
     if ([...poseSelect.options].some((option) => option.value === savedPose)) poseSelect.value = savedPose;
     renderHanakoGasSettings();
@@ -3088,6 +3096,7 @@ function renderHanakoGasSettings() {
   if (section) section.hidden = !enabled;
   const sensual = document.querySelector("#snsHanakoSensualLevel");
   if (sensual) sensual.value = profile.hanakoSensualLevel || "off";
+  renderHanakoTimeRecommendation();
   Object.entries(hanakoGasFieldMap).forEach(([mirrorId, sourceId]) => {
     const mirror = document.querySelector(`#${mirrorId}`);
     const source = document.querySelector(`#${sourceId}`);
@@ -3118,7 +3127,46 @@ function bindHanakoGasSettings() {
     document.querySelector("#snsGeminiTools")?.scrollIntoView({ behavior: "smooth", block: "start" });
     showToast("選択したGAS設定で画像と本文の指示を作りました");
   });
+  document.querySelector("#applyHanakoTimeRecommendation")?.addEventListener("click", applyHanakoTimeRecommendation);
   renderHanakoGasSettings();
+}
+
+function getHanakoTimeRecommendation(date = new Date()) {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 10) return { label: "朝のやわらか投稿", detail: "起きたての空気と自然光で親近感を作る", idea: "reset", outfit: "pajamaCotton", pose: "windowDrink", composition: "waist", lighting: "morning", location: "homeWindow", expression: "morningSoft" };
+  if (hour >= 10 && hour < 14) return { label: "昼の好感度投稿", detail: "明るい表情と清楚なコーデで軽やかに", idea: "fashion", outfit: "dateShirtDress", pose: "walk", composition: "full", lighting: "cafe", location: "cafe", expression: "bigsmile" };
+  if (hour >= 14 && hour < 18) return { label: "午後のカフェ映え投稿", detail: "会話したくなる距離感と旬のインフルエンサーコーデ", idea: "fashion", outfit: "influencerCafe", pose: "cheekHands", composition: "editorial", lighting: "cafe", location: "cafeTerrace", expression: "softEyeContact" };
+  if (hour >= 18 && hour < 22) return { label: "夕方〜夜の街歩き投稿", detail: "ゴールデンアワーと振り返りで保存したくなる一枚に", idea: "citywalk", outfit: "influencerJacket", pose: "lookback", composition: "full", lighting: "golden", location: "world", expression: "overShoulderSmile" };
+  if (hour >= 22 || hour < 1) return { label: "夜の大人っぽ投稿", detail: "静かな余韻と間接照明で世界観を深める", idea: "piano", outfit: "influencerEvening", pose: "pianoTurn", composition: "editorial", lighting: "bar", location: "pianoBar", expression: "subtlesmile" };
+  return { label: "深夜のリラックス投稿", detail: "無理に盛らず、眠る前の柔らかな空気を残す", idea: "reset", outfit: "pajamaSatin", pose: "supineRelax", composition: "waist", lighting: "warm", location: "homeBed", expression: "sleepy" };
+}
+
+function renderHanakoTimeRecommendation() {
+  const recommendation = getHanakoTimeRecommendation();
+  const title = document.querySelector("#snsHanakoTimeRecommendationTitle");
+  const detail = document.querySelector("#snsHanakoTimeRecommendationDetail");
+  if (title) title.textContent = recommendation.label;
+  if (detail) detail.textContent = `${new Date().getHours()}時台｜${recommendation.detail}`;
+}
+
+function applyHanakoTimeRecommendation() {
+  const recommendation = getHanakoTimeRecommendation();
+  applyHanakoIdea(recommendation.idea);
+  const selections = {
+    snsOutfitPreset: recommendation.outfit,
+    snsPosePreset: recommendation.pose,
+    snsCompositionPreset: recommendation.composition,
+    snsLightingPreset: recommendation.lighting,
+    snsLocationPreset: recommendation.location,
+    snsHanakoExpression: recommendation.expression,
+  };
+  Object.entries(selections).forEach(([id, value]) => {
+    const select = document.querySelector(`#${id}`);
+    if (select && [...select.options].some((option) => option.value === value)) select.value = value;
+  });
+  saveSocialCreativeProfile();
+  renderHanakoExpressionControl();
+  showToast(`現在時刻のおすすめ「${recommendation.label}」を反映しました`);
 }
 
 function renderHanakoExpressionControl() {
@@ -12089,16 +12137,43 @@ function buildSocialCreativeDirective(context) {
     dateMermaid: "柔らかなブラウスと、身体のラインを強調しすぎないマーメイドスカート",
     dateLace: "透けを抑えた繊細なレースブラウスと上品な膝下スカート。小ぶりなアクセサリーを合わせる",
     fittedRecruitSuit: "成人女性向けの身体に沿う細身のリクルートスーツ。黒またはネイビーのコンパクトなジャケット、白ブラウス、膝丈タイトスカート。生地が食い込むほど過度に小さくしない",
+    cosplayCabin: "成人女性向けの架空のレトロ客室乗務員風コスプレ。膝丈ワンピース、スカーフ、小ぶりな帽子。実在企業の制服やロゴは使わない",
+    cosplayRacing: "成人女性向けのモータースポーツイベント衣装。長袖ジャケット、ハイウエストのショートパンツ、ロングブーツ。実在チームのロゴは使わない",
+    cosplayDetective: "クラシカルな女性探偵風コスプレ。トレンチ、ベスト、シャツ、チェック柄ボトム、小さな手帳を合わせる",
+    cosplayCyber: "黒とネイビーに控えめなネオン差し色を使った、露出を抑えたサイバーヒロイン風衣装",
+    miniBalloon: "立体感のあるバルーンミニスカートとコンパクトカーディガン。必要に応じてタイツを合わせる",
+    miniWrap: "丈がずれにくいラップ風ミニスカート、長袖ニット、ロングブーツ",
+    miniAline: "上品なAラインミニスカートとボウタイブラウス。清潔感ある配色でまとめる",
+    miniSporty: "台形のスポーティミニスカート、ショートブルゾン、厚底スニーカー",
+    influencerJacket: "淡色のオーバージャケット、不透明なキャミソール、美脚に見えるハイウエストデニムの人気インフルエンサー風コーデ",
+    influencerMermaid: "清潔感のある白ニットと、写真で揺れ感が映える淡色マーメイドスカート",
+    influencerMonotone: "黒、白、グレーを使った洗練モノトーンのセットアップと小ぶりなバッグ",
+    influencerOversized: "オーバーサイズジャケット、ミニ丈ボトム、ロングブーツの都会的なバランス",
+    influencerSatin: "短丈ニットと光沢を抑えたサテンスカート。淡色ワントーンで高見えさせる",
+    influencerDenim: "少しゆったりした白シャツと脚のラインがきれいに見える濃色デニム",
+    influencerCafe: "ベージュ、アイボリー、ブラウンを重ねた、自然光に映えるカフェ向けコーデ",
+    influencerEvening: "身体のラインを拾いすぎない上品な黒の夜カフェワンピースと華奢なアクセサリー",
   });
   Object.assign(labels.pose, {
     highKick: "成人女性の全身を収めた、バランスの良いダイナミックなハイキック。軸足と関節を自然にし、スカートの場合はインナーパンツまたはタイツで下着が見えない構成にする",
     spiderHero: "成人女性が片膝を深く曲げ、片手を床へ添え、もう片腕を後方へ伸ばすスパイダーマン風の低いヒーロー着地ポーズ。手足を自然な数と形に保つ",
+    supineRelax: "成人女性がベッドやラグの上へ仰向けに寝転がり、髪を自然に広げて穏やかにカメラを見る。脚を閉じ、日常のリラックス場面として真上または斜め上から撮る",
+    playfulCrawl: "成人女性が服を適切に着たまま、ベッドやラグの上で遊び心のあるハイハイをする。正面または斜め前から撮り、胸元や下着、臀部を強調しない",
+    heartHands: "胸元の前で両手を使って小さなハートを作り、親しみやすく微笑む",
+    cheekHands: "両手を頬へ軽く添え、首を少し傾けた大人可愛いポーズ",
+    doublePeace: "顔の横で控えめなダブルピースを作り、自然に笑う",
+    sleeveCover: "長めの袖口で口元を少しだけ隠し、目元で柔らかく笑う萌え袖ポーズ",
+    toeIn: "つま先を少し内向きにそろえ、首を傾けてカメラを見る親しみやすい全身ポーズ",
+    hugCushion: "クッションを胸元で自然に抱え、安心した表情で微笑む",
     stairs: "安全な階段を上りながら、片手を手すりに添えて自然に振り返る",
     stairsSitSide: "幅の広い安全な階段に横向きで座り、膝と足元を自然にそろえてカメラを見る",
     stairsPause: "階段の踊り場で立ち止まり、片手を手すりへ軽く添えて余裕のある表情を見せる",
     stairsLookUp: "安全な階段の一段上に立ち、身体をひねりすぎず自然に振り返ってカメラを見る",
     stairsLookBack: "階段をゆっくり下りながら、肩越しに柔らかく振り返る。足元と手すりを安全に保つ",
     stairsShoes: "階段に片足ずつ自然に置き、靴と脚のラインがきれいに見えるファッション誌風ポーズ",
+  });
+  Object.assign(labels.composition, {
+    extremeLow: "地面近くから見上げる強いローアングル。脚を不自然に誇張せず、スカートやワンピースでは下着が見えない正面寄りの安全な角度にする",
   });
   const presetSelectIds = { scene: "snsScenePreset", outfit: "snsOutfitPreset", hair: "snsHairPreset", pose: "snsPosePreset", composition: "snsCompositionPreset", lighting: "snsLightingPreset", location: "snsLocationPreset", carousel: "snsCarouselPreset" };
   const preset = (group, key, fallback) => {

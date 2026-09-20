@@ -1341,6 +1341,11 @@ textarea {
 .sns-hanako-gas { margin: 0 0 20px; padding: 16px; border: 1px solid rgba(67, 103, 91, .2); border-radius: 16px; background: #f8fcfa; }
 .sns-hanako-gas[hidden] { display: none; }
 .sns-hanako-gas .primary { width: 100%; margin-top: 12px; }
+.sns-hanako-time-recommendation { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; align-items: center; margin-top: 12px; padding: 12px 13px; border: 1px solid rgba(185, 120, 91, .22); border-radius: 12px; background: linear-gradient(135deg, #fff8f2, #fff); }
+.sns-hanako-time-recommendation span, .sns-hanako-time-recommendation strong, .sns-hanako-time-recommendation small { display: block; grid-column: 1; }
+.sns-hanako-time-recommendation span { color: #a15e43; font-size: 11px; font-weight: 800; }
+.sns-hanako-time-recommendation small { color: var(--muted); line-height: 1.45; }
+.sns-hanako-time-recommendation button { grid-column: 2; grid-row: 1 / 4; white-space: nowrap; }
 .sns-hanako-sensual { margin-top: 14px; padding: 11px 13px; border: 1px solid rgba(169, 116, 92, .2); border-radius: 12px; background: #fff; }
 .sns-hanako-sensual:focus-within { border-color: #b85b70; background: #fff1f4; box-shadow: 0 5px 16px rgba(122, 70, 48, .08); }
 .sns-hanako-sensual select { margin-top: 5px; }
