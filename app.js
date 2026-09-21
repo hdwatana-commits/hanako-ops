@@ -492,6 +492,10 @@ function enhanceCoordinateSelectOptions() {
     cuteGroup.label = "可愛いポーズ";
     cuteGroup.innerHTML = '<option value="heartHands">両手でハートを作る</option><option value="cheekHands">両手を頬に添える</option><option value="doublePeace">顔の横でダブルピース</option><option value="sleeveCover">萌え袖で口元を隠す</option><option value="toeIn">つま先を内向きにして首をかしげる</option><option value="hugCushion">クッションを抱えて微笑む</option>';
     floorGroup.after(cuteGroup);
+    const dailyGroup = document.createElement("optgroup");
+    dailyGroup.label = "日常・お着換え";
+    dailyGroup.innerHTML = '<option value="gettingDressed">鏡の前で上着へ袖を通すお着換え中</option>';
+    cuteGroup.after(dailyGroup);
     const savedPose = getSocialCreativeProfile().posePreset;
     if ([...poseSelect.options].some((option) => option.value === savedPose)) poseSelect.value = savedPose;
     renderHanakoGasSettings();
@@ -12290,6 +12294,7 @@ function buildSocialCreativeDirective(context) {
   Object.assign(labels.pose, {
     leanForward: "成人女性が背筋を自然に保ちながら上体を少し前へ傾け、両手を膝または太ももの上へ軽く添えてカメラを見る。胸元を覗かせず、首・肩・腰の角度を自然にする",
     wideStanceCrouch: "成人女性が足を肩幅より少し広めに置き、つま先と膝を外向きにそろえて低くしゃがむストリートファッション風ポーズ。重心と接地を安定させ、下着や胸元を見せない",
+    gettingDressed: "成人女性が自宅の鏡の前で、服をきちんと着た状態からジャケットやカーディガンへ片腕ずつ袖を通している自然なお着換え中の瞬間。脱衣、下着、裸、透け、胸元の露出は描かず、手指と袖の位置を自然にする",
     highKick: "成人女性の全身を収めた、バランスの良いダイナミックなハイキック。軸足と関節を自然にし、スカートの場合はインナーパンツまたはタイツで下着が見えない構成にする",
     spiderHero: "成人女性が片膝を深く曲げ、片手を床へ添え、もう片腕を後方へ伸ばすスパイダーマン風の低いヒーロー着地ポーズ。手足を自然な数と形に保つ",
     supineRelax: "成人女性がベッドやラグの上へ仰向けに寝転がり、髪を自然に広げて穏やかにカメラを見る。脚を閉じ、日常のリラックス場面として真上または斜め上から撮る",
