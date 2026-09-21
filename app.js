@@ -12023,6 +12023,15 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft) {
   const locationPreset = c.creativeProfile?.locationPreset || "world";
   const locationSelect = document.querySelector("#snsLocationPreset");
   const locationLabel = c.creativeProfile?.location || [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "選択した場所";
+  const privateIndoorPresets = new Set(["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room"]);
+  const privateIndoorLocation = privateIndoorPresets.has(locationPreset)
+    || /自宅|部屋|室内|リビング|寝室|ベッド|ソファ|キッチン|窓辺|デスク|ドレッサー|ホテル客室/.test(locationLabel);
+  const footwearDirective = privateIndoorLocation ? `【室内の足元｜最優先】
+・自宅や個室の中では、外履きの靴、スニーカー、パンプス、ブーツ、厚底靴を履かない
+・裸足、清潔な室内用ソックス、または自然なルームスリッパのいずれかにする。ベッド、ソファ、ラグの上ではルームスリッパも脱ぐ
+・服装指定に靴やロングブーツが含まれていても、この室内ルールを優先し、靴だけを外して衣装本体は維持する
+・玄関のたたきではなく生活空間として描き、靴底を家具、床、ベッド、ソファへ載せない
+・全カットで足元を統一し、途中の画像だけ靴を履いた状態へ変えない` : "";
   const world = locationPreset === "world" ? `【世界都市背景・くじ選択済み】
 ・今回の背景は「${c.socialCity || "パリ"}」。ROOM投稿と同じ世界都市候補から、直前の使用場所と重なりにくいくじ方式で選択済み
 ・背景に「${c.socialLandmark || "エッフェル塔"}」の景観を、その場所だと自然に分かる大きさで入れる
@@ -12060,6 +12069,8 @@ ${photobookDirective}
 ${sensualDirective}
 
 ${world}
+
+${footwearDirective}
 
 【画像構成】
 ${imageRoles}
