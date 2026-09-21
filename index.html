@@ -778,6 +778,14 @@
                 <label class="field-label" for="hanakoGasCarousel">複数枚の見せ方</label><select id="hanakoGasCarousel"></select>
                 <label class="field-label" for="hanakoGasExtra">追加の自由指定</label><textarea id="hanakoGasExtra" class="brief-input" placeholder="例: 顔のアップ、野菜の手元、ピアノの鍵盤、世界都市の順"></textarea>
                 <div class="sns-hanako-sensual"><label class="field-label" for="snsHanakoSensualLevel">大人の色気</label><select id="snsHanakoSensualLevel"><option value="off" selected>OFF（通常）</option><option value="standard">大人の色気</option><option value="intense">大人の色気・強め</option><option value="mishap">ハプニングモード</option></select><small>距離感・視線・動きで「不意にドキッとする瞬間」を最大化します。衣服と下着は完全に隠します。</small></div>
+                <div class="sns-hanako-photobook">
+                  <label class="sns-hanako-photobook-switch" for="snsHanakoPhotobookMode"><span><strong>写真集モード</strong><small>Note販売向けの連作写真として構成</small></span><input id="snsHanakoPhotobookMode" type="checkbox"></label>
+                  <div class="sns-hanako-photobook-settings" id="snsHanakoPhotobookSettings" hidden>
+                    <div class="generator-pair"><div><label class="field-label" for="snsHanakoPhotobookTheme">写真集テーマ</label><select id="snsHanakoPhotobookTheme"><option value="softMorning">朝の光と素顔</option><option value="fashionEditorial">大人可愛いファッション誌</option><option value="cityNight">夜の街と余韻</option><option value="roomStory">部屋で過ごす一日</option><option value="travelCinema">旅先の映画的ストーリー</option><option value="pianoNoir">夜のピアノと静かな色気</option><option value="custom">自由テーマを優先</option></select></div><div><label class="field-label" for="snsHanakoPhotobookCount">写真集枚数</label><select id="snsHanakoPhotobookCount"><option value="8">8枚</option><option value="12" selected>12枚</option><option value="16">16枚</option><option value="20">20枚</option><option value="24">24枚</option><option value="30">30枚</option></select></div></div>
+                    <label class="field-label" for="snsHanakoPhotobookBrief">写真集の自由指定</label><textarea id="snsHanakoPhotobookBrief" rows="3" placeholder="例：休日の朝から夜まで。柔らかな光、自然な笑顔、静かな余韻を中心に。表紙は窓辺のアップ。"></textarea>
+                    <small>選択中の髪型・服装・場所・光／時間帯を引き継ぎ、表紙から最終カットまで統一した連作にします。</small>
+                  </div>
+                </div>
                 <button class="primary" id="generateHanakoGasImage" type="button">この設定で画像と本文を作る</button>
               </section>
               <label class="field-label social-commerce-only">商品</label>
@@ -1922,6 +1930,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=300"></script>
+    <script src="app.js?v=301"></script>
   </body>
 </html>

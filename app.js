@@ -3012,6 +3012,10 @@ const socialCreativeDefaults = {
   hanakoMode: true,
   hanakoExpression: "bashful",
   hanakoSensualLevel: "off",
+  hanakoPhotobookMode: false,
+  hanakoPhotobookTheme: "softMorning",
+  hanakoPhotobookCount: 12,
+  hanakoPhotobookBrief: "",
   hanakoIdea: "vegetable",
 };
 
@@ -3116,6 +3120,7 @@ function renderHanakoGasSettings() {
   if (section) section.hidden = !enabled;
   const sensual = document.querySelector("#snsHanakoSensualLevel");
   if (sensual) sensual.value = profile.hanakoSensualLevel || "off";
+  renderHanakoPhotobookSettings();
   renderHanakoTimeRecommendation();
   Object.entries(hanakoGasFieldMap).forEach(([mirrorId, sourceId]) => {
     const mirror = document.querySelector(`#${mirrorId}`);
@@ -3124,6 +3129,21 @@ function renderHanakoGasSettings() {
     if (mirror.tagName === "SELECT" && !mirror.options.length) mirror.innerHTML = source.innerHTML;
     mirror.value = source.value;
   });
+}
+
+function renderHanakoPhotobookSettings() {
+  const profile = getSocialCreativeProfile();
+  const enabled = Boolean(profile.hanakoPhotobookMode);
+  const toggle = document.querySelector("#snsHanakoPhotobookMode");
+  const settings = document.querySelector("#snsHanakoPhotobookSettings");
+  const theme = document.querySelector("#snsHanakoPhotobookTheme");
+  const count = document.querySelector("#snsHanakoPhotobookCount");
+  const brief = document.querySelector("#snsHanakoPhotobookBrief");
+  if (toggle) toggle.checked = enabled;
+  if (settings) settings.hidden = !enabled;
+  if (theme) theme.value = profile.hanakoPhotobookTheme || "softMorning";
+  if (count) count.value = String(profile.hanakoPhotobookCount || 12);
+  if (brief) brief.value = profile.hanakoPhotobookBrief || "";
 }
 
 function bindHanakoGasSettings() {
@@ -3367,6 +3387,7 @@ function populateSocialPatternStudio() {
   if (hanakoMode) hanakoMode.checked = Boolean(profile.hanakoMode);
   const sensualLevel = document.querySelector("#snsHanakoSensualLevel");
   if (sensualLevel) sensualLevel.value = profile.hanakoSensualLevel || "off";
+  renderHanakoPhotobookSettings();
   renderHanakoExpressionControl();
   renderSocialPatternAnalysis();
   renderSocialConcepts();
@@ -3402,6 +3423,10 @@ function saveSocialCreativeProfile() {
     hanakoMode: Boolean(document.querySelector("#snsHanakoMode")?.checked),
     hanakoExpression: value("snsHanakoExpression") || "bashful",
     hanakoSensualLevel: value("snsHanakoSensualLevel") || "off",
+    hanakoPhotobookMode: Boolean(document.querySelector("#snsHanakoPhotobookMode")?.checked),
+    hanakoPhotobookTheme: value("snsHanakoPhotobookTheme") || "softMorning",
+    hanakoPhotobookCount: Math.max(8, Math.min(30, Number(value("snsHanakoPhotobookCount") || 12))),
+    hanakoPhotobookBrief: value("snsHanakoPhotobookBrief").slice(0, 1200),
     hanakoIdea: getSocialCreativeProfile().hanakoIdea || "vegetable",
   };
   saveState();
@@ -3550,6 +3575,12 @@ function bindSocialPatternStudio() {
   document.querySelector("#snsHanakoMode")?.addEventListener("change", (event) => toggleHanakoPostMode(event.currentTarget.checked));
   document.querySelector("#snsHanakoExpression")?.addEventListener("change", renderHanakoExpressionControl);
   document.querySelector("#snsHanakoSensualLevel")?.addEventListener("change", saveSocialCreativeProfile);
+  document.querySelector("#snsHanakoPhotobookMode")?.addEventListener("change", () => {
+    saveSocialCreativeProfile();
+    renderHanakoPhotobookSettings();
+  });
+  ["snsHanakoPhotobookTheme", "snsHanakoPhotobookCount"].forEach((id) => document.querySelector(`#${id}`)?.addEventListener("change", saveSocialCreativeProfile));
+  document.querySelector("#snsHanakoPhotobookBrief")?.addEventListener("input", saveSocialCreativeProfile);
   document.querySelector("#refreshHanakoIdeas")?.addEventListener("click", () => renderHanakoIdeas(true));
   document.querySelector("#downloadHanakoCsvTemplate")?.addEventListener("click", downloadHanakoCsvTemplate);
 }
@@ -11922,6 +11953,31 @@ function getSocialGeminiPromptData(rerollLottery = true) {
 
 function buildHanakoLifestyleImagePrompt(c, currentDraft) {
   const creative = buildSocialCreativeDirective(c);
+  const photobookMode = Boolean(c.creativeProfile?.hanakoPhotobookMode);
+  const photobookCount = Math.max(8, Math.min(30, Number(c.creativeProfile?.hanakoPhotobookCount || 12)));
+  const photobookThemes = {
+    softMorning: "朝の光と素顔。目覚めから身支度までを、白く柔らかな自然光と静かな生活感でつなぐ",
+    fashionEditorial: "大人可愛いファッション誌。服のシルエット、素材、表情を主役にした洗練されたエディトリアル",
+    cityNight: "夜の街と余韻。夕暮れから夜景まで、都会の光と成熟した表情で映画的につなぐ",
+    roomStory: "部屋で過ごす一日。窓辺、鏡、ソファ、ベッドなどで自然な時間の流れを描く",
+    travelCinema: "旅先の映画的ストーリー。場所の空気、移動、発見、余韻を一人の旅物語として構成する",
+    pianoNoir: "夜のピアノと静かな色気。鍵盤、間接照明、演奏前後の表情をノワール調で上品に描く",
+    custom: "自由指定を最優先し、そこから一貫した視覚テーマと物語を設計する",
+  };
+  const photobookTheme = photobookThemes[c.creativeProfile?.hanakoPhotobookTheme] || photobookThemes.softMorning;
+  const photobookBrief = String(c.creativeProfile?.hanakoPhotobookBrief || "指定なし").trim().slice(0, 1200) || "指定なし";
+  const photobookDirective = photobookMode ? `【写真集モード｜Note販売向け】
+・テーマ: ${photobookTheme}
+・自由指定: ${photobookBrief}
+・選択済みの髪型、服装、場所、光／時間帯を作品全体の基準として固定し、勝手に別衣装、別の髪型、別の場所へ変更しない
+・単なる似た写真の連続ではなく、「導入→親近感→変化→見せ場→静かな余韻」の編集ストーリーを作る
+・表紙候補1枚、導入、全身、表情アップ、動作、ディテール、環境、転換、クライマックス、余韻を枚数に合わせて配分する
+・カメラ距離、レンズ感、人物の向き、目線、重心、前景と背景を計画的に変え、同じ構図やポーズを繰り返さない
+・色調、肌色、粒状感、コントラストを全編で統一し、商業ポートレートとして自然なレタッチに留める
+・画像内へ題名、ページ番号、本文、ロゴ、透かしを入れない。表紙も文字なしの完成写真として作る
+・一度に品質を保てる最大7枚ずつ、全${photobookCount}枚を複数バッチに分けて制作する。各バッチの前に人物、衣装、髪型、場所、色調の連続性を再確認する
+・各バッチの生成後に顔、指、関節、衣装、背景、縦4:5を検品し、不良カットのみ差し替えてから次のバッチへ進む
+・Noteで有料販売する作品を想定し、無料SNS投稿の量産画像ではなく、選定と編集を経た完成度の高い写真集として仕上げる` : "";
   const sensualLevel = c.creativeProfile?.hanakoSensualLevel || (c.creativeProfile?.hanakoSensualMode ? "standard" : "off");
   const sensualDirective = sensualLevel === "mishap" ? `【ハプニングモード｜露出なし】
 ・被写体は成人女性。相手を意識した合意あるファッション撮影として、男性にも好印象な親密さ、守ってあげたくなる隙、少し照れた反応を最大限に引き出す
@@ -11952,19 +12008,31 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft) {
 ・背景は「${locationLabel}」。場所の雰囲気を具体的に写し、別の場所や世界都市の名所を混ぜない
 ・住所、店名、看板、窓外の特徴、郵便物、家族写真など、個人や正確な場所を特定できる情報を写さない
 ・「${locationLabel}」を含む場所の文字情報は画像内に表示しない`;
-  const count = Math.max(1, Math.min(7, Number(c.creativeProfile?.threadsImageCount || 4)));
-  const imageRoles = [
-    "1枚目｜表紙カット: 選択した表情と視線が伝わる主役ポートレート。余白を生かし、スクロール中に目が止まる構図",
-    "2枚目｜全身カット: 服装、靴、ポーズ、場所の関係が分かる全身。1枚目とカメラ距離を大きく変える",
-    "3枚目｜ミディアムカット: 腰上または膝上で、自然な仕草と服のシルエットを見せる",
-    "4枚目｜ディテールカット: 手元、髪、布の質感、食べ物、野菜、ピアノ、小物などテーマの一部へ寄る",
-    "5枚目｜動きのカット: 歩く、振り返る、笑う、作業するなど、ポーズを作り込みすぎない瞬間を切り取る",
-    "6枚目｜環境カット: 人物を少し小さくして、選択した場所の光、奥行き、空気感をファッション誌風に見せる",
-    "7枚目｜余韻カット: 横顔、肩越し、後ろ姿、静かな表情のいずれかで、投稿を締める映画的な一枚",
-  ].slice(0, count).join("\n");
-  return `SNS投稿用の完成画像を${count}枚生成してください。すべて例外なくInstagramフィード投稿サイズの縦4:5、1080×1350pxで作成してください。キャンバスは幅1080px・高さ1350pxで、高さが幅より長い縦位置に固定します。横長、横向き、正方形、16:9、9:16、複数画像を横に並べたシートへ変更してはいけません。これは楽天商品紹介ではなく、ハナの日常と世界観を伝えるThreads投稿です。商品画像、価格、楽天ROOM、購入導線、アフィリエイト表記、比較表は入れません。
+  const count = photobookMode ? photobookCount : Math.max(1, Math.min(7, Number(c.creativeProfile?.threadsImageCount || 4)));
+  const roleCycle = [
+    "全身カット: 服装、靴、ポーズ、場所の関係を見せ、前後のカットと距離を大きく変える",
+    "表情アップ: 選択した表情と本人らしい目線を、自然な肌の質感とともに見せる",
+    "ミディアムカット: 腰上または膝上で、自然な仕草と服のシルエットを見せる",
+    "ディテールカット: 手元、髪、布の質感、テーマを象徴する小物のいずれかへ寄る",
+    "動きのカット: 歩く、振り返る、笑う、作業するなど、作り込みすぎない瞬間を切り取る",
+    "環境カット: 人物を少し小さくして、選択した場所の光、奥行き、空気感を見せる",
+    "横顔・肩越しカット: 視線を外し、前後のカットをつなぐ映画的な間を作る",
+    "静物・気配カット: 本人の手や足元を一部だけ入れ、場所と時間の気配を残す",
+  ];
+  const imageRoles = Array.from({ length: count }, (_, index) => {
+    const number = index + 1;
+    if (index === 0) return `${number}枚目｜表紙カット: 選択した表情と視線が伝わる主役ポートレート。文字なしでも作品のテーマが伝わる余白と強さを持たせる`;
+    if (index === count - 1) return `${number}枚目｜最終・余韻カット: 横顔、肩越し、後ろ姿、静かな表情のいずれかで物語を閉じ、もう一度見返したくなる余韻を残す`;
+    return `${number}枚目｜${roleCycle[(index - 1) % roleCycle.length]}`;
+  }).join("\n");
+  const purpose = photobookMode
+    ? `Noteで販売するハナの完成写真集画像を${count}枚生成してください。`
+    : `SNS投稿用の完成画像を${count}枚生成してください。`;
+  return `${purpose}すべて例外なくInstagramフィード投稿サイズの縦4:5、1080×1350pxで作成してください。キャンバスは幅1080px・高さ1350pxで、高さが幅より長い縦位置に固定します。横長、横向き、正方形、16:9、9:16、複数画像を横に並べたシートへ変更してはいけません。これは楽天商品紹介ではなく、ハナの日常と世界観を伝える${photobookMode ? "デジタル写真集" : "Threads投稿"}です。商品画像、価格、楽天ROOM、購入導線、アフィリエイト表記、比較表は入れません。
 
 ${creative}
+
+${photobookDirective}
 
 ${sensualDirective}
 
@@ -11993,7 +12061,7 @@ ${imageRoles}
 【対応する投稿文】
 ${currentDraft || generateHanakoLifestyleCopy(c, 0)}
 
-完成画像${count}枚と、上の世界観に合う短いThreads本文1案を別々に返してください。Threads本文は画像の外に通常テキストとして出力し、画像へ重ねないでください。`;
+${photobookMode ? `完成画像${count}枚に加え、Note販売ページ用の「写真集タイトル1案」「80〜140字の紹介文」「各画像の短い管理用カット名」を通常テキストで返してください。販売文は画像へ重ねないでください。` : `完成画像${count}枚と、上の世界観に合う短いThreads本文1案を別々に返してください。Threads本文は画像の外に通常テキストとして出力し、画像へ重ねないでください。`}`;
 }
 
 function buildHanakoLifestyleCopyPrompt(c, currentDraft) {

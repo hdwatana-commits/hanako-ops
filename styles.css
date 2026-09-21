@@ -1350,6 +1350,14 @@ textarea {
 .sns-hanako-sensual:focus-within { border-color: #b85b70; background: #fff1f4; box-shadow: 0 5px 16px rgba(122, 70, 48, .08); }
 .sns-hanako-sensual select { margin-top: 5px; }
 .sns-hanako-sensual small { display: block; margin-top: 6px; color: var(--muted); line-height: 1.5; }
+.sns-hanako-photobook { margin-top: 10px; padding: 12px 13px; border: 1px solid rgba(169, 116, 92, .22); border-radius: 12px; background: linear-gradient(145deg, #fff, #fff8f5); }
+.sns-hanako-photobook-switch { display: flex; align-items: center; justify-content: space-between; gap: 14px; cursor: pointer; }
+.sns-hanako-photobook-switch span, .sns-hanako-photobook-switch small { display: block; }
+.sns-hanako-photobook-switch small, .sns-hanako-photobook-settings > small { margin-top: 3px; color: var(--muted); line-height: 1.5; }
+.sns-hanako-photobook-switch input { width: 22px; height: 22px; flex: 0 0 auto; accent-color: #a84568; }
+.sns-hanako-photobook-settings { display: grid; gap: 9px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(169, 116, 92, .16); }
+.sns-hanako-photobook-settings[hidden] { display: none; }
+.sns-hanako-photobook-settings textarea { min-height: 82px; resize: vertical; }
 #generator.hanako-mode-active .social-commerce-only,
 #generator.hanako-mode-active #fashionSettings,
 #generator.hanako-mode-active #travelSettings { display: none !important; }
