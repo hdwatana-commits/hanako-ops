@@ -560,6 +560,27 @@ function adaptPromptToSelectedAi(value) {
   return String(value || "").replace(/Gemini|ChatGPT/g, getSelectedAiName());
 }
 
+function renderAiDestinationButtons() {
+  const chatGptSelected = selectedAiProvider === "chatgpt";
+  [
+    "sendSocialGeminiImage",
+    "sendSocialGeminiCopy",
+    "openSocialGeminiImage",
+    "openSocialGeminiCopy",
+    "shareCoordinateToGemini",
+    "openGemini",
+    "openRoomSelectedAi",
+    "openRoomImageGemini",
+    "openRoomCollectionAi",
+  ].forEach((id) => {
+    const button = document.querySelector(`#${id}`);
+    if (!button) return;
+    button.classList.toggle("chatgpt-transfer-button", chatGptSelected);
+    if (chatGptSelected) button.dataset.aiDestination = "ChatGPT";
+    else delete button.dataset.aiDestination;
+  });
+}
+
 function bindAiProviderSelectors() {
   const selectors = document.querySelectorAll(".ai-provider-select");
   selectors.forEach((select) => {
@@ -571,9 +592,11 @@ function bindAiProviderSelectors() {
       [coordGeminiPrompt, coordGeminiCaptionPrompt, snsGeminiPrompt, snsGeminiCopyPrompt, document.querySelector("#roomImagePrompt")]
         .filter(Boolean)
         .forEach((output) => { output.value = adaptPromptToSelectedAi(output.value); });
+      renderAiDestinationButtons();
       showToast(`${getSelectedAiName()}を使う設定にしました`);
     });
   });
+  renderAiDestinationButtons();
 }
 
 function bindAppearancePicker() {
