@@ -494,7 +494,7 @@ function enhanceCoordinateSelectOptions() {
     floorGroup.after(cuteGroup);
     const affectionateGroup = document.createElement("optgroup");
     affectionateGroup.label = "甘えるポーズ";
-    affectionateGroup.innerHTML = '<option value="cuddleCushionGaze">クッションを抱えて甘えるように見上げる</option><option value="sleeveCling">相手の袖を軽くつまんで寄り添う</option>';
+    affectionateGroup.innerHTML = '<option value="cuddleCushionGaze">クッションを抱えて甘えるように見上げる</option><option value="sleeveCling">相手の袖を軽くつまんで寄り添う</option><option value="handsTogetherGaze">両手を胸元で合わせて甘えるように見上げる</option><option value="shoulderLean">隣の相手の肩へ頭を預けて寄り添う</option><option value="blanketCheek">ブランケットへ頬を寄せて見つめる</option><option value="reachForHand">手をつなぎたそうに片手を差し出す</option>';
     cuteGroup.after(affectionateGroup);
     const dailyGroup = document.createElement("optgroup");
     dailyGroup.label = "日常・お着換え";
@@ -12414,6 +12414,10 @@ function buildSocialCreativeDirective(context) {
     playfulCrawl: "成人女性が服を適切に着たまま、ベッドやラグの上で遊び心のあるハイハイをする。正面または斜め前から撮り、胸元や下着、臀部を強調しない",
     cuddleCushionGaze: "成人女性がクッションを胸元で優しく抱え、肩を少しすぼめながら甘えるようにカメラを見上げる。親しみやすい柔らかな表情にし、腕、指、クッションの重なりを自然にする",
     sleeveCling: "成人女性が信頼する相手の隣へ自然に寄り添い、画面端に少しだけ見える相手の服の袖を片手で軽くつまんで甘えるポーズ。相手の顔や身体を主役にせず、手指を自然な5本に保つ",
+    handsTogetherGaze: "成人女性が両手を胸元の少し下で柔らかく合わせ、肩の力を抜き、あごを少し引いて甘えるようにカメラを見上げる。指を絡ませず、左右の手と各5本の指を自然に見せる",
+    shoulderLean: "成人女性が信頼する相手の隣へ座り、相手の肩へ頭をそっと預けて安心した表情を見せる。相手は肩と上腕だけを画面端へ自然に入れ、顔や余分な手足を描かない",
+    blanketCheek: "成人女性がソファやベッドで柔らかなブランケットの端を両手で軽く抱え、頬をそっと寄せながらカメラを見つめる。布、頬、指が融合しないよう境界と陰影を自然にする",
+    reachForHand: "成人女性が少し照れた表情でカメラへ片手を優しく差し出し、手をつなぎたそうに誘う親しみやすいポーズ。手のひらを極端に大きくせず、指を自然な5本に保ち、もう片方の手も自然な位置へ置く",
     heartHands: "胸元の前で両手を使って小さなハートを作り、親しみやすく微笑む",
     cheekHands: "両手を頬へ軽く添え、首を少し傾けた大人可愛いポーズ",
     doublePeace: "顔の横で控えめなダブルピースを作り、自然に笑う",
