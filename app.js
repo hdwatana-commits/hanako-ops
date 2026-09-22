@@ -3153,7 +3153,11 @@ function renderHanakoGasSettings() {
     const mirror = document.querySelector(`#${mirrorId}`);
     const source = document.querySelector(`#${sourceId}`);
     if (!mirror || !source) return;
-    if (mirror.tagName === "SELECT" && !mirror.options.length) mirror.innerHTML = source.innerHTML;
+    if (mirror.tagName === "SELECT" && mirror.innerHTML !== source.innerHTML) {
+      const selectedValue = source.value || mirror.value;
+      mirror.innerHTML = source.innerHTML;
+      if ([...mirror.options].some((option) => option.value === selectedValue)) mirror.value = selectedValue;
+    }
     mirror.value = source.value;
   });
 }
