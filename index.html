@@ -788,6 +788,13 @@
                     <small>選択中の髪型・服装・場所・光／時間帯を引き継ぎ、表紙から最終カットまで統一した連作にします。</small>
                   </div>
                 </div>
+                <div class="sns-hanako-photobook">
+                  <label class="sns-hanako-photobook-switch" for="snsHanakoInstagramMode"><span><strong>インスタモード</strong><small>同じ場所・服装・髪型で3枚の縦写真とキャプション1つ</small></span><input id="snsHanakoInstagramMode" type="checkbox"></label>
+                  <div class="sns-hanako-photobook-settings" id="snsHanakoInstagramSettings" hidden>
+                    <small>大人の色気はハプニングモード。場所は自宅・撮影スタジオ・公園のみ。上の選択欄で手動変更できます。</small>
+                    <button id="rerollHanakoInstagram" type="button">おすすめの組み合わせを変更</button>
+                  </div>
+                </div>
                 <button class="primary" id="generateHanakoGasImage" type="button">この設定で画像と本文を作る</button>
               </section>
               <label class="field-label social-commerce-only">商品</label>
@@ -1933,6 +1940,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=309"></script>
+    <script src="app.js?v=310"></script>
   </body>
 </html>
