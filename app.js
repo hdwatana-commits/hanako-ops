@@ -3199,8 +3199,12 @@ function renderHanakoPhotobookSettings() {
 const hanakoInstagramLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park"];
 const hanakoInstagramOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "offShoulderWidePants", "satinBowBlouse", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt"];
 const hanakoInstagramPoses = ["fingerHeartNearFace", "ribbonAdjust", "jacketOnShoulder", "chairSideTurn", "bouquetHug", "curtainPeek", "mirrorHalfTurn", "stepTowardCamera", "handsBackLean", "seatedSideLegs", "hairTouch", "lookback"];
-const hanakoInstagramExpressions = ["bashful", "upward", "softEyeContact", "overShoulderSmile", "shySideSmile", "sunlitSquint", "curiousTilt", "playfulBrow", "expectantGaze", "secretSmile"];
-const hanakoInstagramCompositions = ["face", "editorial", "full", "waist", "eye", "low"];
+const hanakoInstagramLooks = [
+  { id: "sweet", label: "照れた甘さ", direction: "はにかみ、上目遣い、柔らかな仕草で親しみやすい可愛さを見せる", locations: ["homeLiving", "homeSofa", "homeWindow", "studioPastel", "park"], outfits: ["sweetIvoryKnitMini", "pinkTweedDress", "blackRibbonKnit", "cardiganFloralDress"], poses: ["fingerHeartNearFace", "bouquetHug", "handsBackLean", "hairTouch"], expressions: ["bashful", "upward", "shySideSmile", "curiousTilt"], compositions: ["face", "waist", "eye"] },
+  { id: "flirty", label: "いたずらっぽい視線", direction: "振り返りと視線の変化で、露出に頼らないドキッとする距離感を作る", locations: ["homeSofa", "homeBedroom", "homeVanity", "studioDaylight", "studioNoir"], outfits: ["offShoulderWidePants", "satinBowBlouse", "creamWrapSkirt", "blackRibbonKnit"], poses: ["chairSideTurn", "mirrorHalfTurn", "ribbonAdjust", "lookback"], expressions: ["secretSmile", "invitingGaze", "overShoulderSmile", "halfLiddedSmile"], compositions: ["editorial", "waist", "eye"] },
+  { id: "date", label: "デート服のときめき", direction: "清潔感のある装いと弾む表情で、一緒に過ごしたくなる明るさを見せる", locations: ["homeLiving", "homeWindow", "studioDaylight", "studioPastel", "park"], outfits: ["softBlueShirtDress", "whiteLaceDenim", "navyPoloMini", "cardiganFloralDress"], poses: ["stepTowardCamera", "jacketOnShoulder", "bouquetHug", "lookback"], expressions: ["sunlitSquint", "expectantGaze", "softEyeContact", "shySideSmile"], compositions: ["full", "waist", "face"] },
+  { id: "elegant", label: "大人の余裕", direction: "落ち着いた眼差し、布の質感、上品な陰影で洗練された色気を見せる", locations: ["homeSofa", "homeBedroom", "studioNoir", "studioDaylight"], outfits: ["satinBowBlouse", "offShoulderWidePants", "creamWrapSkirt", "pinkTweedDress"], poses: ["chairSideTurn", "ribbonAdjust", "jacketOnShoulder", "seatedSideLegs"], expressions: ["softEyeContact", "invitingGaze", "halfLiddedSmile", "subtlesmile"], compositions: ["editorial", "waist", "eye"] },
+];
 
 function renderHanakoInstagramSettings() {
   const enabled = Boolean(getSocialCreativeProfile().hanakoInstagramMode);
@@ -3208,6 +3212,9 @@ function renderHanakoInstagramSettings() {
   const settings = document.querySelector("#snsHanakoInstagramSettings");
   if (toggle) toggle.checked = enabled;
   if (settings) settings.hidden = !enabled;
+  const look = hanakoInstagramLooks.find((item) => item.id === state.hanakoInstagramLook);
+  const lookSummary = document.querySelector("#snsHanakoInstagramLook");
+  if (lookSummary) lookSummary.textContent = `今回のおすすめ：${look?.label || "大人可愛いポートレート"}`;
   for (const id of ["snsLocationPreset", "hanakoGasLocation"]) {
     const select = document.querySelector(`#${id}`);
     if (!select) continue;
@@ -3222,15 +3229,17 @@ function recommendHanakoInstagram() {
   const poses = valid("snsPosePreset", hanakoInstagramPoses);
   if (!locations.length || !outfits.length || !poses.length) return;
   const recent = state.hanakoInstagramRecent || [];
-  const choices = Array.from({ length: 30 }, () => {
+  const choices = Array.from({ length: 40 }, () => {
     const pickOne = (items) => items[Math.floor(Math.random() * items.length)];
-    const location = pickOne(locations);
-    const locationPoses = location === "park" ? poses.filter((pose) => ["fingerHeartNearFace", "jacketOnShoulder", "bouquetHug", "stepTowardCamera", "handsBackLean", "lookback", "hairTouch"].includes(pose)) : poses;
-    return { location, outfit: pickOne(outfits), pose: pickOne(locationPoses), expression: pickOne(hanakoInstagramExpressions), composition: pickOne(hanakoInstagramCompositions) };
+    const look = pickOne(hanakoInstagramLooks);
+    const location = pickOne(look.locations.filter((value) => locations.includes(value)));
+    const locationPoses = look.poses.filter((pose) => poses.includes(pose) && (location !== "park" || ["fingerHeartNearFace", "jacketOnShoulder", "bouquetHug", "stepTowardCamera", "handsBackLean", "lookback", "hairTouch"].includes(pose)));
+    return { look: look.id, location, outfit: pickOne(look.outfits.filter((value) => outfits.includes(value))), pose: pickOne(locationPoses), expression: pickOne(look.expressions), composition: pickOne(look.compositions) };
   });
-  const score = (item) => recent.reduce((total, previous, index) => total + (previous === JSON.stringify(item) ? 100 : 0) + (["location", "outfit", "pose", "expression", "composition"].reduce((matches, key) => matches + (JSON.parse(previous)[key] === item[key] ? 1 : 0), 0) * (recent.length - index)), 0);
+  const score = (item) => recent.reduce((total, previous, index) => total + (previous === JSON.stringify(item) ? 100 : 0) + (["look", "location", "outfit", "pose", "expression", "composition"].reduce((matches, key) => matches + (JSON.parse(previous)[key] === item[key] ? (key === "look" ? 3 : 1) : 0), 0) * (recent.length - index)), 0);
   const chosen = choices.sort((a, b) => score(a) - score(b))[0];
   state.hanakoInstagramRecent = [JSON.stringify(chosen), ...recent].slice(0, 12);
+  state.hanakoInstagramLook = chosen.look;
   const set = (id, value) => { const input = document.querySelector(`#${id}`); if (input) input.value = value; };
   set("snsLocationPreset", chosen.location);
   set("snsOutfitPreset", chosen.outfit);
@@ -12202,9 +12211,10 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft) {
 ・「${locationLabel}」を含む場所の文字情報は画像内に表示しない`;
   const count = instagramMode ? 3 : photobookMode ? photobookCount : Math.max(1, Math.min(7, Number(c.creativeProfile?.threadsImageCount || 4)));
   const selected = c.creativeProfile || {};
+  const instagramLook = hanakoInstagramLooks.find((look) => look.id === state.hanakoInstagramLook) || hanakoInstagramLooks[0];
   const instagramPosePool = locationPreset === "park"
-    ? ["fingerHeartNearFace", "jacketOnShoulder", "bouquetHug", "stepTowardCamera", "handsBackLean", "lookback", "hairTouch"]
-    : hanakoInstagramPoses;
+    ? hanakoInstagramPoses.filter((pose) => ["fingerHeartNearFace", "jacketOnShoulder", "bouquetHug", "stepTowardCamera", "handsBackLean", "lookback", "hairTouch"].includes(pose))
+    : instagramLook.poses;
   const chooseOther = (pool, first, offset) => {
     const alternatives = pool.filter((value) => value !== first);
     return alternatives[(Math.max(0, pool.indexOf(first)) + offset - 1) % alternatives.length];
@@ -12212,12 +12222,14 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft) {
   const optionLabel = (id, value) => [...(document.querySelector(`#${id}`)?.options || [])].find((option) => option.value === value)?.textContent?.trim() || value;
   const instagramShotPlan = instagramMode ? [0, 1, 2].map((index) => {
     const pose = index ? chooseOther(instagramPosePool, selected.posePreset, index) : selected.posePreset;
-    const expression = index ? chooseOther(hanakoInstagramExpressions, selected.hanakoExpression, index) : selected.hanakoExpression;
-    const composition = index ? chooseOther(hanakoInstagramCompositions, selected.compositionPreset, index) : selected.compositionPreset;
+    const expression = index ? chooseOther(instagramLook.expressions, selected.hanakoExpression, index) : selected.hanakoExpression;
+    const composition = index ? chooseOther(instagramLook.compositions, selected.compositionPreset, index) : selected.compositionPreset;
     return `${index + 1}枚目｜1枚カットの独立写真。ポーズ: ${optionLabel("snsPosePreset", pose)}。表情: ${hanakoExpressionOptions[expression]?.label || expression}。構図: ${optionLabel("snsCompositionPreset", composition)}。${index === 0 ? "上部の手動選択をそのまま採用" : "前の写真と明確に異なる視線・身体の向き・カメラ距離にする"}`;
   }).join("\n") : "";
   const instagramDirective = instagramMode ? `【インスタモード｜3枚組】
 ・Instagramフィード用に、縦4:5の独立した1枚カットを3枚と、3枚共通のキャプション1つを作る。3分割、コラージュ、コンタクトシートにしない
+・今回の撮影テーマは「${instagramLook.label}」。${instagramLook.direction}。男性フォロワーにも魅力的に映る、大人可愛い表情と品のある色気を優先する。全身の服の魅力、目が合う瞬間、思わず微笑む仕草の3つに見どころを分ける
+・1枚目はスクロール中に目を止める主役カット、2枚目は少し近い距離の親しみやすさ、3枚目は振り返りや余韻でまた見たくなるカットにする。ただし表情・ポーズ・構図の具体指定は下記を優先する
 ・3枚とも同じ成人女性、同じ場所「${locationLabel}」、同じ服装、同じ髪型、同じ時間帯と光、背景小物の配置を固定する。場所を移動したように見せない
 ・撮影場所は自宅の室内、撮影スタジオ、または公園だけ。屋外は公園以外にしない。公園では安全な平地で撮影する
 ・次の指定を1枚ずつ実行し、3枚でポーズ・表情・構図を必ず変える。1枚目だけが上部メニューの選択を反映し、2・3枚目は連作として自然に変化させる:
@@ -12291,8 +12303,9 @@ function buildHanakoLifestyleCopyPrompt(c, currentDraft) {
 ${buildSocialCreativeDirective(c)}
 
 【キャプション条件】
+・今回の撮影テーマは「${hanakoInstagramLooks.find((look) => look.id === state.hanakoInstagramLook)?.label || "大人可愛いポートレート"}」。男性フォロワーが親しみを感じ、また写真を見たくなるような可愛さと余韻を文章でも作る。自分を過度に売り込まず、自然な一人称の言葉にする
 ・写真3枚に共通する同じ場所、服装、髪型、時間帯の空気感を伝え、各画像に別々の本文を作らない
-・親しみやすい大人の余裕と、ふいに目が合ったようなドキッと感を上品に表現する。露出や性的な事故を言葉で煽らない
+・1行目は感情や小さな場面で引き込み、次に少し照れた本音や軽い遊び心を加える。親しみやすい大人の余裕と、ふいに目が合ったようなドキッと感を上品に表現する。露出や性的な事故を言葉で煽らない
 ・自然な1〜3文、改行は読みやすく。絵文字は0〜2個。必要なら最後に軽い問いかけを1つだけ置く
 ・実際に訪れた、撮影した等の未確認の体験を断定しない。住所・店名・個人情報は書かない
 ・画像内に文字は入れず、このキャプションは投稿欄にのみ掲載する
