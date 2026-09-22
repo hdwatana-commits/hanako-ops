@@ -479,6 +479,13 @@ function enhanceCoordinateSelectOptions() {
       existing.add(value);
     });
   });
+  const locationSelect = document.querySelector("#snsLocationPreset");
+  if (locationSelect && ![...locationSelect.options].some((option) => option.value === "studioDaylight")) {
+    const studioGroup = document.createElement("optgroup");
+    studioGroup.label = "撮影用スタジオ";
+    studioGroup.innerHTML = '<option value="studioDaylight">白壁と自然光の撮影スタジオ</option><option value="studioPastel">淡色パステルの撮影スタジオ</option><option value="studioNoir">黒背景のシネマ風撮影スタジオ</option>';
+    locationSelect.querySelector('option[value="world"]')?.after(studioGroup);
+  }
   const poseSelect = document.querySelector("#snsPosePreset");
   if (poseSelect && ![...poseSelect.options].some((option) => option.value === "highKick")) {
     const actionGroup = document.createElement("optgroup");
@@ -501,10 +508,14 @@ function enhanceCoordinateSelectOptions() {
     dailyGroup.label = "日常・お着換え";
     dailyGroup.innerHTML = '<option value="gettingDressed">鏡の前で上着へ袖を通すお着換え中</option>';
     affectionateGroup.after(dailyGroup);
+    const studioPoseGroup = document.createElement("optgroup");
+    studioPoseGroup.label = "撮影で映える好印象ポーズ";
+    studioPoseGroup.innerHTML = '<option value="fingerHeartNearFace">顔の横で小さな指ハート</option><option value="ribbonAdjust">リボンや襟元を整えながら目を合わせる</option><option value="jacketOnShoulder">上着を肩へ軽くかけて振り向く</option><option value="chairSideTurn">椅子に横向きで座って振り返る</option><option value="bouquetHug">小さな花束を両手で抱える</option><option value="curtainPeek">カーテンの端から顔をのぞかせる</option><option value="mirrorHalfTurn">鏡の前で半身に振り向く</option><option value="stepTowardCamera">カメラへ一歩近づいて微笑む</option><option value="handsBackLean">両手を後ろで組んで少し前傾</option><option value="seatedSideLegs">座って両脚を横へ自然にそろえる</option>';
+    dailyGroup.after(studioPoseGroup);
     const savedPose = getSocialCreativeProfile().posePreset;
     if ([...poseSelect.options].some((option) => option.value === savedPose)) poseSelect.value = savedPose;
-    renderHanakoGasSettings();
   }
+  renderHanakoGasSettings();
 }
 
 queueMicrotask(initialize);
@@ -3076,6 +3087,11 @@ const hanakoExpressionOptions = {
   subtlesmile: { label: "口角だけを上げた余裕のある微笑み", prompt: "歯を見せず口角をわずかに上げ、優しく見つめる上品で洗練された微笑み" },
   calmGaze: { label: "静かに見つめる落ち着いた眼差し", prompt: "力みのない真っすぐな視線と穏やかな口元で、知性と余裕を感じさせる落ち着いた眼差し" },
   confidentSmile: { label: "自信を感じる控えめな微笑み", prompt: "姿勢を整え、口角をわずかに上げた、華美ではない自信と品を感じる控えめな微笑み" },
+  shySideSmile: { label: "横目ではにかむ笑顔", prompt: "視線を横へ逃がしてからカメラへ戻し、少し照れたように口元だけ先に笑う自然な表情。本人の目元と顔立ちを保つ" },
+  sunlitSquint: { label: "光に目を細めた自然な笑顔", prompt: "柔らかな撮影光を受けて目を自然に少し細め、頬が上がる明るい笑顔。眩しすぎるしかめ顔にはしない" },
+  curiousTilt: { label: "首をかしげた問いかけ顔", prompt: "首をわずかに傾け、目を自然に開いて話しかけるように見つめる。幼く見せず、親しみやすい大人の好奇心を表す" },
+  playfulBrow: { label: "片眉を少し上げたいたずら笑顔", prompt: "片眉をほんの少し上げ、口角を控えめに上げる遊び心のある笑顔。左右の顔立ちを歪ませず自然にする" },
+  expectantGaze: { label: "会えるのを待つような眼差し", prompt: "視線をカメラへ静かに向け、目元に期待と温かさをにじませて小さく微笑む。大げさな演技や過度な色気を避ける" },
 };
 
 const hanakoIdeaCatalog = [
@@ -12072,6 +12088,15 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft) {
   const locationPreset = c.creativeProfile?.locationPreset || "world";
   const locationSelect = document.querySelector("#snsLocationPreset");
   const locationLabel = c.creativeProfile?.location || [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "選択した場所";
+  const studioScenes = {
+    studioDaylight: "白い塗り壁と大きな拡散窓光、淡い木床を使う明るい撮影スタジオ。窓外に実在の街並みを作らず、選択した時間帯に合う光の色へ調整する",
+    studioPastel: "淡いピンクとアイボリーのシームレス背景、柔らかな布と控えめな花を使う撮影スタジオ。装飾を少数に絞り、服と表情を主役にする",
+    studioNoir: "黒または深いチャコールの背景に、柔らかなキーライトと弱い輪郭光を当てるシネマ風撮影スタジオ。顔と衣装の質感がつぶれない階調を保つ",
+  };
+  const studioDirective = studioScenes[locationPreset] ? `【撮影スタジオの設計】
+・${studioScenes[locationPreset]}
+・撮影機材、スタンド、電源コード、背景紙の端は画面に入れず、完成したポートレートとして見せる
+・全カットで背景色と小物の連続性を保ち、別のスタジオや屋外へ勝手に移動しない` : "";
   const privateIndoorPresets = new Set(["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room"]);
   const privateIndoorLocation = privateIndoorPresets.has(locationPreset)
     || /自宅|部屋|室内|リビング|寝室|ベッド|ソファ|キッチン|窓辺|デスク|ドレッサー|ホテル客室/.test(locationLabel);
@@ -12118,6 +12143,8 @@ ${photobookDirective}
 ${sensualDirective}
 
 ${world}
+
+${studioDirective}
 
 ${footwearDirective}
 
@@ -12406,6 +12433,16 @@ function buildSocialCreativeDirective(context) {
     carousel: { story: "場面ストーリー（導入→発見→詳細→余韻）", lesson: "ミニ講座（結論→理由→実例→保存メモ）", styling: "コーデ展開（全身→上半身→小物→別角度）", review: "観察レビュー（主役→良い点→注意点→まとめ）", trend: "トレンド解説（兆し→特徴→取り入れ方→結論）" },
   };
   Object.assign(labels.outfit, {
+    sweetIvoryKnitMini: "アイボリーの柔らかな長袖ニットと落ち着いたチェック柄の台形ミニスカート。丈とフィットを上品に整え、親しみやすい大人可愛さを出す",
+    softBlueShirtDress: "淡いブルーの襟付きシャツワンピース。膝丈、細いベルト、袖の自然なまくり方で清潔感のあるデート服にする",
+    pinkTweedDress: "淡いピンクのツイードワンピース。小ぶりな飾りボタンと端正なAラインで華やかさを出し、装飾を盛りすぎない",
+    blackRibbonKnit: "小ぶりな黒いリボンの付いた長袖ニットと白い膝丈フレアスカート。モノトーンに甘さを一つ添える",
+    whiteLaceDenim: "透けを抑えた白いレースブラウスと濃色ストレートデニム。素材の細部と自然なウエストラインを見せる",
+    offShoulderWidePants: "鎖骨が少し見える上品なオフショルダーニットとハイウエストの落ち感あるワイドパンツ。肩がずり落ちない着こなしにする",
+    satinBowBlouse: "光沢を抑えたサテンのボウタイブラウスと身体のラインを拾いすぎないマーメイドスカート。大人っぽい柔らかな配色にする",
+    cardiganFloralDress: "小花柄の膝下ワンピースにふんわりした短めカーディガン。花柄は細かく自然に、袖と裾の形を全カットで一致させる",
+    navyPoloMini: "ネイビーの半袖ポロニットと端正なプリーツミニスカート。清潔感のあるスポーティな大人可愛さに整える",
+    creamWrapSkirt: "クリーム色のカシュクール風ニットとずれにくい膝丈ラップスカート。淡色の重なりと柔らかな布の質感を見せる",
     maidFrench: "成人女性向けのフレンチメイド風ワンピース。黒の膝丈フレア、白いエプロン、控えめなレース、長袖で清潔感を保つ",
     maidCafe: "成人女性向けのカフェ店員風メイド服。ネイビーまたはブラウンの膝丈ワンピース、白い襟とエプロン、小さなリボン",
     maidGothic: "成人女性向けの黒と白のゴシックメイド服。長袖、膝丈スカート、上品なフリル、黒いリボンを合わせる",
@@ -12449,6 +12486,16 @@ function buildSocialCreativeDirective(context) {
     influencerEvening: "身体のラインを拾いすぎない上品な黒の夜カフェワンピースと華奢なアクセサリー",
   });
   Object.assign(labels.pose, {
+    fingerHeartNearFace: "成人女性が顔の横で片手の親指と人差し指を使って小さな指ハートを作り、自然に微笑む。指は5本で関節と重なりを写実的にする",
+    ribbonAdjust: "成人女性が衣装のリボンまたは襟元を片手でさりげなく整え、ふとカメラと目を合わせる。襟を開いたり衣装をずらしたりしない",
+    jacketOnShoulder: "成人女性が着用中の上着を肩へ軽くかけ直し、肩越しに自然に振り向く。腕と袖の位置、上着の重力を正しく描く",
+    chairSideTurn: "成人女性が安定した椅子に横向きで座り、背筋を軽く伸ばして上半身だけ自然に振り返る。椅子と身体の接地を正確にする",
+    bouquetHug: "成人女性が小さな花束を両手で胸元の少し下へ抱え、顔が隠れない位置で微笑む。花びら、茎、指の境界を自然にする",
+    curtainPeek: "成人女性がスタジオの薄いカーテンの端へ片手を添え、顔を少しのぞかせて微笑む。布が顔や指へ融合しないようにする",
+    mirrorHalfTurn: "成人女性が鏡の前で半身に立ち、肩越しに振り返って微笑む。鏡像の顔、髪、衣装、手足の向きを一致させる",
+    stepTowardCamera: "成人女性がカメラへ自然に一歩近づき、目を合わせて微笑む。踏み出す足と残す足の重心、髪と服の揺れを自然にする",
+    handsBackLean: "成人女性が両手を背中の後ろで軽く組み、背筋を保ったまま上体を少し前へ傾けて微笑む。胸元を覗かせない正面寄りの視点にする",
+    seatedSideLegs: "成人女性が椅子か床に座り、両脚を横へ自然にそろえてカメラを見る。膝、足首、椅子や床との接地を無理なく描く",
     leanForward: "成人女性が背筋を自然に保ちながら上体を少し前へ傾け、両手を膝または太ももの上へ軽く添えてカメラを見る。胸元を覗かせず、首・肩・腰の角度を自然にする",
     wideStanceCrouch: "成人女性が足を肩幅より少し広めに置き、つま先と膝を外向きにそろえて低くしゃがむストリートファッション風ポーズ。重心と接地を安定させ、下着や胸元を見せない",
     gettingDressed: "成人女性が自宅の鏡の前で、服をきちんと着た状態からジャケットやカーディガンへ片腕ずつ袖を通している自然なお着換え中の瞬間。脱衣、下着、裸、透け、胸元の露出は描かず、手指と袖の位置を自然にする",
