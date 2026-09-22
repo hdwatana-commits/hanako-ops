@@ -801,6 +801,13 @@
                   <div class="sns-hanako-photobook-settings" id="snsHanakoThreadsSettings" hidden>
                     <small>場所・髪型・服装・構図を3枚で固定。海外都市は選ばず、顔アップやバストアップを多めにおすすめします。</small>
                     <button id="rerollHanakoThreads" type="button">おすすめの組み合わせを変更</button>
+                    <label class="sns-hanako-photobook-switch" for="snsHanakoThreadsAbMode"><span><strong>A/B比較モード</strong><small>条件を揃えたA・Bの2枚と、選びやすい問いかけを作成</small></span><input id="snsHanakoThreadsAbMode" type="checkbox"></label>
+                    <div class="sns-hanako-photobook-settings" id="snsHanakoThreadsAbSettings" hidden>
+                      <div class="generator-pair"><div><label class="field-label" for="snsHanakoThreadsAbAxis">比べる項目</label><select id="snsHanakoThreadsAbAxis"><option value="outfit">服装</option><option value="hair">髪型</option><option value="expression">表情</option><option value="pose">ポーズ</option></select></div><div><label class="field-label" for="snsHanakoThreadsAbB">B案</label><select id="snsHanakoThreadsAbB"></select></div></div>
+                      <label class="field-label" for="snsHanakoThreadsAbLayout">画像の並べ方</label><select id="snsHanakoThreadsAbLayout"><option value="auto">自動（服装は2枚・表情などは左右1枚）</option><option value="separate">A・Bを別々の2枚</option><option value="sideBySide">左右に並べた1枚</option></select>
+                      <small>A案は上の選択欄を使用。B案だけを変え、人物・場所・光・構図を固定します。左右1枚ではA/Bの小さな印だけ画像に入れます。</small>
+                      <button id="rerollHanakoThreadsAb" type="button">A/Bの組み合わせを再提案</button>
+                    </div>
                   </div>
                 </div>
                 <button class="primary" id="generateHanakoGasImage" type="button">この設定で画像と本文を作る</button>
@@ -1948,6 +1955,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=312"></script>
+    <script src="app.js?v=313"></script>
   </body>
 </html>
