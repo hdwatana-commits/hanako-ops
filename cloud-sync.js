@@ -128,6 +128,12 @@
       return { signedUrl, expiresAt: Date.now() + expiresIn * 1000 };
     }
 
+    async downloadPrivateImage(path, bucket = "hanako-private-photos") {
+      if (!this.signedIn || !path) throw this.createError("SYNC_AUTH_REQUIRED", "Sign in before downloading a private photo.");
+      const response = await this.authorizedFetch(`/storage/v1/object/authenticated/${bucket}/${this.encodeStoragePath(path)}`, { cache: "no-store" });
+      return response.blob();
+    }
+
     async removePrivateImage(path, bucket = "hanako-private-photos") {
       if (!this.signedIn || !path) return;
       await this.authorizedFetch(`/storage/v1/object/${bucket}`, {

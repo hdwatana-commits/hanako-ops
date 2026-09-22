@@ -299,6 +299,7 @@ const toast = document.querySelector("#toast");
 let deferredInstallPrompt = null;
 let coordinatePhotoDataUrl = "";
 const coordinatePhotoPreviewCache = new Map();
+const coordinatePhotoPreviewErrors = new Map();
 const COORDINATE_PHOTO_CACHE = "hanako-private-photo-previews-v1";
 const PRIVATE_MEDIA_DB = "hanako-private-media-v1";
 const PRIVATE_MEDIA_STORE = "assets";
@@ -4502,6 +4503,9 @@ async function reconcileCloudData() {
     applyCloudState(cloudRow.payload);
   } else {
     await saveCloudNow();
+    if (state.coordinatePhotos?.some((photo) => !coordinatePhotoPreviewCache.has(photo.id))) {
+      await refreshCoordinatePhotoLibraryUrls();
+    }
   }
   lastCloudSyncAt = new Date();
   lastCloudSyncError = "";
@@ -5015,6 +5019,17 @@ function bindCoordinateActions() {
   document.querySelector("#coordPhotoLibrary")?.addEventListener("click", handleCoordinatePhotoLibraryClick);
   document.querySelector("#homeCoordPhoto")?.addEventListener("change", uploadCoordinatePhotos);
   document.querySelector("#homeCoordPhotoLibrary")?.addEventListener("click", handleCoordinatePhotoLibraryClick);
+  document.querySelector("#retryHomePhotoRestore")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = "写真を復元中…";
+    try {
+      await refreshCoordinatePhotoLibraryUrls();
+    } finally {
+      button.disabled = false;
+      button.textContent = "表示されない写真を復元";
+    }
+  });
   document.querySelector("#coordMainProduct")?.addEventListener("change", (event) => {
     const product = state.products.find((item) => item.id === event.currentTarget.value);
     if (product) applyRecommendedCoordinateDefaults(product);
@@ -5155,6 +5170,7 @@ async function handleCoordinatePhotoLibraryClick(event) {
     try {
       await cloudSync.removePrivateImage(photo.path);
       await removeCoordinatePhotoPreview(photo.id);
+      coordinatePhotoPreviewErrors.delete(photo.id);
       state.coordinatePhotos = state.coordinatePhotos.filter((item) => item.id !== photo.id);
       if (state.selectedCoordinatePhotoId === photo.id) state.selectedCoordinatePhotoId = state.coordinatePhotos[0]?.id || "";
       saveState();
@@ -5210,12 +5226,16 @@ function renderCoordinatePhotoLibrary() {
     target.innerHTML = libraryHtml;
   });
   const selectedName = selected?.name || "未選択";
+  const unavailableCount = state.coordinatePhotos.filter((photo) => !coordinatePhotoPreviewCache.has(photo.id)).length;
+  const failedCount = state.coordinatePhotos.filter((photo) => coordinatePhotoPreviewErrors.has(photo.id) && !coordinatePhotoPreviewCache.has(photo.id)).length;
   const statusText = cloudSync.signedIn
-    ? `${state.coordinatePhotos.length}/${COORDINATE_PHOTO_LIMIT}枚保存中。今回使う写真：${selectedName}`
+    ? `${state.coordinatePhotos.length}/${COORDINATE_PHOTO_LIMIT}枚登録中。今回使う写真：${selectedName}${failedCount ? `｜${failedCount}枚を復元できません。下のボタンで再試行してください` : unavailableCount ? `｜${unavailableCount}枚の画像を復元中` : ""}`
     : "写真を追加・更新するには、クラウド同期へログインしてください。";
+  const retryButton = document.querySelector("#retryHomePhotoRestore");
+  if (retryButton) retryButton.hidden = !cloudSync.signedIn || unavailableCount === 0;
   document.querySelectorAll("#coordPhotoStatus, #homeCoordPhotoStatus, #snsCoordPhotoStatus").forEach((status) => {
     status.textContent = statusText;
-    status.classList.remove("error");
+    status.classList.toggle("error", failedCount > 0);
   });
   renderRoomImagePhotoPreview();
   hydrateCoordinatePhotoPreviews();
@@ -5224,7 +5244,8 @@ function renderCoordinatePhotoLibrary() {
 function renderCoordinatePhotoThumb(photo, index) {
   const src = getCoordinatePhotoDisplaySrc(photo);
   if (src) return `<img src="${escapeHtml(src)}" alt="保存した全身写真${index + 1}">`;
-  return `<div class="coord-photo-thumb-empty" aria-label="保存した全身写真${index + 1}を読み込み中">PHOTO</div>`;
+  const failed = coordinatePhotoPreviewErrors.has(photo.id);
+  return `<div class="coord-photo-thumb-empty" aria-label="保存した全身写真${index + 1}を${failed ? "復元できませんでした" : "復元中"}">${failed ? "復元失敗" : "復元中"}</div>`;
 }
 
 function getCoordinatePhotoDisplaySrc(photo) {
@@ -5237,12 +5258,14 @@ function getCoordinatePhotoDisplaySrc(photo) {
 
 async function hydrateCoordinatePhotoPreviews() {
   if (coordinatePhotoPreviewHydrating || !state.coordinatePhotos?.length) return;
-  const missing = state.coordinatePhotos.filter((photo) => photo?.id && !coordinatePhotoPreviewCache.has(photo.id));
+  const missing = state.coordinatePhotos.filter((photo) => photo?.id && !coordinatePhotoPreviewCache.has(photo.id) && !coordinatePhotoPreviewErrors.has(photo.id));
   if (!missing.length) return;
   coordinatePhotoPreviewHydrating = true;
   let changed = false;
+  let failed = false;
   try {
     for (const photo of missing) {
+      photo.path ||= recoverPrivatePhotoPath(photo.signedUrl);
       const localPreview = await readPersistedCoordinatePhotoPreview(photo.id);
       if (localPreview) {
         coordinatePhotoPreviewCache.set(photo.id, localPreview);
@@ -5251,17 +5274,25 @@ async function hydrateCoordinatePhotoPreviews() {
       }
       if ((photo.signedUrl && Number(photo.expiresAt || 0) - Date.now() > 60 * 1000) || (cloudSync.signedIn && photo.path)) {
         try {
-          await loadCoordinatePhotoPreview(photo);
-          changed = true;
-        } catch {
-          // 期限切れや通信失敗の写真は、同期ログイン後のURL更新で復元する。
+          const preview = await loadCoordinatePhotoPreview(photo);
+          if (preview) changed = true;
+          else {
+            coordinatePhotoPreviewErrors.set(photo.id, "写真の保存先を確認できませんでした");
+            failed = true;
+          }
+        } catch (error) {
+          coordinatePhotoPreviewErrors.set(photo.id, error.message || "写真を復元できませんでした");
+          failed = true;
         }
+      } else if (cloudSync.signedIn) {
+        coordinatePhotoPreviewErrors.set(photo.id, "写真の保存先を確認できませんでした");
+        failed = true;
       }
     }
   } finally {
     coordinatePhotoPreviewHydrating = false;
   }
-  if (changed) renderCoordinatePhotoLibrary();
+  if (changed || failed) renderCoordinatePhotoLibrary();
 }
 
 function getSelectedCoordinatePhoto() {
@@ -5299,6 +5330,16 @@ async function loadCoordinatePhotoPreview(photo = getSelectedCoordinatePhoto()) 
     return localPreview;
   }
   photo.path ||= recoverPrivatePhotoPath(photo.signedUrl);
+  if (cloudSync.signedIn && photo.path) {
+    try {
+      const dataUrl = await persistCoordinatePhotoPreview(photo.id, await cloudSync.downloadPrivateImage(photo.path));
+      coordinatePhotoPreviewErrors.delete(photo.id);
+      coordinatePhotoDataUrl = dataUrl;
+      return dataUrl;
+    } catch (error) {
+      coordinatePhotoPreviewErrors.set(photo.id, error.message || "クラウドから写真を復元できませんでした");
+    }
+  }
   if (!photo.signedUrl && cloudSync.signedIn && photo.path) Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
   if (!photo.signedUrl) return "";
   let response;
@@ -5313,6 +5354,7 @@ async function loadCoordinatePhotoPreview(photo = getSelectedCoordinatePhoto()) 
   }
   const dataUrl = await persistCoordinatePhotoPreview(photo.id, await response.blob());
   coordinatePhotoPreviewCache.set(photo.id, dataUrl);
+  coordinatePhotoPreviewErrors.delete(photo.id);
   coordinatePhotoDataUrl = dataUrl;
   persistAppStateSafely();
   return dataUrl;
@@ -5457,6 +5499,7 @@ async function createCanvasCompatiblePhotoPreview(sourceBlob) {
 
 async function refreshCoordinatePhotoLibraryUrls() {
   if (!cloudSync.signedIn || !state.coordinatePhotos?.length) return;
+  coordinatePhotoPreviewErrors.clear();
   for (const photo of state.coordinatePhotos) {
     try {
       photo.path ||= recoverPrivatePhotoPath(photo.signedUrl);
@@ -5465,12 +5508,10 @@ async function refreshCoordinatePhotoLibraryUrls() {
         coordinatePhotoPreviewCache.set(photo.id, persisted);
         continue;
       }
-      if (photo.path && (!photo.signedUrl || Number(photo.expiresAt || 0) - Date.now() <= 10 * 60 * 1000)) {
-        Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
-      }
-      await loadCoordinatePhotoPreview(photo);
-    } catch {
-      // 1枚の復元失敗で残りの本人画像の復元を止めない。
+      const preview = await loadCoordinatePhotoPreview(photo);
+      if (!preview) coordinatePhotoPreviewErrors.set(photo.id, "写真の保存先を確認できませんでした");
+    } catch (error) {
+      coordinatePhotoPreviewErrors.set(photo.id, error.message || "クラウドから写真を復元できませんでした");
     }
   }
   persistAppStateSafely();

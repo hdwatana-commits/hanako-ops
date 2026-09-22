@@ -13,7 +13,7 @@
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="styles.css?v=222">
     <script src="config.js?v=222"></script>
-    <script src="cloud-sync.js?v=222"></script>
+    <script src="cloud-sync.js?v=307"></script>
     <script src="ops-engine.js?v=222"></script>
     <script src="ops-phase2-engine.js?v=222"></script>
     <script src="ops-phase3-engine.js?v=222"></script>
@@ -231,6 +231,7 @@
             </div>
             <div class="coord-photo-grid" id="homeCoordPhotoLibrary" aria-live="polite"></div>
             <p class="coord-photo-status" id="homeCoordPhotoStatus">写真の追加にはクラウド同期へのログインが必要です。</p>
+            <button id="retryHomePhotoRestore" type="button" hidden>表示されない写真を復元</button>
           </section>
 
           <div class="home-roadmap" aria-label="今日の作業手順">
@@ -1930,6 +1931,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=306"></script>
+    <script src="app.js?v=307"></script>
   </body>
 </html>
