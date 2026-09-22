@@ -486,16 +486,20 @@ function enhanceCoordinateSelectOptions() {
     poseSelect.insertBefore(actionGroup, poseSelect.querySelector("optgroup"));
     const floorGroup = document.createElement("optgroup");
     floorGroup.label = "寝転がる・床ポーズ";
-    floorGroup.innerHTML = '<option value="supineRelax">仰向けで寝転がりカメラを見る</option><option value="playfulCrawl">四つん這いで可愛くハイハイする</option>';
+    floorGroup.innerHTML = '<option value="supineRelax">仰向けで寝転がりカメラを見る</option><option value="supineSleeping">仰向けで自然に眠っている</option><option value="playfulCrawl">四つん這いで可愛くハイハイする</option>';
     actionGroup.after(floorGroup);
     const cuteGroup = document.createElement("optgroup");
     cuteGroup.label = "可愛いポーズ";
     cuteGroup.innerHTML = '<option value="heartHands">両手でハートを作る</option><option value="cheekHands">両手を頬に添える</option><option value="doublePeace">顔の横でダブルピース</option><option value="sleeveCover">萌え袖で口元を隠す</option><option value="toeIn">つま先を内向きにして首をかしげる</option><option value="hugCushion">クッションを抱えて微笑む</option>';
     floorGroup.after(cuteGroup);
+    const affectionateGroup = document.createElement("optgroup");
+    affectionateGroup.label = "甘えるポーズ";
+    affectionateGroup.innerHTML = '<option value="cuddleCushionGaze">クッションを抱えて甘えるように見上げる</option><option value="sleeveCling">相手の袖を軽くつまんで寄り添う</option>';
+    cuteGroup.after(affectionateGroup);
     const dailyGroup = document.createElement("optgroup");
     dailyGroup.label = "日常・お着換え";
     dailyGroup.innerHTML = '<option value="gettingDressed">鏡の前で上着へ袖を通すお着換え中</option>';
-    cuteGroup.after(dailyGroup);
+    affectionateGroup.after(dailyGroup);
     const savedPose = getSocialCreativeProfile().posePreset;
     if ([...poseSelect.options].some((option) => option.value === savedPose)) poseSelect.value = savedPose;
     renderHanakoGasSettings();
@@ -12406,7 +12410,10 @@ function buildSocialCreativeDirective(context) {
     highKick: "成人女性の全身を収めた、バランスの良いダイナミックなハイキック。軸足と関節を自然にし、スカートの場合はインナーパンツまたはタイツで下着が見えない構成にする",
     spiderHero: "成人女性が片膝を深く曲げ、片手を床へ添え、もう片腕を後方へ伸ばすスパイダーマン風の低いヒーロー着地ポーズ。手足を自然な数と形に保つ",
     supineRelax: "成人女性がベッドやラグの上へ仰向けに寝転がり、髪を自然に広げて穏やかにカメラを見る。脚を閉じ、日常のリラックス場面として真上または斜め上から撮る",
+    supineSleeping: "成人女性がベッドやラグの上へ仰向けになり、目を閉じて自然に眠っている。頭を枕へ自然に預け、腕は身体の横またはお腹の上へ力を抜いて置き、寝具への沈み込みと髪の広がりを写実的にする",
     playfulCrawl: "成人女性が服を適切に着たまま、ベッドやラグの上で遊び心のあるハイハイをする。正面または斜め前から撮り、胸元や下着、臀部を強調しない",
+    cuddleCushionGaze: "成人女性がクッションを胸元で優しく抱え、肩を少しすぼめながら甘えるようにカメラを見上げる。親しみやすい柔らかな表情にし、腕、指、クッションの重なりを自然にする",
+    sleeveCling: "成人女性が信頼する相手の隣へ自然に寄り添い、画面端に少しだけ見える相手の服の袖を片手で軽くつまんで甘えるポーズ。相手の顔や身体を主役にせず、手指を自然な5本に保つ",
     heartHands: "胸元の前で両手を使って小さなハートを作り、親しみやすく微笑む",
     cheekHands: "両手を頬へ軽く添え、首を少し傾けた大人可愛いポーズ",
     doublePeace: "顔の横で控えめなダブルピースを作り、自然に笑う",
