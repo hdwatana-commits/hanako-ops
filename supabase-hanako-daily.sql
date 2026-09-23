@@ -127,5 +127,8 @@ grant execute on function public.hanako_begin_publish(uuid, uuid) to service_rol
 --       'apikey',(select decrypted_secret from vault.decrypted_secrets where name = 'hanako_daily_anon_key'),
 --       'x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name = 'hanako_daily_cron_secret')),
 --     body := '{"action":"run"}'::jsonb
+--   ) where exists (
+--     select 1 from public.hanako_auto_settings
+--     where photo_consent and reference_path <> '' and (instagram_enabled or threads_enabled)
 --   );
 -- $$);
