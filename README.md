@@ -177,9 +177,9 @@ HANAKO_OWNER_USER_ID
 ### Supabaseでの初回設定
 
 1. 既存の [supabase-setup.sql](supabase-setup.sql) を適用済みのプロジェクトで、[supabase-hanako-daily.sql](supabase-hanako-daily.sql) をSQL Editorから実行します。既存の本人写真バケットは削除・再作成しません。
-2. Edge Function `social-publish` を最新版の [index.ts](supabase/functions/social-publish/index.ts) で再デプロイし、JWT検証をONにします。新規の `hanako-daily` は [index.ts](supabase/functions/hanako-daily/index.ts) をデプロイし、JWT検証をOFFにします。後者は長いランダム文字列の `x-cron-secret` ヘッダーだけを受け付け、ブラウザからは呼びません。
+2. Edge Function `social-publish` を最新版の [index.ts](supabase/functions/social-publish/index.ts) で再デプロイし、JWT検証をONにします。新規の `hanako-daily` は [index.ts](supabase/functions/hanako-daily/index.ts) をデプロイし、JWT検証をONのままにします。後者はレガシーanon JWTに加え、長いランダム文字列の `x-cron-secret` ヘッダーを照合し、ブラウザからは呼びません。
 3. Edge Function Secrets に `OPENAI_API_KEY`、`HANAKO_OWNER_USER_ID`、`HANAKO_CRON_SECRET` を設定します。任意で `OPENAI_TEXT_MODEL`（既定 `gpt-5.5`）と `OPENAI_IMAGE_MODEL`（既定 `gpt-image-2`）も指定できます。既存のInstagram / Threadsトークンも必要です。SecretはGitHubや `config.js` に書かないでください。
-4. Supabase Vaultに `hanako_daily_url`（`https://<project>.supabase.co/functions/v1/hanako-daily`）と `hanako_daily_cron_secret`（Edge Function Secretと同じ値）を登録します。[supabase-hanako-daily.sql](supabase-hanako-daily.sql) の末尾にある `cron.schedule` 例のコメントを外してSQL Editorで実行します。これで1分ごとに未処理の工程を1つ進めます。
+4. Supabase Vaultに `hanako_daily_url`（`https://<project>.supabase.co/functions/v1/hanako-daily`）、`hanako_daily_cron_secret`（Edge Function Secretと同じ値）、`hanako_daily_anon_key`（プロジェクトのレガシーanon JWT）を登録します。[supabase-hanako-daily.sql](supabase-hanako-daily.sql) の末尾にある `cron.schedule` 例をSQL Editorで実行するか、同じSQLをCronジョブに登録します。1分ごとに起動しますが、写真利用の同意・参照写真・SNSの有効化が揃っていない間は関数を呼びません。
 5. スマホのPWAを最新版へ更新し、PCと同じクラウドアカウントでログインします。SNS投稿画面から時間を保存し、翌日の下書きを確認してください。
 
 本人写真は非公開Storageに保存されますが、自動生成時は有効期限つきURLを通して選択中の1枚をOpenAI画像生成APIへ送信します。生成した画像も非公開Storageに保存し、SNS公開時だけMetaが読み込むための有効期限つきURLを発行します。写真の外部送信に同意しない場合は両SNSの自動作成をOFFにしてください。投稿先のアカウント種別・公開権限・有効なトークンと、OpenAI APIの課金設定は別途必要です。
