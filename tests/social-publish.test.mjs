@@ -41,6 +41,21 @@ test("a non-owner cannot publish to connected accounts", async () => {
   assert.match(calls[0], /auth\/v1\/user/);
 });
 
+test("retrying a failed draft requests the updated row", async () => {
+  let patchOptions;
+  const worker = createWorker(async (url, options = {}) => {
+    if (String(url).includes("/auth/v1/user")) return Response.json({ id: "owner" });
+    if (String(url).includes("/rest/v1/hanako_auto_drafts")) {
+      patchOptions = options;
+      return Response.json([{ status: "pending" }]);
+    }
+    throw new Error(`unexpected ${url}`);
+  });
+  const response = await worker({ action: "retryDraft", draftId: "00000000-0000-0000-0000-000000000001" });
+  assert.equal(response.status, 200);
+  assert.equal(patchOptions.headers.Prefer, "return=representation");
+});
+
 test("approved Threads draft creates three image items, one carousel and one publish", async () => {
   const calls = [];
   let item = 0;

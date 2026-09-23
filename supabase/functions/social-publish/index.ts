@@ -100,7 +100,7 @@ async function signPrivatePhoto(path: string) {
 async function serviceDb(path: string, method: string, body: unknown) {
   const response = await fetch(`${required("SUPABASE_URL")}${path}`, {
     method,
-    headers: { apikey: required("SUPABASE_SERVICE_ROLE_KEY"), Authorization: `Bearer ${required("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
+    headers: { apikey: required("SUPABASE_SERVICE_ROLE_KEY"), Authorization: `Bearer ${required("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json", Prefer: "return=representation" },
     body: JSON.stringify(body),
   });
   return response.status === 204 ? null : readApi(response, "下書きの更新");
