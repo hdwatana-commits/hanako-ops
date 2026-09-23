@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=222">
+    <link rel="stylesheet" href="styles.css?v=314">
     <script src="config.js?v=222"></script>
     <script src="cloud-sync.js?v=307"></script>
     <script src="ops-engine.js?v=222"></script>
@@ -810,6 +810,19 @@
                     </div>
                   </div>
                 </div>
+                <section class="sns-hanako-daily" id="hanakoDaily" aria-labelledby="hanakoDailyTitle">
+                  <div class="sns-hanako-daily-head"><div><p class="eyebrow">毎日自動作成・確認して公開</p><strong id="hanakoDailyTitle">スマホで投稿を確認</strong></div><button type="button" id="hanakoDailyRefresh">下書きを更新</button></div>
+                  <p>選択中の本人写真1枚を画像生成APIへ送り、毎日インスタとスレッズの3枚＋本文を非公開の下書きに保存します。公開は確認後にボタンを押した場合のみです。</p>
+                  <div class="generator-pair"><label class="sns-hanako-daily-switch"><input id="hanakoDailyInstagramEnabled" type="checkbox"> Instagramを毎日作成</label><label class="sns-hanako-daily-switch"><input id="hanakoDailyThreadsEnabled" type="checkbox"> Threadsを毎日作成</label></div>
+                  <div class="generator-pair"><div><label class="field-label" for="hanakoDailyInstagramTime">Instagram作成開始（日本時間）</label><input id="hanakoDailyInstagramTime" type="time" value="08:00"></div><div><label class="field-label" for="hanakoDailyThreadsTime">Threads作成開始（日本時間）</label><input id="hanakoDailyThreadsTime" type="time" value="18:00"></div></div>
+                  <label class="sns-hanako-daily-switch"><input id="hanakoDailyVariation" type="checkbox" checked> 服装・場所・髪型を日替わりでおすすめ（OFFなら上の選択を固定）</label>
+                  <label class="sns-hanako-daily-switch"><input id="hanakoDailyPhotoConsent" type="checkbox"> 選択中の本人写真をOpenAI画像生成APIへ送信することに同意する</label>
+                  <small>1日あたり有効なSNSごとに画像3枚と本文を生成します。OpenAI APIの利用料金が発生します。写真を変更したら設定を保存し直してください。</small>
+                  <small id="hanakoDailyPhoto">本人写真の設定を確認中…</small>
+                  <div class="button-row"><button type="button" class="primary" id="hanakoDailySave">自動作成の設定を保存</button></div>
+                  <p class="sns-hanako-daily-status" id="hanakoDailyStatus" role="status">クラウドにログインすると設定と下書きを表示します。</p>
+                  <div class="sns-hanako-draft-list" id="hanakoDailyDrafts" aria-live="polite"></div>
+                </section>
                 <button class="primary" id="generateHanakoGasImage" type="button">この設定で画像と本文を作る</button>
               </section>
               <label class="field-label social-commerce-only">商品</label>
@@ -1955,6 +1968,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=313"></script>
+    <script src="app.js?v=314"></script>
   </body>
 </html>

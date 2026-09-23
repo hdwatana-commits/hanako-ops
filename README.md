@@ -151,6 +151,7 @@ INSTAGRAM_USER_ID
 THREADS_ACCESS_TOKEN
 THREADS_USER_ID
 META_GRAPH_VERSION
+HANAKO_OWNER_USER_ID
 ```
 
 `META_GRAPH_VERSION`にはMeta Developer Dashboardで利用中のGraph APIバージョンを入力します。利用しないSNSの値は不要です。
@@ -163,7 +164,25 @@ META_GRAPH_VERSION
 
 設定後、アプリの `SNS連携` → `接続を確認` で状態を確認できます。投稿メーカーで内容を作り、`SNSへ投稿`を押すと確認後に公開します。
 
+`HANAKO_OWNER_USER_ID` は、アプリで使う本人のSupabase AuthenticationユーザーUUIDです。公開APIはこのユーザーだけが操作できます。設定しない場合は安全のためSNS投稿を拒否します。
+
 この構成はハナコ本人の1アカウント運用向けです。第三者にもログイン接続を提供する場合は、各SNSのOAuthフロー、トークン更新、アプリ審査を別途実装してください。
+
+## ハナ投稿を毎日自動作成し、スマホで確認して公開する
+
+アプリの「SNS投稿」→「毎日自動作成・確認して公開」で、Instagram / ThreadsのON・OFFと日本時間の作成開始時刻を設定します。初期値は両方OFFです。写真送信への同意チェックも初期値OFFです。同意して有効化した場合だけ、選択中の本人写真1枚を画像生成の参照に使い、各SNS用の4:5縦画像3枚と本文を非公開下書きに保存します。初回設定と写真変更後は必ず「自動作成の設定を保存」を押してください。時刻は処理開始の目安で、本文と3枚の画像は1分ごとの処理で順番に作るため、完成までは数分以上かかることがあります。AI生成にはOpenAI APIの利用料金が発生します。
+
+完成した下書きは、PCとスマホの同じ同期アカウントから閲覧できます。画像を開いて確認し、本文を修正して保存し、「確認して公開」を押したときだけInstagramまたはThreadsへ公開されます。自動公開はしません。公開APIの応答が不明な場合は二重投稿を防ぐため停止し、SNS側で結果を確認する表示になります。
+
+### Supabaseでの初回設定
+
+1. 既存の [supabase-setup.sql](supabase-setup.sql) を適用済みのプロジェクトで、[supabase-hanako-daily.sql](supabase-hanako-daily.sql) をSQL Editorから実行します。既存の本人写真バケットは削除・再作成しません。
+2. Edge Function `social-publish` を最新版の [index.ts](supabase/functions/social-publish/index.ts) で再デプロイし、JWT検証をONにします。新規の `hanako-daily` は [index.ts](supabase/functions/hanako-daily/index.ts) をデプロイし、JWT検証をOFFにします。後者は長いランダム文字列の `x-cron-secret` ヘッダーだけを受け付け、ブラウザからは呼びません。
+3. Edge Function Secrets に `OPENAI_API_KEY`、`HANAKO_OWNER_USER_ID`、`HANAKO_CRON_SECRET` を設定します。任意で `OPENAI_TEXT_MODEL`（既定 `gpt-5.5`）と `OPENAI_IMAGE_MODEL`（既定 `gpt-image-2`）も指定できます。既存のInstagram / Threadsトークンも必要です。SecretはGitHubや `config.js` に書かないでください。
+4. Supabase Vaultに `hanako_daily_url`（`https://<project>.supabase.co/functions/v1/hanako-daily`）と `hanako_daily_cron_secret`（Edge Function Secretと同じ値）を登録します。[supabase-hanako-daily.sql](supabase-hanako-daily.sql) の末尾にある `cron.schedule` 例のコメントを外してSQL Editorで実行します。これで1分ごとに未処理の工程を1つ進めます。
+5. スマホのPWAを最新版へ更新し、PCと同じクラウドアカウントでログインします。SNS投稿画面から時間を保存し、翌日の下書きを確認してください。
+
+本人写真は非公開Storageに保存されますが、自動生成時は有効期限つきURLを通して選択中の1枚をOpenAI画像生成APIへ送信します。生成した画像も非公開Storageに保存し、SNS公開時だけMetaが読み込むための有効期限つきURLを発行します。写真の外部送信に同意しない場合は両SNSの自動作成をOFFにしてください。投稿先のアカウント種別・公開権限・有効なトークンと、OpenAI APIの課金設定は別途必要です。
 # Phase 1 OPS運用
 
 ## 目的

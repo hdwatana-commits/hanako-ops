@@ -3,3 +3,6 @@ verify_jwt = true
 
 [functions.social-publish]
 verify_jwt = true
+
+[functions.hanako-daily]
+verify_jwt = false

@@ -1358,6 +1358,23 @@ textarea {
 .sns-hanako-photobook-settings { display: grid; gap: 9px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(169, 116, 92, .16); }
 .sns-hanako-photobook-settings[hidden] { display: none; }
 .sns-hanako-photobook-settings textarea { min-height: 82px; resize: vertical; }
+.sns-hanako-daily { margin-top: 18px; padding: 16px; border: 1px solid rgba(132, 66, 100, .25); border-radius: 16px; background: #fff9fc; display: grid; gap: 12px; }
+.sns-hanako-daily-head { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.sns-hanako-daily-head strong { display: block; font-size: 18px; }
+.sns-hanako-daily > p { margin: 0; line-height: 1.6; }
+.sns-hanako-daily-switch { display: flex; align-items: center; gap: 8px; min-height: 40px; font-weight: 700; }
+.sns-hanako-daily-switch input { width: 20px; height: 20px; flex: none; accent-color: #a84568; }
+.sns-hanako-daily input[type="time"] { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid rgba(169, 116, 92, .28); border-radius: 10px; background: #fff; font: inherit; }
+.sns-hanako-daily-status { color: #80425f; font-size: 13px; }
+.sns-hanako-draft-list { display: grid; gap: 12px; }
+.sns-hanako-draft { padding: 14px; border: 1px solid rgba(169, 116, 92, .22); border-radius: 13px; background: #fff; display: grid; gap: 10px; }
+.sns-hanako-draft-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.sns-hanako-draft-images { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.sns-hanako-draft-images img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 8px; background: #faecf2; }
+.sns-hanako-draft textarea { width: 100%; min-height: 110px; resize: vertical; }
+.sns-hanako-draft-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sns-hanako-draft-error { color: #a02a43; overflow-wrap: anywhere; }
+@media (max-width: 620px) { .sns-hanako-daily { padding: 12px; } .sns-hanako-daily-head { align-items: center; } .sns-hanako-daily-head button { font-size: 12px; } }
 #generator.hanako-mode-active .social-commerce-only,
 #generator.hanako-mode-active #fashionSettings,
 #generator.hanako-mode-active #travelSettings { display: none !important; }

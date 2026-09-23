@@ -564,6 +564,7 @@ function initialize() {
   bindPhase3Actions();
   bindPhase4Actions();
   bindCloudSync();
+  bindHanakoDaily();
   enhanceCoordinateSelectOptions();
   renderProducts();
   renderDailySelection();
@@ -1282,6 +1283,7 @@ function activateView(viewName) {
   nextView.classList.add("active");
   document.querySelector("#viewTitle").textContent = views[viewName];
   window.scrollTo({ top: 0, behavior: "smooth" });
+  if (viewName === "generator" && cloudSync.signedIn) refreshHanakoDaily();
 }
 
 function renderHome() {
@@ -4439,6 +4441,211 @@ async function callSocialApi(payload) {
   return body;
 }
 
+let hanakoDailyDrafts = [];
+let hanakoDailyRefreshing = false;
+
+function bindHanakoDaily() {
+  document.querySelector("#hanakoDailySave")?.addEventListener("click", saveHanakoDailySettings);
+  document.querySelector("#hanakoDailyRefresh")?.addEventListener("click", () => refreshHanakoDaily(true));
+  document.querySelector("#hanakoDailyDrafts")?.addEventListener("click", handleHanakoDailyDraftClick);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && cloudSync.signedIn) refreshHanakoDaily();
+  });
+  renderHanakoDailyPhoto();
+  if (cloudSync.signedIn) refreshHanakoDaily();
+}
+
+function renderHanakoDailySignedOut() {
+  hanakoDailyDrafts = [];
+  const list = document.querySelector("#hanakoDailyDrafts");
+  if (list) list.innerHTML = "";
+  setHanakoDailyStatus("クラウドにログインすると設定と下書きを表示します。");
+  renderHanakoDailyPhoto();
+}
+
+function setHanakoDailyStatus(message) {
+  const node = document.querySelector("#hanakoDailyStatus");
+  if (node) node.textContent = message;
+}
+
+function renderHanakoDailyPhoto() {
+  const node = document.querySelector("#hanakoDailyPhoto");
+  const photo = getSelectedCoordinatePhoto();
+  if (node) node.textContent = photo
+    ? `本人写真：${photo.name}（自動作成に使用）`
+    : "本人写真がありません。ホームの「自分の全身写真」で写真を追加してください。";
+}
+
+function selectedHanakoDailyLook() {
+  const selected = (id) => {
+    const input = document.querySelector(`#${id}`);
+    if (["auto", "keep", "world"].includes(input?.value || "")) return "";
+    return input?.selectedOptions?.[0]?.textContent?.trim() || "";
+  };
+  return {
+    autoVariation: Boolean(document.querySelector("#hanakoDailyVariation")?.checked),
+    scene: selected("hanakoGasScene"),
+    location: selected("hanakoGasLocation"),
+    locationId: document.querySelector("#hanakoGasLocation")?.value || "",
+    outfit: selected("hanakoGasOutfit"),
+    hair: selected("hanakoGasHair"),
+    pose: selected("hanakoGasPose"),
+    composition: selected("hanakoGasComposition"),
+    expression: selected("snsHanakoExpression"),
+    light: selected("hanakoGasLighting"),
+  };
+}
+
+async function saveHanakoDailySettings() {
+  if (!cloudSync.signedIn) return showToast("先にクラウド同期へログインしてください");
+  const instagramEnabled = Boolean(document.querySelector("#hanakoDailyInstagramEnabled")?.checked);
+  const threadsEnabled = Boolean(document.querySelector("#hanakoDailyThreadsEnabled")?.checked);
+  const photoConsent = Boolean(document.querySelector("#hanakoDailyPhotoConsent")?.checked);
+  if ((instagramEnabled || threadsEnabled) && !photoConsent) return showToast("本人写真の画像生成APIへの送信に同意してください");
+  const photo = getSelectedCoordinatePhoto();
+  if ((instagramEnabled || threadsEnabled) && !photo) return showToast("本人写真を先に登録してください");
+  if (photo) photo.path ||= recoverPrivatePhotoPath(photo.signedUrl);
+  if ((instagramEnabled || threadsEnabled) && !photo?.path) return showToast("本人写真の保存先を確認できません。同期を更新してください");
+  const button = document.querySelector("#hanakoDailySave");
+  button.disabled = true;
+  setHanakoDailyStatus("設定を保存しています…");
+  try {
+    await cloudSync.authorizedFetch("/rest/v1/hanako_auto_settings?on_conflict=user_id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({
+        user_id: cloudSync.user.id,
+        instagram_enabled: instagramEnabled,
+        threads_enabled: threadsEnabled,
+        photo_consent: photoConsent,
+        instagram_time: document.querySelector("#hanakoDailyInstagramTime")?.value || "08:00",
+        threads_time: document.querySelector("#hanakoDailyThreadsTime")?.value || "18:00",
+        reference_path: photo?.path || "",
+        look: selectedHanakoDailyLook(),
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    setHanakoDailyStatus("設定を保存しました。指定時刻以降に非公開下書きを自動作成します。公開は自動では行いません。");
+    showToast("毎日の自動作成を設定しました");
+    await refreshHanakoDaily();
+  } catch (error) {
+    setHanakoDailyStatus(error.message || "設定を保存できませんでした");
+    showToast("自動作成の設定を保存できませんでした");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function refreshHanakoDaily(showFeedback = false) {
+  if (!cloudSync.signedIn || hanakoDailyRefreshing) return;
+  hanakoDailyRefreshing = true;
+  renderHanakoDailyPhoto();
+  try {
+    const [settingsResponse, draftsResponse] = await Promise.all([
+      cloudSync.authorizedFetch(`/rest/v1/hanako_auto_settings?select=instagram_enabled,threads_enabled,instagram_time,threads_time,photo_consent,reference_path,look&user_id=eq.${encodeURIComponent(cloudSync.user.id)}&limit=1`),
+      cloudSync.authorizedFetch(`/rest/v1/hanako_auto_drafts?select=id,platform,local_date,status,caption,image_paths,error,published_id,created_at&user_id=eq.${encodeURIComponent(cloudSync.user.id)}&order=created_at.desc&limit=20`),
+    ]);
+    const settings = (await settingsResponse.json())[0];
+    hanakoDailyDrafts = await draftsResponse.json();
+    if (settings) {
+      document.querySelector("#hanakoDailyInstagramEnabled").checked = Boolean(settings.instagram_enabled);
+      document.querySelector("#hanakoDailyThreadsEnabled").checked = Boolean(settings.threads_enabled);
+      document.querySelector("#hanakoDailyPhotoConsent").checked = Boolean(settings.photo_consent);
+      document.querySelector("#hanakoDailyInstagramTime").value = String(settings.instagram_time || "08:00").slice(0, 5);
+      document.querySelector("#hanakoDailyThreadsTime").value = String(settings.threads_time || "18:00").slice(0, 5);
+      document.querySelector("#hanakoDailyVariation").checked = settings.look?.autoVariation !== false;
+    }
+    await renderHanakoDailyDrafts();
+    if (showFeedback) showToast("下書きを更新しました");
+    if (!settings) setHanakoDailyStatus("未設定です。時刻と本人写真を確認して保存してください。");
+    else if (!settings.instagram_enabled && !settings.threads_enabled) setHanakoDailyStatus("自動作成はOFFです。必要なSNSをONにして保存してください。");
+    else if (!settings.photo_consent) setHanakoDailyStatus("本人写真の送信同意がOFFです。ONにして設定を保存するまで自動作成しません。");
+    else setHanakoDailyStatus("自動作成を設定済み。下書きが完成したら、ここで3枚と本文を確認して公開できます。");
+  } catch (error) {
+    setHanakoDailyStatus(`下書きを読み込めません: ${error.message || "クラウド設定を確認してください"}`);
+  } finally {
+    hanakoDailyRefreshing = false;
+  }
+}
+
+async function renderHanakoDailyDrafts() {
+  const list = document.querySelector("#hanakoDailyDrafts");
+  if (!list) return;
+  if (!hanakoDailyDrafts.length) {
+    list.innerHTML = "<p>下書きはまだありません。初回の指定時刻後にここへ表示されます。</p>";
+    return;
+  }
+  const statusLabels = { pending: "生成待ち", generating: "画像を生成中", ready: "確認待ち", failed: "生成エラー", publishing: "公開中", published: "公開済み", publish_uncertain: "公開結果の確認が必要" };
+  const cards = await Promise.all(hanakoDailyDrafts.map(async (draft) => {
+    const imagePaths = Array.isArray(draft.image_paths) ? draft.image_paths : [];
+    const images = await Promise.all(imagePaths.map(async (path, index) => {
+      try {
+        const signed = await cloudSync.createSignedImageUrl(path, 1800);
+        return `<a href="${escapeHtml(signed.signedUrl)}" target="_blank" rel="noopener"><img src="${escapeHtml(signed.signedUrl)}" alt="${escapeHtml(draft.platform)} ${index + 1}枚目" loading="lazy"></a>`;
+      } catch { return `<span>画像${index + 1}を読めません</span>`; }
+    }));
+    const ready = draft.status === "ready" && images.length === 3;
+    const editable = draft.status === "ready";
+    return `<article class="sns-hanako-draft" data-daily-draft="${escapeHtml(draft.id)}">
+      <div class="sns-hanako-draft-head"><strong>${escapeHtml(draft.platform)} · ${escapeHtml(draft.local_date)}</strong><span>${escapeHtml(statusLabels[draft.status] || draft.status)}</span></div>
+      ${images.length ? `<div class="sns-hanako-draft-images">${images.join("")}</div>` : ""}
+      <label class="field-label" for="daily-caption-${escapeHtml(draft.id)}">投稿文</label>
+      <textarea id="daily-caption-${escapeHtml(draft.id)}" data-daily-caption ${editable ? "" : "readonly"}>${escapeHtml(draft.caption || "")}</textarea>
+      ${draft.error ? `<small class="sns-hanako-draft-error">${escapeHtml(draft.error)}</small>` : ""}
+      ${editable ? `<div class="sns-hanako-draft-actions"><button type="button" data-daily-action="save">本文を保存</button><button type="button" class="primary" data-daily-action="publish" ${ready ? "" : "disabled"}>確認して公開</button></div>` : ""}
+      ${draft.status === "failed" ? `<div class="sns-hanako-draft-actions"><button type="button" data-daily-action="retry">生成を再試行</button></div>` : ""}
+    </article>`;
+  }));
+  list.innerHTML = cards.join("");
+}
+
+async function handleHanakoDailyDraftClick(event) {
+  const button = event.target.closest("button[data-daily-action]");
+  if (!button || !cloudSync.signedIn) return;
+  const card = button.closest("[data-daily-draft]");
+  const draft = hanakoDailyDrafts.find((item) => item.id === card?.dataset.dailyDraft);
+  if (!draft) return;
+  if (button.dataset.dailyAction === "retry") {
+    if (draft.status !== "failed") return;
+    button.disabled = true;
+    try {
+      await callSocialApi({ action: "retryDraft", draftId: draft.id });
+      showToast("再試行を受け付けました。次の生成処理で続きを作ります");
+      await refreshHanakoDaily();
+    } catch (error) {
+      showToast(error.message || "再試行できませんでした");
+    } finally { button.disabled = false; }
+    return;
+  }
+  if (draft.status !== "ready") return;
+  const caption = card.querySelector("[data-daily-caption]")?.value.trim() || "";
+  if (!caption) return showToast("投稿文を入力してください");
+  button.disabled = true;
+  try {
+    if (caption !== draft.caption || button.dataset.dailyAction === "save") {
+      await cloudSync.authorizedFetch(`/rest/v1/hanako_auto_drafts?id=eq.${encodeURIComponent(draft.id)}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ caption }),
+      });
+      draft.caption = caption;
+    }
+    if (button.dataset.dailyAction === "save") {
+      showToast("本文を保存しました");
+      return;
+    }
+    if (!window.confirm(`${draft.platform}へ画像3枚と本文を公開します。画像を確認しましたか？`)) return;
+    button.textContent = "公開中…";
+    const result = await callSocialApi({ action: "publishDraft", draftId: draft.id });
+    showToast(`${draft.platform}へ公開しました${result.id ? `（${result.id}）` : ""}`);
+    await refreshHanakoDaily();
+  } catch (error) {
+    showToast(error.message || "公開できませんでした");
+    await refreshHanakoDaily();
+  } finally {
+    button.disabled = false;
+    if (button.dataset.dailyAction === "publish") button.textContent = "確認して公開";
+  }
+}
+
 function bindInstallButton() {
   const installBtn = document.querySelector("#installBtn");
   const installModal = document.querySelector("#installModal");
@@ -4550,6 +4757,7 @@ function bindCloudSync() {
       renderCloudAccountUi();
       showSyncMessage("ログインして同期しました");
       showToast("ログインして同期しました");
+      await refreshHanakoDaily();
     });
   });
 
@@ -4618,6 +4826,7 @@ function bindCloudSync() {
     setSyncStatus("off");
     renderCloudAccountUi();
     showToast("同期からログアウトしました");
+    renderHanakoDailySignedOut();
   });
 
   document.addEventListener("visibilitychange", () => {
