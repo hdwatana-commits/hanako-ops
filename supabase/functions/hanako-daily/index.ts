@@ -90,9 +90,22 @@ async function imageFor(platform: string, look: Record<string, unknown>, index: 
     : [[look.pose, look.expression, look.composition], ["髪を耳にかける", "ほどける笑顔", look.composition], ["頬に手を添える", "首をかしげた照れ笑い", look.composition]];
   const [pose, expression, composition] = shots[index];
   const prompt = `Create one photorealistic vertical 4:5 editorial photo of the same adult woman in a three-photo series. The first supplied image is the person's identity reference: retain recognizable facial features and adult appearance. ${syntheticReference ? "The second supplied image is the prior AI-generated shot: use it only for continuity of the outfit, hair and setting." : "Establish a consistent outfit, hair and setting for the series."} Scene: ${look.scene}. Same exact location in all three: ${look.location}. Same exact outfit and hair in all three: ${look.outfit}, ${look.hair}. Light: ${look.light}. Shot ${index + 1} of 3. Pose: ${pose}. Expression: ${expression}. Framing: ${composition}. ${instagram ? "Charming, elegant, subtly flirtatious fashion portrait." : "Warm, approachable, cute and conversation-inviting portrait."} Fully opaque clothing, no underwear visible. Indoors no shoes. Natural anatomy, realistic hands and eyes, believable fabric, authentic camera light. No artificial skin, distortions, extra limbs or fingers. No text, logos, watermarks, split panels or borders.`;
+  const form = new FormData();
+  form.set("model", Deno.env.get("OPENAI_IMAGE_MODEL") || "gpt-image-2");
+  form.set("prompt", prompt);
+  form.set("size", "1024x1280");
+  form.set("quality", "high");
+  form.set("output_format", "jpeg");
+  form.set("output_compression", "88");
+  form.set("n", "1");
+  for (const [position, url] of [personalReference, syntheticReference].filter(Boolean).entries()) {
+    const input = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+    if (!input.ok) throw new Error(`Reference image download: ${input.status}`);
+    form.append("image[]", await input.blob(), `reference-${position + 1}.jpg`);
+  }
   const response = await fetch("https://api.openai.com/v1/images/edits", {
-    method: "POST", headers: aiHeaders(),
-    body: JSON.stringify({ model: Deno.env.get("OPENAI_IMAGE_MODEL") || "gpt-image-2", images: [{ image_url: personalReference }, ...(syntheticReference ? [{ image_url: syntheticReference }] : [])], input_fidelity: "high", prompt, size: "1024x1280", quality: "high", output_format: "jpeg", output_compression: 88, n: 1 }),
+    method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
+    body: form,
     signal: AbortSignal.timeout(130_000),
   });
   const body = await response.json();

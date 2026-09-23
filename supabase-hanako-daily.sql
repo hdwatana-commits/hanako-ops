@@ -118,10 +118,13 @@ grant execute on function public.hanako_begin_publish(uuid, uuid) to service_rol
 -- Set Vault secrets first, then uncomment and run the schedule statement.
 -- select vault.create_secret('https://YOUR_PROJECT.supabase.co/functions/v1/hanako-daily', 'hanako_daily_url');
 -- select vault.create_secret('YOUR_LONG_RANDOM_CRON_SECRET', 'hanako_daily_cron_secret');
+-- select vault.create_secret('YOUR_PROJECT_LEGACY_ANON_KEY', 'hanako_daily_anon_key');
 -- select cron.schedule('hanako-daily-minute', '* * * * *', $$
 --   select net.http_post(
 --     url := (select decrypted_secret from vault.decrypted_secrets where name = 'hanako_daily_url'),
 --     headers := jsonb_build_object('Content-Type','application/json',
+--       'Authorization','Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'hanako_daily_anon_key'),
+--       'apikey',(select decrypted_secret from vault.decrypted_secrets where name = 'hanako_daily_anon_key'),
 --       'x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name = 'hanako_daily_cron_secret')),
 --     body := '{"action":"run"}'::jsonb
 --   );

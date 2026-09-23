@@ -12,6 +12,8 @@ function worker(fetch = async () => { throw new Error("unexpected fetch"); }) {
     Deno: { env: { get: (name) => ({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "service", OPENAI_API_KEY: "test", HANAKO_OWNER_USER_ID: "owner", HANAKO_CRON_SECRET: "cron" })[name] || "" }, serve: () => {} },
     fetch,
     Response,
+    FormData,
+    Blob,
     AbortSignal,
     TextEncoder,
     URLSearchParams,
@@ -44,12 +46,18 @@ test("fixed Threads settings reject an overseas location", () => {
 test("image edit sends the private identity reference and keeps 4:5 portrait output", async () => {
   let request;
   const context = worker(async (url, options) => {
-    request = { url, body: JSON.parse(options.body) };
+    if (url === "https://example.com/reference") {
+      return { ok: true, blob: async () => new Blob(["reference-bytes"], { type: "image/jpeg" }) };
+    }
+    request = { url, body: options.body, headers: options.headers };
     return { ok: true, json: async () => ({ data: [{ b64_json: btoa("jpeg-bytes") }] }) };
   });
   const image = await vm.runInContext(`imageFor("Instagram", { scene: "朝", location: "自宅", outfit: "ワンピース", hair: "ロング", light: "自然光", pose: "座る", expression: "笑顔", composition: "バストアップ" }, 0, "https://example.com/reference", "")`, context);
   assert.equal(request.url, "https://api.openai.com/v1/images/edits");
-  assert.equal(request.body.images[0].image_url, "https://example.com/reference");
-  assert.equal(request.body.size, "1024x1280");
+  assert.equal(request.body.get("model"), "gpt-image-2");
+  assert.equal(request.body.get("size"), "1024x1280");
+  assert.equal(request.body.getAll("image[]").length, 1);
+  assert.equal(await request.body.get("image[]").text(), "reference-bytes");
+  assert.equal(request.headers.Authorization, "Bearer test");
   assert.equal(new TextDecoder().decode(image), "jpeg-bytes");
 });
