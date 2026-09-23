@@ -5686,6 +5686,9 @@ async function uploadCoordinatePhotos(event) {
       if (!looksLikeImage) throw new Error("画像ファイルを選んでください");
       if (file.size > 10 * 1024 * 1024) throw new Error("写真は1枚10MB以下にしてください");
       const uploaded = await cloudSync.uploadPrivateImage(file);
+      // 表示できた端末プレビューだけを「保存済み」と扱わない。クラウドの実体を再取得して確認する。
+      const verifiedCopy = await cloudSync.downloadPrivateImage(uploaded.path);
+      if (!verifiedCopy.size) throw new Error("クラウドに保存した写真を確認できませんでした。もう一度お試しください");
       const photo = {
         id: createId(),
         name: file.name || `全身写真${state.coordinatePhotos.length + 1}`,
@@ -5694,9 +5697,9 @@ async function uploadCoordinatePhotos(event) {
         expiresAt: uploaded.expiresAt,
         createdAt: new Date().toISOString(),
       };
+      coordinatePhotoDataUrl = await persistCoordinatePhotoPreview(photo.id, verifiedCopy);
       state.coordinatePhotos.push(photo);
       state.selectedCoordinatePhotoId = photo.id;
-      coordinatePhotoDataUrl = await persistCoordinatePhotoPreview(photo.id, file);
       uploadedCount += 1;
     }
     if (!uploadedCount) throw new Error("写真を読み込めませんでした。写真アプリから画像を選び直してください");
@@ -5784,9 +5787,11 @@ function renderCoordinatePhotoLibrary() {
   });
   const selectedName = selected?.name || "未選択";
   const unavailableCount = state.coordinatePhotos.filter((photo) => !coordinatePhotoPreviewCache.has(photo.id)).length;
-  const failedCount = state.coordinatePhotos.filter((photo) => coordinatePhotoPreviewErrors.has(photo.id) && !coordinatePhotoPreviewCache.has(photo.id)).length;
+  const failedPhotos = state.coordinatePhotos.filter((photo) => coordinatePhotoPreviewErrors.has(photo.id) && !coordinatePhotoPreviewCache.has(photo.id));
+  const failedCount = failedPhotos.length;
+  const failureHint = failedPhotos.length ? `（${failedPhotos.map((photo) => `${photo.name || "写真"}: ${coordinatePhotoPreviewErrors.get(photo.id)}`).join("／")}）` : "";
   const statusText = cloudSync.signedIn
-    ? `${state.coordinatePhotos.length}/${COORDINATE_PHOTO_LIMIT}枚登録中。今回使う写真：${selectedName}${failedCount ? `｜${failedCount}枚を復元できません。下のボタンで再試行してください` : unavailableCount ? `｜${unavailableCount}枚の画像を復元中` : ""}`
+    ? `${state.coordinatePhotos.length}/${COORDINATE_PHOTO_LIMIT}枚登録中。今回使う写真：${selectedName}${failedCount ? `｜${failedCount}枚を復元できません${failureHint}。下のボタンで再試行してください` : unavailableCount ? `｜${unavailableCount}枚の画像を復元中` : ""}`
     : "写真を追加・更新するには、クラウド同期へログインしてください。";
   const retryButton = document.querySelector("#retryHomePhotoRestore");
   if (retryButton) retryButton.hidden = !cloudSync.signedIn || unavailableCount === 0;
@@ -5802,7 +5807,8 @@ function renderCoordinatePhotoThumb(photo, index) {
   const src = getCoordinatePhotoDisplaySrc(photo);
   if (src) return `<img src="${escapeHtml(src)}" alt="保存した全身写真${index + 1}">`;
   const failed = coordinatePhotoPreviewErrors.has(photo.id);
-  return `<div class="coord-photo-thumb-empty" aria-label="保存した全身写真${index + 1}を${failed ? "復元できませんでした" : "復元中"}">${failed ? "復元失敗" : "復元中"}</div>`;
+  const reason = failed ? coordinatePhotoPreviewErrors.get(photo.id) || "" : "";
+  return `<div class="coord-photo-thumb-empty" aria-label="保存した全身写真${index + 1}を${failed ? `復元できませんでした。${reason}` : "復元中"}">${failed ? "復元失敗" : "復元中"}</div>`;
 }
 
 function getCoordinatePhotoDisplaySrc(photo) {
@@ -5894,11 +5900,15 @@ async function loadCoordinatePhotoPreview(photo = getSelectedCoordinatePhoto()) 
       coordinatePhotoDataUrl = dataUrl;
       return dataUrl;
     } catch (error) {
-      coordinatePhotoPreviewErrors.set(photo.id, error.message || "クラウドから写真を復元できませんでした");
+      const detail = error?.status === 404 ? "クラウドに元画像が見つかりません" : error?.message || "クラウドから写真を復元できませんでした";
+      coordinatePhotoPreviewErrors.set(photo.id, detail);
     }
   }
   if (!photo.signedUrl && cloudSync.signedIn && photo.path) Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
-  if (!photo.signedUrl) return "";
+  if (!photo.signedUrl) {
+    coordinatePhotoPreviewErrors.set(photo.id, photo.path ? "クラウド画像のURLを発行できません" : "保存先情報がありません。端末とクラウドに写真があるか確認してください");
+    return "";
+  }
   let response;
   try {
     response = await fetch(photo.signedUrl, { cache: "no-store" });
@@ -5907,7 +5917,7 @@ async function loadCoordinatePhotoPreview(photo = getSelectedCoordinatePhoto()) 
     if (!cloudSync.signedIn || !photo.path) throw new Error("保存した写真を読み込めませんでした");
     Object.assign(photo, await cloudSync.createSignedImageUrl(photo.path));
     response = await fetch(photo.signedUrl, { cache: "no-store" });
-    if (!response.ok) throw new Error("保存した写真を読み込めませんでした");
+    if (!response.ok) throw new Error(response.status === 404 ? "クラウドに元画像が見つかりません" : "保存した写真を読み込めませんでした");
   }
   const dataUrl = await persistCoordinatePhotoPreview(photo.id, await response.blob());
   coordinatePhotoPreviewCache.set(photo.id, dataUrl);
@@ -5999,7 +6009,9 @@ async function persistCoordinatePhotoPreview(photoId, sourceBlob) {
 
 async function readPersistedCoordinatePhotoPreview(photoId) {
   const indexedBlob = await readPrivateMediaAsset(privatePhotoAssetKey(photoId));
-  if (indexedBlob) return readOriginalFileAsDataUrl(indexedBlob);
+  if (indexedBlob) {
+    try { return await readOriginalFileAsDataUrl(indexedBlob); } catch { /* 破損した端末コピーはクラウドから再取得する。 */ }
+  }
   if (!("caches" in window)) return "";
   try {
     const cache = await caches.open(COORDINATE_PHOTO_CACHE);

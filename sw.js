@@ -1,10 +1,10 @@
-const CACHE_NAME = "hanako-room-ops-v314";
+const CACHE_NAME = "hanako-room-ops-v315";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=314",
-  "./app.js?v=314",
+  "./styles.css?v=315",
+  "./app.js?v=315",
   "./cloud-sync.js?v=307",
   "./ops-engine.js?v=222",
   "./ops-phase2-engine.js?v=222",
@@ -409,8 +409,8 @@ const APP_SHELL = [
 const CORE_SHELL = [
   "./",
   "./index.html",
-    "./styles.css?v=314",
-    "./app.js?v=314",
+    "./styles.css?v=315",
+    "./app.js?v=315",
     "./cloud-sync.js?v=307",
     "./ops-engine.js?v=222",
     "./ops-phase2-engine.js?v=222",
@@ -443,6 +443,9 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   const url = new URL(event.request.url);
+  // Supabase の非公開写真・認証レスポンスをアプリ更新用キャッシュに入れない。
+  // 写真プレビュー専用キャッシュは別名で保持し、activate 時にも削除しない。
+  if (url.origin !== self.location.origin || url.pathname.includes("/__photo_preview__/")) return;
   if (url.pathname.endsWith("/config.js") || url.pathname.endsWith("/version.json") || url.pathname.endsWith("/update.html")) {
     event.respondWith(fetch(event.request));
     return;
