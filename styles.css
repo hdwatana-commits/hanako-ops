@@ -5254,6 +5254,11 @@ button.chatgpt-transfer-button:disabled {
   gap: 8px;
 }
 
+#snsHanakoShotControl { grid-column: 1 / -1; padding: 10px 12px; border: 1px solid #ead5dc; border-radius: 8px; background: #fffafb; }
+#snsHanakoShotControl[hidden] { display: none; }
+#snsHanakoShotControl select { width: 100%; margin: 5px 0; }
+#snsHanakoShotControl small { display: block; line-height: 1.5; }
+
 .sns-gemini-quick-actions button {
   display: flex;
   align-items: center;

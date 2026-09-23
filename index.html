@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=315">
+    <link rel="stylesheet" href="styles.css?v=316">
     <script src="config.js?v=222"></script>
     <script src="cloud-sync.js?v=307"></script>
     <script src="ops-engine.js?v=222"></script>
@@ -799,13 +799,13 @@
                 <div class="sns-hanako-photobook">
                   <label class="sns-hanako-photobook-switch" for="snsHanakoThreadsMode"><span><strong>スレッズモード</strong><small>可愛さ重視・同じ構図の写真3枚と返信しやすいキャプション1つ</small></span><input id="snsHanakoThreadsMode" type="checkbox"></label>
                   <div class="sns-hanako-photobook-settings" id="snsHanakoThreadsSettings" hidden>
-                    <small>場所・髪型・服装・構図を3枚で固定。海外都市は選ばず、顔アップやバストアップを多めにおすすめします。</small>
+                    <small>場所・髪型・服装・構図を各画像で固定。海外都市は選ばず、顔アップやバストアップを多めにおすすめします。</small>
+                    <label class="field-label" for="snsHanakoThreadsCount">投稿する画像枚数</label><select id="snsHanakoThreadsCount"><option value="3">3枚</option><option value="2">2枚</option></select>
                     <button id="rerollHanakoThreads" type="button">おすすめの組み合わせを変更</button>
                     <label class="sns-hanako-photobook-switch" for="snsHanakoThreadsAbMode"><span><strong>A/B比較モード</strong><small>条件を揃えたA・Bの2枚と、選びやすい問いかけを作成</small></span><input id="snsHanakoThreadsAbMode" type="checkbox"></label>
                     <div class="sns-hanako-photobook-settings" id="snsHanakoThreadsAbSettings" hidden>
                       <div class="generator-pair"><div><label class="field-label" for="snsHanakoThreadsAbAxis">比べる項目</label><select id="snsHanakoThreadsAbAxis"><option value="outfit">服装</option><option value="hair">髪型</option><option value="expression">表情</option><option value="pose">ポーズ</option></select></div><div><label class="field-label" for="snsHanakoThreadsAbB">B案</label><select id="snsHanakoThreadsAbB"></select></div></div>
-                      <label class="field-label" for="snsHanakoThreadsAbLayout">画像の並べ方</label><select id="snsHanakoThreadsAbLayout"><option value="auto">自動（服装は2枚・表情などは左右1枚）</option><option value="separate">A・Bを別々の2枚</option><option value="sideBySide">左右に並べた1枚</option></select>
-                      <small>A案は上の選択欄を使用。B案だけを変え、人物・場所・光・構図を固定します。左右1枚ではA/Bの小さな印だけ画像に入れます。</small>
+                      <small>A案は上の選択欄を使用。B案だけを変え、人物・場所・光・構図を固定します。AとBは必ず別々の画像2枚です。</small>
                       <button id="rerollHanakoThreadsAb" type="button">A/Bの組み合わせを再提案</button>
                     </div>
                   </div>
@@ -1215,6 +1215,7 @@
                   <p id="snsReferenceBoardStatus">「画像と投稿文を作る」を押すと、ここにAIへ渡す画像ボードが表示されます。</p>
                 </div>
                 <div class="sns-gemini-quick-actions">
+                  <div id="snsHanakoShotControl" hidden><label class="field-label" for="snsHanakoShotIndex">今回AIへ送る画像</label><select id="snsHanakoShotIndex"><option value="0">1枚目</option><option value="1">2枚目</option><option value="2">3枚目</option></select><small>1回につき1枚だけ生成します。各画像を別々に保存し、必要な枚数まで順番に作ってください。投稿文は右のボタンで1つ作ります。</small></div>
                   <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>画像と投稿文を作る</button>
                   <button id="sendSocialGeminiCopy" type="button"><span>2</span>投稿文を作りに行く</button>
                 </div>
@@ -1968,6 +1969,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=315"></script>
+    <script src="app.js?v=316"></script>
   </body>
 </html>

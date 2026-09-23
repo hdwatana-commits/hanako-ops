@@ -12,7 +12,7 @@ const self = {
   skipWaiting() {},
 };
 const caches = {
-  keys: async () => ["hanako-room-ops-v314", "hanako-room-ops-v315", "hanako-private-photo-previews-v1"],
+  keys: async () => ["hanako-room-ops-v315", "hanako-room-ops-v316", "hanako-private-photo-previews-v1"],
   delete: async (name) => { deleted.push(name); },
 };
 vm.runInNewContext(readFileSync(new URL("../sw.js", import.meta.url), "utf8"), { self, caches, URL, fetch: async () => ({ ok: true }) });
@@ -21,7 +21,7 @@ test("app update preserves private photo previews", async () => {
   let activation;
   listeners.activate({ waitUntil(promise) { activation = promise; } });
   await activation;
-  assert.deepEqual(deleted, ["hanako-room-ops-v314"]);
+  assert.deepEqual(deleted, ["hanako-room-ops-v315"]);
 });
 
 test("service worker never intercepts Supabase private images", () => {

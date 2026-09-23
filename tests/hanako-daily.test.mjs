@@ -56,6 +56,9 @@ test("image edit sends the private identity reference and keeps 4:5 portrait out
   assert.equal(request.url, "https://api.openai.com/v1/images/edits");
   assert.equal(request.body.get("model"), "gpt-image-2");
   assert.equal(request.body.get("size"), "1024x1280");
+  assert.equal(request.body.get("n"), "1");
+  assert.match(request.body.get("prompt"), /exactly ONE image file/);
+  assert.match(request.body.get("prompt"), /Never compose multiple camera frames/);
   assert.equal(request.body.getAll("image[]").length, 1);
   assert.equal(await request.body.get("image[]").text(), "reference-bytes");
   assert.equal(request.headers.Authorization, "Bearer test");
