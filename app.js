@@ -518,7 +518,7 @@ function enhanceCoordinateSelectOptions() {
     actionGroup.after(floorGroup);
     const cuteGroup = document.createElement("optgroup");
     cuteGroup.label = "可愛いポーズ";
-    cuteGroup.innerHTML = '<option value="heartHands">両手でハートを作る</option><option value="cheekHands">両手を頬に添える</option><option value="doublePeace">顔の横でダブルピース</option><option value="sleeveCover">萌え袖で口元を隠す</option><option value="toeIn">つま先を内向きにして首をかしげる</option><option value="hugCushion">クッションを抱えて微笑む</option>';
+    cuteGroup.innerHTML = '<option value="heartHands">両手でハートを作る</option><option value="cheekHands">両手を頬に添える</option><option value="doublePeace">顔の横でダブルピース</option><option value="nyanNyan">ニャンニャン｜両手で猫の前足ポーズ</option><option value="wanWan">ワンワン｜両手で犬の前足ポーズ</option><option value="sleeveCover">萌え袖で口元を隠す</option><option value="toeIn">つま先を内向きにして首をかしげる</option><option value="hugCushion">クッションを抱えて微笑む</option>';
     floorGroup.after(cuteGroup);
     const affectionateGroup = document.createElement("optgroup");
     affectionateGroup.label = "甘えるポーズ";
@@ -3226,16 +3226,16 @@ function renderHanakoPhotobookSettings() {
 
 const hanakoInstagramLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park"];
 const hanakoInstagramOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "offShoulderWidePants", "satinBowBlouse", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt"];
-const hanakoInstagramPoses = ["fingerHeartNearFace", "ribbonAdjust", "jacketOnShoulder", "chairSideTurn", "bouquetHug", "curtainPeek", "mirrorHalfTurn", "stepTowardCamera", "handsBackLean", "seatedSideLegs", "hairTouch", "lookback"];
+const hanakoInstagramPoses = ["fingerHeartNearFace", "ribbonAdjust", "jacketOnShoulder", "chairSideTurn", "bouquetHug", "curtainPeek", "mirrorHalfTurn", "stepTowardCamera", "handsBackLean", "seatedSideLegs", "hairTouch", "lookback", "nyanNyan", "wanWan"];
 const hanakoInstagramLooks = [
-  { id: "sweet", label: "照れた甘さ", direction: "はにかみ、上目遣い、柔らかな仕草で親しみやすい可愛さを見せる", locations: ["homeLiving", "homeSofa", "homeWindow", "studioPastel", "park"], outfits: ["sweetIvoryKnitMini", "pinkTweedDress", "blackRibbonKnit", "cardiganFloralDress"], poses: ["fingerHeartNearFace", "bouquetHug", "handsBackLean", "hairTouch"], expressions: ["bashful", "upward", "shySideSmile", "curiousTilt"], compositions: ["face", "waist", "eye"] },
+  { id: "sweet", label: "照れた甘さ", direction: "はにかみ、上目遣い、柔らかな仕草で親しみやすい可愛さを見せる", locations: ["homeLiving", "homeSofa", "homeWindow", "studioPastel", "park"], outfits: ["sweetIvoryKnitMini", "pinkTweedDress", "blackRibbonKnit", "cardiganFloralDress"], poses: ["fingerHeartNearFace", "bouquetHug", "handsBackLean", "hairTouch", "nyanNyan", "wanWan"], expressions: ["bashful", "upward", "shySideSmile", "curiousTilt"], compositions: ["face", "waist", "eye"] },
   { id: "flirty", label: "いたずらっぽい視線", direction: "振り返りと視線の変化で、露出に頼らないドキッとする距離感を作る", locations: ["homeSofa", "homeBedroom", "homeVanity", "studioDaylight", "studioNoir"], outfits: ["offShoulderWidePants", "satinBowBlouse", "creamWrapSkirt", "blackRibbonKnit"], poses: ["chairSideTurn", "mirrorHalfTurn", "ribbonAdjust", "lookback"], expressions: ["secretSmile", "invitingGaze", "overShoulderSmile", "halfLiddedSmile"], compositions: ["editorial", "waist", "eye"] },
   { id: "date", label: "デート服のときめき", direction: "清潔感のある装いと弾む表情で、一緒に過ごしたくなる明るさを見せる", locations: ["homeLiving", "homeWindow", "studioDaylight", "studioPastel", "park"], outfits: ["softBlueShirtDress", "whiteLaceDenim", "navyPoloMini", "cardiganFloralDress"], poses: ["stepTowardCamera", "jacketOnShoulder", "bouquetHug", "lookback"], expressions: ["sunlitSquint", "expectantGaze", "softEyeContact", "shySideSmile"], compositions: ["full", "waist", "face"] },
   { id: "elegant", label: "大人の余裕", direction: "落ち着いた眼差し、布の質感、上品な陰影で洗練された色気を見せる", locations: ["homeSofa", "homeBedroom", "studioNoir", "studioDaylight"], outfits: ["satinBowBlouse", "offShoulderWidePants", "creamWrapSkirt", "pinkTweedDress"], poses: ["chairSideTurn", "ribbonAdjust", "jacketOnShoulder", "seatedSideLegs"], expressions: ["softEyeContact", "invitingGaze", "halfLiddedSmile", "subtlesmile"], compositions: ["editorial", "waist", "eye"] },
 ];
 const hanakoThreadsLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park", "cafe", "cafeTerrace", "bookstore", "museum", "riverside", "street", "rooftop", "grocer", "pianoBar", "noodle"];
 const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "cafeCasual", "seiso"];
-const hanakoThreadsPoses = ["fingerHeartNearFace", "bouquetHug", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback"];
+const hanakoThreadsPoses = ["fingerHeartNearFace", "bouquetHug", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan"];
 const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze"];
 const hanakoThreadsAbFields = {
   outfit: { source: "snsOutfitPreset", label: "コーデの雰囲気" },
@@ -13280,6 +13280,8 @@ function buildSocialCreativeDirective(context) {
     reachForHand: "成人女性が少し照れた表情でカメラへ片手を優しく差し出し、手をつなぎたそうに誘う親しみやすいポーズ。手のひらを極端に大きくせず、指を自然な5本に保ち、もう片方の手も自然な位置へ置く",
     heartHands: "胸元の前で両手を使って小さなハートを作り、親しみやすく微笑む",
     cheekHands: "両手を頬へ軽く添え、首を少し傾けた大人可愛いポーズ",
+    nyanNyan: "成人女性が両手を頬の横に上げ、指を軽く曲げて猫の前足をまねるニャンニャンポーズ。首を少し傾けて可愛く微笑み、手は左右に1つずつ、指は各5本で自然に描く。猫耳や本物の動物は追加しない",
+    wanWan: "成人女性が両手を胸の前に上げ、手首を軽く曲げて犬の前足をまねるワンワンポーズ。明るく無邪気に微笑み、手は左右に1つずつ、指は各5本で自然に描く。本物の動物は追加しない",
     doublePeace: "顔の横で控えめなダブルピースを作り、自然に笑う",
     sleeveCover: "長めの袖口で口元を少しだけ隠し、目元で柔らかく笑う萌え袖ポーズ",
     toeIn: "つま先を少し内向きにそろえ、首を傾けてカメラを見る親しみやすい全身ポーズ",
