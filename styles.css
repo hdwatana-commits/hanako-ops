@@ -3823,6 +3823,18 @@ body {
   font-size: 15px;
 }
 
+.coord-photo-replace {
+  width: 100%;
+  margin-top: 4px;
+  padding: 5px 2px;
+  border: 1px solid #c85f84;
+  border-radius: 5px;
+  background: #fff0f4;
+  color: var(--rose-dark);
+  font-size: 10px;
+  font-weight: 800;
+}
+
 @media (max-width: 680px) {
   .coord-photo-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

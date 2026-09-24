@@ -5586,6 +5586,7 @@ function bindCoordinateActions() {
   document.querySelector("#coordPhotoLibrary")?.addEventListener("click", handleCoordinatePhotoLibraryClick);
   document.querySelector("#homeCoordPhoto")?.addEventListener("change", uploadCoordinatePhotos);
   document.querySelector("#homeCoordPhotoLibrary")?.addEventListener("click", handleCoordinatePhotoLibraryClick);
+  document.querySelector("#replaceCoordPhoto")?.addEventListener("change", replaceMissingCoordinatePhoto);
   document.querySelector("#retryHomePhotoRestore")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -5732,6 +5733,16 @@ async function uploadCoordinatePhotos(event) {
 }
 
 async function handleCoordinatePhotoLibraryClick(event) {
+  const replaceButton = event.target.closest("[data-replace-coordinate-photo]");
+  if (replaceButton) {
+    event.stopPropagation();
+    const input = document.querySelector("#replaceCoordPhoto");
+    if (input) {
+      input.dataset.photoId = replaceButton.dataset.replaceCoordinatePhoto;
+      input.click();
+    }
+    return;
+  }
   const deleteButton = event.target.closest("[data-delete-coordinate-photo]");
   if (deleteButton) {
     event.stopPropagation();
@@ -5791,6 +5802,7 @@ function renderCoordinatePhotoLibrary() {
           <strong>${escapeHtml(photo.name || `写真${index + 1}`)}</strong>
         </button>
         <button class="coord-photo-delete" type="button" data-delete-coordinate-photo="${escapeHtml(photo.id)}" aria-label="この写真を削除">×</button>
+        ${coordinatePhotoPreviewErrors.has(photo.id) && !coordinatePhotoPreviewCache.has(photo.id) ? `<button class="coord-photo-replace" type="button" data-replace-coordinate-photo="${escapeHtml(photo.id)}">元写真を選び直す</button>` : ""}
       </div>`).join("") : `<p class="muted">まだ写真がありません。「写真を追加」から登録してください。</p>`;
   document.querySelectorAll("#coordPhotoLibrary, #homeCoordPhotoLibrary, #snsCoordPhotoLibrary").forEach((target) => {
     target.innerHTML = libraryHtml;
@@ -5801,7 +5813,7 @@ function renderCoordinatePhotoLibrary() {
   const failedCount = failedPhotos.length;
   const failureHint = failedPhotos.length ? `（${failedPhotos.map((photo) => `${photo.name || "写真"}: ${coordinatePhotoPreviewErrors.get(photo.id)}`).join("／")}）` : "";
   const statusText = cloudSync.signedIn
-    ? `${state.coordinatePhotos.length}/${COORDINATE_PHOTO_LIMIT}枚登録中。今回使う写真：${selectedName}${failedCount ? `｜${failedCount}枚を復元できません${failureHint}。下のボタンで再試行してください` : unavailableCount ? `｜${unavailableCount}枚の画像を復元中` : ""}`
+    ? `${state.coordinatePhotos.length}/${COORDINATE_PHOTO_LIMIT}枚登録中。今回使う写真：${selectedName}${failedCount ? `｜${failedCount}枚はクラウドと端末の写真を確認してください${failureHint}。元写真が残っていれば各枠から選び直せます` : unavailableCount ? `｜${unavailableCount}枚の画像を復元中` : ""}`
     : "写真を追加・更新するには、クラウド同期へログインしてください。";
   const retryButton = document.querySelector("#retryHomePhotoRestore");
   if (retryButton) retryButton.hidden = !cloudSync.signedIn || unavailableCount === 0;
@@ -5825,6 +5837,7 @@ function getCoordinatePhotoDisplaySrc(photo) {
   if (!photo?.id) return "";
   const localPreview = coordinatePhotoPreviewCache.get(photo.id);
   if (localPreview) return localPreview;
+  if (coordinatePhotoPreviewErrors.has(photo.id)) return "";
   if (photo.signedUrl && Number(photo.expiresAt || 0) - Date.now() > 60 * 1000) return photo.signedUrl;
   return "";
 }
@@ -6079,22 +6092,65 @@ async function createCanvasCompatiblePhotoPreview(sourceBlob) {
 async function refreshCoordinatePhotoLibraryUrls() {
   if (!cloudSync.signedIn || !state.coordinatePhotos?.length) return;
   coordinatePhotoPreviewErrors.clear();
+  let repaired = false;
   for (const photo of state.coordinatePhotos) {
     try {
       photo.path ||= recoverPrivatePhotoPath(photo.signedUrl);
       const persisted = await readPersistedCoordinatePhotoPreview(photo.id);
-      if (persisted) {
-        coordinatePhotoPreviewCache.set(photo.id, persisted);
+      const localPreview = persisted || coordinatePhotoPreviewCache.get(photo.id) || "";
+      if (localPreview) coordinatePhotoPreviewCache.set(photo.id, localPreview);
+      if (photo.path) {
+        try {
+          const remote = await cloudSync.downloadPrivateImage(photo.path);
+          if (!remote.size) throw new Error("クラウドの写真が空です");
+          if (!localPreview) await persistCoordinatePhotoPreview(photo.id, remote);
+          continue;
+        } catch (error) {
+          if (error?.status !== 404) throw error;
+        }
+      }
+      if (localPreview) {
+        const backup = dataUrlToFile(localPreview, `${photo.id}.jpg`);
+        const uploaded = await cloudSync.uploadPrivateImage(backup);
+        const verified = await cloudSync.downloadPrivateImage(uploaded.path);
+        if (!verified.size) throw new Error("再保存した写真を確認できませんでした");
+        Object.assign(photo, uploaded);
+        repaired = true;
         continue;
       }
-      const preview = await loadCoordinatePhotoPreview(photo);
-      if (!preview) coordinatePhotoPreviewErrors.set(photo.id, "写真の保存先を確認できませんでした");
+      coordinatePhotoPreviewErrors.set(photo.id, "クラウドに元画像がなく、この端末にもコピーがありません");
     } catch (error) {
       coordinatePhotoPreviewErrors.set(photo.id, error.message || "クラウドから写真を復元できませんでした");
     }
   }
-  persistAppStateSafely();
+  if (repaired) saveState();
+  else persistAppStateSafely();
   renderCoordinatePhotoLibrary();
+}
+
+async function replaceMissingCoordinatePhoto(event) {
+  const file = event.target.files?.[0];
+  const photoId = event.target.dataset.photoId;
+  event.target.value = "";
+  if (!file || !photoId) return;
+  const photo = state.coordinatePhotos.find((item) => item.id === photoId);
+  if (!photo || !cloudSync.signedIn) return showToast("写真の再登録にはログインが必要です");
+  try {
+    if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) throw new Error("10MB以下の画像を選んでください");
+    const uploaded = await cloudSync.uploadPrivateImage(file);
+    const verified = await cloudSync.downloadPrivateImage(uploaded.path);
+    if (!verified.size) throw new Error("再登録した写真を確認できませんでした");
+    await persistCoordinatePhotoPreview(photo.id, verified);
+    Object.assign(photo, uploaded, { name: file.name });
+    coordinatePhotoPreviewErrors.delete(photo.id);
+    saveState();
+    renderCoordinatePhotoLibrary();
+    showToast("元写真を再登録しました");
+  } catch (error) {
+    coordinatePhotoPreviewErrors.set(photo.id, error.message || "写真を再登録できませんでした");
+    renderCoordinatePhotoLibrary();
+    showToast(error.message || "写真を再登録できませんでした");
+  }
 }
 
 function chooseRandomHanakoTeacher() {

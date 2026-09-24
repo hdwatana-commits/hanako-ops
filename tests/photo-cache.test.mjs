@@ -21,7 +21,7 @@ test("app update preserves private photo previews", async () => {
   let activation;
   listeners.activate({ waitUntil(promise) { activation = promise; } });
   await activation;
-  assert.deepEqual(deleted, ["hanako-room-ops-v315"]);
+  assert.deepEqual(deleted, ["hanako-room-ops-v315", "hanako-room-ops-v316"]);
 });
 
 test("service worker never intercepts Supabase private images", () => {
