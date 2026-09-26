@@ -481,6 +481,19 @@ function enhanceCoordinateSelectOptions() {
   });
   const locationSelect = document.querySelector("#snsLocationPreset");
   const outfitSelect = document.querySelector("#snsOutfitPreset");
+  const sceneSelect = document.querySelector("#snsScenePreset");
+  if (sceneSelect && ![...sceneSelect.options].some((option) => option.value === "lastTrain")) {
+    const romanceScenes = document.createElement("optgroup");
+    romanceScenes.label = "帰り道・恋の余韻";
+    romanceScenes.innerHTML = '<option value="lastTrain">終電をもう一本見送る夜</option><option value="sharedUmbrella">雨の帰り道・相合い傘</option><option value="coldSleeve">寒い夜にそっと袖をつかむ</option><option value="ticketGateLookback">改札を通る前に振り返る</option><option value="beforeHoldingHands">手をつなぐ直前の沈黙</option>';
+    sceneSelect.querySelector('option[value="nightAfterDate"]')?.after(romanceScenes);
+  }
+  if (outfitSelect && ![...outfitSelect.options].some((option) => option.value === "lastTrainCoat")) {
+    const romanceOutfits = document.createElement("optgroup");
+    romanceOutfits.label = "帰り道・好印象デート";
+    romanceOutfits.innerHTML = '<option value="lastTrainCoat">ネイビーコート＋淡色ニットワンピ</option><option value="umbrellaTrench">淡色トレンチ＋きれいめ雨の日コーデ</option><option value="warmSleeveKnit">萌え袖ニット＋上品なフレアスカート</option><option value="gateDateJacket">ショートジャケット＋大人可愛いワンピ</option><option value="handholdCardigan">ふんわりカーディガン＋揺れるスカート</option>';
+    outfitSelect.querySelector('optgroup[label="好印象・デート"]')?.after(romanceOutfits);
+  }
   if (outfitSelect && ![...outfitSelect.options].some((option) => option.value === "homeHoodie")) {
     const hoodie = document.createElement("option");
     hoodie.value = "homeHoodie";
@@ -500,11 +513,31 @@ function enhanceCoordinateSelectOptions() {
     thigh.textContent = "膝上までのファッションポートレート";
     compositionSelect.querySelector('option[value="waist"]')?.after(thigh);
   }
+  if (compositionSelect && ![...compositionSelect.options].some((option) => option.value === "platformStory")) {
+    [
+      ["platformStory", "駅の時計→横顔→見上げる表情の3枚構成"],
+      ["umbrellaClose", "傘を含む二人称視点の近距離構成"],
+      ["sleeveDetail", "袖をつかむ手元→表情へ移る構成"],
+      ["gateLookback", "改札を背景にした振り返り構成"],
+      ["handReach", "差し出す手を手前にした目線構成"],
+    ].forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      compositionSelect.appendChild(option);
+    });
+  }
   if (locationSelect && ![...locationSelect.options].some((option) => option.value === "studioDaylight")) {
     const studioGroup = document.createElement("optgroup");
     studioGroup.label = "撮影用スタジオ";
     studioGroup.innerHTML = '<option value="studioDaylight">白壁と自然光の撮影スタジオ</option><option value="studioPastel">淡色パステルの撮影スタジオ</option><option value="studioNoir">黒背景のシネマ風撮影スタジオ</option>';
     locationSelect.querySelector('option[value="world"]')?.after(studioGroup);
+  }
+  if (locationSelect && ![...locationSelect.options].some((option) => option.value === "stationPlatformNight")) {
+    const romanceLocations = document.createElement("optgroup");
+    romanceLocations.label = "帰り道・夜デート";
+    romanceLocations.innerHTML = '<option value="stationPlatformNight">終電前の明るく安全な駅ホーム</option><option value="stationCanopyRain">駅前の屋根がある雨の歩道</option><option value="winterStreetLights">暖色の街灯がある冬の歩道</option><option value="ticketGateNight">人通りのある明るい駅改札前</option><option value="riversideNightWalk">照明のある夜の川沿い遊歩道</option>';
+    locationSelect.querySelector('option[value="station"]')?.after(romanceLocations);
   }
   const poseSelect = document.querySelector("#snsPosePreset");
   if (poseSelect && ![...poseSelect.options].some((option) => option.value === "highKick")) {
@@ -532,6 +565,10 @@ function enhanceCoordinateSelectOptions() {
     studioPoseGroup.label = "撮影で映える好印象ポーズ";
     studioPoseGroup.innerHTML = '<option value="fingerHeartNearFace">顔の横で小さな指ハート</option><option value="ribbonAdjust">リボンや襟元を整えながら目を合わせる</option><option value="jacketOnShoulder">上着を肩へ軽くかけて振り向く</option><option value="chairSideTurn">椅子に横向きで座って振り返る</option><option value="bouquetHug">小さな花束を両手で抱える</option><option value="curtainPeek">カーテンの端から顔をのぞかせる</option><option value="mirrorHalfTurn">鏡の前で半身に振り向く</option><option value="stepTowardCamera">カメラへ一歩近づいて微笑む</option><option value="handsBackLean">両手を後ろで組んで少し前傾</option><option value="seatedSideLegs">座って両脚を横へ自然にそろえる</option><option value="nightCornerGaze">夜の街角で立ち止まり見上げる</option><option value="oneStepCloser">帰り際に半歩近づいて見つめる</option><option value="bagStrapShy">バッグの持ち手を両手で持ちはにかむ</option><option value="wallSoftLean">壁際で肩を預けて振り返る</option>';
     dailyGroup.after(studioPoseGroup);
+    const romancePoseGroup = document.createElement("optgroup");
+    romancePoseGroup.label = "帰り道・恋の余韻";
+    romancePoseGroup.innerHTML = '<option value="watchLastTrain">駅の時計を見てから相手を見上げる</option><option value="shareUmbrellaLean">相合い傘で肩を少し寄せる</option><option value="gentleSleeveHold">相手の袖口をそっとつまむ</option><option value="gateTurnBack">改札前で数歩進んで振り返る</option><option value="handAlmostTouch">手をつなぐ直前に指先を近づける</option>';
+    studioPoseGroup.after(romancePoseGroup);
     const savedPose = getSocialCreativeProfile().posePreset;
     if ([...poseSelect.options].some((option) => option.value === savedPose)) poseSelect.value = savedPose;
   }
@@ -3109,6 +3146,11 @@ const hanakoExpressionOptions = {
   dontWantToLeave: { label: "帰りたくない気持ちを隠す視線", prompt: "成人女性が帰り際に一度横へ視線を逃がし、名残惜しさを隠すように小さく微笑んでからカメラを見上げる。露骨に誘惑せず、言いかけた本音と夜の余韻が伝わる表情" },
   waitingForAnswer: { label: "返事を待つ少し不安な微笑み", prompt: "成人女性があごを少し引いてカメラと目を合わせ、返事を待つように目元へ小さな期待と不安をにじませる。口元は控えめな微笑みで、守ってあげたくなる自然な親近感を表す" },
   lookAwayThenMeet: { label: "目をそらしてから見つめ返す", prompt: "成人女性が照れて一度だけ視線を横へ外し、次の瞬間にまっすぐ見つめ返す。頬と口元にわずかなはにかみを残し、会話距離のドキッとする瞬間を上品に表現する" },
+  lastTrainHope: { label: "終電を気にしながら期待する目", prompt: "成人女性が駅の時計を一度確認したあと、帰るか迷うようにカメラを見上げる。目元にもう少し一緒にいたい期待をにじませ、口元は小さくはにかむ" },
+  rainCloseSmile: { label: "傘の近さに照れる微笑み", prompt: "成人女性が相合い傘の近い距離に少し照れ、いったん伏し目になってからカメラと目を合わせて柔らかく微笑む。濡れた不快感ではなく、雨音の中の親密さを表す" },
+  coldPleading: { label: "寒さを理由に甘える眼差し", prompt: "成人女性が寒そうに肩を少しすぼめ、相手の袖口をそっと持ちながら温かさを求めるように見上げる。困らせる演技ではなく、信頼と甘えが伝わる自然な眼差し" },
+  gateFarewell: { label: "別れ際の名残惜しい振り返り", prompt: "成人女性が改札へ向かったあとに振り返り、離れがたい気持ちを目元と控えめな微笑みに残す。泣き顔にはせず、また会いたい余韻を上品に表す" },
+  handholdNervous: { label: "手をつなぐ直前の緊張した笑顔", prompt: "成人女性が差し出しかけた手とカメラを交互に見て、少し緊張しながら小さく微笑む。期待、照れ、安心感が同時に伝わる自然な表情" },
   eating: { label: "幸せそうに頬張る顔", prompt: "おいしいものを自然に頬張り、喜びでぱっと明るくなる無邪気な表情" },
   blank: { label: "少し口が開いた「ぽかん」顔", prompt: "驚きや気の抜けた瞬間に唇が少しだけ開いた、リラックスした柔らかい表情" },
   sleepy: { label: "眠そうなトロンとした目", prompt: "安心してくつろぎ、まぶたが少し下がった眠そうな目。疲労や不健康さではなく穏やかなリラックス感" },
@@ -3135,6 +3177,11 @@ const hanakoIdeaCatalog = [
   { id: "reset", title: "気分を整える時間", description: "飲み物や静かな時間をやさしい短文に", brief: "飲み物、音楽、窓辺など、気分を整える小さな時間を説明しすぎず余韻のある短文にする", pattern: "scenestory", scene: "quietReset", outfit: "sweetclean", pose: "seated", composition: "waist", lighting: "morning", carousel: "story" },
   { id: "bar", title: "バーの空気", description: "間接照明と一日の終わりを大人っぽく", brief: "バーの間接照明や一日の終わりの空気を、店名、住所、勤務日を出さずに上品な一場面として表現する", pattern: "scenestory", scene: "pianoNight", outfit: "piano", pose: "seated", composition: "editorial", lighting: "bar", carousel: "story" },
   { id: "afterdate", title: "帰りたくない夜", description: "デート帰りの名残惜しさを問いかけに", brief: "デート帰りの夜、別れ際にもう少し一緒にいたい気持ちがこぼれる場面。『今夜は帰りたくないって言ったら困りますか？』のような、相手が返事をしたくなる短い問いかけを毎回違う自然な言葉で作る。露骨な性的表現や実体験の断定は避け、名残惜しさ、照れ、期待を上品に残す", pattern: "scenestory", scene: "nightAfterDate", outfit: "influencerEvening", pose: "oneStepCloser", composition: "waist", lighting: "neon", carousel: "story" },
+  { id: "lasttrain", title: "終電を見送る", description: "時計を見たあと、もう少し一緒にいたい夜", brief: "終電前の駅で時計を見たあと、もう一本見送るか相手へそっと尋ねる場面。焦らせず、相手が『待つよ』と答えたくなる名残惜しさを短い問いかけにする", pattern: "scenestory", scene: "lastTrain", outfit: "lastTrainCoat", pose: "watchLastTrain", composition: "platformStory", lighting: "neon", location: "stationPlatformNight", expression: "lastTrainHope", carousel: "story" },
+  { id: "umbrella", title: "雨の相合い傘", description: "傘の中の近い距離と照れた目線", brief: "雨の帰り道、一本の傘へ入って肩が近づく場面。雨が止まなくてもいいと思う気持ちを、軽く返事できる問いかけか短い本音にする", pattern: "scenestory", scene: "sharedUmbrella", outfit: "umbrellaTrench", pose: "shareUmbrellaLean", composition: "umbrellaClose", lighting: "neon", location: "stationCanopyRain", expression: "rainCloseSmile", carousel: "story" },
+  { id: "sleeve", title: "寒い夜の袖つかみ", description: "寒さを理由に少しだけ近づく", brief: "寒い夜の帰り道で相手の袖口をそっとつまみ、もう少し近くにいてもいいか尋ねる場面。甘えと信頼を中心に、露骨にならない短文にする", pattern: "scenestory", scene: "coldSleeve", outfit: "warmSleeveKnit", pose: "gentleSleeveHold", composition: "sleeveDetail", lighting: "warm", location: "winterStreetLights", expression: "coldPleading", carousel: "story" },
+  { id: "gate", title: "改札で振り返る", description: "別れ際、数歩進んでからもう一度見る", brief: "駅の改札へ向かって数歩進んだあと、言い忘れたように振り返る場面。また会いたい気持ちと少しの寂しさを、説明しすぎない余韻のある一文にする", pattern: "scenestory", scene: "ticketGateLookback", outfit: "gateDateJacket", pose: "gateTurnBack", composition: "gateLookback", lighting: "neon", location: "ticketGateNight", expression: "gateFarewell", carousel: "story" },
+  { id: "handhold", title: "手をつなぐ直前", description: "触れそうな指先と返事を待つ表情", brief: "夜の散歩中、手をつなぐ直前に指先が近づき、言葉にせず返事を待つ場面。見る人が続きを想像できる短い問いかけにし、接触を強制する表現は避ける", pattern: "scenestory", scene: "beforeHoldingHands", outfit: "handholdCardigan", pose: "handAlmostTouch", composition: "handReach", lighting: "blue", location: "riversideNightWalk", expression: "handholdNervous", carousel: "story" },
 ];
 
 function renderHanakoIdeas(refresh = false) {
@@ -3167,6 +3214,8 @@ function applyHanakoIdea(id) {
   setSelect("#snsCompositionPreset", idea.composition);
   setSelect("#snsLightingPreset", idea.lighting);
   setSelect("#snsLocationPreset", "world");
+  if (idea.location) setSelect("#snsLocationPreset", idea.location);
+  if (idea.expression) setSelect("#snsHanakoExpression", idea.expression);
   setSelect("#snsCarouselPreset", idea.carousel);
   state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoIdea: idea.id };
   saveSocialCreativeProfile();
@@ -3237,10 +3286,10 @@ const hanakoInstagramLooks = [
   { id: "date", label: "デート服のときめき", direction: "清潔感のある装いと弾む表情で、一緒に過ごしたくなる明るさを見せる", locations: ["homeLiving", "homeWindow", "studioDaylight", "studioPastel", "park"], outfits: ["softBlueShirtDress", "whiteLaceDenim", "navyPoloMini", "cardiganFloralDress"], poses: ["stepTowardCamera", "jacketOnShoulder", "lookback"], expressions: ["sunlitSquint", "expectantGaze", "softEyeContact", "shySideSmile"], compositions: ["full", "waist", "face"] },
   { id: "elegant", label: "大人の余裕", direction: "落ち着いた眼差し、布の質感、上品な陰影で洗練された色気を見せる", locations: ["homeSofa", "homeBedroom", "studioNoir", "studioDaylight"], outfits: ["satinBowBlouse", "offShoulderWidePants", "creamWrapSkirt", "pinkTweedDress"], poses: ["chairSideTurn", "ribbonAdjust", "jacketOnShoulder", "seatedSideLegs"], expressions: ["softEyeContact", "invitingGaze", "halfLiddedSmile", "subtlesmile"], compositions: ["editorial", "waist", "eye"] },
 ];
-const hanakoThreadsLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park", "cafe", "cafeTerrace", "bookstore", "museum", "riverside", "street", "rooftop", "grocer", "pianoBar", "noodle"];
-const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "cafeCasual", "seiso", "miniLolita", "miniBandGal"];
-const hanakoThreadsPoses = ["fingerHeartNearFace", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan"];
-const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze"];
+const hanakoThreadsLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park", "cafe", "cafeTerrace", "bookstore", "museum", "riverside", "street", "rooftop", "grocer", "pianoBar", "noodle", "stationPlatformNight", "stationCanopyRain", "winterStreetLights", "ticketGateNight", "riversideNightWalk"];
+const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "cafeCasual", "seiso", "miniLolita", "miniBandGal", "lastTrainCoat", "umbrellaTrench", "warmSleeveKnit", "gateDateJacket", "handholdCardigan"];
+const hanakoThreadsPoses = ["fingerHeartNearFace", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan", "watchLastTrain", "shareUmbrellaLean", "gentleSleeveHold", "gateTurnBack", "handAlmostTouch"];
+const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze", "lastTrainHope", "rainCloseSmile", "coldPleading", "gateFarewell", "handholdNervous"];
 const hanakoThreadsAbFields = {
   outfit: { source: "snsOutfitPreset", label: "コーデの雰囲気" },
   hair: { source: "snsHairPreset", label: "髪型" },
@@ -12369,6 +12418,11 @@ function generateHanakoLifestyleCopy(context, variant = 0) {
       "楽しい夜ほど、さよならが下手になる。",
       "次の角まで遠回りしない？ まだ帰りたくない気分。",
     ],
+    lasttrain: ["終電、もう一本だけ見送ったら困る？", "時計を見たのに、まだ帰るって言えない。", "次の電車でもいいなら、もう少し話したい🌙"],
+    umbrella: ["もう少しだけ、雨が止まなくてもいいかも☔", "傘ってこんなに近かったっけ。", "駅までゆっくり歩いてもいい？"],
+    sleeve: ["寒いからって理由なら、もう少し近くてもいい？", "袖、少しだけ借りてもいいですか。", "手じゃなくて袖をつかむくらいが、今はちょうどいい。"],
+    gate: ["ちゃんと帰るつもりだったのに、振り返っちゃった。", "改札の前って、急にさみしくなる。", "もう一回だけ名前を呼んでくれたら、戻るかも。"],
+    handhold: ["言わなくても、手をつないでくれる？", "触れそうで触れない距離が、いちばん緊張する。", "あと少しだけ、手を近づけてもいい？"],
   };
   const selectedCopies = copies[idea.id] || copies.reset;
   return selectedCopies[variant % selectedCopies.length];
@@ -13208,7 +13262,7 @@ ${travelSafety}
 function buildSocialCreativeDirective(context) {
   const profile = { ...socialCreativeDefaults, ...(context.creativeProfile || {}) };
   const labels = {
-    scene: { auto: "選択した投稿案から自動", vegetableMorning: "瑞々しい野菜と一日の始まり", pianoNight: "演奏前後の夜のピアノ", nightAfterDate: "デート帰り、別れ際にもう少し一緒にいたい夜", tsukemenMoment: "つけ麺を楽しむひととき", cityDusk: "夕方の色と都会の街歩き", travelScenic: "海外旅行・秘境の絶景", quietReset: "静かに気分を整える時間", morning: "朝の支度", campus: "キャンパス・通学", office: "オフィス・通勤", cafe: "カフェ・街歩き", date: "デート・おでかけ", rain: "雨の日", travel: "旅先・秘境", season: "季節の変わり目", trend: "トレンド観察", room: "部屋で過ごす時間" },
+    scene: { auto: "選択した投稿案から自動", vegetableMorning: "瑞々しい野菜と一日の始まり", pianoNight: "演奏前後の夜のピアノ", nightAfterDate: "デート帰り、別れ際にもう少し一緒にいたい夜", lastTrain: "終電をもう一本見送る夜", sharedUmbrella: "雨の帰り道で相合い傘", coldSleeve: "寒い夜に相手の袖をそっとつかむ", ticketGateLookback: "改札へ向かってから名残惜しく振り返る", beforeHoldingHands: "夜の散歩で手をつなぐ直前", tsukemenMoment: "つけ麺を楽しむひととき", cityDusk: "夕方の色と都会の街歩き", travelScenic: "海外旅行・秘境の絶景", quietReset: "静かに気分を整える時間", morning: "朝の支度", campus: "キャンパス・通学", office: "オフィス・通勤", cafe: "カフェ・街歩き", date: "デート・おでかけ", rain: "雨の日", travel: "旅先・秘境", season: "季節の変わり目", trend: "トレンド観察", room: "部屋で過ごす時間" },
     outfit: { auto: "テーマから自動", homeKnit: "自宅の柔らかなニットとロングスカート", homeCardigan: "白T、カーディガン、リラックスパンツ", homeShirt: "オーバーサイズシャツと濃色レギンス", homeOnepiece: "生成りの上品なルームワンピース", pajamaSatin: "光沢を抑えた上品なサテン風の長袖・長ズボンパジャマ", pajamaCotton: "白いパイピングが映える大人可愛いコットンパジャマ", pajamaKnit: "ふわもこカーディガン、同系色のトップス、露出を抑えたルームショートパンツ", pajamaOnepiece: "身体のラインを拾いすぎない淡色の上品なパジャマワンピース", cosplayMaid: "成人向けイベント衣装として、膝丈スカート、長袖、エプロンを合わせたクラシカルな大人メイド風コスプレ", cosplayCat: "成人向けイベント衣装として、黒猫の耳モチーフと黒を基調にした大人可愛いコーデ。人物を幼く見せない", cosplayWitch: "深いネイビーと黒を基調にした、都会的で洗練された大人の魔女風コスプレ", cosplayFantasy: "露出を抑えたドレス、ケープ、装飾小物を合わせた上品なファンタジーヒロイン風衣装", adultSchoolCosplay: "成人女性による制服風コスプレ。白シャツ、ネイビーのブレザー、膝丈のプリーツスカート、落ち着いたリボン。実在校の校章を使わず、人物を未成年に見せず、性的に演出しない", adultIdol: "成人女性向けの大人可愛いアイドルステージ衣装。上品なフリル、ジャケット、適切な丈のスカート、控えめな光沢", recruitSuit: "清潔感のある黒またはネイビーのリクルートスーツ、白ブラウス、膝丈スカートまたはテーパードパンツ", ryousan: "ピンクと黒を基調に、リボン、レース、厚底靴を上品にまとめた量産系コーデ", jirai: "黒とくすみピンクを基調に、レース、ベルト、小ぶりなリボンを合わせた洗練された地雷系コーデ", seiso: "白、ネイビー、淡いブルーを中心に、上品なブラウスとミモレ丈スカートを合わせた清楚系コーデ", cropDenim: "お腹を少し見せるクロップド丈ニットとハイウエストデニムの都会的コーデ", cropSkirt: "お腹を少し見せるクロップドカーディガンと上品なロングスカート", cropJacket: "クロップドトップス、テーラードジャケット、ハイウエストのワイドパンツ", cropSporty: "お腹を少し見せるスポーティなクロップドトップスとハイウエストボトムの清潔感あるコーデ", miniPleats: "きれいめプリーツミニスカート、薄手ニット、必要に応じてタイツ", miniTweed: "上品なツイードミニスカートと清潔感のあるブラウス", miniKnit: "落ち着いた色のニットミニスカート、長袖トップス、ロングブーツ", miniDenim: "濃色デニムミニスカートと柔らかなカーディガン", grocer: "白シャツ、無地のデニムエプロン、濃色パンツ", piano: "ネイビーまたは黒の上品なピアノ衣装", tsukemen: "気取らないきれいめカジュアル", city: "都会的な甘めきれいめコーデ", travel: "歩きやすい洗練された旅コーデ", hero: "主役を引き立てる", sweetclean: "甘めきれいめ", adultgirly: "大人ガーリー", office: "上品オフィス", campus: "きれいめ通学", monochrome: "淡色・ワントーン", trend: "トレンドを一点", resort: "旅・リゾート", layered: "温度調整レイヤード" },
     hair: { keep: "本人らしさを保つ", center: "センターパートのストレート", headband: "黒または深緑の細いヘアバンド", straight: "ストレート", wave: "やわらかな巻き髪", lowpony: "ローポニー", halfup: "ハーフアップ", bun: "まとめ髪", wind: "風になびく自然な髪" },
     pose: { auto: "場面から自動", fashionCrouch: "成人女性が背筋を保ち、膝と足元を自然にそろえたファッション誌風のしゃがみ座り", lowCrouch: "成人女性が両足を安定させて低くしゃがむ、ストリートファッション風の力強いポーズ。下着や胸元は見せない", skirtHem: "スカートの裾端を片手で軽くつまみ、丈を上げずに布の広がりとシルエットを見せる上品なポーズ。下着や脚の付け根を露出しない", vegetable: "旬の野菜を自然に手に取る", piano: "鍵盤へ手を添えて演奏する", eating: "料理を幸せそうに頬張る", straw: "飲み物のストローを自然にくわえる", bag: "片手でバッグを持ち、もう片方の手は力を抜く", walk: "自然に歩く", hold: "小物を手に持つ", mirror: "鏡越し", seated: "自然に座る", lookback: "振り返る", detail: "手元・ディテール" },
@@ -13272,6 +13326,11 @@ function buildSocialCreativeDirective(context) {
     influencerDenim: "少しゆったりした白シャツと脚のラインがきれいに見える濃色デニム",
     influencerCafe: "ベージュ、アイボリー、ブラウンを重ねた、自然光に映えるカフェ向けコーデ",
     influencerEvening: "身体のラインを拾いすぎない上品な黒の夜カフェワンピースと華奢なアクセサリー",
+    lastTrainCoat: "深いネイビーの膝下コート、淡色の上品なニットワンピース、小ぶりなバッグ。終電前の駅で清潔感と名残惜しい夜の雰囲気が出る装い",
+    umbrellaTrench: "淡いベージュまたはくすみピンクの撥水トレンチ、透けないきれいめトップス、揺れすぎないスカート、雨の日でも歩きやすい靴",
+    warmSleeveKnit: "手の甲へ少しかかる柔らかな長袖ニットと上品な膝下フレアスカート。防寒コートを合わせ、袖口をつかむ仕草が自然に見える装い",
+    gateDateJacket: "コンパクトなショートジャケットと大人可愛い膝丈ワンピース、小ぶりなバッグ。改札前で振り返った時にシルエットが整う装い",
+    handholdCardigan: "ふんわりしたカーディガン、清潔感のあるトップス、歩くと静かに揺れる膝下スカート。手元を隠しすぎない袖丈にする",
   });
   Object.assign(labels.pose, {
     fingerHeartNearFace: "成人女性が顔の横で片手の親指と人差し指を使って小さな指ハートを作り、自然に微笑む。指は5本で関節と重なりを写実的にする",
@@ -13288,6 +13347,11 @@ function buildSocialCreativeDirective(context) {
     oneStepCloser: "成人女性が夜の別れ際にカメラの相手へ半歩だけ近づき、両手は身体の前で自然にそろえ、あごを少し引いて見つめる。近すぎる誇張や胸元の強調を避け、返事を待つ親密な距離感にする",
     bagStrapShy: "成人女性が小さなバッグの持ち手またはストラップを両手で身体の前へ軽く持ち、肩を少しすぼめてはにかみながら見上げる。手指、バッグ、ストラップの接続を自然に描く",
     wallSoftLean: "成人女性が明るく安全な夜の建物壁面へ片方の肩だけを軽く預け、帰り道を振り返るようにカメラを見る。壁への接地と姿勢を自然にし、追い詰められた印象にしない",
+    watchLastTrain: "成人女性が終電前の安全な駅ホームで時計表示へ一度視線を向けたあと、身体を相手側へ少し戻してカメラを見上げる。線路際から十分離れ、時計、顔、手足を自然に描く",
+    shareUmbrellaLean: "成人女性が大きめの傘を相手と共有し、濡れないよう肩を少しだけ相手側へ寄せて照れ笑いする。相手は腕か肩だけを画面端に入れ、傘の柄と手指を自然にする",
+    gentleSleeveHold: "成人女性が信頼する相手のコートの袖口を片手の指先でそっとつまみ、寒そうに肩を少しすぼめて見上げる。強く引っ張らず、相手は腕だけを自然に画面端へ入れる",
+    gateTurnBack: "成人女性が明るい駅改札前を数歩進んだところで足を止め、肩越しに自然に振り返る。ICカードまたは小さなバッグを片手に持ち、通行を妨げない位置に立つ",
+    handAlmostTouch: "成人女性が夜の安全な遊歩道で相手へ片手をそっと近づけ、指先が触れる直前でカメラを見上げる。接触を強制せず、差し出す手を大きく誇張しない",
     leanForward: "成人女性が背筋を自然に保ちながら上体を少し前へ傾け、両手を膝または太ももの上へ軽く添えてカメラを見る。胸元を覗かせず、首・肩・腰の角度を自然にする",
     wideStanceCrouch: "成人女性が足を肩幅より少し広めに置き、つま先と膝を外向きにそろえて低くしゃがむストリートファッション風ポーズ。重心と接地を安定させ、下着や胸元を見せない",
     gettingDressed: "成人女性が自宅の鏡の前で、服をきちんと着た状態からジャケットやカーディガンへ片腕ずつ袖を通している自然なお着換え中の瞬間。脱衣、下着、裸、透け、胸元の露出は描かず、手指と袖の位置を自然にする",
@@ -13319,6 +13383,18 @@ function buildSocialCreativeDirective(context) {
   });
   Object.assign(labels.composition, {
     extremeLow: "地面近くから見上げる強いローアングル。脚を不自然に誇張せず、スカートやワンピースでは下着が見えない正面寄りの安全な角度にする",
+    platformStory: "3枚構成。1枚目は駅の時計と横顔、2枚目はホームで迷う全身、3枚目はカメラを見上げる近い表情。終電前の時間の進行を見せる",
+    umbrellaClose: "傘の縁と雨粒を入れた二人称視点。1枚目は傘を含む膝上、2枚目は肩が近づく上半身、3枚目は照れた表情。相手は画面端だけにする",
+    sleeveDetail: "1枚目は袖口をつまむ手元、2枚目は二人の距離が分かる膝上、3枚目は見上げる表情。手指と袖の接触を正確にする",
+    gateLookback: "改札を背景に奥行きを作り、進行方向と振り返る視線を対比する。全身、肩越し、表情アップの順で別れ際の感情を進める",
+    handReach: "差し出しかけた手を画面下の手前へ控えめに置き、人物の目線まで自然に導く。手元、二人称距離、表情の3枚で直前の緊張を見せる",
+  });
+  Object.assign(labels.location, {
+    stationPlatformNight: "終電前でも照明が明るく人目のある安全な駅ホーム。架空の駅で、実在駅名や路線ロゴを出さず、黄色い線から十分離れる",
+    stationCanopyRain: "駅前の屋根がある明るい歩道。細かな雨粒と濡れた路面の反射を入れ、車道や危険な水たまりを避ける",
+    winterStreetLights: "暖色の街灯と店舗の明かりがある冬の歩道。人通りは控えめに残し、場所を特定できる看板や住所を出さない",
+    ticketGateNight: "人通りと照明がある架空の駅改札前。実在する鉄道会社名、駅名、広告を描かず、通行スペースを確保する",
+    riversideNightWalk: "足元照明と手すりがある安全な夜の川沿い遊歩道。人物は水際から離れ、遠景の街明かりを柔らかくぼかす",
   });
   const presetSelectIds = { scene: "snsScenePreset", outfit: "snsOutfitPreset", hair: "snsHairPreset", pose: "snsPosePreset", composition: "snsCompositionPreset", lighting: "snsLightingPreset", location: "snsLocationPreset", carousel: "snsCarouselPreset" };
   const preset = (group, key, fallback) => {
