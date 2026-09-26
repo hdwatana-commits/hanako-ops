@@ -530,7 +530,7 @@ function enhanceCoordinateSelectOptions() {
     affectionateGroup.after(dailyGroup);
     const studioPoseGroup = document.createElement("optgroup");
     studioPoseGroup.label = "撮影で映える好印象ポーズ";
-    studioPoseGroup.innerHTML = '<option value="fingerHeartNearFace">顔の横で小さな指ハート</option><option value="ribbonAdjust">リボンや襟元を整えながら目を合わせる</option><option value="jacketOnShoulder">上着を肩へ軽くかけて振り向く</option><option value="chairSideTurn">椅子に横向きで座って振り返る</option><option value="bouquetHug">小さな花束を両手で抱える</option><option value="curtainPeek">カーテンの端から顔をのぞかせる</option><option value="mirrorHalfTurn">鏡の前で半身に振り向く</option><option value="stepTowardCamera">カメラへ一歩近づいて微笑む</option><option value="handsBackLean">両手を後ろで組んで少し前傾</option><option value="seatedSideLegs">座って両脚を横へ自然にそろえる</option>';
+    studioPoseGroup.innerHTML = '<option value="fingerHeartNearFace">顔の横で小さな指ハート</option><option value="ribbonAdjust">リボンや襟元を整えながら目を合わせる</option><option value="jacketOnShoulder">上着を肩へ軽くかけて振り向く</option><option value="chairSideTurn">椅子に横向きで座って振り返る</option><option value="bouquetHug">小さな花束を両手で抱える</option><option value="curtainPeek">カーテンの端から顔をのぞかせる</option><option value="mirrorHalfTurn">鏡の前で半身に振り向く</option><option value="stepTowardCamera">カメラへ一歩近づいて微笑む</option><option value="handsBackLean">両手を後ろで組んで少し前傾</option><option value="seatedSideLegs">座って両脚を横へ自然にそろえる</option><option value="nightCornerGaze">夜の街角で立ち止まり見上げる</option><option value="oneStepCloser">帰り際に半歩近づいて見つめる</option><option value="bagStrapShy">バッグの持ち手を両手で持ちはにかむ</option><option value="wallSoftLean">壁際で肩を預けて振り返る</option>';
     dailyGroup.after(studioPoseGroup);
     const savedPose = getSocialCreativeProfile().posePreset;
     if ([...poseSelect.options].some((option) => option.value === savedPose)) poseSelect.value = savedPose;
@@ -3106,6 +3106,9 @@ const hanakoExpressionOptions = {
   closeSoftGaze: { label: "近い距離で見つめる柔らかな表情", prompt: "成人女性が近い会話距離からカメラと穏やかに目を合わせ、目元を柔らかくして小さく微笑む、親密さと安心感のある表情" },
   halfLiddedSmile: { label: "少し目を細めた余裕の微笑み", prompt: "成人女性がまぶたを自然に少しだけ下げ、口角を控えめに上げる。眠そうになりすぎない、落ち着きと余裕を感じる大人の微笑み" },
   secretSmile: { label: "秘密を共有するような微笑み", prompt: "成人女性がカメラへまっすぐ目を合わせ、何かを知っているように片方の口角をわずかに上げる、遊び心と親近感のある微笑み" },
+  dontWantToLeave: { label: "帰りたくない気持ちを隠す視線", prompt: "成人女性が帰り際に一度横へ視線を逃がし、名残惜しさを隠すように小さく微笑んでからカメラを見上げる。露骨に誘惑せず、言いかけた本音と夜の余韻が伝わる表情" },
+  waitingForAnswer: { label: "返事を待つ少し不安な微笑み", prompt: "成人女性があごを少し引いてカメラと目を合わせ、返事を待つように目元へ小さな期待と不安をにじませる。口元は控えめな微笑みで、守ってあげたくなる自然な親近感を表す" },
+  lookAwayThenMeet: { label: "目をそらしてから見つめ返す", prompt: "成人女性が照れて一度だけ視線を横へ外し、次の瞬間にまっすぐ見つめ返す。頬と口元にわずかなはにかみを残し、会話距離のドキッとする瞬間を上品に表現する" },
   eating: { label: "幸せそうに頬張る顔", prompt: "おいしいものを自然に頬張り、喜びでぱっと明るくなる無邪気な表情" },
   blank: { label: "少し口が開いた「ぽかん」顔", prompt: "驚きや気の抜けた瞬間に唇が少しだけ開いた、リラックスした柔らかい表情" },
   sleepy: { label: "眠そうなトロンとした目", prompt: "安心してくつろぎ、まぶたが少し下がった眠そうな目。疲労や不健康さではなく穏やかなリラックス感" },
@@ -3131,6 +3134,7 @@ const hanakoIdeaCatalog = [
   { id: "travel", title: "海外旅行・秘境", description: "世界都市くじの絶景を旅の憧れとして紹介", brief: "世界都市くじで選んだ絶景や秘境を、実際に訪れたと断定せず、行ってみたい気分や装いのイメージとして表現する", pattern: "editorpick", scene: "travelScenic", outfit: "travel", pose: "lookback", composition: "wide", lighting: "golden", carousel: "story" },
   { id: "reset", title: "気分を整える時間", description: "飲み物や静かな時間をやさしい短文に", brief: "飲み物、音楽、窓辺など、気分を整える小さな時間を説明しすぎず余韻のある短文にする", pattern: "scenestory", scene: "quietReset", outfit: "sweetclean", pose: "seated", composition: "waist", lighting: "morning", carousel: "story" },
   { id: "bar", title: "バーの空気", description: "間接照明と一日の終わりを大人っぽく", brief: "バーの間接照明や一日の終わりの空気を、店名、住所、勤務日を出さずに上品な一場面として表現する", pattern: "scenestory", scene: "pianoNight", outfit: "piano", pose: "seated", composition: "editorial", lighting: "bar", carousel: "story" },
+  { id: "afterdate", title: "帰りたくない夜", description: "デート帰りの名残惜しさを問いかけに", brief: "デート帰りの夜、別れ際にもう少し一緒にいたい気持ちがこぼれる場面。『今夜は帰りたくないって言ったら困りますか？』のような、相手が返事をしたくなる短い問いかけを毎回違う自然な言葉で作る。露骨な性的表現や実体験の断定は避け、名残惜しさ、照れ、期待を上品に残す", pattern: "scenestory", scene: "nightAfterDate", outfit: "influencerEvening", pose: "oneStepCloser", composition: "waist", lighting: "neon", carousel: "story" },
 ];
 
 function renderHanakoIdeas(refresh = false) {
@@ -12271,7 +12275,6 @@ function buildEditorialContext(product) {
   const tone = document.querySelector("#toneSelect").value;
   const brief = document.querySelector("#postBrief").value.trim();
   const emotionValue = document.querySelector("#emotionSelect").value;
-  const emotion = emotionValue === "auto" ? inferEmotion(audience, product.category, generationVariant) : emotionValue;
   const hookValue = document.querySelector("#hookSelect").value;
   const hookType = hookValue === "auto" ? pick(["scene", "confession", "question", "contrarian", "specific", "whisper"], generationVariant + product.name.length) : hookValue;
   const ownership = document.querySelector("#ownershipSelect").value;
@@ -12286,6 +12289,7 @@ function buildEditorialContext(product) {
   const audience = audienceValue === "auto" || !audienceValue
     ? document.querySelector("#audienceSelect").dataset.socialAutoAudienceValue || pickSocialAudience(product, { platform: activePlatform, angle, goal, optimization })
     : audienceValue;
+  const emotion = emotionValue === "auto" ? inferEmotion(audience, product.category, generationVariant) : emotionValue;
   const viralValue = document.querySelector("#viralPatternSelect").value;
   const learnedPattern = getPerformanceInsight(activePlatform, optimization);
   const viralPattern = viralValue === "auto"
@@ -12924,7 +12928,7 @@ ${buildSocialCreativeDirective(c)}
 ${buildSocialCreativeDirective(c)}
 
 【文章条件】
-・可愛く親しみやすいハナの一人称。性的な誘い、過度な自撮り自慢、露出への言及はしない
+・可愛く親しみやすいハナの一人称。露骨な性的な誘い、過度な自撮り自慢、露出への言及はしない。夜の別れ際テーマでは、名残惜しさや「もう少し一緒にいたい」気持ちを上品な問いかけにしてよい
 ・23〜60文字程度、1〜3行。最初の1行に誰でも共感しやすい日常の気分、小さな発見、季節感のいずれかを置く
 ・返信しやすい入口を一つ作る。軽い問いかけ、共感できる一言、気楽な感想の募集を交互に使い、毎回同じ二択や「コメントして」を繰り返さない
 ・画像${getHanakoDedicatedShotCount(c.creativeProfile)}枚の表情の変化と同じ場所の空気感に自然につながる文章にする。写真ごとの別文や長い説明は不要
@@ -13195,7 +13199,7 @@ ${travelSafety}
 function buildSocialCreativeDirective(context) {
   const profile = { ...socialCreativeDefaults, ...(context.creativeProfile || {}) };
   const labels = {
-    scene: { auto: "選択した投稿案から自動", vegetableMorning: "瑞々しい野菜と一日の始まり", pianoNight: "演奏前後の夜のピアノ", tsukemenMoment: "つけ麺を楽しむひととき", cityDusk: "夕方の色と都会の街歩き", travelScenic: "海外旅行・秘境の絶景", quietReset: "静かに気分を整える時間", morning: "朝の支度", campus: "キャンパス・通学", office: "オフィス・通勤", cafe: "カフェ・街歩き", date: "デート・おでかけ", rain: "雨の日", travel: "旅先・秘境", season: "季節の変わり目", trend: "トレンド観察", room: "部屋で過ごす時間" },
+    scene: { auto: "選択した投稿案から自動", vegetableMorning: "瑞々しい野菜と一日の始まり", pianoNight: "演奏前後の夜のピアノ", nightAfterDate: "デート帰り、別れ際にもう少し一緒にいたい夜", tsukemenMoment: "つけ麺を楽しむひととき", cityDusk: "夕方の色と都会の街歩き", travelScenic: "海外旅行・秘境の絶景", quietReset: "静かに気分を整える時間", morning: "朝の支度", campus: "キャンパス・通学", office: "オフィス・通勤", cafe: "カフェ・街歩き", date: "デート・おでかけ", rain: "雨の日", travel: "旅先・秘境", season: "季節の変わり目", trend: "トレンド観察", room: "部屋で過ごす時間" },
     outfit: { auto: "テーマから自動", homeKnit: "自宅の柔らかなニットとロングスカート", homeCardigan: "白T、カーディガン、リラックスパンツ", homeShirt: "オーバーサイズシャツと濃色レギンス", homeOnepiece: "生成りの上品なルームワンピース", pajamaSatin: "光沢を抑えた上品なサテン風の長袖・長ズボンパジャマ", pajamaCotton: "白いパイピングが映える大人可愛いコットンパジャマ", pajamaKnit: "ふわもこカーディガン、同系色のトップス、露出を抑えたルームショートパンツ", pajamaOnepiece: "身体のラインを拾いすぎない淡色の上品なパジャマワンピース", cosplayMaid: "成人向けイベント衣装として、膝丈スカート、長袖、エプロンを合わせたクラシカルな大人メイド風コスプレ", cosplayCat: "成人向けイベント衣装として、黒猫の耳モチーフと黒を基調にした大人可愛いコーデ。人物を幼く見せない", cosplayWitch: "深いネイビーと黒を基調にした、都会的で洗練された大人の魔女風コスプレ", cosplayFantasy: "露出を抑えたドレス、ケープ、装飾小物を合わせた上品なファンタジーヒロイン風衣装", adultSchoolCosplay: "成人女性による制服風コスプレ。白シャツ、ネイビーのブレザー、膝丈のプリーツスカート、落ち着いたリボン。実在校の校章を使わず、人物を未成年に見せず、性的に演出しない", adultIdol: "成人女性向けの大人可愛いアイドルステージ衣装。上品なフリル、ジャケット、適切な丈のスカート、控えめな光沢", recruitSuit: "清潔感のある黒またはネイビーのリクルートスーツ、白ブラウス、膝丈スカートまたはテーパードパンツ", ryousan: "ピンクと黒を基調に、リボン、レース、厚底靴を上品にまとめた量産系コーデ", jirai: "黒とくすみピンクを基調に、レース、ベルト、小ぶりなリボンを合わせた洗練された地雷系コーデ", seiso: "白、ネイビー、淡いブルーを中心に、上品なブラウスとミモレ丈スカートを合わせた清楚系コーデ", cropDenim: "お腹を少し見せるクロップド丈ニットとハイウエストデニムの都会的コーデ", cropSkirt: "お腹を少し見せるクロップドカーディガンと上品なロングスカート", cropJacket: "クロップドトップス、テーラードジャケット、ハイウエストのワイドパンツ", cropSporty: "お腹を少し見せるスポーティなクロップドトップスとハイウエストボトムの清潔感あるコーデ", miniPleats: "きれいめプリーツミニスカート、薄手ニット、必要に応じてタイツ", miniTweed: "上品なツイードミニスカートと清潔感のあるブラウス", miniKnit: "落ち着いた色のニットミニスカート、長袖トップス、ロングブーツ", miniDenim: "濃色デニムミニスカートと柔らかなカーディガン", grocer: "白シャツ、無地のデニムエプロン、濃色パンツ", piano: "ネイビーまたは黒の上品なピアノ衣装", tsukemen: "気取らないきれいめカジュアル", city: "都会的な甘めきれいめコーデ", travel: "歩きやすい洗練された旅コーデ", hero: "主役を引き立てる", sweetclean: "甘めきれいめ", adultgirly: "大人ガーリー", office: "上品オフィス", campus: "きれいめ通学", monochrome: "淡色・ワントーン", trend: "トレンドを一点", resort: "旅・リゾート", layered: "温度調整レイヤード" },
     hair: { keep: "本人らしさを保つ", center: "センターパートのストレート", headband: "黒または深緑の細いヘアバンド", straight: "ストレート", wave: "やわらかな巻き髪", lowpony: "ローポニー", halfup: "ハーフアップ", bun: "まとめ髪", wind: "風になびく自然な髪" },
     pose: { auto: "場面から自動", fashionCrouch: "成人女性が背筋を保ち、膝と足元を自然にそろえたファッション誌風のしゃがみ座り", lowCrouch: "成人女性が両足を安定させて低くしゃがむ、ストリートファッション風の力強いポーズ。下着や胸元は見せない", skirtHem: "スカートの裾端を片手で軽くつまみ、丈を上げずに布の広がりとシルエットを見せる上品なポーズ。下着や脚の付け根を露出しない", vegetable: "旬の野菜を自然に手に取る", piano: "鍵盤へ手を添えて演奏する", eating: "料理を幸せそうに頬張る", straw: "飲み物のストローを自然にくわえる", bag: "片手でバッグを持ち、もう片方の手は力を抜く", walk: "自然に歩く", hold: "小物を手に持つ", mirror: "鏡越し", seated: "自然に座る", lookback: "振り返る", detail: "手元・ディテール" },
@@ -13271,6 +13275,10 @@ function buildSocialCreativeDirective(context) {
     stepTowardCamera: "成人女性がカメラへ自然に一歩近づき、目を合わせて微笑む。踏み出す足と残す足の重心、髪と服の揺れを自然にする",
     handsBackLean: "成人女性が両手を背中の後ろで軽く組み、背筋を保ったまま上体を少し前へ傾けて微笑む。胸元を覗かせない正面寄りの視点にする",
     seatedSideLegs: "成人女性が椅子か床に座り、両脚を横へ自然にそろえてカメラを見る。膝、足首、椅子や床との接地を無理なく描く",
+    nightCornerGaze: "成人女性が夜の安全な街角で歩みを止め、身体は帰る方向へ向けたまま上半身だけを少し振り返り、カメラを見上げる。名残惜しい帰り際の距離感を作り、道路へ出ない",
+    oneStepCloser: "成人女性が夜の別れ際にカメラの相手へ半歩だけ近づき、両手は身体の前で自然にそろえ、あごを少し引いて見つめる。近すぎる誇張や胸元の強調を避け、返事を待つ親密な距離感にする",
+    bagStrapShy: "成人女性が小さなバッグの持ち手またはストラップを両手で身体の前へ軽く持ち、肩を少しすぼめてはにかみながら見上げる。手指、バッグ、ストラップの接続を自然に描く",
+    wallSoftLean: "成人女性が明るく安全な夜の建物壁面へ片方の肩だけを軽く預け、帰り道を振り返るようにカメラを見る。壁への接地と姿勢を自然にし、追い詰められた印象にしない",
     leanForward: "成人女性が背筋を自然に保ちながら上体を少し前へ傾け、両手を膝または太ももの上へ軽く添えてカメラを見る。胸元を覗かせず、首・肩・腰の角度を自然にする",
     wideStanceCrouch: "成人女性が足を肩幅より少し広めに置き、つま先と膝を外向きにそろえて低くしゃがむストリートファッション風ポーズ。重心と接地を安定させ、下着や胸元を見せない",
     gettingDressed: "成人女性が自宅の鏡の前で、服をきちんと着た状態からジャケットやカーディガンへ片腕ずつ袖を通している自然なお着換え中の瞬間。脱衣、下着、裸、透け、胸元の露出は描かず、手指と袖の位置を自然にする",
