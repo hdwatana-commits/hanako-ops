@@ -12361,8 +12361,17 @@ function generateHanakoLifestyleCopy(context, variant = 0) {
     travel: ["いつかこの景色の中を歩いてみたい。\n旅ならどんな服で行く？", "次の旅で見たい色を、ひとつ見つけた。", "知らない街の朝を想像する時間も、旅の一部かも✈️"],
     reset: ["少し立ち止まるだけで、気分が戻ってくる。\n今日は何でひと休みする？", "あたたかい飲み物と、静かな時間。\nそれだけで今日は充分☺️", "急がない時間を、ちゃんと作る日。"],
     bar: ["間接照明の下だと、一日が少しやさしく見える。", "夜の静けさに、グラスの音がひとつ。\n今日もおつかれさま。", "一日の終わりに似合う音を探してる🌙"],
+    afterdate: [
+      "今夜は帰りたくないって言ったら、困りますか？",
+      "あと少しだけ一緒にいたい、は欲張りかな。",
+      "帰る方向は分かってるのに、まだ歩き出せない🌙",
+      "もう少しだけ話したいって言ったら、付き合ってくれる？",
+      "楽しい夜ほど、さよならが下手になる。",
+      "次の角まで遠回りしない？ まだ帰りたくない気分。",
+    ],
   };
-  return (copies[idea.id] || copies.reset)[variant % 3];
+  const selectedCopies = copies[idea.id] || copies.reset;
+  return selectedCopies[variant % selectedCopies.length];
 }
 
 function getHanakoDedicatedShotCount(profile = getSocialCreativeProfile()) {
