@@ -3226,16 +3226,16 @@ function renderHanakoPhotobookSettings() {
 
 const hanakoInstagramLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park"];
 const hanakoInstagramOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "offShoulderWidePants", "satinBowBlouse", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "miniLolita", "miniBandGal"];
-const hanakoInstagramPoses = ["fingerHeartNearFace", "ribbonAdjust", "jacketOnShoulder", "chairSideTurn", "bouquetHug", "curtainPeek", "mirrorHalfTurn", "stepTowardCamera", "handsBackLean", "seatedSideLegs", "hairTouch", "lookback", "nyanNyan", "wanWan"];
+const hanakoInstagramPoses = ["fingerHeartNearFace", "ribbonAdjust", "jacketOnShoulder", "chairSideTurn", "curtainPeek", "mirrorHalfTurn", "stepTowardCamera", "handsBackLean", "seatedSideLegs", "hairTouch", "lookback", "nyanNyan", "wanWan"];
 const hanakoInstagramLooks = [
-  { id: "sweet", label: "照れた甘さ", direction: "はにかみ、上目遣い、柔らかな仕草で親しみやすい可愛さを見せる", locations: ["homeLiving", "homeSofa", "homeWindow", "studioPastel", "park"], outfits: ["sweetIvoryKnitMini", "pinkTweedDress", "blackRibbonKnit", "cardiganFloralDress", "miniLolita"], poses: ["fingerHeartNearFace", "bouquetHug", "handsBackLean", "hairTouch", "nyanNyan", "wanWan"], expressions: ["bashful", "upward", "shySideSmile", "curiousTilt"], compositions: ["face", "waist", "eye"] },
+  { id: "sweet", label: "照れた甘さ", direction: "はにかみ、上目遣い、柔らかな仕草で親しみやすい可愛さを見せる", locations: ["homeLiving", "homeSofa", "homeWindow", "studioPastel", "park"], outfits: ["sweetIvoryKnitMini", "pinkTweedDress", "blackRibbonKnit", "cardiganFloralDress", "miniLolita"], poses: ["fingerHeartNearFace", "handsBackLean", "hairTouch", "nyanNyan", "wanWan"], expressions: ["bashful", "upward", "shySideSmile", "curiousTilt"], compositions: ["face", "waist", "eye"] },
   { id: "flirty", label: "いたずらっぽい視線", direction: "振り返りと視線の変化で、露出に頼らないドキッとする距離感を作る", locations: ["homeSofa", "homeBedroom", "homeVanity", "studioDaylight", "studioNoir"], outfits: ["offShoulderWidePants", "satinBowBlouse", "creamWrapSkirt", "blackRibbonKnit", "miniBandGal"], poses: ["chairSideTurn", "mirrorHalfTurn", "ribbonAdjust", "lookback"], expressions: ["secretSmile", "invitingGaze", "overShoulderSmile", "halfLiddedSmile"], compositions: ["editorial", "waist", "eye"] },
-  { id: "date", label: "デート服のときめき", direction: "清潔感のある装いと弾む表情で、一緒に過ごしたくなる明るさを見せる", locations: ["homeLiving", "homeWindow", "studioDaylight", "studioPastel", "park"], outfits: ["softBlueShirtDress", "whiteLaceDenim", "navyPoloMini", "cardiganFloralDress"], poses: ["stepTowardCamera", "jacketOnShoulder", "bouquetHug", "lookback"], expressions: ["sunlitSquint", "expectantGaze", "softEyeContact", "shySideSmile"], compositions: ["full", "waist", "face"] },
+  { id: "date", label: "デート服のときめき", direction: "清潔感のある装いと弾む表情で、一緒に過ごしたくなる明るさを見せる", locations: ["homeLiving", "homeWindow", "studioDaylight", "studioPastel", "park"], outfits: ["softBlueShirtDress", "whiteLaceDenim", "navyPoloMini", "cardiganFloralDress"], poses: ["stepTowardCamera", "jacketOnShoulder", "lookback"], expressions: ["sunlitSquint", "expectantGaze", "softEyeContact", "shySideSmile"], compositions: ["full", "waist", "face"] },
   { id: "elegant", label: "大人の余裕", direction: "落ち着いた眼差し、布の質感、上品な陰影で洗練された色気を見せる", locations: ["homeSofa", "homeBedroom", "studioNoir", "studioDaylight"], outfits: ["satinBowBlouse", "offShoulderWidePants", "creamWrapSkirt", "pinkTweedDress"], poses: ["chairSideTurn", "ribbonAdjust", "jacketOnShoulder", "seatedSideLegs"], expressions: ["softEyeContact", "invitingGaze", "halfLiddedSmile", "subtlesmile"], compositions: ["editorial", "waist", "eye"] },
 ];
 const hanakoThreadsLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park", "cafe", "cafeTerrace", "bookstore", "museum", "riverside", "street", "rooftop", "grocer", "pianoBar", "noodle"];
 const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "cafeCasual", "seiso", "miniLolita", "miniBandGal"];
-const hanakoThreadsPoses = ["fingerHeartNearFace", "bouquetHug", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan"];
+const hanakoThreadsPoses = ["fingerHeartNearFace", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan"];
 const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze"];
 const hanakoThreadsAbFields = {
   outfit: { source: "snsOutfitPreset", label: "コーデの雰囲気" },
@@ -3310,7 +3310,7 @@ function renderHanakoThreadsSettings() {
   for (const id of ["snsLocationPreset", "hanakoGasLocation"]) {
     const select = document.querySelector(`#${id}`);
     if (!select) continue;
-    [...select.options].forEach((option) => { option.disabled = (enabled && !hanakoThreadsLocations.includes(option.value)) || (getSocialCreativeProfile().hanakoInstagramMode && !hanakoInstagramLocations.includes(option.value)); });
+    [...select.options].forEach((option) => { option.disabled = enabled && !hanakoThreadsLocations.includes(option.value); });
   }
 }
 
@@ -3414,7 +3414,7 @@ function renderHanakoInstagramSettings() {
   for (const id of ["snsLocationPreset", "hanakoGasLocation"]) {
     const select = document.querySelector(`#${id}`);
     if (!select) continue;
-    [...select.options].forEach((option) => { option.disabled = enabled && !hanakoInstagramLocations.includes(option.value); });
+    [...select.options].forEach((option) => { option.disabled = false; });
   }
 }
 
@@ -3429,7 +3429,7 @@ function recommendHanakoInstagram() {
     const pickOne = (items) => items[Math.floor(Math.random() * items.length)];
     const look = pickOne(hanakoInstagramLooks);
     const location = pickOne(look.locations.filter((value) => locations.includes(value)));
-    const locationPoses = look.poses.filter((pose) => poses.includes(pose) && (location !== "park" || ["fingerHeartNearFace", "jacketOnShoulder", "bouquetHug", "stepTowardCamera", "handsBackLean", "lookback", "hairTouch"].includes(pose)));
+    const locationPoses = look.poses.filter((pose) => poses.includes(pose) && (location !== "park" || ["fingerHeartNearFace", "jacketOnShoulder", "stepTowardCamera", "handsBackLean", "lookback", "hairTouch"].includes(pose)));
     return { look: look.id, location, outfit: pickOne(look.outfits.filter((value) => outfits.includes(value))), pose: pickOne(locationPoses), expression: pickOne(look.expressions), composition: pickOne(look.compositions) };
   });
   const score = (item) => recent.reduce((total, previous, index) => total + (previous === JSON.stringify(item) ? 100 : 0) + (["look", "location", "outfit", "pose", "expression", "composition"].reduce((matches, key) => matches + (JSON.parse(previous)[key] === item[key] ? (key === "look" ? 3 : 1) : 0), 0) * (recent.length - index)), 0);
@@ -3457,7 +3457,7 @@ function bindHanakoGasSettings() {
     mirror.dataset.bound = "true";
     mirror.addEventListener("change", () => {
       const profile = getSocialCreativeProfile();
-      const locations = profile.hanakoInstagramMode ? hanakoInstagramLocations : profile.hanakoThreadsMode ? hanakoThreadsLocations : null;
+      const locations = profile.hanakoThreadsMode ? hanakoThreadsLocations : null;
       if (mirrorId === "hanakoGasLocation" && locations && !locations.includes(mirror.value)) mirror.value = "studioDaylight";
       source.value = mirror.value;
       saveSocialCreativeProfile();
@@ -3713,15 +3713,14 @@ function saveSocialCreativeProfile() {
   const threadsAbMode = threadsMode && Boolean(document.querySelector("#snsHanakoThreadsAbMode")?.checked);
   if (instagramMode || threadsMode) {
     const location = document.querySelector("#snsLocationPreset");
-    const locations = instagramMode ? hanakoInstagramLocations : hanakoThreadsLocations;
-    if (location && !locations.includes(location.value)) location.value = "studioDaylight";
+    if (threadsMode && location && !hanakoThreadsLocations.includes(location.value)) location.value = "studioDaylight";
     const abLayout = getHanakoThreadsAbLayout(value("snsHanakoThreadsAbAxis") || "outfit", value("snsHanakoThreadsAbLayout") || "auto");
     for (const [id, fixed] of [["snsThreadsImageCount", threadsAbMode ? "2" : instagramMode ? "3" : String(value("snsHanakoThreadsCount") === "2" ? 2 : 3)], ["snsHanakoSensualLevel", instagramMode ? "mishap" : "off"]]) {
       const input = document.querySelector(`#${id}`);
       if (input) input.value = fixed;
     }
     const freeLocation = document.querySelector("#snsVisualLocation");
-    if (freeLocation) freeLocation.value = "";
+    if (threadsMode && freeLocation) freeLocation.value = "";
   }
   state.socialCreativeProfile = {
     characterRole: value("snsCharacterRole"),
@@ -3963,7 +3962,7 @@ function bindSocialPatternStudio() {
   }));
   document.querySelector("#snsLocationPreset")?.addEventListener("change", (event) => {
     const profile = getSocialCreativeProfile();
-    const locations = profile.hanakoInstagramMode ? hanakoInstagramLocations : profile.hanakoThreadsMode ? hanakoThreadsLocations : null;
+    const locations = profile.hanakoThreadsMode ? hanakoThreadsLocations : null;
     if (locations && !locations.includes(event.currentTarget.value)) {
       event.currentTarget.value = "studioDaylight";
       saveSocialCreativeProfile();
@@ -12730,10 +12729,15 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0
 ・寝室やベッド上でも日常のくつろぎと洗練を保ち、性的な場面にはしない` : `【大人の色気モード｜OFF】
 ・通常の親しみやすいライフスタイル写真にする。身体の部位や性的な魅力を強調しない`;
   const requestedLocation = c.creativeProfile?.locationPreset || "world";
-  const allowedLocations = instagramMode ? hanakoInstagramLocations : threadsMode ? hanakoThreadsLocations : null;
+  const allowedLocations = threadsMode ? hanakoThreadsLocations : null;
   const locationPreset = allowedLocations && !allowedLocations.includes(requestedLocation) ? "studioDaylight" : requestedLocation;
   const locationSelect = document.querySelector("#snsLocationPreset");
-  const locationLabel = instagramMode || threadsMode ? [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "撮影スタジオ" : c.creativeProfile?.location || [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "選択した場所";
+  const customLocation = String(c.creativeProfile?.location || "").trim();
+  const locationLabel = instagramMode && customLocation
+    ? customLocation
+    : instagramMode || threadsMode
+      ? [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "撮影スタジオ"
+      : customLocation || [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "選択した場所";
   const studioScenes = {
     studioDaylight: "白い塗り壁と大きな拡散窓光、淡い木床を使う明るい撮影スタジオ。窓外に実在の街並みを作らず、選択した時間帯に合う光の色へ調整する",
     studioPastel: "淡いピンクとアイボリーのシームレス背景、柔らかな布と控えめな花を使う撮影スタジオ。装飾を少数に絞り、服と表情を主役にする",
@@ -12752,7 +12756,7 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0
 ・服装指定に靴やロングブーツが含まれていても、この室内ルールを優先し、靴だけを外して衣装本体は維持する
 ・玄関のたたきではなく生活空間として描き、靴底を家具、床、ベッド、ソファへ載せない
 ・全カットで足元を統一し、途中の画像だけ靴を履いた状態へ変えない` : "";
-  const world = locationPreset === "world" ? `【世界都市背景・くじ選択済み】
+  const world = locationPreset === "world" && !customLocation ? `【世界都市背景・くじ選択済み】
 ・今回の背景は「${c.socialCity || "パリ"}」。ROOM投稿と同じ世界都市候補から、直前の使用場所と重なりにくいくじ方式で選択済み
 ・背景に「${c.socialLandmark || "エッフェル塔"}」の景観を、その場所だと自然に分かる大きさで入れる
 ・実際の地形、建築、自然、光と矛盾しない写真的な背景にし、別都市の名所を混ぜない
@@ -12768,7 +12772,7 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0
   const selected = c.creativeProfile || {};
   const instagramLook = hanakoInstagramLooks.find((look) => look.id === state.hanakoInstagramLook) || hanakoInstagramLooks[0];
   const instagramPosePool = locationPreset === "park"
-    ? hanakoInstagramPoses.filter((pose) => ["fingerHeartNearFace", "jacketOnShoulder", "bouquetHug", "stepTowardCamera", "handsBackLean", "lookback", "hairTouch"].includes(pose))
+    ? hanakoInstagramPoses.filter((pose) => ["fingerHeartNearFace", "jacketOnShoulder", "stepTowardCamera", "handsBackLean", "lookback", "hairTouch"].includes(pose))
     : instagramLook.poses;
   const chooseOther = (pool, first, offset) => {
     const alternatives = pool.filter((value) => value !== first);
@@ -12787,7 +12791,8 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0
 ・今回の撮影テーマは「${instagramLook.label}」。${instagramLook.direction}。男性フォロワーにも魅力的に映る、大人可愛い表情と品のある色気を優先する。全身の服の魅力、目が合う瞬間、思わず微笑む仕草の3つに見どころを分ける
 ・1枚目はスクロール中に目を止める主役カット、2枚目は少し近い距離の親しみやすさ、3枚目は振り返りや余韻でまた見たくなるカットにする。ただし表情・ポーズ・構図の具体指定は下記を優先する
 ・3枚とも同じ成人女性、同じ場所「${locationLabel}」、同じ服装、同じ髪型、同じ時間帯と光、背景小物の配置を固定する。場所を移動したように見せない
-・撮影場所は自宅の室内、撮影スタジオ、または公園だけ。屋外は公園以外にしない。公園では安全な平地で撮影する
+・撮影場所は上部で選択した「${locationLabel}」をそのまま使う。インスタモードでも世界都市、街角、カフェ、自然、室内など選んだ場所を優先し、別の場所へ勝手に変更しない
+・花、花束、ブーケを持つポーズは自動採用しない。上部で本人が明示的に「小さな花束を両手で抱える」を選んだ場合だけ使用してよい
 ・今回の1画像には次の指定だけを使う。ほかのカットは後続の別リクエストで作る:
 ${instagramShotPlan}
 ・ハプニングモードのドキッとする親密さは視線、仕草、布の揺れ、距離で表現し、衣服は整ったまま保つ。下着、胸元、透け、着替え、事故や盗撮を描かない
