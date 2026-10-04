@@ -2,6 +2,8 @@
 
 HanakoOPS v327として公開済みです。Supabaseに返信用テーブル・RPC・Edge Function・1分ごとのCronを反映しました。初期状態は停止・下書きモードです。現在のプロジェクトにはThreadsユーザートークンとユーザーIDが未登録のため、実際の取得・返信にはThreads APIの接続が必要です。
 
+2026-10-04の接続テストでは、既存OPENAI_API_KEYに入力欄の説明文が入っており生成できませんでした。正しいキーの再登録が必要です。Meta開発者登録と「HanakoOPS Replies」アプリ作成済み（MetaアプリID 1875465030292455、ThreadsアプリID 2234070170781761）。threads_basic / threads_content_publish / threads_read_replies / threads_manage_repliesを設定済み。本人のThreadsテスター追加と認証トークン保存は未完了です。OPSの「接続とAIをテスト」で設定後の確認ができます。
+
 ## 変更ファイル
 
 既存の `index.html` はCSSとモジュールの読み込みだけを追加。`sw.js` はキャッシュ名を更新し新しいファイルをキャッシュ対象に追加。既存の `app.js` は変更していません。
