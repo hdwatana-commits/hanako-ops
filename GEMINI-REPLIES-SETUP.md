@@ -9,3 +9,5 @@ OpenAIへの自動フォールバックはありません。Geminiの429はコ�
 既存DBにはsupabase-gemini-replies.sqlを適用済み。新規導入時はsupabase-threads-replies.sqlに待機列を含みます。返信設定は停止／下書きのままです。GEMINI_API_KEYを本人が保存し、2026-10-04に実生成テスト成功（API HTTP 200 / Gemini ok=true）。仮名・敬称を除外する修正後の生成も成功しました。Threads本人認証は未完了です。
 
 無料APIではコメント・会話履歴がGoogleの製品改善に利用される場合があります。公式条件: https://ai.google.dev/gemini-api/terms
+
+2026-10-04: Threadsテスター招待の承認と本人によるTHREADS_ACCESS_TOKEN保存が完了。トークンのmeでhanako47258本人を確認し、THREADS_USER_IDを設定。接続診断はready=true（投稿・コメント取得とGemini生成成功）。実運用で投稿済み5件、履歴4777件、生成失敗3件、結果不明1件を確認。現在のスイッチはOFF。会う表現を含む候補を検出したため、生成後と投稿直前に禁止表現チェックを追加し、Geminiの不適切候補は一度だけ再生成する。10テスト成功。

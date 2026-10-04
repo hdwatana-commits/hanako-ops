@@ -10,7 +10,7 @@ const openaiKey = () => {
 };
 const aiProvider = () => Deno.env.get('REPLY_AI_PROVIDER') || 'gemini';
 const aiConfigured = () => {if(aiProvider()==='gemini') return Boolean(Deno.env.get('GEMINI_API_KEY')?.trim());try{openaiKey();return true;}catch{return false;}};
-const invalidReply = (text: string,max: number) => !text || [...text].length>max || /```|@|(?:〇|○|◯|×|X){2,}|\S+(?:さん|くん|君|ちゃん|様)/.test(text);
+const invalidReply = (text: string,max: number) => !text || [...text].length>max || /```|@|(?:〇|○|◯|×|X){2,}|\S+(?:さん|くん|君|ちゃん|様)/.test(text) || /会[うえいお]|逢|デート|電話|通話|連絡先|待ち合わせ|DM|LINE|\b(?:meet|meeting|date|call|phone|whatsapp|telegram)\b|见面|見面|전화|만나/i.test(text);
 class FreeQuotaError extends Error {}
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,apikey,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
 const owner = () => env('HANAKO_OWNER_USER_ID');
@@ -50,7 +50,7 @@ async function checkThreadsOwner() {
   if(String(me.id)!==env('THREADS_USER_ID')) throw new Error('Threadsの認証アカウントが所有者設定と一致しません');
   return me;
 }
-async function generate(s: any,c: any) {
+async function generate(s: any,c: any,attempt=0): Promise<string> {
   const history=s.use_history ? await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(c.username)}&comment_id=neq.${encodeURIComponent(c.comment_id)}&order=commented_at.desc&limit=20&select=comment_text,reply_text,post_text,commented_at`) : [];
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
   const instructions=`${HANA_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。自然な日本語を確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${s.custom_prompt}`;
@@ -61,7 +61,10 @@ async function generate(s: any,c: any) {
     const candidate=response.candidates?.[0];
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
     const text=(candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim();
-    if(invalidReply(text,s.max_chars)) throw new Error('返信形式を確認してください');
+    if(invalidReply(text,s.max_chars)) {
+      if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。誘いは「ここでお話しできるのが嬉しいな」とかわす。最大文字数の半分程度で簡潔に書く。'},c,1);
+      throw new Error('返信形式を確認してください');
+    }
     return text;
   }
   const response=await api('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${openaiKey()}`,'Content-Type':'application/json'},body:JSON.stringify({
@@ -91,6 +94,13 @@ async function checkConnections() {
       const post=(posts.data||[]).find((p:any)=>!p.is_reply);
       if(post) await meta(`${post.id}/conversation`,{fields:'id,text,username,timestamp',limit:'1'});
       result.threads.ok=true;result.threads.username=me.username;
+      const uncertain=await db(`hanako_reply_comments?${filter()}&status=eq.uncertain&select=comment_id,container_id&limit=10`);
+      result.threads.uncertain=[];
+      for(const item of uncertain) {
+        if(!item.container_id) continue;
+        try {const container=await meta(item.container_id,{fields:'id,status,error_message'});result.threads.uncertain.push({comment_id:item.comment_id,status:container.status,error:container.error_message||''});}
+        catch {result.threads.uncertain.push({comment_id:item.comment_id,status:'UNKNOWN'});}
+      }
     } catch(e){result.threads.error=e instanceof Error?e.message:'Threads接続に失敗しました';}
   }
   result.ready=result.openai.ok&&result.threads.ok;
@@ -121,6 +131,7 @@ async function scan(s: any,me: any) {
   await updateSettings({scan_posts:posts,scan_comment_after:after,scan_after:next});
 }
 async function publish(c: any) {
+  if(invalidReply(c.reply_text,500)) throw new Error('返信文が会う・電話・連絡先交換の禁止または形式のルールに反しています。再生成してください');
   // Write publishing before any external write. Never automatically retry an uncertain result.
   await updateComment(c.comment_id,{status:'publishing',error:''});
   try {

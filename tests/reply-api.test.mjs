@@ -7,6 +7,28 @@ await import('../supabase/functions/threads-replies/index.ts');
 const response=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
 const invoke=(body,headers={})=>handler(new Request('https://function.test',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer owner',...headers},body:JSON.stringify(body)}));
 
+test('会う表現の候補を破棄し、一度だけ生成し直す',async()=>{
+  secrets.REPLY_AI_PROVIDER='gemini';secrets.GEMINI_API_KEY='test-gemini';
+  let generations=0;
+  globalThis.fetch=async(url)=>{
+    url=String(url);
+    if(url.includes('hanako_reply_settings'))return response([{use_history:false,tones:['cute'],custom_prompt:'',max_chars:180}]);
+    if(url.includes('hanako_reply_comments'))return response([]);
+    if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+    if(url.includes('/me/threads?'))return response({data:[]});
+    if(url.includes('generativelanguage.googleapis.com')){
+      generations++;
+      return response({candidates:[{finishReason:'STOP',content:{parts:[{text:generations===1?'本当に会えたら何してお話しよっか？':'ここでお話しできるのが嬉しいな🤭'}]}}]});
+    }
+    throw new Error('Unexpected request');
+  };
+  try {
+    const body=await (await invoke({action:'check'},{'x-cron-secret':'cron'})).json();
+    assert.equal(body.openai.ok,true);assert.equal(generations,2);
+    assert.equal(body.openai.sample,'ここでお話しできるのが嬉しいな🤭');
+  } finally {secrets.REPLY_AI_PROVIDER='openai';delete secrets.GEMINI_API_KEY;}
+});
+
 test('Gemini無料枠429では待機し、有料APIにも投稿にも進まない',async()=>{
   secrets.REPLY_AI_PROVIDER='gemini';secrets.GEMINI_API_KEY='test-gemini';
   let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],adapt_tone:true,max_chars:180,use_history:false,scan_posts:[]};
