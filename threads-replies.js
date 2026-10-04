@@ -20,7 +20,7 @@ section.innerHTML=`
 <label class="reply-check"><input name="use_history" type="checkbox" checked> この人との過去の会話を返信に反映する</label>
 <label>ハナの返信カスタマイズ<textarea name="custom_prompt" rows="7" maxlength="8000" placeholder="例：絵文字は1個まで。つけ麺の話にはおすすめの味を聞く。"></textarea></label>
 <p class="reply-help">ハナの基本設定、同じ言語での返信、会う・電話の約束をしないルールは初期設定に含まれています。対象は設定を初めて読み込んだ時刻以降のコメント。過去のコメントは履歴として取り込みます。</p></fieldset></form>
-<form id="replyKeyForm" class="panel"><h3>Gemini APIキーの登録</h3><p class="reply-help">登録先を選び、Google AI Studioのキーを貼り付けて登録できます。保存には所有者のログインが必要です。</p><button id="replyKeyLogin" type="button">ログイン・同期設定を開く</button><p id="replyKeyMessage" class="reply-help" role="status" aria-live="polite"></p><fieldset id="replyKeyFields"><div class="reply-grid"><label>キーの登録先<select id="replyKeyProfile"><option value="default">接続1</option><option value="secondary">接続2</option><option value="third">接続3</option></select></label><label>Gemini APIキー<input id="replyApiKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" maxlength="100" placeholder="AIza… を貼り付け" required></label></div><p id="replyKeyState" class="reply-help">登録状態は読み込み後に表示します。</p><button type="submit" class="primary">キーを登録・更新</button></fieldset><p class="reply-help">登録したキーはSupabase Vaultに暗号化して保存します。ブラウザーには保存せず、保存済みのキーは再表示しません。登録後は上の「Geminiの接続先」で選んで保存してください。</p><div class="button-row"><a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer">Google AI Studioでキーを確認</a><a href="https://supabase.com/dashboard/project/gjytyibgfeoephyykyin/functions/secrets" target="_blank" rel="noopener noreferrer">SupabaseのSecrets画面を開く</a><button id="replyCopySecretName" type="button">Secret名をコピー</button></div><p class="reply-help">Secrets画面で手動登録する場合は、選んだ接続のSecret名をNameに、キーをValueに貼り付けます。OPSからの登録先（Vault）は、このSecrets一覧とは別です。</p></form>
+<form id="replyKeyForm" class="panel" novalidate><h3>Gemini APIキーの登録</h3><p class="reply-help">登録先を選び、Google AI Studioのキーを貼り付けて登録できます。保存には所有者のログインが必要です。</p><button id="replyKeyLogin" type="button">ログイン・同期設定を開く</button><p id="replyKeyMessage" class="reply-help" role="status" aria-live="polite"></p><fieldset id="replyKeyFields"><div class="reply-grid"><label>キーの登録先<select id="replyKeyProfile"><option value="default">接続1</option><option value="secondary">接続2</option><option value="third">接続3</option></select></label><label>Gemini APIキー<input id="replyApiKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" maxlength="100" placeholder="AIza… を貼り付け" required></label></div><p id="replyKeyState" class="reply-help">登録状態は読み込み後に表示します。</p><button id="replyKeySave" type="button" class="primary">キーを登録・更新</button><button id="replyKeyRefresh" type="button">登録状態を確認</button></fieldset><p class="reply-help">登録したキーはSupabase Vaultに暗号化して保存します。ブラウザーには保存せず、保存済みのキーは再表示しません。登録後は上の「Geminiの接続先」で選んで保存してください。</p><div class="button-row"><a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer">Google AI Studioでキーを確認</a><a href="https://supabase.com/dashboard/project/gjytyibgfeoephyykyin/functions/secrets" target="_blank" rel="noopener noreferrer">SupabaseのSecrets画面を開く</a><button id="replyCopySecretName" type="button">Secret名をコピー</button></div><p class="reply-help">Secrets画面で手動登録する場合は、選んだ接続のSecret名をNameに、キーをValueに貼り付けます。OPSからの登録先（Vault）は、このSecrets一覧とは別です。</p></form>
 <div class="reply-grid reply-panels"><section class="panel"><div class="panel-heading"><h3>返信の状況</h3><select id="replyFilter" aria-label="返信状況の絞り込み"><option value="all">すべて</option><option value="draft">下書き</option><option value="pending">待機中</option><option value="published">返信済み</option><option value="failed">生成失敗</option><option value="uncertain">結果確認が必要</option></select></div><p class="reply-help">最新100件。本文はコピーできます。</p><div id="replyQueue"><p>読み込み後に表示します。</p></div></section>
 <section class="panel"><h3>ファンランク・順位</h3><p class="reply-help">得点＝コメント数＋交流日数×3。同点は同順位。収集できたコメントを集計します。</p><label>ユーザー名で検索<input id="replySearch" type="search" placeholder="ユーザー名"></label><div id="replyFans"><p>読み込み後に表示します。</p></div></section></div>
 <section class="panel" id="replyHistoryPanel" hidden><div class="panel-heading"><h3 id="replyHistoryTitle">会話履歴</h3><button id="replyHistoryClose">閉じる</button></div><div id="replyHistory"></div><button id="replyMore" hidden>さらに50件表示</button></section>`;
@@ -31,7 +31,7 @@ nav.innerHTML='<span class="nav-icon" aria-hidden="true">↩</span><span>Threads
 document.querySelector('.nav-tab[data-view="connections"]').after(nav);
 nav.addEventListener('click',()=>activateView('threads-replies'));
 const $=selector=>section.querySelector(selector);
-const form=$('#replySettings');let loaded=null, person='', offset=0, busy=false;
+const form=$('#replySettings');let loaded=null, keyConnections=null, person='', offset=0, busy=false, keySaving=false;
 const labels={pending:'待機中',generating:'生成中',draft:'下書き',publishing:'公開結果を確認中',published:'返信済み',failed:'生成失敗',uncertain:'結果確認が必要',history:'過去のコメント'};
 function textNode(tag,value,className='') {const element=document.createElement(tag);element.textContent=value;element.className=className;return element;}
 function status(value){$('#replyStatus').textContent=value;}
@@ -43,7 +43,7 @@ async function call(action,body={}) {
 }
 async function task(fn){if(busy)return;busy=true;section.setAttribute('aria-busy','true');try{await fn();}catch(e){status(e.message);}finally{busy=false;section.removeAttribute('aria-busy');}}
 async function load(){
-  const data=await call('load');loaded=data;
+  const data=await call('load');loaded=data;keyConnections=data.connections;
   const connectionSelect=form.elements.namedItem('ai_connection');
   for(const option of connectionSelect.options){const available=data.connections?.find(c=>c.id===option.value)?.configured;option.disabled=!available&&option.value!==(data.settings.ai_connection||'default');option.textContent=({default:'接続1（現在のアカウント）',secondary:'接続2',third:'接続3'})[option.value]+(available?' · 登録済み':' · 未登録');}
   for(const [name,value] of Object.entries(data.settings)){
@@ -76,21 +76,31 @@ form.onsubmit=e=>{e.preventDefault();task(async()=>{const f=new FormData(form);a
 $('#replyFilter').onchange=renderQueue;$('#replySearch').oninput=renderFans;
 $('#replyHistoryClose').onclick=()=>$('#replyHistoryPanel').hidden=true;
 $('#replyMore').onclick=()=>task(()=>showHistory(person,true));
-function renderKeyState(){if(!loaded){$('#replyKeyState').textContent='登録状態は「読み込む」で確認できます。キーの登録はこのまま操作できます。';return;}const id=$('#replyKeyProfile').value;$('#replyKeyState').textContent=`${{default:'接続1',secondary:'接続2',third:'接続3'}[id]}：${loaded?.connections?.find(c=>c.id===id)?.configured?'登録済み（貼り付けると更新します）':'未登録'}`;}
-$('#replyKeyProfile').onchange=()=>{$('#replyApiKey').value='';renderKeyState();};
+function renderKeyState(){
+  if(!keyConnections){$('#replyKeyState').textContent='「登録状態を確認」で保存先の状態を確認できます。';return;}
+  const id=$('#replyKeyProfile').value;
+  $('#replyKeyState').textContent=`${{default:'接続1',secondary:'接続2',third:'接続3'}[id]}：${keyConnections.find(c=>c.id===id)?.configured?'登録済み（貼り付けると更新します）':'未登録'}`;
+}
+$('#replyKeyProfile').onchange=()=>{$('#replyApiKey').value='';$('#replyKeyMessage').textContent='';renderKeyState();};
 $('#replyCopySecretName').onclick=()=>task(async()=>{const name={default:'GEMINI_API_KEY',secondary:'GEMINI_API_KEY_SECONDARY',third:'GEMINI_API_KEY_THIRD'}[$('#replyKeyProfile').value];await navigator.clipboard.writeText(name);status(`Secret名 ${name} をコピーしました。`);});
 $('#replyKeyLogin').onclick=()=>document.querySelector('#syncBtn').click();
-$('#replyKeyForm').onsubmit=e=>{e.preventDefault();task(async()=>{
+async function saveKey(){
   const field=$('#replyApiKey'),message=$('#replyKeyMessage');
+  if(keySaving){message.textContent='登録処理中です。結果が出るまでお待ちください。';return;}
   if(!cloudSync.signedIn){message.textContent='「ログイン・同期設定を開く」から所有者でログインし、もう一度登録してください。';return;}
-  message.textContent='APIキーを登録しています。';
+  if(!field.value.trim()){message.textContent='Gemini APIキーを入力欄に貼り付けてください。';field.focus();return;}
+  const profile=$('#replyKeyProfile').value;
+  keySaving=true;$('#replyKeyFields').disabled=true;message.textContent='APIキーを登録しています。';
   try{
-    await call('key_save',{profile:$('#replyKeyProfile').value,key:field.value});field.value='';
-    const saved='APIキーを登録しました。上のGeminiの接続先を選んで保存し、接続とAIをテストしてください。';
+    const result=await call('key_save',{profile,key:field.value});
+    keyConnections=result.connections;renderKeyState();
+    const saved='接続'+({default:'1',secondary:'2',third:'3'})[profile]+'のAPIキーを登録しました。使用する場合は、上のGeminiの接続先を選んでクラウドに保存してください。';
     message.textContent=saved;status(saved);
-    try{await load();message.textContent=saved;status(saved);}catch{message.textContent=saved+' 返信設定の読み込みは「読み込む」から再試行してください。';}
-  }catch(error){message.textContent=error.message;throw error;}finally{field.value='';}
-});};
+    if(loaded){loaded.connections=keyConnections;const option=[...form.elements.namedItem('ai_connection').options].find(o=>o.value===profile);option.disabled=false;option.textContent=({default:'接続1（現在のアカウント）',secondary:'接続2',third:'接続3'})[profile]+' · 登録済み';}
+  }catch(error){message.textContent=error.name==='TimeoutError'?'登録結果を確認できませんでした。「登録状態を確認」を押してから再試行してください。':error.message;status(message.textContent);}
+  finally{field.value='';keySaving=false;$('#replyKeyFields').disabled=false;}
+}
+$('#replyKeySave').onclick=saveKey;
+$('#replyKeyForm').onsubmit=e=>{e.preventDefault();saveKey();};
+$('#replyKeyRefresh').onclick=async()=>{if(keySaving)return;try{const result=await call('key_status');keyConnections=result.connections;renderKeyState();$('#replyKeyMessage').textContent='Supabaseの登録状態を確認しました。';}catch(error){$('#replyKeyMessage').textContent=error.message;}};
 renderKeyState();
-
-

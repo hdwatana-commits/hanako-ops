@@ -160,7 +160,7 @@ test('OPSからのキー登録は所有者限定で暗号化RPCへ渡し、自�
   };
   try {
     const result=await invoke({action:'key_save',profile:'secondary',key});assert.equal(result.status,200);
-    assert.equal(await result.text(),'{"saved":true}');assert.equal(vault.secondary,key);assert.deepEqual(changes,[{lease_until:null}]);
+    const saved=await result.json();assert.equal(saved.saved,true);assert.equal(saved.connections.find(c=>c.id==='secondary').configured,true);assert.ok(!JSON.stringify(saved).includes(key));assert.equal(vault.secondary,key);assert.deepEqual(changes,[{lease_until:null}]);
     const writes=vaultWrites;
     assert.equal((await invoke({action:'key_save',profile:'secondary',key},{'x-cron-secret':'cron'})).status,403);
     globalThis.fetch=async()=>response({id:'other'});

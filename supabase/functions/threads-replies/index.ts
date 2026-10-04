@@ -226,8 +226,11 @@ Deno.serve(async request=>{
         await db('rpc/hanako_gemini_key_save','POST',{owner_id:owner(),profile,key_value:key});
       }
       finally {await updateSettings({lease_until:null});}
-      return respond({saved:true});
+      const registered=await connections();
+      if(!registered.find(x=>x.id===profile)?.configured) throw new Error('キーの保存結果を確認できませんでした。登録状態を確認してください');
+      return respond({saved:true,connections:registered});
     }
+    if(body.action==='key_status') return respond({connections:await connections()});
     if(body.action==='load') {const current=await settings();return respond({settings:current,connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),
       connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&await aiConfigured(current))});}
