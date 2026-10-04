@@ -2,6 +2,7 @@
 create table if not exists public.hanako_reply_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
   enabled boolean not null default false,
+  ai_connection text not null default 'default' check (ai_connection in ('default','secondary','third')),
   mode text not null default 'draft' check (mode in ('draft','auto')),
   start_time time not null default '09:00', end_time time not null default '23:00',
   weekdays integer[] not null default '{0,1,2,3,4,5,6}' check (weekdays <@ array[0,1,2,3,4,5,6]),
@@ -91,3 +92,4 @@ grant execute on function public.hanako_reply_lock(uuid), public.hanako_reply_cl
 --   body := '{"action":"run"}'::jsonb
 -- ) where exists(select 1 from public.hanako_reply_settings where enabled);
 -- $$);
+

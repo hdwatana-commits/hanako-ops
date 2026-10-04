@@ -9,7 +9,9 @@ const openaiKey = () => {
   throw new Error('有効なOpenAI APIキーの登録が必要です');
 };
 const aiProvider = () => Deno.env.get('REPLY_AI_PROVIDER') || 'gemini';
-const aiConfigured = () => {if(aiProvider()==='gemini') return Boolean(Deno.env.get('GEMINI_API_KEY')?.trim());try{openaiKey();return true;}catch{return false;}};
+const GEMINI_CONNECTIONS: Record<string,string>={default:'GEMINI_API_KEY',secondary:'GEMINI_API_KEY_SECONDARY',third:'GEMINI_API_KEY_THIRD'};
+const geminiKeyName=(s: any) => {const name=GEMINI_CONNECTIONS[s?.ai_connection||'default'];if(!name) throw new Error('Gemini接続が不正です');return name;};
+const aiConfigured = (s?: any) => {if(aiProvider()==='gemini') return Boolean(Deno.env.get(geminiKeyName(s))?.trim());try{openaiKey();return true;}catch{return false;}};
 const invalidReply = (text: string,max: number) => !text || [...text].length>max || /```|@|(?:〇|○|◯|×|X){2,}|\S+(?:さん|くん|君|ちゃん|様)/.test(text) || /会[うえいお]|逢|デート|電話|通話|連絡先|待ち合わせ|DM|LINE|\b(?:meet|meeting|date|call|phone|whatsapp|telegram)\b|见面|見面|전화|만나/i.test(text);
 class FreeQuotaError extends Error {}
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,apikey,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
@@ -57,7 +59,7 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   const input=JSON.stringify({post:c.post_text,comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,history:history.reverse()});
   if(aiProvider()==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
-    const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':env('GEMINI_API_KEY').trim(),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
+    const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':env(geminiKeyName(s)).trim(),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
     const candidate=response.candidates?.[0];
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
     const text=(candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim();
@@ -79,7 +81,7 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
 }
 async function checkConnections() {
   const s=await settings();
-  const result:any={openai:{provider:aiProvider(),configured:aiConfigured(),ok:false,model:aiProvider()==='gemini'?(Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite'):(Deno.env.get('OPENAI_REPLY_MODEL')||'gpt-6-astra')},threads:{configured:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')),ok:false}};
+  const result:any={openai:{provider:aiProvider(),configured:aiConfigured(s),ok:false,model:aiProvider()==='gemini'?(Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite'):(Deno.env.get('OPENAI_REPLY_MODEL')||'gpt-6-astra')},threads:{configured:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')),ok:false}};
   if(result.openai.configured) {
     try { result.openai.sample=await generate({...s,use_history:false},{comment_text:'今日の服、すごく似合ってる！',post_text:'今日のお気に入りコーデ。',username:'connection-test'});result.openai.ok=true; }
     catch(e){result.openai.error=e instanceof Error?e.message:'AI接続に失敗しました';}
@@ -172,7 +174,7 @@ async function run(action: string,body: any) {
         await updateComment(c.comment_id,{status:'draft',reply_text:text,error:''});
         // Re-read after generation so OFF and changed hours take effect before posting.
         const fresh=await settings();
-        if(fresh.enabled&&fresh.mode==='auto'&&inWindow(fresh)) await publish({...c,reply_text:text});
+        if(fresh.enabled&&fresh.mode==='auto'&&inWindow(fresh)&&(fresh.ai_connection||'default')===(s.ai_connection||'default')) await publish({...c,reply_text:text});
       } catch(e) {
         if(e instanceof FreeQuotaError) {
           await updateComment(c.comment_id,{status:'pending',error:e.message});
@@ -201,10 +203,15 @@ Deno.serve(async request=>{
     if(isCron&&!['run','check'].includes(body.action)) return respond({error:'許可されていません'},403);
     if(body.action==='check') return respond(await checkConnections());
     if(['run','publish','retry'].includes(body.action)) return respond(await run(body.action,body));
-    if(body.action==='load') return respond({settings:await settings(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
+    if(body.action==='load') {const current=await settings();return respond({settings:current,connections:Object.entries(GEMINI_CONNECTIONS).map(([id,name])=>({id,configured:Boolean(Deno.env.get(name)?.trim())})),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),
-      connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&aiConfigured())});
-    if(body.action==='save') { const value=validateSettings(body.settings); await settings(); await updateSettings(value); return respond({saved:true}); }
+      connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&aiConfigured(current))});}
+    if(body.action==='save') { const value:any=validateSettings(body.settings); const current=await settings();
+      if(value.ai_connection && value.ai_connection!==(current.ai_connection||'default')) {
+        if(!aiConfigured({...current,...value})) throw new Error('選択したGemini接続のAPIキーをSupabaseに登録してください');
+        if(current.ai_retry_at&&Date.parse(current.ai_retry_at)>Date.now()) throw new Error('利用上限による待機中は接続を切り替えられません。待機終了後に変更してください');
+      }
+      await updateSettings(value); return respond({saved:true}); }
     if(body.action==='history') {
       const offset=Math.max(0,Math.min(100000,Number(body.offset)||0));
       return respond({history:await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(String(body.username))}&order=commented_at.desc&limit=50&offset=${Math.floor(offset)}`)});
@@ -212,3 +219,4 @@ Deno.serve(async request=>{
     return respond({error:'操作が不正です'},400);
   } catch(e) {return respond({error:e instanceof Error?e.message:'処理に失敗しました'},400);}
 });
+

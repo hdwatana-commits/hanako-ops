@@ -7,6 +7,42 @@ await import('../supabase/functions/threads-replies/index.ts');
 const response=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
 const invoke=(body,headers={})=>handler(new Request('https://function.test',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer owner',...headers},body:JSON.stringify(body)}));
 
+test('選択したGemini接続のみを使用し、キーを画面に返さない',async()=>{
+  secrets.REPLY_AI_PROVIDER='gemini';secrets.GEMINI_API_KEY='primary-private';secrets.GEMINI_API_KEY_SECONDARY='secondary-private';
+  const s={ai_connection:'secondary',use_history:false,tones:['cute'],custom_prompt:'',max_chars:180};
+  let requests=0;
+  globalThis.fetch=async(url,opts={})=>{
+    url=String(url);
+    if(url.includes('auth/v1/user'))return response({id:'owner'});
+    if(url.includes('hanako_reply_settings'))return response([s]);
+    if(url.includes('hanako_reply_comments')||url.includes('rpc/hanako_reply_fans'))return response([]);
+    if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+    if(url.includes('/me/threads?'))return response({data:[]});
+    if(url.includes('generativelanguage.googleapis.com')){requests++;assert.equal(opts.headers['x-goog-api-key'],'secondary-private');return response({candidates:[{finishReason:'STOP',content:{parts:[{text:'ありがとう、嬉しいな✨'}]}}]});}
+    throw new Error('Unexpected request');
+  };
+  try {
+    assert.equal((await (await invoke({action:'check'},{'x-cron-secret':'cron'})).json()).ready,true);
+    const loaded=await (await invoke({action:'load'})).json();
+    assert.equal(requests,1);assert.equal(loaded.settings.ai_connection,'secondary');
+    assert.deepEqual(loaded.connections,[{id:'default',configured:true},{id:'secondary',configured:true},{id:'third',configured:false}]);
+    assert.doesNotMatch(JSON.stringify(loaded),/primary-private|secondary-private/);
+  } finally {secrets.REPLY_AI_PROVIDER='openai';delete secrets.GEMINI_API_KEY;delete secrets.GEMINI_API_KEY_SECONDARY;}
+});
+
+test('利用上限の待機中はGemini接続を変更しない',async()=>{
+  secrets.REPLY_AI_PROVIDER='gemini';secrets.GEMINI_API_KEY_SECONDARY='secondary-private';
+  const s={enabled:false,mode:'auto',start_time:'09:00',end_time:'23:00',weekdays:[0,1,2,3,4,5,6],delay_minutes:5,tones:['cute'],adapt_tone:true,custom_prompt:'',max_chars:180,use_history:true,ai_connection:'default',ai_retry_at:new Date(Date.now()+3600000).toISOString()};
+  globalThis.fetch=async(url,opts={})=>{
+    assert.notEqual(opts.method,'PATCH');
+    if(String(url).includes('auth/v1/user'))return response({id:'owner'});
+    if(String(url).includes('hanako_reply_settings'))return response([s]);
+    throw new Error('Unexpected request');
+  };
+  try {const result=await invoke({action:'save',settings:{...s,ai_connection:'secondary'}});assert.equal(result.status,400);assert.match((await result.json()).error,/待機中/);}
+  finally {secrets.REPLY_AI_PROVIDER='openai';delete secrets.GEMINI_API_KEY_SECONDARY;}
+});
+
 test('会う表現の候補を破棄し、一度だけ生成し直す',async()=>{
   secrets.REPLY_AI_PROVIDER='gemini';secrets.GEMINI_API_KEY='test-gemini';
   let generations=0;

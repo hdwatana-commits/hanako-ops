@@ -1,7 +1,7 @@
-const CACHE_NAME = "hanako-room-ops-v328";
+const CACHE_NAME = "hanako-room-ops-v329";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
-  "./threads-replies.js?v=3",
+  "./threads-replies.js?v=4",
   "./threads-replies.css?v=2",
   "./reply-rules.mjs",
   "./",
@@ -496,3 +496,4 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
+

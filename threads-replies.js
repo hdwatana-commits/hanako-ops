@@ -7,11 +7,13 @@ section.innerHTML=`
 <fieldset disabled id="replyFields"><div class="reply-grid">
 <label class="reply-check"><input type="checkbox" name="enabled"> 自動処理を有効にする</label>
 <label>返信モード<select name="mode"><option value="draft">下書き作成のみ</option><option value="auto">AIで作成して自動投稿</option></select></label>
+<label>Geminiの接続先<select name="ai_connection"><option value="default">接続1（現在のアカウント）</option><option value="secondary">接続2</option><option value="third">接続3</option></select></label>
 <label>開始時間（日本時間）<input name="start_time" type="time" value="09:00" required></label>
 <label>終了時間（日本時間）<input name="end_time" type="time" value="23:00" required></label>
 <label>返信までの待ち時間（分）<input name="delay_minutes" type="number" min="0" max="1440" value="5" required></label>
 <label>返信の最大文字数<input name="max_chars" type="number" min="20" max="500" value="180" required></label></div>
 <p class="reply-help">同じ開始・終了時間は24時間。日付をまたぐ場合は開始曜日を基準にします。時間外のコメントは次の稼働時間まで待機します。</p>
+<p class="reply-help" id="replyConnectionHelp">接続先を選んで「クラウドに保存」で変更します。APIキーはSupabaseのSecretsに登録してください。上限到達時の自動切り替えはありません。</p>
 <fieldset><legend>稼働する曜日</legend><div class="reply-choices">${['日','月','火','水','木','金','土'].map((x,i)=>`<label><input type="checkbox" name="weekdays" value="${i}" checked> ${x}</label>`).join('')}</div></fieldset>
 <fieldset><legend>テンション（複数選択可）</legend><div class="reply-choices">${Object.entries(TONES).map(([id,label])=>`<label><input type="checkbox" name="tones" value="${id}" ${id==='cute'?'checked':''}> ${label}</label>`).join('')}</div></fieldset>
 <label class="reply-check"><input name="adapt_tone" type="checkbox" checked> 選んだテンションの中で、相手の雰囲気に合わせる</label>
@@ -41,11 +43,15 @@ async function call(action,body={}) {
 async function task(fn){if(busy)return;busy=true;section.setAttribute('aria-busy','true');try{await fn();}catch(e){status(e.message);}finally{busy=false;section.removeAttribute('aria-busy');}}
 async function load(){
   const data=await call('load');loaded=data;
+  const connectionSelect=form.elements.namedItem('ai_connection');
+  for(const option of connectionSelect.options){const available=data.connections?.find(c=>c.id===option.value)?.configured;option.disabled=!available;option.textContent=({default:'接続1（現在のアカウント）',secondary:'接続2',third:'接続3'})[option.value]+(available?' · 登録済み':' · 未登録');}
   for(const [name,value] of Object.entries(data.settings)){
     const fields=[...form.querySelectorAll(`[name="${name}"]`)];
     fields.forEach(field=>{if(field.type==='checkbox')field.checked=Array.isArray(value)?value.map(String).includes(field.value):Boolean(value);else field.value=name.endsWith('_time')?String(value).slice(0,5):value;});
   }
   $('#replyFields').disabled=false;form.querySelector('[type="submit"]').disabled=false;$('#replyRun').disabled=!data.connected;$('#replyCheck').disabled=false;
+  if(!data.settings.ai_connection)connectionSelect.value='default';
+  $('#replyConnectionHelp').textContent='接続先を選んで「クラウドに保存」で変更します。接続2・3のキーはSupabaseのGEMINI_API_KEY_SECONDARY / GEMINI_API_KEY_THIRDに登録してください。上限による待機中は変更できません。';
   status(`${data.settings.enabled?'有効':'停止中'} · ${data.settings.mode==='auto'?'自動投稿':'下書きのみ'} · ${data.connected?'API設定あり（接続の動作確認は今すぐ確認から）':'Threads・AIのサーバー設定が必要です'}${data.settings.last_error?' · '+data.settings.last_error:''}`);
   renderQueue();renderFans();
 }
@@ -64,7 +70,8 @@ async function showHistory(username,more=false){const result=await call('history
 $('#replyLoad').onclick=()=>task(load);
 $('#replyCheck').onclick=()=>task(async()=>{status('ThreadsとAIの接続を確認しています。');const result=await call('check');$('#replyCheckResult').textContent=[`AI（${result.openai.provider||'openai'} / ${result.openai.model}）: ${result.openai.ok?'返信生成OK':result.openai.error||'キー未設定'}`,`Threads: ${result.threads.ok?'接続OK（'+result.threads.username+'）':result.threads.error||'認証未設定'}`,result.openai.sample?'生成例: '+result.openai.sample:''].filter(Boolean).join('\n');status(result.ready?'ThreadsとAIの接続を確認しました。': '接続結果を確認してください。');});
 $('#replyRun').onclick=()=>task(async()=>{const result=await call('run');await load();status(({quota_wait:'Gemini無料枠の上限です。待機中のコメントは1時間後に再試行します。',busy:'処理中です。少し待って再度読み込んでください。',off:'自動処理は停止中です。',outside_window:'コメントを確認しました。返信は次の稼働時間まで待機します。',processed:'返信を1件処理しました。',idle:'コメントを確認しました。ページを順番に収集中です。'})[result.status]||result.status);});
-form.onsubmit=e=>{e.preventDefault();task(async()=>{const f=new FormData(form);await call('save',{settings:{enabled:f.has('enabled'),mode:f.get('mode'),start_time:f.get('start_time'),end_time:f.get('end_time'),weekdays:f.getAll('weekdays').map(Number),delay_minutes:Number(f.get('delay_minutes')),tones:f.getAll('tones'),adapt_tone:f.has('adapt_tone'),custom_prompt:f.get('custom_prompt'),max_chars:Number(f.get('max_chars')),use_history:f.has('use_history')}});await load();status('返信設定をクラウドに保存しました。');});};
+form.onsubmit=e=>{e.preventDefault();task(async()=>{const f=new FormData(form);await call('save',{settings:{enabled:f.has('enabled'),mode:f.get('mode'),ai_connection:f.get('ai_connection'),start_time:f.get('start_time'),end_time:f.get('end_time'),weekdays:f.getAll('weekdays').map(Number),delay_minutes:Number(f.get('delay_minutes')),tones:f.getAll('tones'),adapt_tone:f.has('adapt_tone'),custom_prompt:f.get('custom_prompt'),max_chars:Number(f.get('max_chars')),use_history:f.has('use_history')}});await load();status('返信設定をクラウドに保存しました。');});};
 $('#replyFilter').onchange=renderQueue;$('#replySearch').oninput=renderFans;
 $('#replyHistoryClose').onclick=()=>$('#replyHistoryPanel').hidden=true;
 $('#replyMore').onclick=()=>task(()=>showHistory(person,true));
+
