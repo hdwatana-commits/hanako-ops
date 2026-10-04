@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.hanako-daily]
 verify_jwt = true
+
+[functions.threads-replies]
+verify_jwt = true
