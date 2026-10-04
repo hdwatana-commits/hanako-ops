@@ -44,7 +44,7 @@ async function task(fn){if(busy)return;busy=true;section.setAttribute('aria-busy
 async function load(){
   const data=await call('load');loaded=data;
   const connectionSelect=form.elements.namedItem('ai_connection');
-  for(const option of connectionSelect.options){const available=data.connections?.find(c=>c.id===option.value)?.configured;option.disabled=!available;option.textContent=({default:'接続1（現在のアカウント）',secondary:'接続2',third:'接続3'})[option.value]+(available?' · 登録済み':' · 未登録');}
+  for(const option of connectionSelect.options){const available=data.connections?.find(c=>c.id===option.value)?.configured;option.disabled=!available&&option.value!==(data.settings.ai_connection||'default');option.textContent=({default:'接続1（現在のアカウント）',secondary:'接続2',third:'接続3'})[option.value]+(available?' · 登録済み':' · 未登録');}
   for(const [name,value] of Object.entries(data.settings)){
     const fields=[...form.querySelectorAll(`[name="${name}"]`)];
     fields.forEach(field=>{if(field.type==='checkbox')field.checked=Array.isArray(value)?value.map(String).includes(field.value):Boolean(value);else field.value=name.endsWith('_time')?String(value).slice(0,5):value;});
@@ -74,4 +74,5 @@ form.onsubmit=e=>{e.preventDefault();task(async()=>{const f=new FormData(form);a
 $('#replyFilter').onchange=renderQueue;$('#replySearch').oninput=renderFans;
 $('#replyHistoryClose').onclick=()=>$('#replyHistoryPanel').hidden=true;
 $('#replyMore').onclick=()=>task(()=>showHistory(person,true));
+
 
