@@ -182,6 +182,15 @@ async function publish(c: any) {
     const container=await meta('me/threads',{media_type:'TEXT',text:c.reply_text,reply_to_id:c.comment_id},'POST');
     if(!container.id) throw new Error('ThreadsコンテナIDがありません');
     await updateComment(c.comment_id,{container_id:container.id});
+    // Meta prepares containers asynchronously. Publish only after readiness is confirmed.
+    let ready=false;
+    for(let attempt=0;attempt<6;attempt++) {
+      const state=await meta(container.id,{fields:'id,status,error_message'});
+      if(state.status==='FINISHED') {ready=true;break;}
+      if(state.status!=='IN_PROGRESS') throw new Error('Threadsの返信準備が完了しませんでした。投稿状態を確認してください');
+      if(attempt<5) await new Promise(resolve=>setTimeout(resolve,2000));
+    }
+    if(!ready) throw new Error('Threadsの返信準備が時間内に完了しませんでした。投稿状態を確認してください');
     const result=await meta('me/threads_publish',{creation_id:container.id},'POST');
     if(!result.id) throw new Error('Threads投稿結果IDがありません');
     await updateComment(c.comment_id,{status:'published',reply_id:result.id,error:''});
