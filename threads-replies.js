@@ -20,6 +20,7 @@ section.innerHTML=`
 <label class="reply-check"><input name="use_history" type="checkbox" checked> この人との過去の会話を返信に反映する</label>
 <label>ハナの返信カスタマイズ<textarea name="custom_prompt" rows="7" maxlength="8000" placeholder="例：絵文字は1個まで。つけ麺の話にはおすすめの味を聞く。"></textarea></label>
 <p class="reply-help">ハナの基本設定、同じ言語での返信、会う・電話の約束をしないルールは初期設定に含まれています。対象は設定を初めて読み込んだ時刻以降のコメント。過去のコメントは履歴として取り込みます。</p></fieldset></form>
+<form id="replyKeyForm" class="panel"><h3>Gemini APIキーの登録</h3><p class="reply-help">所有者でログインして「読み込む」を押したあと、登録先を選び、Google AI Studioのキーをコピーして貼り付けてください。</p><fieldset id="replyKeyFields" disabled><div class="reply-grid"><label>キーの登録先<select id="replyKeyProfile"><option value="default">接続1</option><option value="secondary">接続2</option><option value="third">接続3</option></select></label><label>Gemini APIキー<input id="replyApiKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" maxlength="100" placeholder="AIza… を貼り付け" required></label></div><p id="replyKeyState" class="reply-help">登録状態は読み込み後に表示します。</p><button type="submit" class="primary">キーを登録・更新</button></fieldset><p class="reply-help">登録したキーはSupabase Vaultに暗号化して保存します。ブラウザーには保存せず、保存済みのキーは再表示しません。登録後は上の「Geminiの接続先」で選んで保存してください。</p><div class="button-row"><a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer">Google AI Studioでキーを確認</a><a href="https://supabase.com/dashboard/project/gjytyibgfeoephyykyin/functions/secrets" target="_blank" rel="noopener noreferrer">SupabaseのSecrets画面を開く</a><button id="replyCopySecretName" type="button">Secret名をコピー</button></div><p class="reply-help">Secrets画面で手動登録する場合は、選んだ接続のSecret名をNameに、キーをValueに貼り付けます。OPSからの登録先（Vault）は、このSecrets一覧とは別です。</p></form>
 <div class="reply-grid reply-panels"><section class="panel"><div class="panel-heading"><h3>返信の状況</h3><select id="replyFilter" aria-label="返信状況の絞り込み"><option value="all">すべて</option><option value="draft">下書き</option><option value="pending">待機中</option><option value="published">返信済み</option><option value="failed">生成失敗</option><option value="uncertain">結果確認が必要</option></select></div><p class="reply-help">最新100件。本文はコピーできます。</p><div id="replyQueue"><p>読み込み後に表示します。</p></div></section>
 <section class="panel"><h3>ファンランク・順位</h3><p class="reply-help">得点＝コメント数＋交流日数×3。同点は同順位。収集できたコメントを集計します。</p><label>ユーザー名で検索<input id="replySearch" type="search" placeholder="ユーザー名"></label><div id="replyFans"><p>読み込み後に表示します。</p></div></section></div>
 <section class="panel" id="replyHistoryPanel" hidden><div class="panel-heading"><h3 id="replyHistoryTitle">会話履歴</h3><button id="replyHistoryClose">閉じる</button></div><div id="replyHistory"></div><button id="replyMore" hidden>さらに50件表示</button></section>`;
@@ -51,7 +52,8 @@ async function load(){
   }
   $('#replyFields').disabled=false;form.querySelector('[type="submit"]').disabled=false;$('#replyRun').disabled=!data.connected;$('#replyCheck').disabled=false;
   if(!data.settings.ai_connection)connectionSelect.value='default';
-  $('#replyConnectionHelp').textContent='接続先を選んで「クラウドに保存」で変更します。接続2・3のキーはSupabaseのGEMINI_API_KEY_SECONDARY / GEMINI_API_KEY_THIRDに登録してください。上限による待機中は変更できません。';
+  $('#replyConnectionHelp').textContent='下のAPIキー登録欄で登録し、接続先を選んで「クラウドに保存」で変更します。上限による待機中は変更できません。自動切り替えはありません。';
+  $('#replyKeyFields').disabled=false;renderKeyState();
   status(`${data.settings.enabled?'有効':'停止中'} · ${data.settings.mode==='auto'?'自動投稿':'下書きのみ'} · ${data.connected?'API設定あり（接続の動作確認は今すぐ確認から）':'Threads・AIのサーバー設定が必要です'}${data.settings.last_error?' · '+data.settings.last_error:''}`);
   renderQueue();renderFans();
 }
@@ -74,5 +76,9 @@ form.onsubmit=e=>{e.preventDefault();task(async()=>{const f=new FormData(form);a
 $('#replyFilter').onchange=renderQueue;$('#replySearch').oninput=renderFans;
 $('#replyHistoryClose').onclick=()=>$('#replyHistoryPanel').hidden=true;
 $('#replyMore').onclick=()=>task(()=>showHistory(person,true));
+function renderKeyState(){const id=$('#replyKeyProfile').value;$('#replyKeyState').textContent=`${{default:'接続1',secondary:'接続2',third:'接続3'}[id]}：${loaded?.connections?.find(c=>c.id===id)?.configured?'登録済み（貼り付けると更新します）':'未登録'}`;}
+$('#replyKeyProfile').onchange=()=>{$('#replyApiKey').value='';renderKeyState();};
+$('#replyCopySecretName').onclick=()=>task(async()=>{const name={default:'GEMINI_API_KEY',secondary:'GEMINI_API_KEY_SECONDARY',third:'GEMINI_API_KEY_THIRD'}[$('#replyKeyProfile').value];await navigator.clipboard.writeText(name);status(`Secret名 ${name} をコピーしました。`);});
+$('#replyKeyForm').onsubmit=e=>{e.preventDefault();task(async()=>{const field=$('#replyApiKey');try{await call('key_save',{profile:$('#replyKeyProfile').value,key:field.value});field.value='';await load();status('APIキーを登録しました。使用する接続先を選んで保存し、接続とAIをテストしてください。');}finally{field.value='';}});};
 
 
