@@ -482,6 +482,32 @@ function enhanceCoordinateSelectOptions() {
   const locationSelect = document.querySelector("#snsLocationPreset");
   const outfitSelect = document.querySelector("#snsOutfitPreset");
   const sceneSelect = document.querySelector("#snsScenePreset");
+  const appendOptionGroup = (select, markerValue, label, options) => {
+    if (!select || [...select.options].some((option) => option.value === markerValue)) return;
+    const group = document.createElement("optgroup");
+    group.label = label;
+    group.innerHTML = options.map(([value, text]) => `<option value="${value}">${text}</option>`).join("");
+    select.appendChild(group);
+  };
+  appendOptionGroup(outfitSelect, "miniRibbonCardigan", "好感度ミニ丈・大人可愛い", [
+    ["miniRibbonCardigan", "リボンカーディガン＋台形ミニ"], ["miniTurtleneckBoots", "タートルニット＋チェックミニ＋ロングブーツ"],
+    ["miniTweedSet", "淡色ツイードジャケット＋ミニ"], ["miniShirtKnit", "白シャツ＋短丈ニット＋プリーツミニ"],
+    ["miniMonotone", "黒トップス＋白フレアミニ"], ["miniDenimJacket", "デニムジャケット＋花柄ミニ"],
+    ["miniPoloSocks", "ポロニット＋Aラインミニ＋ハイソックス"], ["miniOffShoulder", "上品オフショル＋ハイウエストミニ"],
+    ["miniSweaterDress", "ゆるニットワンピ＋ロングブーツ"], ["miniBlazer", "紺ブレザー＋ボウタイ＋チェックミニ"],
+  ]);
+  appendOptionGroup(outfitSelect, "animeMagicHeroine", "アニメ風・完全オリジナル衣装", [
+    ["animeMagicHeroine", "星空の魔法少女風ドレス"], ["animeFantasySwordswoman", "異世界の女性剣士風コーデ"],
+    ["animeCyberIdol", "近未来サイバーアイドル風衣装"], ["animeShrineGuardian", "和風の巫女戦士風衣装"],
+    ["animeAcademyMage", "魔法学園の優等生風コーデ"],
+  ]);
+  appendOptionGroup(outfitSelect, "cosplayCafeMaid", "物語・職業コスプレ", [
+    ["cosplayCafeMaid", "大人可愛いカフェメイド"], ["cosplayNurse", "清潔感のある架空のナース風衣装"],
+    ["cosplaySecretary", "知的な秘書風コーデ"], ["cosplayTeacher", "上品な女性教師風コーデ"],
+    ["cosplayPolice", "架空の女性警察官風コスプレ"], ["cosplayChef", "パティシエール風コスプレ"],
+    ["cosplayBunny", "上品なクラシックバニー風衣装"], ["cosplayHotel", "高級ホテルスタッフ風コーデ"],
+    ["cosplayGamer", "大人可愛いゲーマー風コーデ"], ["cosplayOfficeLady", "きれいめOL風セットアップ"],
+  ]);
   if (sceneSelect && ![...sceneSelect.options].some((option) => option.value === "lastTrain")) {
     const romanceScenes = document.createElement("optgroup");
     romanceScenes.label = "帰り道・恋の余韻";
@@ -539,7 +565,42 @@ function enhanceCoordinateSelectOptions() {
     romanceLocations.innerHTML = '<option value="stationPlatformNight">終電前の明るく安全な駅ホーム</option><option value="stationCanopyRain">駅前の屋根がある雨の歩道</option><option value="winterStreetLights">暖色の街灯がある冬の歩道</option><option value="ticketGateNight">人通りのある明るい駅改札前</option><option value="riversideNightWalk">照明のある夜の川沿い遊歩道</option>';
     locationSelect.querySelector('option[value="station"]')?.after(romanceLocations);
   }
+  appendOptionGroup(locationSelect, "subwayPlatform", "日常の街・移動風景", [
+    ["subwayPlatform", "明るく安全な地下鉄ホーム"], ["stationStairs", "駅構内の広い階段と踊り場"],
+    ["convenienceNight", "夜のコンビニ前の明るい歩道"], ["vendingCorner", "自動販売機の光がある街角"],
+    ["busStopEvening", "夕方の屋根付きバス停"], ["pedestrianBridge", "街明かりを見下ろす歩道橋"],
+    ["shoppingArcade", "閉店前の明るい商店街"], ["laundromat", "清潔なコインランドリー"],
+    ["bookstoreAisle", "大型書店の静かな通路"], ["supermarketAisle", "色鮮やかなスーパーマーケット売場"],
+  ]);
+  const hairSelect = document.querySelector("#snsHairPreset");
+  appendOptionGroup(hairSelect, "seeThroughBangBob", "好印象・ときめきヘア", [
+    ["seeThroughBangBob", "シースルーバングの内巻きボブ"], ["sidePonyRibbon", "細リボン付きサイドポニー"],
+    ["highPonyLoose", "後れ毛のある高めポニーテール"], ["lowTwinAdult", "大人っぽい低めツインテール"],
+    ["halfTwinRibbon", "小さなリボンのハーフツイン"], ["princessHalfUp", "ゆる巻きプリンセスハーフアップ"],
+    ["oneSideBraid", "片側だけの細い編み込み"], ["fluffyBob", "ふんわり丸みショートボブ"],
+    ["wetLookLong", "つやのあるウェット風ロング"], ["straightBangLong", "ぱっつん前髪のつやロング"],
+    ["curtainBangWave", "カーテンバングのくびれ巻き"], ["lowBunLoose", "後れ毛を残した低めお団子"],
+    ["braidPony", "編み込みポニーテール"], ["ribbonLowPony", "黒リボンのローポニー"],
+    ["earTuckBob", "片耳かけの外ハネボブ"], ["softWolf", "柔らかな韓国風ウルフレイヤー"],
+    ["headbandWave", "細カチューシャ＋ゆる巻き"], ["sidePartCurl", "大人っぽいサイド分け巻き髪"],
+    ["tuckedLong", "両耳かけの清楚ロング"], ["messyPony", "無造作すぎないゆるポニー"],
+  ]);
+  const lightingSelect = document.querySelector("#snsLightingPreset");
+  appendOptionGroup(lightingSelect, "subwayFluorescent", "日常をドラマにする光", [
+    ["subwayFluorescent", "地下鉄ホームの柔らかな白色光"], ["rainReflection", "雨上がりの路面反射光"],
+    ["vendingGlow", "自動販売機の青白い光"], ["lastTrainAmber", "終電前の暖色駅照明"],
+    ["convenienceSoft", "コンビニの明るい拡散光"], ["sunsetBacklight", "夕暮れの柔らかな逆光"],
+    ["streetLampWarm", "暖色街灯の斜め光"], ["trainWindowBlue", "車窓から入る青い夜光"],
+    ["morningPlatform", "朝のホームへ差す低い日差し"], ["cityBokeh", "街明かりが丸くぼける夜景光"],
+  ]);
   const poseSelect = document.querySelector("#snsPosePreset");
+  appendOptionGroup(poseSelect, "subwayPoleGlance", "好印象・ドキッとする仕草", [
+    ["subwayPoleGlance", "地下鉄で手すりに触れて振り向く"], ["hairTieMoment", "髪を結び直しながら目を合わせる"],
+    ["coatPocketLean", "コートのポケットへ手を入れて近づく"], ["scarfAdjustGaze", "マフラーを整えて見上げる"],
+    ["bagBehindBack", "バッグを後ろ手に持って前傾する"], ["seatNextTap", "隣の空席を軽く示して微笑む"],
+    ["shareEarphone", "片方のイヤホンを差し出す"], ["drinkOffer", "温かい飲み物を両手で差し出す"],
+    ["doorHoldLookback", "ドアを押さえながら振り返る"], ["tiptoeWhisper", "つま先立ちで内緒話をする仕草"],
+  ]);
   if (poseSelect && ![...poseSelect.options].some((option) => option.value === "highKick")) {
     const actionGroup = document.createElement("optgroup");
     actionGroup.label = "アクション";
@@ -572,6 +633,14 @@ function enhanceCoordinateSelectOptions() {
     const savedPose = getSocialCreativeProfile().posePreset;
     if ([...poseSelect.options].some((option) => option.value === savedPose)) poseSelect.value = savedPose;
   }
+  const expressionSelect = document.querySelector("#snsHanakoExpression");
+  appendOptionGroup(expressionSelect, "caughtLooking", "視線でドキッとする表情", [
+    ["caughtLooking", "見つめていたのがばれた照れ顔"], ["onlyYouSmile", "相手だけに見せる小さな微笑み"],
+    ["surpriseEyeContact", "不意に目が合った驚き笑顔"], ["whisperSecret", "内緒話をする直前の表情"],
+    ["missedYou", "会えて安心したほっとする笑顔"], ["jealousPout", "少しだけ嫉妬した控えめな膨れ顔"],
+    ["praiseShy", "褒められて目をそらす照れ笑い"], ["sleepyTrust", "安心して眠そうに見つめる表情"],
+    ["comeCloserEyes", "もう少し近くへ来てほしい眼差し"], ["goodbyePause", "さよならを言う前のためらう微笑み"],
+  ]);
   renderHanakoGasSettings();
 }
 
@@ -3151,6 +3220,16 @@ const hanakoExpressionOptions = {
   coldPleading: { label: "寒さを理由に甘える眼差し", prompt: "成人女性が寒そうに肩を少しすぼめ、相手の袖口をそっと持ちながら温かさを求めるように見上げる。困らせる演技ではなく、信頼と甘えが伝わる自然な眼差し" },
   gateFarewell: { label: "別れ際の名残惜しい振り返り", prompt: "成人女性が改札へ向かったあとに振り返り、離れがたい気持ちを目元と控えめな微笑みに残す。泣き顔にはせず、また会いたい余韻を上品に表す" },
   handholdNervous: { label: "手をつなぐ直前の緊張した笑顔", prompt: "成人女性が差し出しかけた手とカメラを交互に見て、少し緊張しながら小さく微笑む。期待、照れ、安心感が同時に伝わる自然な表情" },
+  caughtLooking: { label: "見つめていたのがばれた照れ顔", prompt: "成人女性が相手を見つめていたことに気づかれ、少し目を丸くしてから恥ずかしそうに視線を外し、口元だけで微笑む自然な表情" },
+  onlyYouSmile: { label: "相手だけに見せる小さな微笑み", prompt: "成人女性が周囲ではなくカメラの相手だけへ静かに目を合わせ、口角をほんの少し上げる、特別感と安心感のある微笑み" },
+  surpriseEyeContact: { label: "不意に目が合った驚き笑顔", prompt: "成人女性が不意に目が合って一瞬だけ驚き、その直後に頬が上がる明るい笑顔へ変わる瞬間" },
+  whisperSecret: { label: "内緒話をする直前の表情", prompt: "成人女性が声を小さくする直前のように少し近づき、目元へいたずらっぽさを残して柔らかく微笑む。口を過度に強調しない" },
+  missedYou: { label: "会えて安心したほっとする笑顔", prompt: "成人女性が待っていた相手を見つけ、肩の力が抜けて目元から安心が広がる、飾らない嬉しそうな笑顔" },
+  jealousPout: { label: "少しだけ嫉妬した控えめな膨れ顔", prompt: "成人女性が頬をほんの少しだけふくらませ、責めるのではなく甘えるようにカメラを見る。幼くならない愛嬌のある表情" },
+  praiseShy: { label: "褒められて目をそらす照れ笑い", prompt: "成人女性が褒められた直後に視線を斜め下へ逃がし、頬と口元に嬉しさが残る自然な照れ笑い" },
+  sleepyTrust: { label: "安心して眠そうに見つめる表情", prompt: "成人女性が安心できる相手の前でまぶたを少しだけ下げ、力の抜けた穏やかな微笑みを見せる。疲れや不健康さは出さない" },
+  comeCloserEyes: { label: "もう少し近くへ来てほしい眼差し", prompt: "成人女性が身体は動かさず、瞳とわずかな首の傾きだけでカメラの相手へ近づいてほしい気持ちを伝える。露骨に誘惑せず上品にする" },
+  goodbyePause: { label: "さよならを言う前のためらう微笑み", prompt: "成人女性が別れの言葉を言いかけて一瞬止まり、名残惜しさとまた会いたい気持ちを控えめな微笑みに残す" },
   eating: { label: "幸せそうに頬張る顔", prompt: "おいしいものを自然に頬張り、喜びでぱっと明るくなる無邪気な表情" },
   blank: { label: "少し口が開いた「ぽかん」顔", prompt: "驚きや気の抜けた瞬間に唇が少しだけ開いた、リラックスした柔らかい表情" },
   sleepy: { label: "眠そうなトロンとした目", prompt: "安心してくつろぎ、まぶたが少し下がった眠そうな目。疲労や不健康さではなく穏やかなリラックス感" },
@@ -3286,10 +3365,10 @@ const hanakoInstagramLooks = [
   { id: "date", label: "デート服のときめき", direction: "清潔感のある装いと弾む表情で、一緒に過ごしたくなる明るさを見せる", locations: ["homeLiving", "homeWindow", "studioDaylight", "studioPastel", "park"], outfits: ["softBlueShirtDress", "whiteLaceDenim", "navyPoloMini", "cardiganFloralDress"], poses: ["stepTowardCamera", "jacketOnShoulder", "lookback"], expressions: ["sunlitSquint", "expectantGaze", "softEyeContact", "shySideSmile"], compositions: ["full", "waist", "face"] },
   { id: "elegant", label: "大人の余裕", direction: "落ち着いた眼差し、布の質感、上品な陰影で洗練された色気を見せる", locations: ["homeSofa", "homeBedroom", "studioNoir", "studioDaylight"], outfits: ["satinBowBlouse", "offShoulderWidePants", "creamWrapSkirt", "pinkTweedDress"], poses: ["chairSideTurn", "ribbonAdjust", "jacketOnShoulder", "seatedSideLegs"], expressions: ["softEyeContact", "invitingGaze", "halfLiddedSmile", "subtlesmile"], compositions: ["editorial", "waist", "eye"] },
 ];
-const hanakoThreadsLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park", "cafe", "cafeTerrace", "bookstore", "museum", "riverside", "street", "rooftop", "grocer", "pianoBar", "noodle", "stationPlatformNight", "stationCanopyRain", "winterStreetLights", "ticketGateNight", "riversideNightWalk"];
-const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "cafeCasual", "seiso", "miniLolita", "miniBandGal", "lastTrainCoat", "umbrellaTrench", "warmSleeveKnit", "gateDateJacket", "handholdCardigan"];
-const hanakoThreadsPoses = ["fingerHeartNearFace", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan", "watchLastTrain", "shareUmbrellaLean", "gentleSleeveHold", "gateTurnBack", "handAlmostTouch"];
-const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze", "lastTrainHope", "rainCloseSmile", "coldPleading", "gateFarewell", "handholdNervous"];
+const hanakoThreadsLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park", "cafe", "cafeTerrace", "bookstore", "museum", "riverside", "street", "rooftop", "grocer", "pianoBar", "noodle", "stationPlatformNight", "stationCanopyRain", "winterStreetLights", "ticketGateNight", "riversideNightWalk", "subwayPlatform", "stationStairs", "convenienceNight", "vendingCorner", "busStopEvening", "pedestrianBridge", "shoppingArcade", "laundromat", "bookstoreAisle", "supermarketAisle"];
+const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "cafeCasual", "seiso", "miniLolita", "miniBandGal", "lastTrainCoat", "umbrellaTrench", "warmSleeveKnit", "gateDateJacket", "handholdCardigan", "miniRibbonCardigan", "miniTurtleneckBoots", "miniTweedSet", "miniShirtKnit", "miniMonotone", "miniDenimJacket", "miniPoloSocks", "miniOffShoulder", "miniSweaterDress", "miniBlazer", "animeMagicHeroine", "animeFantasySwordswoman", "animeCyberIdol", "animeShrineGuardian", "animeAcademyMage", "cosplayCafeMaid", "cosplayNurse", "cosplaySecretary", "cosplayTeacher", "cosplayPolice", "cosplayChef", "cosplayBunny", "cosplayHotel", "cosplayGamer", "cosplayOfficeLady"];
+const hanakoThreadsPoses = ["fingerHeartNearFace", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan", "watchLastTrain", "shareUmbrellaLean", "gentleSleeveHold", "gateTurnBack", "handAlmostTouch", "subwayPoleGlance", "hairTieMoment", "coatPocketLean", "scarfAdjustGaze", "bagBehindBack", "seatNextTap", "shareEarphone", "drinkOffer", "doorHoldLookback", "tiptoeWhisper"];
+const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze", "lastTrainHope", "rainCloseSmile", "coldPleading", "gateFarewell", "handholdNervous", "caughtLooking", "onlyYouSmile", "surpriseEyeContact", "whisperSecret", "missedYou", "jealousPout", "praiseShy", "sleepyTrust", "comeCloserEyes", "goodbyePause"];
 const hanakoThreadsAbFields = {
   outfit: { source: "snsOutfitPreset", label: "コーデの雰囲気" },
   hair: { source: "snsHairPreset", label: "髪型" },
@@ -13331,6 +13410,34 @@ function buildSocialCreativeDirective(context) {
     warmSleeveKnit: "手の甲へ少しかかる柔らかな長袖ニットと上品な膝下フレアスカート。防寒コートを合わせ、袖口をつかむ仕草が自然に見える装い",
     gateDateJacket: "コンパクトなショートジャケットと大人可愛い膝丈ワンピース、小ぶりなバッグ。改札前で振り返った時にシルエットが整う装い",
     handholdCardigan: "ふんわりしたカーディガン、清潔感のあるトップス、歩くと静かに揺れる膝下スカート。手元を隠しすぎない袖丈にする",
+    miniRibbonCardigan: "成人女性向け。小さなリボン付きカーディガンと上品な台形ミニ、ロングブーツ。丈と胸元を安全に整える",
+    miniTurtleneckBoots: "成人女性向け。細身のタートルニット、チェック柄ミニ、ロングブーツを合わせた冬の好印象コーデ",
+    miniTweedSet: "成人女性向け。淡色ツイードの短丈ジャケットと台形ミニのセットアップ。装飾を控えめにして高見えさせる",
+    miniShirtKnit: "成人女性向け。白シャツにコンパクトなニットを重ね、端正なプリーツミニとローファーを合わせる",
+    miniMonotone: "成人女性向け。黒ニット、グレーのAラインミニ、タイツで作る洗練されたモノトーンコーデ",
+    miniDenimJacket: "成人女性向け。短丈デニムジャケット、白トップス、揺れ感のあるミニ、スニーカーで親しみやすくする",
+    miniPoloSocks: "成人女性向け。清潔感のあるポロニット、端正なミニ、白ソックスとローファーの大人プレッピー",
+    miniOffShoulder: "成人女性向け。鎖骨が少し見える上品なニット、ハイウエストミニ、ロングブーツ。肩や胸元を露出しすぎない",
+    miniSweaterDress: "成人女性向け。身体の線を拾いすぎない膝上のニットワンピース、タイツ、ロングブーツで柔らかくまとめる",
+    miniBlazer: "成人女性向け。コンパクトなブレザー、ボウタイブラウス、チェック柄ミニを都会的に整える。実在校の制服にしない",
+    animeMagicHeroine: "成人女性向けの完全オリジナル魔法ヒロイン衣装。淡色ケープ、星の装飾、膝丈フレア。既存作品やキャラクターを再現しない",
+    animeFantasySwordswoman: "成人女性向けの完全オリジナル幻想剣士衣装。露出を抑えたチュニック、軽装甲、ロングブーツ。既存作品を再現しない",
+    animeCyberIdol: "成人女性向けの完全オリジナル近未来アイドル衣装。ネオン差し色のジャケットと上品なステージスカート。既存作品を再現しない",
+    animeShrineGuardian: "成人女性向けの完全オリジナル和風守護者衣装。白と朱の重ね着、長い袖、上品な袴風ボトム。既存作品を再現しない",
+    animeAcademyMage: "成人女性向けの完全オリジナル学院魔法使い衣装。ローブ、ベスト、膝丈スカート、架空の紋章。未成年に見せず既存作品を再現しない",
+    cosplayCafeMaid: "成人女性向けのクラシカルなカフェメイド衣装。膝丈ワンピース、白エプロン、小さなリボンで清潔感を保つ",
+    cosplayNurse: "成人女性向けの架空のナース風イベント衣装。膝丈ワンピースとカーディガン。実在医療機関の制服やロゴを使わず性的に演出しない",
+    cosplaySecretary: "成人女性向けの秘書風コーデ。上品なブラウス、細身ジャケット、膝丈スカート、手帳を合わせる",
+    cosplayTeacher: "成人女性向けの先生風コーデ。落ち着いたカーディガン、襟付きブラウス、膝丈スカート、眼鏡を上品に合わせる",
+    cosplayPolice: "成人女性向けの架空の警察官風イベント衣装。長袖シャツ、膝丈ボトム、架空の帽子。実在組織の徽章や制服を再現しない",
+    cosplayChef: "成人女性向けのパティシエ風衣装。清潔なコックコート、エプロン、架空店舗の小さな帽子を合わせる",
+    cosplayBunny: "成人女性向けの上品なバニー風イベント衣装。うさ耳モチーフ、長袖トップス、ハイウエストショートパンツ、黒タイツ。胸元や臀部を強調しない",
+    cosplayHotel: "成人女性向けの架空ホテルスタッフ風衣装。端正なジャケット、膝丈スカート、スカーフ。実在企業のロゴを使わない",
+    cosplayGamer: "成人女性向けのゲーム配信者風コーデ。オーバーサイズパーカー、プリーツミニ、ヘッドセット、カラー照明を合わせる",
+    cosplayOfficeLady: "成人女性向けのきれいめオフィスコーデ。柔らかなブラウス、細身ジャケット、膝丈スカート、社員証風の無地カードを合わせる",
+  });
+  Object.assign(labels.hair, {
+    seeThroughBangBob: "シースルーバングの艶感ボブ", sidePonyRibbon: "小さなリボンを添えたサイドポニー", highPonyLoose: "後れ毛を少し残した高めポニー", lowTwinAdult: "幼く見えない低めツインテール", halfTwinRibbon: "細いリボンを添えた大人ハーフツイン", princessHalfUp: "上品な編み込み入りハーフアップ", oneSideBraid: "片側へ流すゆるい三つ編み", fluffyBob: "空気感のあるふんわりボブ", wetLookLong: "清潔感のあるウェット質感のロング", straightBangLong: "薄め前髪の艶ストレートロング", curtainBangWave: "カーテンバングの柔らかなウェーブ", lowBunLoose: "顔まわりに後れ毛を残した低めシニヨン", braidPony: "編み込みを混ぜたローポニー", ribbonLowPony: "ベルベットリボンの低めポニー", earTuckBob: "片耳かけの端正なボブ", softWolf: "毛先を軽く動かしたソフトウルフ", headbandWave: "細いカチューシャと艶ウェーブ", sidePartCurl: "深めサイドパートの大きなカール", tuckedLong: "両耳を軽く出した清楚なロング", messyPony: "計算された後れ毛のラフポニー",
   });
   Object.assign(labels.pose, {
     fingerHeartNearFace: "成人女性が顔の横で片手の親指と人差し指を使って小さな指ハートを作り、自然に微笑む。指は5本で関節と重なりを写実的にする",
@@ -13380,6 +13487,16 @@ function buildSocialCreativeDirective(context) {
     stairsLookUp: "安全な階段の一段上に立ち、身体をひねりすぎず自然に振り返ってカメラを見る",
     stairsLookBack: "階段をゆっくり下りながら、肩越しに柔らかく振り返る。足元と手すりを安全に保つ",
     stairsShoes: "階段に片足ずつ自然に置き、靴と脚のラインがきれいに見えるファッション誌風ポーズ",
+    subwayPoleGlance: "成人女性が地下鉄車内で手すりを軽く持ち、ふとカメラへ視線を向ける。車内マナーを守り、手指を自然にする",
+    hairTieMoment: "成人女性が両手で髪をまとめる途中にカメラと目が合う自然な瞬間。脇や胸元を強調しない",
+    coatPocketLean: "成人女性がコートのポケットへ片手を入れ、壁へ軽く寄りながら柔らかく見上げる",
+    scarfAdjustGaze: "成人女性がマフラーを両手で整えながら、少し照れた目線をカメラへ向ける",
+    bagBehindBack: "成人女性が小さなバッグを背中側で両手に持ち、上体を少しだけ傾けて微笑む",
+    seatNextTap: "成人女性が隣の空席を手のひらで軽く示し、座ってほしそうに微笑む。公共空間を占有しない",
+    shareEarphone: "成人女性が片方のイヤホンをカメラ側へ差し出し、一緒に聴こうと誘う。コードと指を自然に描く",
+    drinkOffer: "成人女性が未開封または蓋付きの飲み物をカメラ側へそっと差し出し、気遣うように微笑む",
+    doorHoldLookback: "成人女性がドアを安全に押さえ、先にどうぞと肩越しに振り返る。扉と腕の接触を正確にする",
+    tiptoeWhisper: "成人女性が背伸びをして内緒話をする直前の距離まで近づく。接触せず、胸元を強調しない上品な構図にする",
   });
   Object.assign(labels.composition, {
     extremeLow: "地面近くから見上げる強いローアングル。脚を不自然に誇張せず、スカートやワンピースでは下着が見えない正面寄りの安全な角度にする",
@@ -13395,6 +13512,19 @@ function buildSocialCreativeDirective(context) {
     winterStreetLights: "暖色の街灯と店舗の明かりがある冬の歩道。人通りは控えめに残し、場所を特定できる看板や住所を出さない",
     ticketGateNight: "人通りと照明がある架空の駅改札前。実在する鉄道会社名、駅名、広告を描かず、通行スペースを確保する",
     riversideNightWalk: "足元照明と手すりがある安全な夜の川沿い遊歩道。人物は水際から離れ、遠景の街明かりを柔らかくぼかす",
+    subwayPlatform: "照明が明るい架空の地下鉄ホーム。実在駅名や路線ロゴを出さず、黄色い線から十分離れる",
+    stationStairs: "人通りを妨げない駅構内の広い階段と踊り場。架空の案内表示にする",
+    convenienceNight: "夜のコンビニ前の明るい歩道。実在チェーンの看板やロゴを描かない",
+    vendingCorner: "住宅街の明るい自動販売機コーナー。架空の商品表示と柔らかな光にする",
+    busStopEvening: "夕方の屋根付きバス停。実在路線名を出さず、車道から安全な距離を取る",
+    pedestrianBridge: "街明かりを見渡せる安全な歩道橋。手すりの内側で自然な日常スナップにする",
+    shoppingArcade: "生活感のある屋根付き商店街。店名と人物の顔を特定できない背景にする",
+    laundromat: "清潔で明るいコインランドリー。架空店舗で、洗濯機の丸窓と柔らかな光を生かす",
+    bookstoreAisle: "静かな書店の広い通路。実在書名や表紙を判読できないようにする",
+    supermarketAisle: "明るいスーパーマーケットの通路。実在ブランドや値札を判読できないようにする",
+  });
+  Object.assign(labels.lighting, {
+    subwayFluorescent: "地下鉄の白い照明を肌が青白くならないよう柔らかく整える", rainReflection: "雨上がりの路面反射と店明かりを使った艶のある夜光", vendingGlow: "自動販売機の白い光と街灯を混ぜた自然な夜の光", lastTrainAmber: "終電前の暖かな駅照明と遠景の青い夜", convenienceSoft: "コンビニの明るさを拡散した清潔な夜光", sunsetBacklight: "夕焼けの縁取りが髪へ入る柔らかな逆光", streetLampWarm: "暖色の街灯が頬へ薄く当たる落ち着いた夜光", trainWindowBlue: "電車窓の青い反射と車内の暖色を混ぜた光", morningPlatform: "朝のホームへ斜めに差す透明感のある自然光", cityBokeh: "遠景の街明かりを細かな玉ぼけにした上品な夜光",
   });
   const presetSelectIds = { scene: "snsScenePreset", outfit: "snsOutfitPreset", hair: "snsHairPreset", pose: "snsPosePreset", composition: "snsCompositionPreset", lighting: "snsLightingPreset", location: "snsLocationPreset", carousel: "snsCarouselPreset" };
   const preset = (group, key, fallback) => {
