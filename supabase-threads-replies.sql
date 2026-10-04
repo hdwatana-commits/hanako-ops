@@ -13,7 +13,7 @@ create table if not exists public.hanako_reply_settings (
   use_history boolean not null default true,
   started_at timestamptz not null default now(),
   scan_after text, scan_posts jsonb not null default '[]', scan_comment_after text,
-  lease_until timestamptz, last_run timestamptz, last_error text not null default ''
+  lease_until timestamptz, last_run timestamptz, last_error text not null default '', ai_retry_at timestamptz
 );
 create table if not exists public.hanako_reply_comments (
   user_id uuid not null references auth.users(id) on delete cascade,

@@ -8,6 +8,9 @@ const openaiKey = () => {
   }
   throw new Error('有効なOpenAI APIキーの登録が必要です');
 };
+const aiProvider = () => Deno.env.get('REPLY_AI_PROVIDER') || 'gemini';
+const aiConfigured = () => {if(aiProvider()==='gemini') return Boolean(Deno.env.get('GEMINI_API_KEY')?.trim());try{openaiKey();return true;}catch{return false;}};
+class FreeQuotaError extends Error {}
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,apikey,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
 const owner = () => env('HANAKO_OWNER_USER_ID');
 const filter = () => `user_id=eq.${encodeURIComponent(owner())}`;
@@ -17,6 +20,7 @@ async function api(url: string, options: RequestInit, label: string) {
   try { response=await fetch(url,{...options,signal:AbortSignal.timeout(45000)}); }
   catch { throw new Error(`${label}: 通信または認証設定を確認してください`); }
   const body=await response.json();
+  if(label==='Gemini返信生成'&&response.status===429) throw new FreeQuotaError('Gemini無料枠の上限です。コメントを待機させて後で再試行します');
   if(!response.ok||body?.error) throw new Error(`${label}: HTTP ${response.status}。権限・期限・利用上限を確認してください`);
   return body;
 }
@@ -48,10 +52,21 @@ async function checkThreadsOwner() {
 async function generate(s: any,c: any) {
   const history=s.use_history ? await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(c.username)}&comment_id=neq.${encodeURIComponent(c.comment_id)}&order=commented_at.desc&limit=20&select=comment_text,reply_text,post_text,commented_at`) : [];
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
+  const instructions=`${HANA_PROMPT}\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${s.custom_prompt}`;
+  const input=JSON.stringify({post:c.post_text,comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,history:history.reverse()});
+  if(aiProvider()==='gemini') {
+    const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
+    const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':env('GEMINI_API_KEY').trim(),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
+    const candidate=response.candidates?.[0];
+    if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
+    const text=(candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim();
+    if(!text||[...text].length>s.max_chars||/```|@|\S+さん/.test(text)) throw new Error('返信形式を確認してください');
+    return text;
+  }
   const response=await api('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${openaiKey()}`,'Content-Type':'application/json'},body:JSON.stringify({
     model:Deno.env.get('OPENAI_REPLY_MODEL')||'gpt-6-astra',store:false,
     instructions:`${HANA_PROMPT}\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${s.custom_prompt}`,
-    input:JSON.stringify({post:c.post_text,comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,history:history.reverse()})
+    input
   })},'AI返信生成');
   if(response.status!=='completed') throw new Error('AIの生成が未完了です');
   const text=(response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim();
@@ -60,8 +75,7 @@ async function generate(s: any,c: any) {
 }
 async function checkConnections() {
   const s=await settings();
-  let aiConfigured=false;try {openaiKey();aiConfigured=true;}catch {}
-  const result:any={openai:{configured:aiConfigured,ok:false,model:Deno.env.get('OPENAI_REPLY_MODEL')||'gpt-6-astra'},threads:{configured:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')),ok:false}};
+  const result:any={openai:{provider:aiProvider(),configured:aiConfigured(),ok:false,model:aiProvider()==='gemini'?(Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite'):(Deno.env.get('OPENAI_REPLY_MODEL')||'gpt-6-astra')},threads:{configured:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')),ok:false}};
   if(result.openai.configured) {
     try { result.openai.sample=await generate({...s,use_history:false},{comment_text:'今日の服、すごく似合ってる！',post_text:'今日のお気に入りコーデ。',username:'connection-test'});result.openai.ok=true; }
     catch(e){result.openai.error=e instanceof Error?e.message:'AI接続に失敗しました';}
@@ -132,6 +146,7 @@ async function run(action: string,body: any) {
       await updateComment(rows[0].comment_id,{status:'pending',error:''}); return {status:'pending'};
     }
     if(!s.enabled) return {status:'off'};
+    if(s.ai_retry_at&&new Date(s.ai_retry_at).getTime()>Date.now())return {status:'quota_wait',retry_at:s.ai_retry_at};
     const me=await checkThreadsOwner();
     await scan(s,me);
     if(!inWindow(s)) {await updateSettings({last_run:new Date().toISOString(),last_error:''}); return {status:'outside_window'};}
@@ -144,12 +159,18 @@ async function run(action: string,body: any) {
         const fresh=await settings();
         if(fresh.enabled&&fresh.mode==='auto'&&inWindow(fresh)) await publish({...c,reply_text:text});
       } catch(e) {
+        if(e instanceof FreeQuotaError) {
+          await updateComment(c.comment_id,{status:'pending',error:e.message});
+          const retry_at=new Date(Date.now()+3600000).toISOString();
+          await updateSettings({ai_retry_at:retry_at,last_error:e.message,last_run:new Date().toISOString()});
+          return {status:'quota_wait',retry_at};
+        }
         const latest=await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.comment_id)}`);
         if(latest[0]?.status==='generating') await updateComment(c.comment_id,{status:'failed',error:e instanceof Error?e.message:'生成失敗'});
         throw e;
       }
     }
-    await updateSettings({last_run:new Date().toISOString(),last_error:''});
+    await updateSettings({last_run:new Date().toISOString(),last_error:'',ai_retry_at:null});
     return {status:c?'processed':'idle'};
   } catch(e) {await updateSettings({last_error:e instanceof Error?e.message:'処理失敗'}).catch(()=>{});throw e;}
   finally {await updateSettings({lease_until:null});}
@@ -167,7 +188,7 @@ Deno.serve(async request=>{
     if(['run','publish','retry'].includes(body.action)) return respond(await run(body.action,body));
     if(body.action==='load') return respond({settings:await settings(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),
-      connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&Deno.env.get('OPENAI_API_KEY'))});
+      connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&aiConfigured())});
     if(body.action==='save') { const value=validateSettings(body.settings); await settings(); await updateSettings(value); return respond({saved:true}); }
     if(body.action==='history') {
       const offset=Math.max(0,Math.min(100000,Number(body.offset)||0));

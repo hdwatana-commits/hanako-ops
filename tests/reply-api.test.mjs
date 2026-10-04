@@ -1,11 +1,35 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 let handler;
-const secrets={SUPABASE_URL:'https://db.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',HANAKO_OWNER_USER_ID:'owner',HANAKO_REPLY_CRON_SECRET:'cron',THREADS_USER_ID:'threads-owner',THREADS_ACCESS_TOKEN:'threads-token',OPENAI_API_KEY:'sk-ai-key'};
+const secrets={REPLY_AI_PROVIDER:'openai',SUPABASE_URL:'https://db.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',HANAKO_OWNER_USER_ID:'owner',HANAKO_REPLY_CRON_SECRET:'cron',THREADS_USER_ID:'threads-owner',THREADS_ACCESS_TOKEN:'threads-token',OPENAI_API_KEY:'sk-ai-key'};
 globalThis.Deno={env:{get:name=>secrets[name]},serve:fn=>{handler=fn;}};
 await import('../supabase/functions/threads-replies/index.ts');
 const response=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
 const invoke=(body,headers={})=>handler(new Request('https://function.test',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer owner',...headers},body:JSON.stringify(body)}));
+
+test('Gemini無料枠429では待機し、有料APIにも投稿にも進まない',async()=>{
+  secrets.REPLY_AI_PROVIDER='gemini';secrets.GEMINI_API_KEY='test-gemini';
+  let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],adapt_tone:true,max_chars:180,use_history:false,scan_posts:[]};
+  let c={comment_id:'quota-comment',username:'guest',comment_text:'可愛い',status:'pending'};
+  let calls=0;
+  globalThis.fetch=async(url,opts={})=>{
+    url=String(url);const body=opts.body&&typeof opts.body==='string'?JSON.parse(opts.body):{};
+    if(url.includes('auth/v1/user'))return response({id:'owner'});
+    if(url.includes('rpc/hanako_reply_lock'))return response(true);
+    if(url.includes('rpc/hanako_reply_claim')){c.status='generating';return response(c);}
+    if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...body};return response([s]);}
+    if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...body};return response([c]);}
+    if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+    if(url.includes('/me/threads?'))return response({data:[]});
+    if(url.includes('generativelanguage.googleapis.com')){calls++;return new Response('{"error":{"code":429}}',{status:429});}
+    throw new Error('Unexpected request');
+  };
+  try {
+    assert.equal((await (await invoke({action:'run'})).json()).status,'quota_wait');
+    assert.equal(c.status,'pending');assert.ok(Date.parse(s.ai_retry_at)>Date.now());
+    assert.equal((await (await invoke({action:'run'})).json()).status,'quota_wait');assert.equal(calls,1);
+  } finally {secrets.REPLY_AI_PROVIDER='openai';delete secrets.GEMINI_API_KEY;}
+});
 test('所有者以外は履歴を読めない',async()=>{
   globalThis.fetch=async url=>{assert.match(url,/auth\/v1\/user$/);return response({id:'other'});};
   const result=await invoke({action:'load'});assert.equal(result.status,400);assert.match((await result.json()).error,/所有者/);
