@@ -501,6 +501,13 @@ function enhanceCoordinateSelectOptions() {
     ["animeCyberIdol", "近未来サイバーアイドル風衣装"], ["animeShrineGuardian", "和風の巫女戦士風衣装"],
     ["animeAcademyMage", "魔法学園の優等生風コーデ"],
   ]);
+  appendOptionGroup(outfitSelect, "cosplaySailorMoon", "人気作品コスプレ", [
+    ["cosplaySailorMoon", "セーラームーン風コスプレ"], ["cosplayFrieren", "フリーレン風コスプレ"],
+    ["cosplayMitsuri", "甘露寺蜜璃風コスプレ"], ["cosplayShinobu", "胡蝶しのぶ風コスプレ"],
+    ["cosplayKiki", "キキ風コスプレ"], ["cosplayFujiko", "峰不二子風コスプレ"],
+    ["cosplayChisato", "錦木千束風コスプレ"], ["cosplayTakina", "井ノ上たきな風コスプレ"],
+    ["cosplayKana", "有馬かな風コスプレ"], ["cosplayRuby", "星野ルビー風コスプレ"],
+  ]);
   appendOptionGroup(outfitSelect, "cosplayCafeMaid", "物語・職業コスプレ", [
     ["cosplayCafeMaid", "大人可愛いカフェメイド"], ["cosplayNurse", "清潔感のある架空のナース風衣装"],
     ["cosplaySecretary", "知的な秘書風コーデ"], ["cosplayTeacher", "上品な女性教師風コーデ"],
@@ -3366,7 +3373,7 @@ const hanakoInstagramLooks = [
   { id: "elegant", label: "大人の余裕", direction: "落ち着いた眼差し、布の質感、上品な陰影で洗練された色気を見せる", locations: ["homeSofa", "homeBedroom", "studioNoir", "studioDaylight"], outfits: ["satinBowBlouse", "offShoulderWidePants", "creamWrapSkirt", "pinkTweedDress"], poses: ["chairSideTurn", "ribbonAdjust", "jacketOnShoulder", "seatedSideLegs"], expressions: ["softEyeContact", "invitingGaze", "halfLiddedSmile", "subtlesmile"], compositions: ["editorial", "waist", "eye"] },
 ];
 const hanakoThreadsLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park", "cafe", "cafeTerrace", "bookstore", "museum", "riverside", "street", "rooftop", "grocer", "pianoBar", "noodle", "stationPlatformNight", "stationCanopyRain", "winterStreetLights", "ticketGateNight", "riversideNightWalk", "subwayPlatform", "stationStairs", "convenienceNight", "vendingCorner", "busStopEvening", "pedestrianBridge", "shoppingArcade", "laundromat", "bookstoreAisle", "supermarketAisle"];
-const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "cafeCasual", "seiso", "miniLolita", "miniBandGal", "lastTrainCoat", "umbrellaTrench", "warmSleeveKnit", "gateDateJacket", "handholdCardigan", "miniRibbonCardigan", "miniTurtleneckBoots", "miniTweedSet", "miniShirtKnit", "miniMonotone", "miniDenimJacket", "miniPoloSocks", "miniOffShoulder", "miniSweaterDress", "miniBlazer", "animeMagicHeroine", "animeFantasySwordswoman", "animeCyberIdol", "animeShrineGuardian", "animeAcademyMage", "cosplayCafeMaid", "cosplayNurse", "cosplaySecretary", "cosplayTeacher", "cosplayPolice", "cosplayChef", "cosplayBunny", "cosplayHotel", "cosplayGamer", "cosplayOfficeLady"];
+const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "cafeCasual", "seiso", "miniLolita", "miniBandGal", "lastTrainCoat", "umbrellaTrench", "warmSleeveKnit", "gateDateJacket", "handholdCardigan", "miniRibbonCardigan", "miniTurtleneckBoots", "miniTweedSet", "miniShirtKnit", "miniMonotone", "miniDenimJacket", "miniPoloSocks", "miniOffShoulder", "miniSweaterDress", "miniBlazer", "animeMagicHeroine", "animeFantasySwordswoman", "animeCyberIdol", "animeShrineGuardian", "animeAcademyMage", "cosplayCafeMaid", "cosplayNurse", "cosplaySecretary", "cosplayTeacher", "cosplayPolice", "cosplayChef", "cosplayBunny", "cosplayHotel", "cosplayGamer", "cosplayOfficeLady", "cosplaySailorMoon", "cosplayFrieren", "cosplayMitsuri", "cosplayShinobu", "cosplayKiki", "cosplayFujiko", "cosplayChisato", "cosplayTakina", "cosplayKana", "cosplayRuby"];
 const hanakoThreadsPoses = ["fingerHeartNearFace", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan", "watchLastTrain", "shareUmbrellaLean", "gentleSleeveHold", "gateTurnBack", "handAlmostTouch", "subwayPoleGlance", "hairTieMoment", "coatPocketLean", "scarfAdjustGaze", "bagBehindBack", "seatNextTap", "shareEarphone", "drinkOffer", "doorHoldLookback", "tiptoeWhisper"];
 const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze", "lastTrainHope", "rainCloseSmile", "coldPleading", "gateFarewell", "handholdNervous", "caughtLooking", "onlyYouSmile", "surpriseEyeContact", "whisperSecret", "missedYou", "jealousPout", "praiseShy", "sleepyTrust", "comeCloserEyes", "goodbyePause"];
 const hanakoThreadsAbFields = {
@@ -13435,6 +13442,16 @@ function buildSocialCreativeDirective(context) {
     cosplayHotel: "成人女性向けの架空ホテルスタッフ風衣装。端正なジャケット、膝丈スカート、スカーフ。実在企業のロゴを使わない",
     cosplayGamer: "成人女性向けのゲーム配信者風コーデ。オーバーサイズパーカー、プリーツミニ、ヘッドセット、カラー照明を合わせる",
     cosplayOfficeLady: "成人女性向けのきれいめオフィスコーデ。柔らかなブラウス、細身ジャケット、膝丈スカート、社員証風の無地カードを合わせる",
+    cosplaySailorMoon: "成人女性によるセーラームーン風コスプレ。白いセーラー襟トップス、青いプリーツスカート、赤い胸元リボン、赤いロングブーツ、金髪のツインテールとお団子。健全なヒロイン衣装として全身を端正に見せる",
+    cosplayFrieren: "成人女性による『葬送のフリーレン』のフリーレン風コスプレ。白銀の長いツインテール、長い尖り耳、白と金のローブ、黒いタイツ、赤いイヤリング、木製の魔法杖。露出を抑えた旅装にする",
+    cosplayMitsuri: "成人女性による『鬼滅の刃』の甘露寺蜜璃風コスプレ。桜色から黄緑へ変わる長い三つ編み、白い羽織、隊服風の上着、プリーツスカート、縞柄ソックス。胸元を閉じて健全に再構成する",
+    cosplayShinobu: "成人女性による『鬼滅の刃』の胡蝶しのぶ風コスプレ。紫がかったまとめ髪と蝶の髪飾り、濃色の隊服風衣装、蝶の羽模様を思わせる白い羽織。刀は小道具として安全に扱う",
+    cosplayKiki: "成人女性による『魔女の宅急便』のキキ風コスプレ。大きな赤いリボン、紺色の半袖ワンピース、赤いフラットシューズ、革の肩掛けバッグ、素朴なほうき。日常的で健康的な雰囲気にする",
+    cosplayFujiko: "成人女性による『ルパン三世』の峰不二子風コスプレ。艶のある長いダークヘア、赤または黒の上品なタートルネック、細身パンツまたは膝丈スカート、ロングブーツ。成熟した洗練を出し、過度な露出を避ける",
+    cosplayChisato: "成人女性による『リコリス・リコイル』の錦木千束風コスプレ。明るい金髪のボブ、赤いリボン、赤系の制服風ワンピース、濃紺のハイソックス、茶色のローファー。武器は持たず明るく活動的に見せる",
+    cosplayTakina: "成人女性による『リコリス・リコイル』の井ノ上たきな風コスプレ。長い黒髪、青いリボン、青系の制服風ワンピース、濃紺のハイソックス、茶色のローファー。武器は持たず端正で落ち着いた雰囲気にする",
+    cosplayKana: "成人女性による『【推しの子】』の有馬かな風コスプレ。赤いボブヘア、上品なベレー帽、アイドルステージ風の赤を基調にした衣装、小さな星モチーフ。未成年に見せず健全なステージ衣装にする",
+    cosplayRuby: "成人女性による『【推しの子】』の星野ルビー風コスプレ。金髪のロングヘア、星型の髪飾り、白とピンクを基調にした明るいアイドルステージ衣装。未成年に見せず健全で華やかにする",
   });
   Object.assign(labels.hair, {
     seeThroughBangBob: "シースルーバングの艶感ボブ", sidePonyRibbon: "小さなリボンを添えたサイドポニー", highPonyLoose: "後れ毛を少し残した高めポニー", lowTwinAdult: "幼く見えない低めツインテール", halfTwinRibbon: "細いリボンを添えた大人ハーフツイン", princessHalfUp: "上品な編み込み入りハーフアップ", oneSideBraid: "片側へ流すゆるい三つ編み", fluffyBob: "空気感のあるふんわりボブ", wetLookLong: "清潔感のあるウェット質感のロング", straightBangLong: "薄め前髪の艶ストレートロング", curtainBangWave: "カーテンバングの柔らかなウェーブ", lowBunLoose: "顔まわりに後れ毛を残した低めシニヨン", braidPony: "編み込みを混ぜたローポニー", ribbonLowPony: "ベルベットリボンの低めポニー", earTuckBob: "片耳かけの端正なボブ", softWolf: "毛先を軽く動かしたソフトウルフ", headbandWave: "細いカチューシャと艶ウェーブ", sidePartCurl: "深めサイドパートの大きなカール", tuckedLong: "両耳を軽く出した清楚なロング", messyPony: "計算された後れ毛のラフポニー",
