@@ -1,4 +1,16 @@
 export const TONES = { calm: 'おだやか', friendly: '親しみやすい', energetic: '元気', cute: 'あざと可愛い', flirty: 'ほんのり思わせぶり' };
+export const RELATIONSHIP_LEVELS = [
+  {name:'はじめまして',comments:0,days:0,replies:0,tone:'親しみやすく、軽い照れ。初対面で恋人扱いしない。'},
+  {name:'顔なじみ',comments:3,days:2,replies:2,tone:'また話せた嬉しさと、覚えている好みを自然に伝える。'},
+  {name:'気になる存在',comments:8,days:3,replies:5,tone:'相手も好意的なら、ちょっと意識している照れと控えめな甘さ。'},
+  {name:'甘えたくなる存在',comments:20,days:5,replies:12,tone:'相手も甘い会話を楽しんでいるなら、親しい気遣いや小さな甘え。'},
+  {name:'恋人みたいな距離',comments:40,days:10,replies:25,tone:'互いに好意的な会話の中だけで、彼女みたいな温かさと遊び心。交際の事実や独占は主張しない。'}
+];
+export function relationshipLevel(stats={}) {
+  let level=0;
+  RELATIONSHIP_LEVELS.forEach((r,i)=>{if((stats.comments||0)>=r.comments&&(stats.active_days||0)>=r.days&&(stats.replies||0)>=r.replies)level=i;});
+  return {level,...RELATIONSHIP_LEVELS[level]};
+}
 export function inWindow(settings, now = new Date()) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(p => [p.type,p.value]));
   const weekday = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(parts.weekday);

@@ -126,6 +126,7 @@ test('投稿の通信結果が不明ならuncertainとなり、再送しない',
     url=String(url);const body=opts.body?JSON.parse(typeof opts.body==='string'?opts.body:'{}'):{};
     if(url.startsWith('https://db.test')){
       if(url.endsWith('auth/v1/user'))return response({id:'owner'});
+      if(url.includes('rpc/hanako_reply_fans'))return response([]);
       if(url.includes('rpc/hanako_reply_lock')){if(locked)return response(false);locked=true;return response(true);}
       if(url.includes('rpc/hanako_reply_claim')){if(c.status!=='pending')return response(null);c.status='generating';return response(c);}
       if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH'){s={...s,...body};if(body.lease_until===null)locked=false;}return response([s]);}
@@ -271,4 +272,28 @@ test('Threadsの準備完了を確認してから一度だけ返信を公開す�
   try {assert.equal((await invoke({action:'run'})).status,200);assert.equal(checks,2);assert.equal(published,0);assert.equal(c.status,'skipped');} finally {directReplies=null;}
   c={...c,status:'pending'};directReplies=()=>({data:[{id:'manual',is_reply_owned_by_me:true}]});
   try {const r=await (await invoke({action:'run'})).json();assert.equal(r.status,'skipped');assert.equal(c.status,'skipped');}finally{directReplies=null;}
+});
+
+test('生成には現在の投稿、距離感と公開済み会話だけを渡し、失敗候補を思い出にしない',async()=>{
+  const s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:true};
+  const c={comment_id:'current',username:'guest',comment_text:'この服すき',post_text:'今日のピンクの服',status:'generating'};
+  const history=[{comment_id:'old1',status:'published',comment_text:'ピンク好き',reply_text:'私も好き',post_text:'服',commented_at:'2026-10-01T00:00:00Z'},{comment_id:'old2',status:'failed',comment_text:'赤もいいね',reply_text:'未公開の嘘の思い出'}];let input;
+  globalThis.fetch=async(url,opts={})=>{
+    url=String(url);
+    if(url.includes('auth/v1/user'))return response({id:'owner'});
+    if(url.includes('rpc/hanako_reply_lock'))return response(true);
+    if(url.includes('rpc/hanako_reply_claim'))return response(c);
+    if(url.includes('rpc/hanako_reply_fans'))return response([{username:'guest',comments:20,active_days:5,replies:12}]);
+    if(url.includes('hanako_reply_settings'))return response([s]);
+    if(url.includes('username=eq.'))return response(history);
+    if(url.includes('parent_id=in.'))return response([{parent_id:'old2',comment_text:'赤も可愛いよね'}]);
+    if(url.includes('hanako_reply_comments'))return response([c]);
+    if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+    if(url.includes('/me/threads?'))return response({data:[]});
+    if(url.includes('api.openai.com')){const b=JSON.parse(opts.body);input=JSON.parse(b.input);assert.match(b.instructions,/中立的な質問には中立的に/);return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'ピンク好き、覚えてたよ🤭'}]}]});}
+    throw new Error('Unexpected request '+url);
+  };
+  assert.equal((await invoke({action:'run'})).status,200);
+  assert.equal(input.current_post,'今日のピンクの服');assert.equal(input.relationship.name,'甘えたくなる存在');
+  assert.doesNotMatch(JSON.stringify(input),/未公開の嘘/);assert.match(JSON.stringify(input),/赤も可愛いよね/);
 });

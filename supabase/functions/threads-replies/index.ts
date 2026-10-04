@@ -1,5 +1,5 @@
-import { inWindow, validateSettings, TONES } from '../../../reply-rules.mjs';
-import { HANA_PROMPT } from './prompt.ts';
+import { inWindow, validateSettings, TONES, relationshipLevel } from '../../../reply-rules.mjs';
+import { HANA_PROMPT, RELATIONSHIP_PROMPT } from './prompt.ts';
 const env = (name: string) => { const value=Deno.env.get(name); if(!value) throw new Error(`サーバー設定 ${name} が必要です`); return value; };
 const openaiKey = () => {
   for (const name of ['OPENAI_API_KEY','HanakoOPS Replies']) {
@@ -62,10 +62,16 @@ async function checkThreadsOwner() {
   return me;
 }
 async function generate(s: any,c: any,attempt=0): Promise<string> {
-  const history=s.use_history ? await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(c.username)}&comment_id=neq.${encodeURIComponent(c.comment_id)}&order=commented_at.desc&limit=20&select=comment_text,reply_text,post_text,commented_at`) : [];
+  const history=s.use_history ? await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(c.username)}&comment_id=neq.${encodeURIComponent(c.comment_id)}&order=commented_at.desc&limit=20&select=comment_id,comment_text,reply_text,post_text,commented_at,status`) : [];
+  const ids=history.map((h:any)=>h.comment_id).filter(Boolean);
+  const manual=ids.length ? await db(`hanako_reply_comments?${filter()}&is_owner=eq.true&parent_id=in.(${ids.map((id:string)=>encodeURIComponent(id)).join(',')})&select=parent_id,comment_text,commented_at&order=commented_at.asc`) : [];
+  const fans=s.use_history ? await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}) : [];
+  const stats=(fans||[]).find((f:any)=>f.username===c.username)||{};
+  const relationship=relationshipLevel(stats);
+  const conversation=history.reverse().map((h:any)=>({post:h.post_text,comment:h.comment_text,at:h.commented_at,replies:[...(h.status==='published'&&h.reply_text?[h.reply_text]:[]),...manual.filter((r:any)=>r.parent_id===h.comment_id).map((r:any)=>r.comment_text)]}));
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
-  const instructions=`${HANA_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。自然な日本語を確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${s.custom_prompt}`;
-  const input=JSON.stringify({post:c.post_text,comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,history:history.reverse()});
+  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。自然な日本語を確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${s.custom_prompt}`;
+  const input=JSON.stringify({current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation});
   if(aiProvider()==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
     const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':await geminiKey(s),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
