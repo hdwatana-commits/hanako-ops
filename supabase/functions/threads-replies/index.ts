@@ -1,6 +1,13 @@
 import { inWindow, validateSettings, TONES } from '../../../reply-rules.mjs';
 import { HANA_PROMPT } from './prompt.ts';
 const env = (name: string) => { const value=Deno.env.get(name); if(!value) throw new Error(`サーバー設定 ${name} が必要です`); return value; };
+const openaiKey = () => {
+  for (const name of ['OPENAI_API_KEY','HanakoOPS Replies']) {
+    const value=Deno.env.get(name)?.trim();
+    if(value && /^sk-\S+$/.test(value)) return value;
+  }
+  throw new Error('有効なOpenAI APIキーの登録が必要です');
+};
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,apikey,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
 const owner = () => env('HANAKO_OWNER_USER_ID');
 const filter = () => `user_id=eq.${encodeURIComponent(owner())}`;
@@ -41,7 +48,7 @@ async function checkThreadsOwner() {
 async function generate(s: any,c: any) {
   const history=s.use_history ? await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(c.username)}&comment_id=neq.${encodeURIComponent(c.comment_id)}&order=commented_at.desc&limit=20&select=comment_text,reply_text,post_text,commented_at`) : [];
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
-  const response=await api('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${env('OPENAI_API_KEY')}`,'Content-Type':'application/json'},body:JSON.stringify({
+  const response=await api('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${openaiKey()}`,'Content-Type':'application/json'},body:JSON.stringify({
     model:Deno.env.get('OPENAI_REPLY_MODEL')||'gpt-6-astra',store:false,
     instructions:`${HANA_PROMPT}\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${s.custom_prompt}`,
     input:JSON.stringify({post:c.post_text,comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,history:history.reverse()})
@@ -53,7 +60,8 @@ async function generate(s: any,c: any) {
 }
 async function checkConnections() {
   const s=await settings();
-  const result:any={openai:{configured:Boolean(Deno.env.get('OPENAI_API_KEY')),ok:false,model:Deno.env.get('OPENAI_REPLY_MODEL')||'gpt-6-astra'},threads:{configured:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')),ok:false}};
+  let aiConfigured=false;try {openaiKey();aiConfigured=true;}catch {}
+  const result:any={openai:{configured:aiConfigured,ok:false,model:Deno.env.get('OPENAI_REPLY_MODEL')||'gpt-6-astra'},threads:{configured:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')),ok:false}};
   if(result.openai.configured) {
     try { result.openai.sample=await generate({...s,use_history:false},{comment_text:'今日の服、すごく似合ってる！',post_text:'今日のお気に入りコーデ。',username:'connection-test'});result.openai.ok=true; }
     catch(e){result.openai.error=e instanceof Error?e.message:'AI接続に失敗しました';}
