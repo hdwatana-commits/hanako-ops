@@ -2,7 +2,7 @@ import { TONES } from './reply-rules.mjs';
 const section=document.createElement('section');
 section.id='threads-replies'; section.className='view';
 section.innerHTML=`
-<div class="panel reply-hero"><p class="eyebrow">HANA · CONVERSATION STUDIO</p><h3>Threads 返信管理</h3><p>ひとつひとつの会話を、ハナらしく。</p><p id="replyStatus" role="status" aria-live="polite">クラウド同期にログインし、「読み込む」で設定を確認してください。</p><div class="button-row"><button id="replyLoad">読み込む</button><button id="replyRun" disabled>今すぐ確認</button></div></div>
+<div class="panel reply-hero"><p class="eyebrow">HANA · CONVERSATION STUDIO</p><h3>Threads 返信管理</h3><p>ひとつひとつの会話を、ハナらしく。</p><p id="replyStatus" role="status" aria-live="polite">クラウド同期にログインし、「読み込む」で設定を確認してください。</p><div class="button-row"><button id="replyLoad">読み込む</button><button id="replyCheck" disabled>接続とAIをテスト</button><button id="replyRun" disabled>今すぐ確認</button></div><p id="replyCheckResult" class="reply-help"></p></div>
 <form id="replySettings" class="panel reply-settings"><div class="panel-heading"><h3>返信の設定</h3><button class="primary" type="submit" disabled>クラウドに保存</button></div>
 <fieldset disabled id="replyFields"><div class="reply-grid">
 <label class="reply-check"><input type="checkbox" name="enabled"> 自動処理を有効にする</label>
@@ -45,7 +45,7 @@ async function load(){
     const fields=[...form.querySelectorAll(`[name="${name}"]`)];
     fields.forEach(field=>{if(field.type==='checkbox')field.checked=Array.isArray(value)?value.map(String).includes(field.value):Boolean(value);else field.value=name.endsWith('_time')?String(value).slice(0,5):value;});
   }
-  $('#replyFields').disabled=false;form.querySelector('[type="submit"]').disabled=false;$('#replyRun').disabled=!data.connected;
+  $('#replyFields').disabled=false;form.querySelector('[type="submit"]').disabled=false;$('#replyRun').disabled=!data.connected;$('#replyCheck').disabled=false;
   status(`${data.settings.enabled?'有効':'停止中'} · ${data.settings.mode==='auto'?'自動投稿':'下書きのみ'} · ${data.connected?'API設定あり（接続の動作確認は今すぐ確認から）':'Threads・AIのサーバー設定が必要です'}${data.settings.last_error?' · '+data.settings.last_error:''}`);
   renderQueue();renderFans();
 }
@@ -62,6 +62,7 @@ function renderQueue(){const queue=$('#replyQueue');queue.replaceChildren();cons
 function renderFans(){const list=$('#replyFans');list.replaceChildren();const values=(loaded?.fans||[]).filter(p=>p.username.toLowerCase().includes($('#replySearch').value.toLowerCase()));if(!values.length)list.append(textNode('p','収集済みの交流はありません。'));values.forEach(p=>{const row=document.createElement('article');row.className='reply-card';row.append(textNode('strong',`${p.position}位 · ${p.username}`),textNode('p',`${p.fan_rank} · ${p.score}点`),textNode('small',`コメント ${p.comments}件 / 交流 ${p.active_days}日 / 返信済み ${p.replies}件`));const open=textNode('button','履歴を見る');open.onclick=()=>task(()=>showHistory(p.username));row.append(open);list.append(row);});}
 async function showHistory(username,more=false){const result=await call('history',{username,offset:more?offset:0});if(!more){person=username;offset=0;$('#replyHistory').replaceChildren();}result.history.forEach(c=>$('#replyHistory').append(card(c)));offset+=result.history.length;$('#replyMore').hidden=result.history.length<50;$('#replyHistoryTitle').textContent=`${username} の会話履歴`;$('#replyHistoryPanel').hidden=false;$('#replyHistoryPanel').scrollIntoView({behavior:'smooth',block:'start'});}
 $('#replyLoad').onclick=()=>task(load);
+$('#replyCheck').onclick=()=>task(async()=>{status('ThreadsとAIの接続を確認しています。');const result=await call('check');$('#replyCheckResult').textContent=[`AI: ${result.openai.ok?'返信生成OK':result.openai.error||'キー未設定'}`,`Threads: ${result.threads.ok?'接続OK（'+result.threads.username+'）':result.threads.error||'認証未設定'}`,result.openai.sample?'生成例: '+result.openai.sample:''].filter(Boolean).join('\n');status(result.ready?'ThreadsとAIの接続を確認しました。': '接続結果を確認してください。');});
 $('#replyRun').onclick=()=>task(async()=>{const result=await call('run');await load();status(({busy:'処理中です。少し待って再度読み込んでください。',off:'自動処理は停止中です。',outside_window:'コメントを確認しました。返信は次の稼働時間まで待機します。',processed:'返信を1件処理しました。',idle:'コメントを確認しました。ページを順番に収集中です。'})[result.status]||result.status);});
 form.onsubmit=e=>{e.preventDefault();task(async()=>{const f=new FormData(form);await call('save',{settings:{enabled:f.has('enabled'),mode:f.get('mode'),start_time:f.get('start_time'),end_time:f.get('end_time'),weekdays:f.getAll('weekdays').map(Number),delay_minutes:Number(f.get('delay_minutes')),tones:f.getAll('tones'),adapt_tone:f.has('adapt_tone'),custom_prompt:f.get('custom_prompt'),max_chars:Number(f.get('max_chars')),use_history:f.has('use_history')}});await load();status('返信設定をクラウドに保存しました。');});};
 $('#replyFilter').onchange=renderQueue;$('#replySearch').oninput=renderFans;

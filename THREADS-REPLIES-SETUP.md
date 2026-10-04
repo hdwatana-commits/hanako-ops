@@ -1,6 +1,6 @@
 # Threads返信管理の追加
 
-HanakoOPS v326として公開済みです。Supabaseに返信用テーブル・RPC・Edge Function・1分ごとのCronを反映しました。初期状態は停止・下書きモードです。現在のプロジェクトにはThreadsユーザートークンとユーザーIDが未登録のため、実際の取得・返信にはThreads APIの接続が必要です。
+HanakoOPS v327として公開済みです。Supabaseに返信用テーブル・RPC・Edge Function・1分ごとのCronを反映しました。初期状態は停止・下書きモードです。現在のプロジェクトにはThreadsユーザートークンとユーザーIDが未登録のため、実際の取得・返信にはThreads APIの接続が必要です。
 
 ## 変更ファイル
 

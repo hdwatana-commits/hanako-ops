@@ -6,7 +6,9 @@ const owner = () => env('HANAKO_OWNER_USER_ID');
 const filter = () => `user_id=eq.${encodeURIComponent(owner())}`;
 const respond = (body: unknown,status=200) => new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json'}});
 async function api(url: string, options: RequestInit, label: string) {
-  const response=await fetch(url,{...options,signal:AbortSignal.timeout(45000)});
+  let response: Response;
+  try { response=await fetch(url,{...options,signal:AbortSignal.timeout(45000)}); }
+  catch { throw new Error(`${label}: 通信または認証設定を確認してください`); }
   const body=await response.json();
   if(!response.ok||body?.error) throw new Error(`${label}: HTTP ${response.status}。権限・期限・利用上限を確認してください`);
   return body;
@@ -48,6 +50,25 @@ async function generate(s: any,c: any) {
   const text=(response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim();
   if(!text||[...text].length>s.max_chars||/```|@|\S+さん/.test(text)) throw new Error('返信形式を確認してください');
   return text;
+}
+async function checkConnections() {
+  const s=await settings();
+  const result:any={openai:{configured:Boolean(Deno.env.get('OPENAI_API_KEY')),ok:false,model:Deno.env.get('OPENAI_REPLY_MODEL')||'gpt-6-astra'},threads:{configured:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')),ok:false}};
+  if(result.openai.configured) {
+    try { result.openai.sample=await generate({...s,use_history:false},{comment_text:'今日の服、すごく似合ってる！',post_text:'今日のお気に入りコーデ。',username:'connection-test'});result.openai.ok=true; }
+    catch(e){result.openai.error=e instanceof Error?e.message:'AI接続に失敗しました';}
+  }
+  if(result.threads.configured) {
+    try {
+      const me=await checkThreadsOwner();
+      const posts=await meta('me/threads',{fields:'id,text,is_reply',limit:'5'});
+      const post=(posts.data||[]).find((p:any)=>!p.is_reply);
+      if(post) await meta(`${post.id}/conversation`,{fields:'id,text,username,timestamp',limit:'1'});
+      result.threads.ok=true;result.threads.username=me.username;
+    } catch(e){result.threads.error=e instanceof Error?e.message:'Threads接続に失敗しました';}
+  }
+  result.ready=result.openai.ok&&result.threads.ok;
+  return result;
 }
 // One page per invocation; persist cursors so large accounts do not starve older posts.
 async function scan(s: any,me: any) {
@@ -133,7 +154,8 @@ Deno.serve(async request=>{
     const secret=Deno.env.get('HANAKO_REPLY_CRON_SECRET') || Deno.env.get('HANAKO_CRON_SECRET');
     const isCron=Boolean(secret)&&request.headers.get('x-cron-secret')===secret;
     if(!isCron) await authenticate(request);
-    if(isCron&&body.action!=='run') return respond({error:'許可されていません'},403);
+    if(isCron&&!['run','check'].includes(body.action)) return respond({error:'許可されていません'},403);
+    if(body.action==='check') return respond(await checkConnections());
     if(['run','publish','retry'].includes(body.action)) return respond(await run(body.action,body));
     if(body.action==='load') return respond({settings:await settings(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),

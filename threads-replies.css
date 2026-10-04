@@ -8,6 +8,7 @@
 .reply-choices{display:flex;flex-wrap:wrap;gap:12px}
 .reply-choices label{display:flex;flex-direction:row;align-items:center;padding:10px 13px;border:1px solid #eedce4;border-radius:12px;background:#fff}
 .reply-help,.reply-card small{color:#786670;font-size:.88rem;line-height:1.7}
+#replyCheckResult{white-space:pre-wrap}
 .reply-card{border:1px solid #eedce4;border-radius:16px;padding:16px;margin:12px 0;background:#fff}
 .reply-card strong,.reply-card small{display:block}.reply-card p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
 .reply-card button{margin:5px 8px 5px 0}.reply-body{background:#fff3f7;padding:12px;border-radius:10px}.reply-error{color:#963345}
