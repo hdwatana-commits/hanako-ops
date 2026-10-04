@@ -14,6 +14,17 @@ test('Cron秘密値では設定変更できない',async()=>{
   globalThis.fetch=async()=>{throw new Error('Unexpected network');};
   assert.equal((await invoke({action:'save'},{'x-cron-secret':'cron'})).status,403);
 });
+
+test('接続診断は通信例外の認証情報を返さない',async()=>{
+  globalThis.fetch=async url=>{
+    if(String(url).includes('hanako_reply_settings'))return response([{use_history:false,tones:['cute'],max_chars:180}]);
+    throw new Error('Invalid header Bearer private-key-must-not-leak');
+  };
+  const result=await invoke({action:'check'},{'x-cron-secret':'cron'});
+  assert.equal(result.status,200);
+  const body=await result.json();assert.equal(body.ready,false);
+  assert.doesNotMatch(JSON.stringify(body),/private-key-must-not-leak/);
+});
 test('投稿の通信結果が不明ならuncertainとなり、再送しない',async()=>{
   let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],adapt_tone:true,custom_prompt:'',max_chars:180,use_history:true,started_at:'2026-01-01T00:00:00Z',scan_posts:[],scan_after:null};
   let c={comment_id:'comment1',username:'guest',comment_text:'かわいい',post_text:'今日の服',status:'pending'};
