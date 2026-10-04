@@ -130,7 +130,7 @@ Deno.serve(async request=>{
   if(request.method!=='POST') return respond({error:'POSTのみ利用できます'},405);
   try {
     const body=await request.json();
-    const secret=Deno.env.get('HANAKO_REPLY_CRON_SECRET');
+    const secret=Deno.env.get('HANAKO_REPLY_CRON_SECRET') || Deno.env.get('HANAKO_CRON_SECRET');
     const isCron=Boolean(secret)&&request.headers.get('x-cron-secret')===secret;
     if(!isCron) await authenticate(request);
     if(isCron&&body.action!=='run') return respond({error:'許可されていません'},403);

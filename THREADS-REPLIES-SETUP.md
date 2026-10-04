@@ -1,6 +1,6 @@
 # Threads返信管理の追加
 
-公開中のHanakoOPSのコードをもとに、既存のクラウド認証を使う機能を追加しました。公開サイト・Supabaseへはまだ反映していません。
+HanakoOPS v326として公開済みです。Supabaseに返信用テーブル・RPC・Edge Function・1分ごとのCronを反映しました。初期状態は停止・下書きモードです。現在のプロジェクトにはThreadsユーザートークンとユーザーIDが未登録のため、実際の取得・返信にはThreads APIの接続が必要です。
 
 ## 変更ファイル
 
@@ -13,12 +13,12 @@
 ## 導入
 
 1. Supabase SQL Editorで `supabase-threads-replies.sql` のテーブル・関数部分を実行します。末尾のCron例は初期状態ではコメントアウトされています。
-2. 既存のSecrets `SUPABASE_URL`、`SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`HANAKO_OWNER_USER_ID`、`THREADS_ACCESS_TOKEN`、`THREADS_USER_ID`、`OPENAI_API_KEY` を確認します。追加で `HANAKO_REPLY_CRON_SECRET` を十分長いランダムな値として設定します。モデル変更は `OPENAI_REPLY_MODEL` で設定可能です。
+2. 既存のSecrets `SUPABASE_URL`、`SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`HANAKO_OWNER_USER_ID`、`THREADS_ACCESS_TOKEN`、`THREADS_USER_ID`、`OPENAI_API_KEY` を確認します。Cronには専用の `HANAKO_REPLY_CRON_SECRET` があれば使用し、なければ既存の `HANAKO_CRON_SECRET` を使用します。モデル変更は `OPENAI_REPLY_MODEL` で設定可能です。
 3. `threads-replies` Edge Functionをデプロイします。ローカルのSupabase CLIで `supabase functions deploy threads-replies`。親ディレクトリーの `reply-rules.mjs` を含めてバンドルします。JWT検証はONを維持してください。ブラウザーでは本人ログインのJWT、Cronでは既存の仕組みと同じレガシーanon JWT＋専用Cron秘密値を使います。
 4. Threadsユーザートークンには `threads_basic`、`threads_content_publish`、`threads_read_replies`、`threads_manage_replies` が必要です。`THREADS_USER_ID` と認証ユーザーのIDが一致しない場合は投稿しません。トークン更新はこの機能では自動化していません。
 5. 新規の画面ファイルと変更済み `index.html`、`sw.js` をGitHub Pagesへ反映します。既存のファイルと画像は維持してください。
 6. OPSで本人としてログインし「Threads返信」→「読み込む」。曜日、時間、待ち時間、テンション、追加指示を設定し、まず下書きモードで有効にして保存します。「今すぐ確認」でAPIと文章の動作を確認します。
-7. 24時間の常駐処理には、SQL末尾のVault/Cron例をプロジェクトに合わせて設定します。既存の `hanako-daily` のCronを変更する必要はありません。1分ごとに起動し、1回につきコメント1ページを収集、返信を最大1件処理します。
+7. 今回のプロジェクトでは `supabase-threads-replies-cron.sql` を適用済みです。既存のVault設定をサーバー内で参照し、1分ごとに起動します。有効な返信設定がある場合だけAPIを呼び、1回につきコメント1ページを収集、返信を最大1件処理します。既存の `hanako-daily` のCronは変更していません。
 
 ## 動作
 
@@ -35,4 +35,6 @@
 
 ## 検証
 
-`node --test tests/reply-rules.test.mjs`。API接続、SQLの適用、Cron起動、実際の投稿は未接続のため未検証です。デプロイ後に本人アカウントで確認してください。
+`node --experimental-strip-types --test tests/reply-rules.test.mjs tests/reply-api.test.mjs`。7件合格。SQL適用とEdge Functionのデプロイ、Cron登録を確認しました。Threadsコメント取得・AIの実生成・実投稿は、Threads認証設定を完了してから検証する必要があります。
+
+ブラウザーのSupabaseエディターへは `node build-reply-dashboard.mjs` で生成する `threads-replies-dashboard.ts` を1ファイルとしてデプロイできます。元のモジュール版と同じ処理です。
