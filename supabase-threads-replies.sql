@@ -22,7 +22,7 @@ create table if not exists public.hanako_reply_comments (
   comment_id text not null, post_id text not null, parent_id text,
   username text not null, comment_text text not null default '', post_text text not null default '',
   commented_at timestamptz not null, is_owner boolean not null default false,
-  status text not null check (status in ('history','pending','generating','draft','publishing','published','failed','uncertain')),
+  status text not null check (status in ('history','pending','generating','draft','publishing','published','failed','uncertain','skipped')),
   reply_text text not null default '', reply_id text, container_id text,
   generation_attempts integer not null default 0, next_attempt_at timestamptz,
   error text not null default '', created_at timestamptz not null default now(),

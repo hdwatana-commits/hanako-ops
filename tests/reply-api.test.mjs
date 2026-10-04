@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-let handler;
+let handler; let directReplies=null;
 let vault={}, vaultWrites=0, vaultReads=0, fetchMock;
 Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,set:fn=>{fetchMock=async(url,opts={})=>{
   if(String(url).includes('/rpc/hanako_gemini_key_')) {
@@ -9,6 +9,7 @@ Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,se
     if(String(url).endsWith('_read')){vaultReads++;return response(vault[body.profile]||null);}
     if(String(url).endsWith('_save')){vaultWrites++;vault[body.profile]=body.key_value;return response(true);}
   }
+  if(new URL(String(url)).pathname.endsWith('/replies'))return response(directReplies?directReplies(url,opts):{data:[]});
   return fn(url,opts);
 };}});
 const secrets={REPLY_AI_PROVIDER:'openai',SUPABASE_URL:'https://db.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',HANAKO_OWNER_USER_ID:'owner',HANAKO_REPLY_CRON_SECRET:'cron',THREADS_USER_ID:'threads-owner',THREADS_ACCESS_TOKEN:'threads-token',OPENAI_API_KEY:'sk-ai-key'};
@@ -266,4 +267,8 @@ test('Threadsの準備完了を確認してから一度だけ返信を公開す�
     throw new Error('Unexpected request '+url);
   };
   assert.equal((await invoke({action:'run'})).status,200);assert.equal(published,1);assert.equal(c.status,'published');assert.equal(c.reply_id,'posted-reply');
+  c={...c,status:'pending',container_id:null,reply_id:null};checked=false;published=0;let checks=0;directReplies=()=>({data:++checks===1?[]:[{id:'manual',is_reply_owned_by_me:true}]});
+  try {assert.equal((await invoke({action:'run'})).status,200);assert.equal(checks,2);assert.equal(published,0);assert.equal(c.status,'skipped');} finally {directReplies=null;}
+  c={...c,status:'pending'};directReplies=()=>({data:[{id:'manual',is_reply_owned_by_me:true}]});
+  try {const r=await (await invoke({action:'run'})).json();assert.equal(r.status,'skipped');assert.equal(c.status,'skipped');}finally{directReplies=null;}
 });

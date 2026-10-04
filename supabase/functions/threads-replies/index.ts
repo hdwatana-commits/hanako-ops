@@ -137,6 +137,7 @@ async function scan(s: any,me: any) {
       status:!isOwner&&Date.parse(c.timestamp)>=Date.parse(s.started_at)?'pending':'history'};
   });
   if(rows.length) await db('hanako_reply_comments?on_conflict=user_id,comment_id','POST',rows,'resolution=ignore-duplicates,return=representation');
+  await skipCollectedReplies(rows);
   const after=page.paging?.next?page.paging?.cursors?.after:null;
   if(!after) posts.shift();
   await updateSettings({scan_posts:posts,scan_comment_after:after,scan_after:next});
@@ -160,6 +161,7 @@ async function scanRecent(s: any,me: any) {
     const eligible=(page.data||[]).filter((c:any)=>c.id&&c.timestamp&&c.username&&Date.parse(c.timestamp)>=Date.parse(s.started_at));
     const rows=eligible.map((c:any)=>{const isOwner=Boolean(c.is_reply_owned_by_me)||c.username===me.username;return {user_id:owner(),comment_id:c.id,post_id:post.id,parent_id:c.replied_to?.id||null,username:c.username,comment_text:c.text||'',post_text:post.text||'',commented_at:c.timestamp,is_owner:isOwner,status:isOwner?'history':'pending'};});
     if(rows.length)await db('hanako_reply_comments?on_conflict=user_id,comment_id','POST',rows,'resolution=ignore-duplicates,return=representation');
+    await skipCollectedReplies(rows);
     checked++;
     const reachedHistory=(page.data||[]).some((c:any)=>c.timestamp&&Date.parse(c.timestamp)<Date.parse(s.started_at));
     return !reachedHistory&&page.paging?.next?page.paging?.cursors?.after:null;
@@ -174,7 +176,26 @@ async function scanRecent(s: any,me: any) {
   await updateSettings({live_scan:{posts,after:next,comment_after:after,checked,last_checked:new Date().toISOString()}});
   return checked;
 }
+async function skipCollectedReplies(rows:any[]) {
+  for(const id of new Set(rows.filter(r=>r.is_owner&&r.parent_id).map(r=>r.parent_id))) {
+    await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(String(id))}&status=in.(pending,failed,draft)&container_id=is.null&reply_id=is.null`,'PATCH',{status:'skipped',error:'本人が返信済みのためスキップしました',next_attempt_at:null});
+  }
+}
+async function skipIfReplied(c:any) {
+  let after:string|undefined;
+  do {
+    const page=await meta(`${c.comment_id}/replies`,{fields:'id,is_reply_owned_by_me,username',limit:'50',...(after?{after}:{})});
+    if((page.data||[]).some((r:any)=>r.is_reply_owned_by_me)) {
+      await updateComment(c.comment_id,{status:'skipped',error:'本人が返信済みのためスキップしました',next_attempt_at:null});
+      return true;
+    }
+    after=page.paging?.next?page.paging?.cursors?.after:undefined;
+    if(page.paging?.next&&!after) throw new Error('手動返信の確認を完了できませんでした');
+  } while(after);
+  return false;
+}
 async function publish(c: any) {
+  if(await skipIfReplied(c)) return;
   if(invalidReply(c.reply_text,500)) throw new Error('返信文が会う・電話・連絡先交換の禁止または形式のルールに反しています。再生成してください');
   // Write publishing before any external write. Never automatically retry an uncertain result.
   await updateComment(c.comment_id,{status:'publishing',error:''});
@@ -221,6 +242,10 @@ async function run(action: string,body: any) {
     const c=await db('rpc/hanako_reply_claim','POST',{owner_id:owner()});
     if(c) {
       try {
+        if(await skipIfReplied(c)) {
+          await updateSettings({last_run:new Date().toISOString(),last_error:''});
+          return {status:'skipped',checked};
+        }
         const text=await generate(s,c);
         await updateComment(c.comment_id,{status:'draft',reply_text:text,error:'',next_attempt_at:null});
         // Re-read after generation so OFF and changed hours take effect before posting.
