@@ -33,7 +33,7 @@ async function api(url: string, options: RequestInit, label: string) {
   catch { throw new Error(`${label}: 通信または認証設定を確認してください`); }
   const body=await response.json();
   if(label==='Gemini返信生成'&&response.status===429) throw new FreeQuotaError('Gemini無料枠の上限です。コメントを待機させて後で再試行します');
-  if(!response.ok||body?.error) throw new Error(`${label}: HTTP ${response.status}。権限・期限・利用上限を確認してください`);
+  if(!response.ok||(label!=='データ保存'&&body?.error)) throw new Error(`${label}: HTTP ${response.status}。権限・期限・利用上限を確認してください`);
   return body;
 }
 async function db(resource: string,method='GET',body?: unknown,prefer='return=representation') {
@@ -141,6 +141,39 @@ async function scan(s: any,me: any) {
   if(!after) posts.shift();
   await updateSettings({scan_posts:posts,scan_comment_after:after,scan_after:next});
 }
+// Check newest posts every minute. A separate cursor visits every older post,
+// stopping once replies precede started_at; history pagination cannot block this lane.
+async function scanRecent(s: any,me: any) {
+  const fields='id,text,username,timestamp,is_reply_owned_by_me,replied_to';
+  const first=await meta('me/threads',{fields:'id,text,is_reply',limit:'50'});
+  const newest=(first.data||[]).filter((p:any)=>!p.is_reply).slice(0,3);
+  const live=s.live_scan||{};
+  let posts=live.posts||[],next=live.after||null,after=live.comment_after||null;
+  if(!posts.length) {
+    const page=next?await meta('me/threads',{fields:'id,text,is_reply',limit:'50',after:next}):first;
+    posts=(page.data||[]).filter((p:any)=>!p.is_reply);
+    next=page.paging?.next?page.paging?.cursors?.after:null;after=null;
+  }
+  let checked=0;
+  async function ingest(post:any,cursor?:string|null) {
+    const page=await meta(`${post.id}/conversation`,{fields,limit:'50',reverse:'true',...(cursor?{after:cursor}:{})});
+    const eligible=(page.data||[]).filter((c:any)=>c.id&&c.timestamp&&c.username&&Date.parse(c.timestamp)>=Date.parse(s.started_at));
+    const rows=eligible.map((c:any)=>{const isOwner=Boolean(c.is_reply_owned_by_me)||c.username===me.username;return {user_id:owner(),comment_id:c.id,post_id:post.id,parent_id:c.replied_to?.id||null,username:c.username,comment_text:c.text||'',post_text:post.text||'',commented_at:c.timestamp,is_owner:isOwner,status:isOwner?'history':'pending'};});
+    if(rows.length)await db('hanako_reply_comments?on_conflict=user_id,comment_id','POST',rows,'resolution=ignore-duplicates,return=representation');
+    checked++;
+    const reachedHistory=(page.data||[]).some((c:any)=>c.timestamp&&Date.parse(c.timestamp)<Date.parse(s.started_at));
+    return !reachedHistory&&page.paging?.next?page.paging?.cursors?.after:null;
+  }
+  const heads=new Map<string,any>();
+  for(const post of newest)heads.set(post.id,await ingest(post));
+  if(posts.length) {
+    const post=posts[0];
+    after=!after&&heads.has(post.id)?heads.get(post.id):await ingest(post,after);
+    if(!after)posts.shift();
+  }
+  await updateSettings({live_scan:{posts,after:next,comment_after:after,checked,last_checked:new Date().toISOString()}});
+  return checked;
+}
 async function publish(c: any) {
   if(invalidReply(c.reply_text,500)) throw new Error('返信文が会う・電話・連絡先交換の禁止または形式のルールに反しています。再生成してください');
   // Write publishing before any external write. Never automatically retry an uncertain result.
@@ -169,35 +202,41 @@ async function run(action: string,body: any) {
     if(action==='retry') {
       const rows=await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(String(body.commentId))}`);
       if(!rows[0]||!['failed','generating'].includes(rows[0].status)) throw new Error('再生成できる返信がありません');
-      await updateComment(rows[0].comment_id,{status:'pending',error:''}); return {status:'pending'};
+      await updateComment(rows[0].comment_id,{status:'pending',error:'',generation_attempts:0,next_attempt_at:null}); return {status:'pending'};
     }
     if(!s.enabled) return {status:'off'};
     if(s.ai_retry_at&&new Date(s.ai_retry_at).getTime()>Date.now())return {status:'quota_wait',retry_at:s.ai_retry_at};
     const me=await checkThreadsOwner();
-    await scan(s,me);
+    const checked=await scanRecent(s,me);
     if(!inWindow(s)) {await updateSettings({last_run:new Date().toISOString(),last_error:''}); return {status:'outside_window'};}
     const c=await db('rpc/hanako_reply_claim','POST',{owner_id:owner()});
     if(c) {
       try {
         const text=await generate(s,c);
-        await updateComment(c.comment_id,{status:'draft',reply_text:text,error:''});
+        await updateComment(c.comment_id,{status:'draft',reply_text:text,error:'',next_attempt_at:null});
         // Re-read after generation so OFF and changed hours take effect before posting.
         const fresh=await settings();
         if(fresh.enabled&&fresh.mode==='auto'&&inWindow(fresh)&&(fresh.ai_connection||'default')===(s.ai_connection||'default')) await publish({...c,reply_text:text});
       } catch(e) {
         if(e instanceof FreeQuotaError) {
-          await updateComment(c.comment_id,{status:'pending',error:e.message});
+          await updateComment(c.comment_id,{status:'pending',error:e.message,generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});
           const retry_at=new Date(Date.now()+3600000).toISOString();
           await updateSettings({ai_retry_at:retry_at,last_error:e.message,last_run:new Date().toISOString()});
           return {status:'quota_wait',retry_at};
         }
         const latest=await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.comment_id)}`);
-        if(latest[0]?.status==='generating') await updateComment(c.comment_id,{status:'failed',error:e instanceof Error?e.message:'生成失敗'});
+        if(latest[0]?.status==='generating') {
+          const retry=(c.generation_attempts||1)<3;
+          await updateComment(c.comment_id,{status:'failed',error:(e instanceof Error?e.message:'生成失敗')+(retry?'。5分後に再生成します':'。再試行の上限です。設定を確認してください'),next_attempt_at:retry?new Date(Date.now()+300000).toISOString():null});
+        }
         throw e;
       }
     }
-    await updateSettings({last_run:new Date().toISOString(),last_error:'',ai_retry_at:null});
-    return {status:c?'processed':'idle'};
+    // Historical fan statistics are lower priority and keep their original cursors.
+    let historyError='';
+    if(!c&&new Date().getUTCMinutes()%5===0)try{await scan(s,me);}catch(e){historyError=e instanceof Error?e.message:'履歴の収集に失敗しました';}
+    await updateSettings({last_run:new Date().toISOString(),last_error:historyError,ai_retry_at:null});
+    return {status:c?'processed':'idle',checked};
   } catch(e) {await updateSettings({last_error:e instanceof Error?e.message:'処理失敗'}).catch(()=>{});throw e;}
   finally {await updateSettings({lease_until:null});}
 }

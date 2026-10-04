@@ -55,6 +55,7 @@ async function load(){
   $('#replyConnectionHelp').textContent='下のAPIキー登録欄で登録し、接続先を選んで「クラウドに保存」で変更します。上限による待機中は変更できません。自動切り替えはありません。';
   $('#replyKeyFields').disabled=false;renderKeyState();
   status(`${data.settings.enabled?'有効':'停止中'} · ${data.settings.mode==='auto'?'自動投稿':'下書きのみ'} · ${data.connected?'API設定あり（接続の動作確認は今すぐ確認から）':'Threads・AIのサーバー設定が必要です'}${data.settings.last_error?' · '+data.settings.last_error:''}`);
+  if(data.settings.live_scan?.last_checked)status($('#replyStatus').textContent+' · 使用中：'+({default:'接続1',secondary:'接続2',third:'接続3'})[data.settings.ai_connection||'default']+' · 最新コメント確認 '+new Date(data.settings.live_scan.last_checked).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo'}));
   renderQueue();renderFans();
 }
 function card(c){const article=document.createElement('article');article.className='reply-card';
@@ -62,6 +63,7 @@ function card(c){const article=document.createElement('article');article.classNa
   if(c.post_text) {const details=document.createElement('details');details.append(textNode('summary','元の投稿'),textNode('p',c.post_text));article.append(details);}
   if(c.reply_text){article.append(textNode('p',c.reply_text,'reply-body'));const copy=textNode('button','返信本文をコピー');copy.onclick=()=>task(async()=>{await navigator.clipboard.writeText(c.reply_text);status('返信本文をコピーしました。');});article.append(copy);}
   if(c.error)article.append(textNode('p',c.error,'reply-error'));
+  if(c.status==='failed'&&c.next_attempt_at)article.append(textNode('small','次の自動再生成：'+new Date(c.next_attempt_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo'})));
   if(c.status==='draft'){const publish=textNode('button','この下書きを投稿');publish.onclick=()=>task(async()=>{await call('publish',{commentId:c.comment_id});await load();});article.append(publish);}
   if(['failed','generating'].includes(c.status)){const retry=textNode('button','再生成の待機に戻す');retry.onclick=()=>task(async()=>{const result=await call('retry',{commentId:c.comment_id});await load();if(result.status==='busy')status('処理中です。数分後に再実行してください。');});article.append(retry);}
   const history=textNode('button','この人の履歴');history.onclick=()=>task(()=>showHistory(c.username));article.append(history);return article;

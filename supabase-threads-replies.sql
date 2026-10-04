@@ -14,6 +14,7 @@ create table if not exists public.hanako_reply_settings (
   use_history boolean not null default true,
   started_at timestamptz not null default now(),
   scan_after text, scan_posts jsonb not null default '[]', scan_comment_after text,
+  live_scan jsonb not null default '{}',
   lease_until timestamptz, last_run timestamptz, last_error text not null default '', ai_retry_at timestamptz
 );
 create table if not exists public.hanako_reply_comments (
@@ -23,6 +24,7 @@ create table if not exists public.hanako_reply_comments (
   commented_at timestamptz not null, is_owner boolean not null default false,
   status text not null check (status in ('history','pending','generating','draft','publishing','published','failed','uncertain')),
   reply_text text not null default '', reply_id text, container_id text,
+  generation_attempts integer not null default 0, next_attempt_at timestamptz,
   error text not null default '', created_at timestamptz not null default now(),
   primary key (user_id, comment_id)
 );
@@ -47,16 +49,19 @@ begin
   return found;
 end $$;
 create or replace function public.hanako_reply_claim(owner_id uuid)
-returns jsonb language plpgsql security definer set search_path=public as $$
-declare candidate hanako_reply_comments%rowtype; settings hanako_reply_settings%rowtype;
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare candidate public.hanako_reply_comments%rowtype; settings public.hanako_reply_settings%rowtype;
 begin
-  if auth.role() <> 'service_role' then raise exception 'service role required'; end if;
-  select * into settings from hanako_reply_settings where user_id=owner_id;
-  select * into candidate from hanako_reply_comments
-    where user_id=owner_id and status='pending' and commented_at<=now()-make_interval(mins=>settings.delay_minutes)
+  if auth.role() is distinct from 'service_role' then raise exception 'service role required'; end if;
+  select * into settings from public.hanako_reply_settings where user_id=owner_id;
+  select * into candidate from public.hanako_reply_comments
+    where user_id=owner_id and not is_owner and container_id is null and reply_id is null
+    and (status='pending' or (status='failed' and generation_attempts<3 and next_attempt_at<=now()))
+    and commented_at<=now()-make_interval(mins=>settings.delay_minutes)
     order by commented_at for update skip locked limit 1;
   if not found then return null; end if;
-  update hanako_reply_comments set status='generating' where user_id=owner_id and comment_id=candidate.comment_id;
+  update public.hanako_reply_comments set status='generating',generation_attempts=generation_attempts+1,next_attempt_at=null,error=''
+    where user_id=owner_id and comment_id=candidate.comment_id returning * into candidate;
   return to_jsonb(candidate);
 end $$;
 create or replace function public.hanako_reply_fans(owner_id uuid)

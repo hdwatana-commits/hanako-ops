@@ -200,3 +200,49 @@ test('Vaultのキーを生成に使い、画面・診断に返さない',async()
     const checked=await (await invoke({action:'check'})).json();assert.equal(checked.ready,true);assert.ok(!JSON.stringify(checked).includes(vault.secondary));
   } finally {vault={};secrets.REPLY_AI_PROVIDER='openai';}
 });
+
+
+test('大量の履歴を巡回中でも最新投稿を先に確認し、続きのページも保持する',async()=>{
+  let s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],started_at:'2026-10-04T00:00:00Z',scan_posts:[{id:'history-post'}],scan_comment_after:'old-cursor'};
+  const conversations=[];
+  globalThis.fetch=async(url,opts={})=>{
+    url=String(url);const body=typeof opts.body==='string'?JSON.parse(opts.body):{};
+    if(url.includes('auth/v1/user'))return response({id:'owner'});
+    if(url.includes('rpc/hanako_reply_lock'))return response(true);
+    if(url.includes('rpc/hanako_reply_claim'))return response(null);
+    if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...body};return response([s]);}
+    if(url.includes('hanako_reply_comments')){assert.match(opts.headers.Prefer,/ignore-duplicates/);assert.ok(body.every(c=>c.commented_at>='2026-10-04T00:00:00Z'));return response([]);}
+    if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+    if(url.includes('/me/threads?'))return response({data:[{id:'new-post',text:'今日の服'}]});
+    if(url.includes('/conversation?')){
+      const u=new URL(url);conversations.push(u);
+      if(u.pathname.includes('new-post')){assert.equal(u.searchParams.get('reverse'),'true');return response({data:[{id:'new-comment',timestamp:'2026-10-04T10:00:00Z',username:'guest'}],paging:{next:'next',cursors:{after:'live-next'}}});}
+      return response({data:[]});
+    }
+    throw new Error('Unexpected request');
+  };
+  assert.equal((await (await invoke({action:'run'})).json()).status,'idle');
+  assert.ok(conversations[0].pathname.includes('new-post'));assert.equal(s.live_scan.comment_after,'live-next');
+  assert.equal((await invoke({action:'run'})).status,200);
+  assert.ok(conversations.some(u=>u.searchParams.get('after')==='live-next'));
+});
+
+test('生成失敗は回数内だけ5分後の再試行を設定し、投稿しない',async()=>{
+  let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],use_history:false,tones:['cute'],max_chars:180,scan_posts:[]};
+  let c={comment_id:'retry-test',username:'guest',status:'generating',generation_attempts:1};
+  globalThis.fetch=async(url,opts={})=>{
+    url=String(url);const body=typeof opts.body==='string'?JSON.parse(opts.body):{};
+    if(url.includes('auth/v1/user'))return response({id:'owner'});
+    if(url.includes('rpc/hanako_reply_lock'))return response(true);
+    if(url.includes('rpc/hanako_reply_claim'))return response(c);
+    if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...body};return response([s]);}
+    if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...body};return response([c]);}
+    if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+    if(url.includes('/me/threads?'))return response({data:[]});
+    if(url.includes('api.openai.com'))return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'会えたら嬉しい'}]}]});
+    throw new Error('Unexpected request');
+  };
+  assert.equal((await invoke({action:'run'})).status,400);assert.equal(c.status,'failed');assert.ok(Date.parse(c.next_attempt_at)>Date.now());
+  c={...c,status:'generating',generation_attempts:3};
+  const last=await invoke({action:'run'});assert.equal(last.status,400);assert.match((await last.json()).error,/返信形式/);assert.equal(c.next_attempt_at,null);assert.match(c.error,/上限/);
+});
