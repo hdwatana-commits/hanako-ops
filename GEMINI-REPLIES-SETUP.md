@@ -6,6 +6,6 @@ Supabase Edge FunctionはGEMINI_API_KEYを参照します。Google AI Studioに�
 
 OpenAIへの自動フォールバックはありません。Geminiの429はコメントをpendingに戻し、ai_retry_atで1時間の再試行待機を設定します。日次上限が残っている間は、後の再試行でも待機を継続します。生成を完了できない／形式が不正な返信はfailedとして確認できます。投稿結果が不明な返信はuncertainのままで自動再送しません。
 
-既存DBにはsupabase-gemini-replies.sqlを適用済み。新規導入時はsupabase-threads-replies.sqlに待機列を含みます。返信設定は停止／下書きのままです。Geminiキー保存後の実生成テストとThreads本人認証は未完了です。
+既存DBにはsupabase-gemini-replies.sqlを適用済み。新規導入時はsupabase-threads-replies.sqlに待機列を含みます。返信設定は停止／下書きのままです。GEMINI_API_KEYを本人が保存し、2026-10-04に実生成テスト成功（API HTTP 200 / Gemini ok=true）。仮名・敬称を除外する修正後の生成も成功しました。Threads本人認証は未完了です。
 
 無料APIではコメント・会話履歴がGoogleの製品改善に利用される場合があります。公式条件: https://ai.google.dev/gemini-api/terms
