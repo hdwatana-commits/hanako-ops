@@ -81,8 +81,11 @@ async function checkConnections() {
     try { result.openai.sample=await generate({...s,use_history:false},{comment_text:'今日の服、すごく似合ってる！',post_text:'今日のお気に入りコーデ。',username:'connection-test'});result.openai.ok=true; }
     catch(e){result.openai.error=e instanceof Error?e.message:'AI接続に失敗しました';}
   }
-  if(result.threads.configured) {
+  if(Deno.env.get('THREADS_ACCESS_TOKEN')) {
     try {
+      const identity=await meta('me',{fields:'id,username'});
+      result.threads.id=String(identity.id);result.threads.username=identity.username;
+      if(!Deno.env.get('THREADS_USER_ID')) throw new Error('THREADS_USER_IDに表示された本人アカウントIDを設定してください');
       const me=await checkThreadsOwner();
       const posts=await meta('me/threads',{fields:'id,text,is_reply',limit:'5'});
       const post=(posts.data||[]).find((p:any)=>!p.is_reply);
