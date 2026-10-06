@@ -278,7 +278,7 @@ test('Threadsの準備完了を確認してから一度だけ返信を公開す�
 });
 
 test('生成には現在の投稿、距離感と公開済み会話だけを渡し、失敗候補を思い出にしない',async()=>{
-  const s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:true};
+  const s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:true,custom_prompt:'自然に返す\n[HANA_PRIVATE_PROFILE]private-profile-sentinel[/HANA_PRIVATE_PROFILE]'};
   const c={post_id:'test-post',comment_id:'current',username:'guest',comment_text:'この服すき',post_text:'今日のピンクの服',status:'generating'};
   const history=[{post_id:'test-post',comment_id:'old1',status:'published',comment_text:'ピンク好き',reply_text:'私も好き',post_text:'服',commented_at:'2026-10-01T00:00:00Z'},{post_id:'test-post',comment_id:'old2',status:'failed',comment_text:'赤もいいね',reply_text:'未公開の嘘の思い出'}];let input;
   globalThis.fetch=async(url,opts={})=>{
@@ -293,7 +293,7 @@ test('生成には現在の投稿、距離感と公開済み会話だけを渡�
     if(url.includes('hanako_reply_comments'))return response([c]);
     if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
     if(url.includes('/me/threads?'))return response({data:[{id:'test-post',text:'今日の服'}]});
-    if(url.includes('api.openai.com')){const b=JSON.parse(opts.body);input=JSON.parse(b.input);assert.match(b.instructions,/中立的な質問には中立的に/);return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'ピンク好き、覚えてたよ🤭'}]}]});}
+    if(url.includes('api.openai.com')){const b=JSON.parse(opts.body);input=JSON.parse(b.input);assert.match(b.instructions,/中立的な質問には中立的に/);assert.match(b.instructions,/錦木千束と有馬かな/);assert.match(b.instructions,/つけ麺屋のラーメン/);assert.match(b.instructions,/幼稚園に入る前/);assert.doesNotMatch(b.instructions,/private-profile-sentinel/);return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'ピンク好き、覚えてたよ🤭'}]}]});}
     throw new Error('Unexpected request '+url);
   };
   assert.equal((await invoke({action:'run'})).status,200);

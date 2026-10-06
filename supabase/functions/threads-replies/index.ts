@@ -1,3 +1,4 @@
+import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
 import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting } from '../../../reply-rules.mjs';
 import { HANA_PROMPT, RELATIONSHIP_PROMPT, DESTINATION_PROMPT } from './prompt.ts';
 const env = (name: string) => { const value=Deno.env.get(name); if(!value) throw new Error(`サーバー設定 ${name} が必要です`); return value; };
@@ -80,7 +81,7 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   const relationship=relationshipLevel(stats);
   const conversation=history.reverse().map((h:any)=>({post:h.post_text,comment:h.comment_text,at:h.commented_at,replies:[...(h.status==='published'&&h.reply_text?[h.reply_text]:[]),...manual.filter((r:any)=>r.parent_id===h.comment_id).map((r:any)=>r.comment_text)]}));
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
-  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。自然な日本語を確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${s.custom_prompt}`;
+  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。自然な日本語を確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${replyCustomPrompt(s.custom_prompt)}\n${HANA_PROFILE}`;
   const input=JSON.stringify({reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation});
   if(aiProvider()==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
@@ -349,7 +350,7 @@ Deno.serve(async request=>{
       return respond({saved:true,connections:registered});
     }
     if(body.action==='key_status') return respond({connections:await connections()});
-    if(body.action==='load') {const current=await settings();return respond({settings:current,queue_count:await queueCount(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
+    if(body.action==='load') {const current=await settings();return respond({settings:current,profile:HANA_PROFILE,queue_count:await queueCount(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),
       connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&await aiConfigured(current))});}
     if(body.action==='save') { const value:any=validateSettings(body.settings); const current=await settings();
