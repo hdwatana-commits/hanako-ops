@@ -378,7 +378,7 @@ test('読み込みは最新100件とは別に順番待ち総件数を返す',asy
 });
 
 
-test('生成指示にInstagramとnoteへの案内を含め、プロフィール案内文を許可する',async()=>{
+test('生成指示はnoteだけの購入案内と軽い甘えを含み、プロフィール導線を許可する',async()=>{
  secrets.REPLY_AI_PROVIDER='gemini';secrets.GEMINI_API_KEY='test-gemini';
  globalThis.fetch=async(url,opts={})=>{
   url=String(url);
@@ -388,8 +388,8 @@ test('生成指示にInstagramとnoteへの案内を含め、プロフィール�
   if(url.includes('/me/threads?'))return response({data:[]});
   if(url.includes('generativelanguage.googleapis.com')){
    const instructions=JSON.parse(opts.body).systemInstruction.parts[0].text;
-   assert.match(instructions,/写真やイラスト/);assert.match(instructions,/Instagramとnoteの両方/);assert.match(instructions,/インスタのプロフィールからnoteに行けるよ/);assert.match(instructions,/感想だけ/);assert.match(instructions,/同じ言語/);assert.match(instructions,/買えば会える/);
-   return response({candidates:[{finishReason:'STOP',content:{parts:[{text:'インスタとnoteものぞいてみてね♡ noteはインスタのプロフィールから行けるよ🤭'}]}}]});
+   assert.match(instructions,/写真やイラスト/);assert.match(instructions,/案内先はnoteだけ/);assert.match(instructions,/買って読んでくれたら嬉しい/);assert.match(instructions,/購入を断られたら/);assert.doesNotMatch(instructions,/Instagramとnoteの両方/);assert.match(instructions,/インスタのプロフィールからnoteに行けるよ/);assert.match(instructions,/感想だけ/);assert.match(instructions,/同じ言語/);assert.match(instructions,/買えば会える/);
+   return response({candidates:[{finishReason:'STOP',content:{parts:[{text:'noteの記事、買って読んでくれたら嬉しいな♡ noteはインスタのプロフィールから行けるよ🤭'}]}}]});
   }
   throw new Error('Unexpected request');
  };
