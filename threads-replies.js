@@ -2,7 +2,7 @@ import { TONES } from './reply-rules.mjs?v=3';
 const section=document.createElement('section');
 section.id='threads-replies'; section.className='view';
 section.innerHTML=`
-<div class="panel reply-hero"><p class="eyebrow">HANA · CONVERSATION STUDIO</p><h3>Threads 返信管理</h3><p>ひとつひとつの会話を、ハナらしく。</p><p id="replyStatus" role="status" aria-live="polite">クラウド同期にログインし、「読み込む」で設定を確認してください。</p><div class="button-row"><button id="replyLoad">読み込む</button><button id="replyCheck" disabled>接続とAIをテスト</button><button id="replyRun" disabled>今すぐ確認</button></div><p id="replyCheckResult" class="reply-help"></p></div>
+<div class="panel reply-hero"><p class="eyebrow">HANA · CONVERSATION STUDIO</p><h3>Threads 返信管理</h3><p>ひとつひとつの会話を、ハナらしく。</p><p id="replyStatus" role="status" aria-live="polite">クラウド同期にログインし、「読み込む」で設定を確認してください。</p><p id="replyQueueCount" class="reply-help" role="status" aria-live="polite">順番待ち：—（「読み込む」で更新）</p><div class="button-row"><button id="replyLoad">読み込む</button><button id="replyCheck" disabled>接続とAIをテスト</button><button id="replyRun" disabled>今すぐ確認</button></div><p id="replyCheckResult" class="reply-help"></p></div>
 <form id="replySettings" class="panel reply-settings"><div class="panel-heading"><h3>返信の設定</h3><button class="primary" type="submit" disabled>クラウドに保存</button></div>
 <fieldset disabled id="replyFields"><div class="reply-grid">
 <label class="reply-check"><input type="checkbox" name="enabled"> 自動処理を有効にする</label>
@@ -44,6 +44,7 @@ async function call(action,body={}) {
 async function task(fn){if(busy)return;busy=true;section.setAttribute('aria-busy','true');try{await fn();}catch(e){status(e.message);}finally{busy=false;section.removeAttribute('aria-busy');}}
 async function load(){
   const data=await call('load');loaded=data;keyConnections=data.connections;
+  $('#replyQueueCount').textContent='順番待ち：'+(Number.isInteger(data.queue_count)?data.queue_count+'件':'取得できませんでした')+'（待機中＋自動再試行待ち。直近2件のポストが対象）';
   const connectionSelect=form.elements.namedItem('ai_connection');
   for(const option of connectionSelect.options){const available=data.connections?.find(c=>c.id===option.value)?.configured;option.disabled=!available&&option.value!==(data.settings.ai_connection||'default');option.textContent=({default:'接続1（現在のアカウント）',secondary:'接続2',third:'接続3'})[option.value]+(available?' · 登録済み':' · 未登録');}
   for(const [name,value] of Object.entries(data.settings)){

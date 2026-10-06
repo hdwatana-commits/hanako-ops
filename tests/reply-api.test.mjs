@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-let handler; let directReplies=null;
+let handler; let directReplies=null; let countResult=0;
 let vault={}, vaultWrites=0, vaultReads=0, fetchMock;
 Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,set:fn=>{fetchMock=async(url,opts={})=>{
+  if(opts.method==='HEAD'){assert.match(String(url),/post_id=in/);assert.match(String(url),/status.eq.pending/);assert.match(String(url),/generation_attempts.lt.3/);assert.equal(opts.headers.Prefer,'count=exact');return new Response(null,{headers:{'Content-Range':'*/'+countResult}});}
   if(String(url).includes('/rpc/hanako_gemini_key_')) {
     const body=JSON.parse(opts.body);assert.equal(body.owner_id,'owner');assert.equal(opts.headers.Authorization,'Bearer service');
     if(String(url).endsWith('_status'))return response(Object.entries(vault).map(([profile])=>({profile,configured:true})));
@@ -367,4 +368,11 @@ test('直近2件だけを巡回し、生成前と送信直前の対象変更を�
     assert.equal(generations,changeAt===0?0:1);
     assert.ok(scanned.every(p=>p.includes('/p1/')||p.includes('/p2/')));
   }
+});
+
+
+test('読み込みは最新100件とは別に順番待ち総件数を返す',async()=>{
+ countResult=145;
+ globalThis.fetch=async url=>{url=String(url);if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([{ai_connection:'default'}]);if(url.includes('/me/threads?'))return response({data:[{id:'p1'},{id:'p2'}]});if(url.includes('hanako_reply_comments')||url.includes('rpc/hanako_reply_fans'))return response([]);throw new Error('Unexpected request');};
+ try {const result=await (await invoke({action:'load'})).json();assert.equal(result.queue_count,145);assert.equal(result.replies.length,0);}finally{countResult=0;}
 });

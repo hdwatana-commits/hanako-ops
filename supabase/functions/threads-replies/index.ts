@@ -51,6 +51,16 @@ async function settings() {
 }
 async function updateSettings(value: unknown) { return db(`hanako_reply_settings?${filter()}`,'PATCH',value); }
 async function updateComment(id: string,value: unknown) { return db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(id)}`,'PATCH',value); }
+async function queueCount() {
+  if(!Deno.env.get('THREADS_ACCESS_TOKEN'))return 0;
+  const posts=await latestPosts();
+  if(!posts.length)return 0;
+  const query=`hanako_reply_comments?${filter()}&select=comment_id&is_owner=eq.false&container_id=is.null&reply_id=is.null&post_id=in.(${posts.map(p=>encodeURIComponent(p.id)).join(',')})&or=(status.eq.pending,and(status.eq.failed,generation_attempts.lt.3,next_attempt_at.not.is.null))`;
+  const result=await fetch(`${env('SUPABASE_URL')}/rest/v1/${query}`,{method:'HEAD',headers:{apikey:env('SUPABASE_SERVICE_ROLE_KEY'),Authorization:`Bearer ${env('SUPABASE_SERVICE_ROLE_KEY')}`,Prefer:'count=exact'},signal:AbortSignal.timeout(45000)});
+  const total=result.headers.get('content-range')?.split('/')[1];
+  if(!result.ok||!total||!/^\d+$/.test(total))throw new Error('順番待ち件数を取得できませんでした。もう一度読み込んでください');
+  return Number(total);
+}
 async function authenticate(request: Request) {
   const token=request.headers.get('authorization')||'';
   const user=await api(`${env('SUPABASE_URL')}/auth/v1/user`,{headers:{apikey:env('SUPABASE_ANON_KEY'),Authorization:token}},'ログイン');
@@ -339,7 +349,7 @@ Deno.serve(async request=>{
       return respond({saved:true,connections:registered});
     }
     if(body.action==='key_status') return respond({connections:await connections()});
-    if(body.action==='load') {const current=await settings();return respond({settings:current,connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
+    if(body.action==='load') {const current=await settings();return respond({settings:current,queue_count:await queueCount(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),
       connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&await aiConfigured(current))});}
     if(body.action==='save') { const value:any=validateSettings(body.settings); const current=await settings();
