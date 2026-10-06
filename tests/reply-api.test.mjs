@@ -297,3 +297,43 @@ test('生成には現在の投稿、距離感と公開済み会話だけを渡�
   assert.equal(input.current_post,'今日のピンクの服');assert.equal(input.relationship.name,'甘えたくなる存在');
   assert.doesNotMatch(JSON.stringify(input),/未公開の嘘/);assert.match(JSON.stringify(input),/赤も可愛いよね/);
 });
+
+test('NG対象者とワードは生成前・生成後・コンテナ準備後でも投稿を止める',async()=>{
+  for(const phase of ['initial-user','initial-word','after-generation','after-container']){
+    let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:false,ng_users:phase==='initial-user'?['guest']:[],ng_words:phase==='initial-word'?['禁止']:[]};
+    let c={comment_id:'blocked',username:'Guest',comment_text:'禁止の話題',status:'generating'};let generated=0,published=0;
+    globalThis.fetch=async(url,opts={})=>{
+      url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+      if(url.includes('auth/v1/user'))return response({id:'owner'});
+      if(url.includes('rpc/hanako_reply_lock'))return response(true);
+      if(url.includes('rpc/hanako_reply_claim'))return response(c);
+      if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...b};return response([s]);}
+      if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([c]);}
+      if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+      if(url.includes('/me/threads?'))return response({data:[]});
+      if(url.endsWith('/me/threads')){if(phase==='after-container')s.ng_words=['禁止'];return response({id:'new-container'});}
+      if(url.includes('/new-container?'))return response({status:'FINISHED'});
+      if(url.endsWith('/me/threads_publish')){published++;return response({id:'should-not-publish'});}
+      if(url.includes('api.openai.com')){generated++;if(phase==='after-generation')s.ng_users=['guest'];return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'ありがとう🤭'}]}]});}
+      throw new Error('Unexpected '+url);
+    };
+    assert.equal((await invoke({action:'run'})).status,200);assert.equal(c.status,'skipped');assert.equal(published,0);
+    if(phase.startsWith('initial'))assert.equal(generated,0);
+  }
+});
+
+test('時刻と矛盾したAIの挨拶を再生成し、時刻情報を渡す',async()=>{
+  const {replyClock}=await import('../reply-rules.mjs');let generations=0;
+  const bad=replyClock().period==='朝'?'こんばんは':'おはよう';
+  globalThis.fetch=async(url,opts={})=>{
+    url=String(url);
+    if(url.includes('hanako_reply_settings'))return response([{use_history:false,tones:['cute'],max_chars:180}]);
+    if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+    if(url.includes('/me/threads?'))return response({data:[]});
+    if(url.includes('hanako_reply_comments'))return response([]);
+    if(url.includes('api.openai.com')){const b=JSON.parse(opts.body);assert.equal(JSON.parse(b.input).reply_time_jst.period,replyClock().period);generations++;return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:generations===1?bad:'ありがとう、嬉しいな'}]}]});}
+    throw new Error('Unexpected '+url);
+  };
+  const result=await (await invoke({action:'check'},{'x-cron-secret':'cron'})).json();
+  assert.equal(result.openai.sample,'ありがとう、嬉しいな');assert.equal(generations,2);
+});

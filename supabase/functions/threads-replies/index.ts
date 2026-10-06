@@ -1,4 +1,4 @@
-import { inWindow, validateSettings, TONES, relationshipLevel } from '../../../reply-rules.mjs';
+import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting } from '../../../reply-rules.mjs';
 import { HANA_PROMPT, RELATIONSHIP_PROMPT } from './prompt.ts';
 const env = (name: string) => { const value=Deno.env.get(name); if(!value) throw new Error(`サーバー設定 ${name} が必要です`); return value; };
 const openaiKey = () => {
@@ -71,15 +71,15 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   const conversation=history.reverse().map((h:any)=>({post:h.post_text,comment:h.comment_text,at:h.commented_at,replies:[...(h.status==='published'&&h.reply_text?[h.reply_text]:[]),...manual.filter((r:any)=>r.parent_id===h.comment_id).map((r:any)=>r.comment_text)]}));
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
   const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。自然な日本語を確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${s.custom_prompt}`;
-  const input=JSON.stringify({current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation});
+  const input=JSON.stringify({reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation});
   if(aiProvider()==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
     const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':await geminiKey(s),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
     const candidate=response.candidates?.[0];
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
     const text=(candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim();
-    if(invalidReply(text,s.max_chars)) {
-      if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。誘いは「ここでお話しできるのが嬉しいな」とかわす。最大文字数の半分程度で簡潔に書く。'},c,1);
+    if(invalidReply(text,s.max_chars)||wrongGreeting(text)) {
+      if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。誘いは「ここでお話しできるのが嬉しいな」とかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、内容にだけ返す。'},c,1);
       throw new Error('返信形式を確認してください');
     }
     return text;
@@ -91,7 +91,8 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   })},'AI返信生成');
   if(response.status!=='completed') throw new Error('AIの生成が未完了です');
   const text=(response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim();
-  if(invalidReply(text,s.max_chars)) throw new Error('返信形式を確認してください');
+  if(wrongGreeting(text)&&!attempt)return generate({...s,custom_prompt:s.custom_prompt+'\n挨拶が現在時刻と矛盾したため破棄。時間帯の挨拶を一切付けず、コメントの内容にだけ返す。'},c,1);
+  if(invalidReply(text,s.max_chars)||wrongGreeting(text)) throw new Error('返信形式・時間帯の挨拶を確認してください');
   return text;
 }
 async function checkConnections() {
@@ -187,6 +188,12 @@ async function skipCollectedReplies(rows:any[]) {
     await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(String(id))}&status=in.(pending,failed,draft)&container_id=is.null&reply_id=is.null`,'PATCH',{status:'skipped',error:'本人が返信済みのためスキップしました',next_attempt_at:null});
   }
 }
+async function skipExcluded(c:any,s:any) {
+  const error=exclusionReason(s,c);
+  if(!error)return false;
+  await updateComment(c.comment_id,{status:'skipped',error,next_attempt_at:null});
+  return true;
+}
 async function skipIfReplied(c:any) {
   let after:string|undefined;
   do {
@@ -201,7 +208,9 @@ async function skipIfReplied(c:any) {
   return false;
 }
 async function publish(c: any) {
+  if(await skipExcluded(c,await settings())) return;
   if(await skipIfReplied(c)) return;
+  if(wrongGreeting(c.reply_text)) throw new Error('返信時刻と挨拶が合いません。再生成してください');
   if(invalidReply(c.reply_text,500)) throw new Error('返信文が会う・電話・連絡先交換の禁止または形式のルールに反しています。再生成してください');
   // Write publishing before any external write. Never automatically retry an uncertain result.
   await updateComment(c.comment_id,{status:'publishing',error:''});
@@ -218,6 +227,8 @@ async function publish(c: any) {
       if(attempt<5) await new Promise(resolve=>setTimeout(resolve,2000));
     }
     if(!ready) throw new Error('Threadsの返信準備が時間内に完了しませんでした。投稿状態を確認してください');
+    if(await skipExcluded(c,await settings())) return;
+    if(wrongGreeting(c.reply_text))throw new Error('返信時刻と挨拶が合いません。再生成してください');
     const result=await meta('me/threads_publish',{creation_id:container.id},'POST');
     if(!result.id) throw new Error('Threads投稿結果IDがありません');
     await updateComment(c.comment_id,{status:'published',reply_id:result.id,error:''});
@@ -248,6 +259,7 @@ async function run(action: string,body: any) {
     const c=await db('rpc/hanako_reply_claim','POST',{owner_id:owner()});
     if(c) {
       try {
+        if(await skipExcluded(c,await settings()))return {status:'skipped',checked};
         if(await skipIfReplied(c)) {
           await updateSettings({last_run:new Date().toISOString(),last_error:''});
           return {status:'skipped',checked};
@@ -318,7 +330,7 @@ Deno.serve(async request=>{
         if(!await aiConfigured({...current,...value})) throw new Error('選択したGemini接続のAPIキーを登録してください');
         if(current.ai_retry_at&&Date.parse(current.ai_retry_at)>Date.now()) throw new Error('利用上限による待機中は接続を切り替えられません。待機終了後に変更してください');
       }
-      await updateSettings(value); return respond({saved:true}); }
+      await updateSettings(value); if(value.ng_users!==undefined||value.ng_words!==undefined)await db('rpc/hanako_reply_apply_exclusions','POST',{owner_id:owner()}); return respond({saved:true}); }
     if(body.action==='history') {
       const offset=Math.max(0,Math.min(100000,Number(body.offset)||0));
       return respond({history:await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(String(body.username))}&order=commented_at.desc&limit=50&offset=${Math.floor(offset)}`)});

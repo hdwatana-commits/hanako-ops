@@ -1,4 +1,4 @@
-import { TONES } from './reply-rules.mjs?v=2';
+import { TONES } from './reply-rules.mjs?v=3';
 const section=document.createElement('section');
 section.id='threads-replies'; section.className='view';
 section.innerHTML=`
@@ -10,7 +10,7 @@ section.innerHTML=`
 <label>Geminiの接続先<select name="ai_connection"><option value="default">接続1（現在のアカウント）</option><option value="secondary">接続2</option><option value="third">接続3</option></select></label>
 <label>開始時間（日本時間）<input name="start_time" type="time" value="09:00" required></label>
 <label>終了時間（日本時間）<input name="end_time" type="time" value="23:00" required></label>
-<label>返信までの待ち時間（分）<input name="delay_minutes" type="number" min="0" max="1440" value="5" required></label>
+<p class="reply-help">返信待ち時間：コメントごとに5〜15分からランダムに決定。稼働時間外・混雑・API制限時はさらに遅れることがあります。</p><label>自動返信NG対象者<textarea name="ng_users" rows="4" placeholder="ユーザー名を1行ずつ（@付きでも可）"></textarea></label><label>自動返信NGワード<textarea name="ng_words" rows="4" placeholder="除外するワードを1行ずつ"></textarea></label><p class="reply-help">NG対象者はユーザー名の完全一致、NGワードはコメント本文の部分一致。大文字・小文字や全角・半角の違いを同一視します。各200件まで。登録後は「クラウドに保存」を押してください。</p>
 <label>返信の最大文字数<input name="max_chars" type="number" min="20" max="500" value="180" required></label></div>
 <p class="reply-help">同じ開始・終了時間は24時間。日付をまたぐ場合は開始曜日を基準にします。時間外のコメントは次の稼働時間まで待機します。</p>
 <p class="reply-help" id="replyConnectionHelp">接続先を選んで「クラウドに保存」で変更します。APIキーはSupabaseのSecretsに登録してください。上限到達時の自動切り替えはありません。</p>
@@ -21,7 +21,7 @@ section.innerHTML=`
 <label>ハナの返信カスタマイズ<textarea name="custom_prompt" rows="7" maxlength="8000" placeholder="例：絵文字は1個まで。つけ麺の話にはおすすめの味を聞く。"></textarea></label>
 <p class="reply-help">ハナの基本設定、同じ言語での返信、会う・電話の約束をしないルールは初期設定に含まれています。対象は設定を初めて読み込んだ時刻以降のコメント。過去のコメントは履歴として取り込みます。</p></fieldset></form>
 <form id="replyKeyForm" class="panel" novalidate><h3>Gemini APIキーの登録</h3><p class="reply-help">登録先を選び、Google AI Studioのキーを貼り付けて登録できます。保存には所有者のログインが必要です。</p><button id="replyKeyLogin" type="button">ログイン・同期設定を開く</button><p id="replyKeyMessage" class="reply-help" role="status" aria-live="polite"></p><fieldset id="replyKeyFields"><div class="reply-grid"><label>キーの登録先<select id="replyKeyProfile"><option value="default">接続1</option><option value="secondary">接続2</option><option value="third">接続3</option></select></label><label>Gemini APIキー<input id="replyApiKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" maxlength="100" placeholder="AIza… を貼り付け" required></label></div><p id="replyKeyState" class="reply-help">登録状態は読み込み後に表示します。</p><button id="replyKeySave" type="button" class="primary">キーを登録・更新</button><button id="replyKeyRefresh" type="button">登録状態を確認</button></fieldset><p class="reply-help">登録したキーはSupabase Vaultに暗号化して保存します。ブラウザーには保存せず、保存済みのキーは再表示しません。登録後は上の「Geminiの接続先」で選んで保存してください。</p><div class="button-row"><a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer">Google AI Studioでキーを確認</a><a href="https://supabase.com/dashboard/project/gjytyibgfeoephyykyin/functions/secrets" target="_blank" rel="noopener noreferrer">SupabaseのSecrets画面を開く</a><button id="replyCopySecretName" type="button">Secret名をコピー</button></div><p class="reply-help">Secrets画面で手動登録する場合は、選んだ接続のSecret名をNameに、キーをValueに貼り付けます。OPSからの登録先（Vault）は、このSecrets一覧とは別です。</p></form>
-<div class="reply-grid reply-panels"><section class="panel"><div class="panel-heading"><h3>返信の状況</h3><select id="replyFilter" aria-label="返信状況の絞り込み"><option value="all">すべて</option><option value="draft">下書き</option><option value="pending">待機中</option><option value="published">返信済み</option><option value="failed">生成失敗</option><option value="uncertain">結果確認が必要</option><option value="skipped">手動返信済み・スキップ</option></select></div><p class="reply-help">最新100件。本文はコピーできます。</p><div id="replyQueue"><p>読み込み後に表示します。</p></div></section>
+<div class="reply-grid reply-panels"><section class="panel"><div class="panel-heading"><h3>返信の状況</h3><select id="replyFilter" aria-label="返信状況の絞り込み"><option value="all">すべて</option><option value="draft">下書き</option><option value="pending">待機中</option><option value="published">返信済み</option><option value="failed">生成失敗</option><option value="uncertain">結果確認が必要</option><option value="skipped">対象外・スキップ</option></select></div><p class="reply-help">最新100件。本文はコピーできます。</p><div id="replyQueue"><p>読み込み後に表示します。</p></div></section>
 <section class="panel"><h3>距離感ランク・順位</h3><p class="reply-help">順位の得点＝コメント数＋交流日数×3。距離感ランクはコメント数・交流日数・返信した回数で判定。恋愛感情の判定ではありません。</p><label>ユーザー名で検索<input id="replySearch" type="search" placeholder="ユーザー名"></label><details class="reply-help"><summary>距離感ランクの目安</summary><p>はじめまして → 顔なじみ（3コメント・2日・2返答）→ 気になる存在（8コメント・3日・5返答）→ 甘えたくなる存在（20コメント・5日・12返答）→ 恋人みたいな距離（40コメント・10日・25返答）。各条件をすべて満たすと進みます。口調は相手の反応に合わせて控えめにも戻ります。</p></details><div id="replyFans"><p>読み込み後に表示します。</p></div></section></div>
 <section class="panel" id="replyHistoryPanel" hidden><div class="panel-heading"><h3 id="replyHistoryTitle">会話履歴</h3><button id="replyHistoryClose">閉じる</button></div><div id="replyHistory"></div><button id="replyMore" hidden>さらに50件表示</button></section>`;
 document.querySelector('#connections').after(section);
@@ -32,7 +32,7 @@ document.querySelector('.nav-tab[data-view="connections"]').after(nav);
 nav.addEventListener('click',()=>activateView('threads-replies'));
 const $=selector=>section.querySelector(selector);
 const form=$('#replySettings');let loaded=null, keyConnections=null, person='', offset=0, busy=false, keySaving=false;
-const labels={pending:'待機中',generating:'生成中',draft:'下書き',publishing:'公開結果を確認中',published:'返信済み',failed:'生成失敗',uncertain:'結果確認が必要',skipped:'手動返信済み・スキップ',history:'過去のコメント'};
+const labels={pending:'待機中',generating:'生成中',draft:'下書き',publishing:'公開結果を確認中',published:'返信済み',failed:'生成失敗',uncertain:'結果確認が必要',skipped:'対象外・スキップ',history:'過去のコメント'};
 function textNode(tag,value,className='') {const element=document.createElement(tag);element.textContent=value;element.className=className;return element;}
 function status(value){$('#replyStatus').textContent=value;}
 async function call(action,body={}) {
@@ -48,7 +48,7 @@ async function load(){
   for(const option of connectionSelect.options){const available=data.connections?.find(c=>c.id===option.value)?.configured;option.disabled=!available&&option.value!==(data.settings.ai_connection||'default');option.textContent=({default:'接続1（現在のアカウント）',secondary:'接続2',third:'接続3'})[option.value]+(available?' · 登録済み':' · 未登録');}
   for(const [name,value] of Object.entries(data.settings)){
     const fields=[...form.querySelectorAll(`[name="${name}"]`)];
-    fields.forEach(field=>{if(field.type==='checkbox')field.checked=Array.isArray(value)?value.map(String).includes(field.value):Boolean(value);else field.value=name.endsWith('_time')?String(value).slice(0,5):value;});
+    fields.forEach(field=>{if(field.type==='checkbox')field.checked=Array.isArray(value)?value.map(String).includes(field.value):Boolean(value);else field.value=Array.isArray(value)?value.join('\n'):name.endsWith('_time')?String(value).slice(0,5):value;});
   }
   $('#replyFields').disabled=false;form.querySelector('[type="submit"]').disabled=false;$('#replyRun').disabled=!data.connected;$('#replyCheck').disabled=false;
   if(!data.settings.ai_connection)connectionSelect.value='default';
@@ -63,6 +63,7 @@ function card(c){const article=document.createElement('article');article.classNa
   if(c.post_text) {const details=document.createElement('details');details.append(textNode('summary','元の投稿'),textNode('p',c.post_text));article.append(details);}
   if(c.reply_text){article.append(textNode('p',c.reply_text,'reply-body'));const copy=textNode('button','返信本文をコピー');copy.onclick=()=>task(async()=>{await navigator.clipboard.writeText(c.reply_text);status('返信本文をコピーしました。');});article.append(copy);}
   if(c.error)article.append(textNode('p',c.error,'reply-error'));
+  if(c.status==='pending'&&c.reply_due_at)article.append(textNode('small','返信可能になる時刻：'+new Date(c.reply_due_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})));
   if(c.status==='failed'&&c.next_attempt_at)article.append(textNode('small','次の自動再生成：'+new Date(c.next_attempt_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo'})));
   if(c.status==='draft'){const publish=textNode('button','この下書きを投稿');publish.onclick=()=>task(async()=>{await call('publish',{commentId:c.comment_id});await load();});article.append(publish);}
   if(['failed','generating'].includes(c.status)){const retry=textNode('button','再生成の待機に戻す');retry.onclick=()=>task(async()=>{const result=await call('retry',{commentId:c.comment_id});await load();if(result.status==='busy')status('処理中です。数分後に再実行してください。');});article.append(retry);}
@@ -74,7 +75,7 @@ async function showHistory(username,more=false){const result=await call('history
 $('#replyLoad').onclick=()=>task(load);
 $('#replyCheck').onclick=()=>task(async()=>{status('ThreadsとAIの接続を確認しています。');const result=await call('check');$('#replyCheckResult').textContent=[`AI（${result.openai.provider||'openai'} / ${result.openai.model}）: ${result.openai.ok?'返信生成OK':result.openai.error||'キー未設定'}`,`Threads: ${result.threads.ok?'接続OK（'+result.threads.username+'）':result.threads.error||'認証未設定'}`,result.openai.sample?'生成例: '+result.openai.sample:''].filter(Boolean).join('\n');status(result.ready?'ThreadsとAIの接続を確認しました。': '接続結果を確認してください。');});
 $('#replyRun').onclick=()=>task(async()=>{const result=await call('run');await load();status(({quota_wait:'Gemini無料枠の上限です。待機中のコメントは1時間後に再試行します。',busy:'処理中です。少し待って再度読み込んでください。',off:'自動処理は停止中です。',outside_window:'コメントを確認しました。返信は次の稼働時間まで待機します。',skipped:'本人の返信を確認したためスキップしました。',processed:'返信を1件処理しました。',idle:'コメントを確認しました。ページを順番に収集中です。'})[result.status]||result.status);});
-form.onsubmit=e=>{e.preventDefault();task(async()=>{const f=new FormData(form);await call('save',{settings:{enabled:f.has('enabled'),mode:f.get('mode'),ai_connection:f.get('ai_connection'),start_time:f.get('start_time'),end_time:f.get('end_time'),weekdays:f.getAll('weekdays').map(Number),delay_minutes:Number(f.get('delay_minutes')),tones:f.getAll('tones'),adapt_tone:f.has('adapt_tone'),custom_prompt:f.get('custom_prompt'),max_chars:Number(f.get('max_chars')),use_history:f.has('use_history')}});await load();status('返信設定をクラウドに保存しました。');});};
+form.onsubmit=e=>{e.preventDefault();task(async()=>{const f=new FormData(form);await call('save',{settings:{enabled:f.has('enabled'),mode:f.get('mode'),ai_connection:f.get('ai_connection'),start_time:f.get('start_time'),end_time:f.get('end_time'),weekdays:f.getAll('weekdays').map(Number),delay_minutes:5,ng_users:String(f.get('ng_users')||'').split(/\r?\n/),ng_words:String(f.get('ng_words')||'').split(/\r?\n/),tones:f.getAll('tones'),adapt_tone:f.has('adapt_tone'),custom_prompt:f.get('custom_prompt'),max_chars:Number(f.get('max_chars')),use_history:f.has('use_history')}});await load();status('返信設定をクラウドに保存しました。');});};
 $('#replyFilter').onchange=renderQueue;$('#replySearch').oninput=renderFans;
 $('#replyHistoryClose').onclick=()=>$('#replyHistoryPanel').hidden=true;
 $('#replyMore').onclick=()=>task(()=>showHistory(person,true));

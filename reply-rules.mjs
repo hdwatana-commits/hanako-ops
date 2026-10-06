@@ -36,5 +36,26 @@ export function validateSettings(input) {
     if (!['default','secondary','third'].includes(input.ai_connection)) throw new Error('Gemini接続が不正です');
     value.ai_connection=input.ai_connection;
   }
+  for(const name of ['ng_users','ng_words']) if(input[name]!==undefined) {
+    if(!Array.isArray(input[name])||input[name].length>200||input[name].some(x=>typeof x!=='string'||x.length>100))throw new Error('NGリストは各200件、1件100文字以内です');
+    value[name]=[...new Set(input[name].map(x=>x.normalize('NFKC').trim()).filter(Boolean).map(x=>name==='ng_users'?x.replace(/^@/,'').toLowerCase():x))];
+    if(name==='ng_users'&&value[name].some(x=>! /^[a-z0-9._]{1,30}$/.test(x)))throw new Error('NG対象者はThreadsのユーザー名を1行ずつ入力してください');
+  }
   return value;
+}
+export function exclusionReason(settings,comment) {
+  const normalize=x=>String(x||'').normalize('NFKC').trim().toLowerCase();
+  if((settings.ng_users||[]).some(x=>normalize(x).replace(/^@/,'')===normalize(comment.username).replace(/^@/,'')))return 'NG対象者のため自動返信しません';
+  if((settings.ng_words||[]).some(x=>normalize(x)&&normalize(comment.comment_text).includes(normalize(x))))return 'NGワードを含むため自動返信しません';
+  return '';
+}
+export function replyClock(now=new Date()) {
+  const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',hour:'2-digit',hourCycle:'h23'}).format(now));
+  return {time:now.toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}),period:hour>=5&&hour<11?'朝':hour>=11&&hour<17?'昼':'夜'};
+}
+export function wrongGreeting(text,now=new Date()) {
+  const period=replyClock(now).period;
+  const morning=/おはよ|good\s*morning|早上好|早安|좋은\s*아침/i.test(text);
+  const evening=/こんばん[はわ]|good\s*evening|晚上好|晚安/i.test(text);
+  return (period!=='朝'&&morning)||(period!=='夜'&&evening);
 }
