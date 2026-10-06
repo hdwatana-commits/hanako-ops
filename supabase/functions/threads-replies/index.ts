@@ -141,7 +141,7 @@ async function scan(s: any,me: any) {
     const isOwner=Boolean(c.is_reply_owned_by_me)||c.username===me.username;
     return {user_id:owner(),comment_id:c.id,post_id:post.id,parent_id:c.replied_to?.id||null,username:c.username,
       comment_text:c.text||'',post_text:post.text||'',commented_at:c.timestamp,is_owner:isOwner,
-      status:!isOwner&&Date.parse(c.timestamp)>=Date.parse(s.started_at)?'pending':'history'};
+      status:'history'};
   });
   if(rows.length) await db('hanako_reply_comments?on_conflict=user_id,comment_id','POST',rows,'resolution=ignore-duplicates,return=representation');
   await skipCollectedReplies(rows);
@@ -149,18 +149,33 @@ async function scan(s: any,me: any) {
   if(!after) posts.shift();
   await updateSettings({scan_posts:posts,scan_comment_after:after,scan_after:next});
 }
-// Check newest posts every minute. A separate cursor visits every older post,
-// stopping once replies precede started_at; history pagination cannot block this lane.
+// Replies do not count as posts. Follow pages until two original posts are found.
+async function latestPosts() {
+  const posts:any[]=[];let after:string|undefined;
+  do {
+    const page=await meta('me/threads',{fields:'id,text,is_reply',limit:'50',...(after?{after}:{})});
+    for(const p of page.data||[])if(!p.is_reply&&!posts.some(x=>x.id===p.id))posts.push(p);
+    if(posts.length>=2)return posts.slice(0,2);
+    after=page.paging?.next?page.paging?.cursors?.after:undefined;
+    if(page.paging?.next&&!after)throw new Error('対象ポストの確認を完了できませんでした');
+  } while(after);
+  return posts;
+}
+async function skipOutsideLatest(c:any) {
+  if((await latestPosts()).some(p=>p.id===c.post_id))return false;
+  await updateComment(c.comment_id,{status:'skipped',error:'直近2件のポスト以外のため自動返信しません',next_attempt_at:null});
+  return true;
+}
 async function scanRecent(s: any,me: any) {
   const fields='id,text,username,timestamp,is_reply_owned_by_me,replied_to';
-  const first=await meta('me/threads',{fields:'id,text,is_reply',limit:'50'});
-  const newest=(first.data||[]).filter((p:any)=>!p.is_reply).slice(0,3);
+  const newest=await latestPosts();
+  const scope=newest.length?`&post_id=not.in.(${newest.map(p=>encodeURIComponent(p.id)).join(',')})`:'';
+  await db(`hanako_reply_comments?${filter()}&status=in.(pending,failed,draft)&container_id=is.null&reply_id=is.null${scope}`,'PATCH',{status:'skipped',error:'直近2件のポスト以外のため自動返信しません',next_attempt_at:null});
   const live=s.live_scan||{};
-  let posts=live.posts||[],next=live.after||null,after=live.comment_after||null;
+  let posts=(live.posts||[]).filter((p:any)=>newest.some(n=>n.id===p.id)),next=null,after=live.comment_after||null;
+  if(live.posts?.[0]?.id!==posts[0]?.id)after=null;
   if(!posts.length) {
-    const page=next?await meta('me/threads',{fields:'id,text,is_reply',limit:'50',after:next}):first;
-    posts=(page.data||[]).filter((p:any)=>!p.is_reply);
-    next=page.paging?.next?page.paging?.cursors?.after:null;after=null;
+    posts=[...newest];after=null;
   }
   let checked=0;
   async function ingest(post:any,cursor?:string|null) {
@@ -208,6 +223,7 @@ async function skipIfReplied(c:any) {
   return false;
 }
 async function publish(c: any) {
+  if(await skipOutsideLatest(c))return;
   if(await skipExcluded(c,await settings())) return;
   if(await skipIfReplied(c)) return;
   if(wrongGreeting(c.reply_text)) throw new Error('返信時刻と挨拶が合いません。再生成してください');
@@ -228,6 +244,7 @@ async function publish(c: any) {
     }
     if(!ready) throw new Error('Threadsの返信準備が時間内に完了しませんでした。投稿状態を確認してください');
     if(await skipExcluded(c,await settings())) return;
+    if(await skipOutsideLatest(c))return;
     if(wrongGreeting(c.reply_text))throw new Error('返信時刻と挨拶が合いません。再生成してください');
     const result=await meta('me/threads_publish',{creation_id:container.id},'POST');
     if(!result.id) throw new Error('Threads投稿結果IDがありません');
@@ -259,7 +276,7 @@ async function run(action: string,body: any) {
     const c=await db('rpc/hanako_reply_claim','POST',{owner_id:owner()});
     if(c) {
       try {
-        if(await skipExcluded(c,await settings()))return {status:'skipped',checked};
+        if(await skipOutsideLatest(c)||await skipExcluded(c,await settings()))return {status:'skipped',checked};
         if(await skipIfReplied(c)) {
           await updateSettings({last_run:new Date().toISOString(),last_error:''});
           return {status:'skipped',checked};
