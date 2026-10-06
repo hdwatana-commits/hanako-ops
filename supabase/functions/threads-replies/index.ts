@@ -1,5 +1,5 @@
 import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting } from '../../../reply-rules.mjs';
-import { HANA_PROMPT, RELATIONSHIP_PROMPT } from './prompt.ts';
+import { HANA_PROMPT, RELATIONSHIP_PROMPT, DESTINATION_PROMPT } from './prompt.ts';
 const env = (name: string) => { const value=Deno.env.get(name); if(!value) throw new Error(`サーバー設定 ${name} が必要です`); return value; };
 const openaiKey = () => {
   for (const name of ['OPENAI_API_KEY','HanakoOPS Replies']) {
@@ -80,7 +80,7 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   const relationship=relationshipLevel(stats);
   const conversation=history.reverse().map((h:any)=>({post:h.post_text,comment:h.comment_text,at:h.commented_at,replies:[...(h.status==='published'&&h.reply_text?[h.reply_text]:[]),...manual.filter((r:any)=>r.parent_id===h.comment_id).map((r:any)=>r.comment_text)]}));
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
-  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。自然な日本語を確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${s.custom_prompt}`;
+  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。自然な日本語を確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${s.custom_prompt}`;
   const input=JSON.stringify({reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation});
   if(aiProvider()==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
@@ -89,7 +89,7 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
     const text=(candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim();
     if(invalidReply(text,s.max_chars)||wrongGreeting(text)) {
-      if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。誘いは「ここでお話しできるのが嬉しいな」とかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、内容にだけ返す。'},c,1);
+      if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面の誘いならInstagramとnoteを案内し、noteの場所を尋ねられたらInstagramのプロフィールから行けると伝える。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、内容にだけ返す。'},c,1);
       throw new Error('返信形式を確認してください');
     }
     return text;

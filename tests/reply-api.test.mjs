@@ -376,3 +376,22 @@ test('読み込みは最新100件とは別に順番待ち総件数を返す',asy
  globalThis.fetch=async url=>{url=String(url);if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([{ai_connection:'default'}]);if(url.includes('/me/threads?'))return response({data:[{id:'p1'},{id:'p2'}]});if(url.includes('hanako_reply_comments')||url.includes('rpc/hanako_reply_fans'))return response([]);throw new Error('Unexpected request');};
  try {const result=await (await invoke({action:'load'})).json();assert.equal(result.queue_count,145);assert.equal(result.replies.length,0);}finally{countResult=0;}
 });
+
+
+test('生成指示にInstagramとnoteへの案内を含め、プロフィール案内文を許可する',async()=>{
+ secrets.REPLY_AI_PROVIDER='gemini';secrets.GEMINI_API_KEY='test-gemini';
+ globalThis.fetch=async(url,opts={})=>{
+  url=String(url);
+  if(url.includes('hanako_reply_settings'))return response([{use_history:false,tones:['cute'],custom_prompt:'',max_chars:250}]);
+  if(url.includes('hanako_reply_comments'))return response([]);
+  if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+  if(url.includes('/me/threads?'))return response({data:[]});
+  if(url.includes('generativelanguage.googleapis.com')){
+   const instructions=JSON.parse(opts.body).systemInstruction.parts[0].text;
+   assert.match(instructions,/写真やイラスト/);assert.match(instructions,/Instagramとnoteの両方/);assert.match(instructions,/インスタのプロフィールからnoteに行けるよ/);assert.match(instructions,/感想だけ/);assert.match(instructions,/同じ言語/);assert.match(instructions,/買えば会える/);
+   return response({candidates:[{finishReason:'STOP',content:{parts:[{text:'インスタとnoteものぞいてみてね♡ noteはインスタのプロフィールから行けるよ🤭'}]}}]});
+  }
+  throw new Error('Unexpected request');
+ };
+ try{const result=await (await invoke({action:'check'},{'x-cron-secret':'cron'})).json();assert.equal(result.openai.ok,true);assert.match(result.openai.sample,/プロフィールから/);}finally{secrets.REPLY_AI_PROVIDER='openai';delete secrets.GEMINI_API_KEY;}
+});
