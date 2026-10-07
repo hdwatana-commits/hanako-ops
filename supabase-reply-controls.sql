@@ -6,13 +6,13 @@ create or replace function public.hanako_reply_assign_due()
 returns trigger language plpgsql set search_path='' as $$
 begin
   if not new.is_owner and new.reply_due_at is null then
-    new.reply_due_at:=new.commented_at+make_interval(secs=>300+floor(random()*601)::integer);
+    new.reply_due_at:=new.commented_at+make_interval(secs=>300+floor(random()*2401)::integer);
   end if;
   return new;
 end $$;
 drop trigger if exists hanako_reply_due on public.hanako_reply_comments;
 create trigger hanako_reply_due before insert on public.hanako_reply_comments for each row execute function public.hanako_reply_assign_due();
-update public.hanako_reply_comments set reply_due_at=commented_at+make_interval(secs=>300+floor(random()*601)::integer)
+update public.hanako_reply_comments set reply_due_at=commented_at+make_interval(secs=>300+floor(random()*2401)::integer)
 where not is_owner and reply_due_at is null and status in ('pending','failed','draft','generating');
 create or replace function public.hanako_reply_apply_exclusions(owner_id uuid)
 returns integer language plpgsql security definer set search_path='' as $$

@@ -378,7 +378,7 @@ test('読み込みは最新100件とは別に順番待ち総件数を返す',asy
 });
 
 
-test('生成指示はnoteだけの購入案内と軽い甘えを含み、プロフィール導線を許可する',async()=>{
+test('生成指示はnoteだけの購入案内と軽い甘えを含み、直接URLとDM・通話の案内を許可する',async()=>{
  secrets.REPLY_AI_PROVIDER='gemini';secrets.GEMINI_API_KEY='test-gemini';
  globalThis.fetch=async(url,opts={})=>{
   url=String(url);
@@ -388,10 +388,10 @@ test('生成指示はnoteだけの購入案内と軽い甘えを含み、プロ�
   if(url.includes('/me/threads?'))return response({data:[]});
   if(url.includes('generativelanguage.googleapis.com')){
    const instructions=JSON.parse(opts.body).systemInstruction.parts[0].text;
-   assert.match(instructions,/写真やイラスト/);assert.match(instructions,/案内先はnoteだけ/);assert.match(instructions,/買って読んでくれたら嬉しい/);assert.match(instructions,/購入を断られたら/);assert.doesNotMatch(instructions,/Instagramとnoteの両方/);assert.match(instructions,/インスタのプロフィールからnoteに行けるよ/);assert.match(instructions,/感想だけ/);assert.match(instructions,/同じ言語/);assert.match(instructions,/買えば会える/);
-   return response({candidates:[{finishReason:'STOP',content:{parts:[{text:'noteの記事、買って読んでくれたら嬉しいな♡ noteはインスタのプロフィールから行けるよ🤭'}]}}]});
+   assert.match(instructions,/写真やイラスト/);assert.match(instructions,/案内先はnoteだけ/);assert.match(instructions,/買って読んでくれたら嬉しい/);assert.match(instructions,/購入を断られたら/);assert.doesNotMatch(instructions,/Instagramとnoteの両方/);assert.match(instructions,/https:\/\/note\.com\/hanako47258/);assert.match(instructions,/音声通話・ビデオ通話/);assert.match(instructions,/ほのめかさない/);assert.match(instructions,/感想だけ/);assert.match(instructions,/同じ言語/);assert.match(instructions,/買えば会える/);
+   return response({candidates:[{finishReason:'STOP',content:{parts:[{text:'noteの記事、買って読んでくれたら嬉しいな♡ https://note.com/hanako47258'}]}}]});
   }
   throw new Error('Unexpected request');
  };
- try{const result=await (await invoke({action:'check'},{'x-cron-secret':'cron'})).json();assert.equal(result.openai.ok,true);assert.match(result.openai.sample,/プロフィールから/);}finally{secrets.REPLY_AI_PROVIDER='openai';delete secrets.GEMINI_API_KEY;}
+ try{const result=await (await invoke({action:'check'},{'x-cron-secret':'cron'})).json();assert.equal(result.openai.ok,true);assert.match(result.openai.sample,/https:\/\/note\.com\/hanako47258/);}finally{secrets.REPLY_AI_PROVIDER='openai';delete secrets.GEMINI_API_KEY;}
 });
