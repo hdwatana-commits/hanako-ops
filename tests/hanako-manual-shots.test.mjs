@@ -27,6 +27,7 @@ function makePrompt(profile, shotIndex) {
     hanakoInstagramPoses: ["pose1", "pose2", "pose3"],
     hanakoInstagramLocations: ["homeWindow"],
     hanakoThreadsLocations: ["homeWindow"],
+    hanakoExtraLocations: [{ items: [] }],
     hanakoThreadsExpressions: ["smile", "soft", "bashful"],
     hanakoExpressionOptions: { smile: { label: "笑顔" }, soft: { label: "やさしい笑顔" }, bashful: { label: "はにかみ" } },
     hanakoThreadsAbFields: { outfit: { source: "snsOutfitPreset", label: "服装" }, pose: { source: "snsPosePreset", label: "ポーズ" } },

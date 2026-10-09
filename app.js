@@ -648,7 +648,113 @@ function enhanceCoordinateSelectOptions() {
     ["praiseShy", "褒められて目をそらす照れ笑い"], ["sleepyTrust", "安心して眠そうに見つめる表情"],
     ["comeCloserEyes", "もう少し近くへ来てほしい眼差し"], ["goodbyePause", "さよならを言う前のためらう微笑み"],
   ]);
+  appendHanakoCatalogOptions("#snsOutfitPreset", hanakoExtraOutfits);
+  appendHanakoCatalogOptions("#snsPosePreset", hanakoExtraPoses);
+  appendHanakoCatalogOptions("#snsLocationPreset", hanakoExtraLocations);
+  appendHanakoCatalogOptions("#snsHanakoExpression", hanakoExtraExpressions);
+  Object.assign(hanakoExpressionOptions, Object.fromEntries(hanakoExtraExpressions.flatMap((group) => group.items.map((item) => [item.id, { label: item.label, prompt: item.prompt }]))));
+  installHanakoPickers();
   renderHanakoGasSettings();
+}
+
+function appendHanakoCatalogOptions(selector, groups) {
+  const select = document.querySelector(selector);
+  if (!select) return;
+  const known = new Set([...select.options].map((option) => option.value));
+  for (const group of groups) {
+    const optgroup = document.createElement("optgroup");
+    optgroup.label = group.label;
+    for (const item of group.items) {
+      if (known.has(item.id)) continue;
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = item.label;
+      optgroup.appendChild(option);
+      known.add(item.id);
+    }
+    if (optgroup.children.length) select.appendChild(optgroup);
+  }
+}
+
+function installHanakoPickers() {
+  const ids = ["snsOutfitPreset", "snsPosePreset", "snsLocationPreset", "snsHanakoExpression", "hanakoGasOutfit", "hanakoGasPose", "hanakoGasLocation"];
+  for (const id of ids) {
+    const select = document.getElementById(id);
+    if (!select || select.previousElementSibling?.dataset?.hanakoPicker === id) continue;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "hanako-picker-open";
+    button.dataset.hanakoPicker = id;
+    button.textContent = "🔎 キーワード・カテゴリから探す";
+    select.before(button);
+    button.addEventListener("click", () => openHanakoPicker(select));
+  }
+}
+
+function openHanakoPicker(select) {
+  let dialog = document.getElementById("hanakoChoiceDialog");
+  if (!dialog) {
+    dialog = document.createElement("dialog");
+    dialog.id = "hanakoChoiceDialog";
+    dialog.className = "hanako-choice-dialog";
+    dialog.innerHTML = '<div class="hanako-choice-head"><strong id="hanakoChoiceTitle"></strong><button type="button" id="hanakoChoiceClose" aria-label="閉じる">×</button></div><input id="hanakoChoiceSearch" type="search" placeholder="名前やカテゴリで検索" aria-label="選択肢を検索"><div id="hanakoChoiceCategories" class="hanako-choice-categories"></div><div id="hanakoChoiceResults" class="hanako-choice-results"></div>';
+    document.body.appendChild(dialog);
+    dialog.querySelector("#hanakoChoiceClose").addEventListener("click", () => dialog.close());
+  }
+  const source = select.id.startsWith("hanakoGas") ? document.getElementById(hanakoGasFieldMap[select.id]) || select : select;
+  const groups = [];
+  for (const child of source.children) {
+    const options = child.tagName === "OPTGROUP" ? [...child.children] : [child];
+    const label = child.tagName === "OPTGROUP" ? child.label : "基本・自動";
+    const existing = groups.find((group) => group.label === label);
+    if (existing) existing.options.push(...options);
+    else groups.push({ label, options: [...options] });
+  }
+  const title = select.closest("div")?.querySelector("label")?.textContent?.trim() || "選択肢";
+  dialog.querySelector("#hanakoChoiceTitle").textContent = `${title}を選ぶ`;
+  const search = dialog.querySelector("#hanakoChoiceSearch");
+  const categories = dialog.querySelector("#hanakoChoiceCategories");
+  const results = dialog.querySelector("#hanakoChoiceResults");
+  let activeCategory = "すべて";
+  search.value = "";
+  const render = () => {
+    const query = search.value.trim().toLocaleLowerCase();
+    categories.replaceChildren();
+    for (const label of ["すべて", ...groups.map((group) => group.label)]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.classList.toggle("active", label === activeCategory);
+      button.addEventListener("click", () => { activeCategory = label; render(); });
+      categories.appendChild(button);
+    }
+    results.replaceChildren();
+    for (const group of groups) {
+      if (activeCategory !== "すべて" && activeCategory !== group.label) continue;
+      const matches = group.options.filter((option) => `${group.label} ${option.textContent}`.toLocaleLowerCase().includes(query));
+      if (!matches.length) continue;
+      const heading = document.createElement("h4");
+      heading.textContent = group.label;
+      results.appendChild(heading);
+      for (const option of matches) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = option.textContent;
+        button.classList.toggle("selected", option.value === source.value);
+        button.addEventListener("click", () => {
+          select.value = option.value;
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          dialog.close();
+        });
+        results.appendChild(button);
+      }
+    }
+    if (!results.children.length) results.textContent = "該当する選択肢がありません";
+  };
+  search.oninput = render;
+  render();
+  dialog.showModal();
+  search.focus();
 }
 
 queueMicrotask(initialize);
@@ -3253,6 +3359,111 @@ const hanakoExpressionOptions = {
   expectantGaze: { label: "会えるのを待つような眼差し", prompt: "視線をカメラへ静かに向け、目元に期待と温かさをにじませて小さく微笑む。大げさな演技や過度な色気を避ける" },
 };
 
+const hanakoExtraOutfits = [
+  { label: "職業・趣味系（新着10）", items: [
+    { id: "lookBarista", label: "カフェのバリスタ風", prompt: "成人女性のバリスタ風。無地のシャツ、ブラウンのエプロン、落ち着いたパンツ。実在店舗のロゴなし" },
+    { id: "lookFlorist", label: "花屋のフローリスト風", prompt: "成人女性のフローリスト風。淡色ブラウス、リネンエプロン、花束を扱いやすいシンプルな装い" },
+    { id: "lookLibrarian", label: "書店・司書風", prompt: "成人女性の司書風。上品なカーディガン、襟付きブラウス、膝丈スカート、本の質感に合う落ち着いた配色" },
+    { id: "lookPhotographer", label: "フォトグラファー風", prompt: "成人女性の写真家風。黒のシンプルなトップス、動きやすいカーゴパンツ、細身のカメラストラップ" },
+    { id: "lookPianist", label: "ピアニストの演奏会風", prompt: "成人女性のピアニスト風。深いネイビーの袖付きドレス、控えめなアクセサリー、鍵盤を弾きやすい袖口" },
+    { id: "lookArtist", label: "アトリエの絵描き風", prompt: "成人女性の画家風。白いシャツ、ペイントのついた無地エプロン、デニム。筆やパレットを自然に扱う" },
+    { id: "lookTennis", label: "テニス好きのスポーティ風", prompt: "成人女性のテニス愛好家風。襟付きスポーツトップス、動きやすいプリーツスコートとインナーショーツ、清潔感ある配色" },
+    { id: "lookCyclist", label: "週末サイクリング風", prompt: "成人女性の週末サイクリング風。軽いウィンドブレーカー、スポーティなロングパンツ、ヘルメットを持つ安全な休憩場面" },
+    { id: "lookCamper", label: "キャンプ好きのアウトドア風", prompt: "成人女性のキャンプ愛好家風。フリースベスト、長袖カットソー、実用的なカーゴパンツ。焚き火に近づきすぎない" },
+    { id: "lookBaker", label: "休日のお菓子作り風", prompt: "成人女性のベイキング風。柔らかなシャツとコットンエプロン、髪をまとめた衛生的なキッチンスタイル" },
+  ] },
+  { label: "アニメの成人キャラクター風コスプレ（新着10）", items: [
+    { id: "cosYor", label: "ヨル・フォージャー風｜SPY×FAMILY", prompt: "成人女性による『SPY×FAMILY』ヨル・フォージャーを想起させるコスプレ。黒いドレス、金色の髪飾り、長い黒髪。武器や暴力的場面は描かない" },
+    { id: "cosFrieren", label: "フリーレン風｜葬送のフリーレン", prompt: "成人女性による『葬送のフリーレン』フリーレン風コスプレ。白と金のローブ、淡い銀髪のツインテール、ファンタジーの旅装" },
+    { id: "cosNami", label: "ナミ風｜ONE PIECE", prompt: "成人女性による『ONE PIECE』ナミ風コスプレ。オレンジ色の髪、航海士らしい軽快なジャケットとデニム、露出を抑えた冒険スタイル" },
+    { id: "cosRobin", label: "ニコ・ロビン風｜ONE PIECE", prompt: "成人女性による『ONE PIECE』ニコ・ロビン風コスプレ。黒髪、落ち着いた紫系のジャケットとロングスカート、知的な冒険家の雰囲気" },
+    { id: "cosHancock", label: "ボア・ハンコック風｜ONE PIECE", prompt: "成人女性による『ONE PIECE』ボア・ハンコック風コスプレ。長い黒髪、赤紫の上品なロングドレス、堂々とした姿勢。過度な露出は避ける" },
+    { id: "cosTsunade", label: "綱手風｜NARUTO", prompt: "成人女性による『NARUTO』綱手風コスプレ。淡い金髪、緑の羽織、グレーのインナー、忍者の師匠らしい自信ある装い" },
+    { id: "cosMakima", label: "マキマ風｜チェンソーマン", prompt: "成人女性による『チェンソーマン』マキマ風コスプレ。赤みのある髪の三つ編み、白シャツ、黒いネクタイとスーツ。暴力や流血は描かない" },
+    { id: "cosYoruichi", label: "四楓院夜一風｜BLEACH", prompt: "成人女性による『BLEACH』四楓院夜一風コスプレ。紫がかった髪、紫と黒の動きやすい戦闘服風衣装。安全な静止ポーズ" },
+    { id: "cosRiza", label: "リザ・ホークアイ風｜鋼の錬金術師", prompt: "成人女性による『鋼の錬金術師』リザ・ホークアイ風コスプレ。金髪をまとめ、青系の軍服風ジャケットと端正なパンツ。銃は描かない" },
+    { id: "cosFaye", label: "フェイ・ヴァレンタイン風｜カウボーイビバップ", prompt: "成人女性による『カウボーイビバップ』フェイ・ヴァレンタイン風コスプレ。紫の髪と赤系ジャケット、黄色のトップスを露出控えめにアレンジしたレトロSF衣装" },
+  ] },
+  { label: "オリジナル人気コスプレ（新着5）", items: [
+    { id: "cosSpacePilot", label: "レトロ宇宙船パイロット", prompt: "成人女性のオリジナルSFパイロット衣装。白と紺のジャケット、胸元の架空ワッペン、機能的なパンツ" },
+    { id: "cosFantasyHealer", label: "ファンタジーの癒やし手", prompt: "成人女性のオリジナルファンタジー衣装。淡い青のローブ、繊細な刺繍、小さな薬草ポーチ。実在作品の印は使わない" },
+    { id: "cosCafeDetective", label: "カフェ探偵", prompt: "成人女性の架空の探偵衣装。チェックのベスト、トレンチコート、小さな手帳を合わせた街角の装い" },
+    { id: "cosMoonMagician", label: "月夜のマジシャン", prompt: "成人女性のオリジナルマジシャン衣装。深い紺のケープ、星の刺繍、シルクハット。既存キャラクターの紋章は使わない" },
+    { id: "cosRetroIdol", label: "レトロポップなステージアイドル", prompt: "成人女性のオリジナルステージ衣装。明るいジャケット、揺れるプリーツスカート、控えめなスパンコール。架空のデザイン" },
+  ] },
+  { label: "好印象ファッション（新着10）", items: [
+    { id: "fashionWhiteShirt", label: "白シャツ×濃色デニム", prompt: "質の良い白シャツと濃色のストレートデニム。袖を自然にまくった清潔感ある大人カジュアル" },
+    { id: "fashionCardiganMini", label: "淡色カーディガン×台形ミニ", prompt: "淡色の柔らかなカーディガン、無地トップス、端正な台形ミニスカート。座る時も丈を整える" },
+    { id: "fashionKnitDress", label: "上品なリブニットワンピ", prompt: "身体のラインを拾いすぎない膝丈のリブニットワンピース。温かみのあるアイボリーと小ぶりなアクセサリー" },
+    { id: "fashionTweedSet", label: "淡色ツイードのセットアップ", prompt: "淡いピンクベージュのツイードジャケットと同素材の上品なスカート。飾りボタンは控えめ" },
+    { id: "fashionPoloPleats", label: "ポロニット×プリーツスカート", prompt: "清潔感あるネイビーのポロニットと膝上プリーツスカート。健康的なスポーティガーリー" },
+    { id: "fashionRibbonBlouse", label: "細リボンブラウス×フレア", prompt: "白い細リボンブラウスと淡色フレアスカート。リボンは顔を隠さない大きさで上品に" },
+    { id: "fashionJacketShorts", label: "オーバージャケット×きれいめショートパンツ", prompt: "淡いベージュのオーバージャケットと丈の安定したきれいめショートパンツ。大人の街歩きスタイル" },
+    { id: "fashionDenimDress", label: "デニムワンピ×白カーデ", prompt: "落ち着いたデニムの膝丈ワンピースに白い薄手カーディガン。爽やかな休日の装い" },
+    { id: "fashionMonochrome", label: "黒ニット×白フレアのモノトーン", prompt: "端正な黒の長袖ニットと白いフレアスカート。素材感の違いで魅せるシンプルなモノトーン" },
+    { id: "fashionSatinSkirt", label: "短丈ニット×サテンスカート", prompt: "淡い短丈ニットと光沢を抑えたサテンのミモレ丈スカート。肌見せより素材の上品さを主役にする" },
+  ] },
+];
+
+const hanakoExtraExpressions = [{ label: "キュンとする表情（新着20）", items: [
+  { id: "sparkleRecognition", label: "見つけた瞬間のぱっとした笑顔", prompt: "知っている人を見つけた瞬間、目元がぱっと明るくなる自然な笑顔" },
+  { id: "tinyRelief", label: "ほっとした小さな微笑み", prompt: "緊張がほどけ、肩の力が抜けて口元に小さな安堵の笑みが出る" },
+  { id: "shyThankYou", label: "ありがとうを言う照れ顔", prompt: "感謝を伝えながら視線を少し落とし、照れくさそうに微笑む" },
+  { id: "caughtLaughing", label: "笑っているところを見られた顔", prompt: "思わず笑ってしまった瞬間にカメラに気づき、さらに照れた笑顔になる" },
+  { id: "gentleSurprise", label: "嬉しい知らせに目を丸くする顔", prompt: "嬉しい知らせを受けて目を自然に丸くし、口元が笑顔に変わる" },
+  { id: "almostLaugh", label: "笑いをこらえきれない顔", prompt: "唇を軽く結んでも目元から笑いがあふれる、いたずらを共有するような表情" },
+  { id: "quietAdmiration", label: "見とれるような柔らかな眼差し", prompt: "好きな景色を見つめるような穏やかな視線と、ほんの少し上がる口角" },
+  { id: "pleasedBlush", label: "褒められて照れた笑顔", prompt: "褒められた嬉しさを隠しきれず、頬が少し上がる控えめな笑顔" },
+  { id: "peekSmile", label: "隠れたところからのぞく笑顔", prompt: "本や花束の横から顔を少しのぞかせ、目が合って柔らかく微笑む" },
+  { id: "playfulChallenge", label: "いたずらを思いついた笑み", prompt: "片方の眉がほんの少し上がり、楽しそうに目を合わせる軽い挑戦の笑み" },
+  { id: "warmWelcome", label: "おかえりと言うような笑顔", prompt: "相手を迎える時の温かい視線と、目元まで笑う穏やかな表情" },
+  { id: "softPout", label: "ちょっと拗ねた口元", prompt: "唇をわずかにすぼめ、すぐに笑いそうな目元を残す大人の愛嬌" },
+  { id: "sharedSecret", label: "内緒話をする前の表情", prompt: "少し身を寄せて目を合わせ、何か楽しい話を始めそうな小さな笑み" },
+  { id: "sunnyEyes", label: "目元で笑う晴れやかな顔", prompt: "口元は控えめでも、目元と頬に明るさが出る晴れやかな微笑み" },
+  { id: "windyHairSmile", label: "風で髪が揺れた時の笑顔", prompt: "風で髪が揺れた瞬間に片目を少し細め、自然に笑いがこぼれる" },
+  { id: "sleepyGreeting", label: "眠そうなおはようの顔", prompt: "起きたての穏やかな目元でカメラを見て、ゆっくり小さく微笑む" },
+  { id: "curiousEyes", label: "何を見てるの？の問いかけ顔", prompt: "首をわずかに傾げ、親しみやすく目を合わせる好奇心のある表情" },
+  { id: "proudLittleSmile", label: "うまくできた時の得意げな笑み", prompt: "小さな成功を喜び、照れながらも少し得意げに微笑む" },
+  { id: "gentleGoodbye", label: "またねの名残惜しい微笑み", prompt: "振り返りながら目を合わせ、少し名残惜しさのある柔らかな笑み" },
+  { id: "blinkingSmile", label: "まばたき後のふんわり笑顔", prompt: "自然なまばたきの後に視線が合い、ふっと表情がやわらぐ瞬間" },
+] }];
+
+const hanakoExtraPoses = [{ label: "インフルエンサー撮影ポーズ（新着20）", items: [
+  { id: "poseWallLean", label: "壁に肩を軽く預ける", prompt: "片肩を壁に軽く預け、背筋と視線を自然に保つファッションスナップ" },
+  { id: "poseWallLookBack", label: "壁沿いに歩いて振り返る", prompt: "壁に沿って歩きながら肩越しに振り返る。全身の重心と足運びを自然にする" },
+  { id: "posePocketSmile", label: "片手をポケットに入れて微笑む", prompt: "片手をポケットへ自然に入れ、もう片手は身体の横で力を抜く" },
+  { id: "poseBagSwing", label: "バッグを軽く揺らす", prompt: "バッグを片手で軽く持ち、歩くリズムで少し揺れる瞬間。指と持ち手を正確に描く" },
+  { id: "poseSleeveAdjust", label: "袖を整えながら目を合わせる", prompt: "片手で反対側の袖口を軽く整え、ふとカメラへ目を向ける" },
+  { id: "poseCollarTouch", label: "襟に指を添える", prompt: "片手の指先を襟へそっと添え、胸元を開かず自然な目線で写る" },
+  { id: "poseSunShade", label: "手で日差しを少し遮る", prompt: "片手を額の少し上にかざし、柔らかな日差しを眺める。顔は隠さない" },
+  { id: "poseSideStep", label: "横へ一歩踏み出す", prompt: "横へ軽く一歩踏み出し、服のシルエットと動きを見せる安定したポーズ" },
+  { id: "poseHeelLift", label: "片足のかかとを少し上げる", prompt: "片足のかかとを少し浮かせ、膝と重心を自然にした立ち姿" },
+  { id: "poseChairTurn", label: "椅子から軽く振り返る", prompt: "椅子に安定して座り、上半身だけを自然に振り返る。脚と椅子の接地を正確にする" },
+  { id: "poseCoffeeHold", label: "カップを両手で持つ", prompt: "小さなカップを両手で自然に持ち、飲む前にふと目を合わせる" },
+  { id: "poseBookClose", label: "本を閉じて顔を上げる", prompt: "本を閉じる途中で顔を上げる。指が本へ自然に触れ、表紙に読める文字を作らない" },
+  { id: "poseHairSweep", label: "髪を片側へ払う", prompt: "片手で髪を肩の後ろへ軽く払い、もう片手は自然に下ろす" },
+  { id: "poseJacketDrape", label: "上着を片腕にかける", prompt: "上着を片腕へ自然にかけ、着ている服を整ったまま見せる" },
+  { id: "poseWindowProfile", label: "窓辺で横顔を見せる", prompt: "窓辺で半身になり、顔の輪郭へ柔らかな光を受ける。窓外に特定できる場所を描かない" },
+  { id: "poseFlowerSmell", label: "花に顔を寄せる", prompt: "小さな花束へ顔を少し近づけ、香りを楽しむ自然な横顔。花は顔を隠さない" },
+  { id: "poseMirrorSmile", label: "鏡越しに笑いかける", prompt: "鏡を見てからカメラへ柔らかく微笑む。鏡像と人物の手足を一致させる" },
+  { id: "poseSitCrossAnkle", label: "座って足首をそろえる", prompt: "椅子に浅すぎず座り、両足首を自然にそろえる上品なポートレート" },
+  { id: "poseCushionTurn", label: "クッションを抱えて振り向く", prompt: "クッションを両腕で自然に抱え、横から振り向く。腕と布の境界を明確にする" },
+  { id: "poseFramePeek", label: "ドア枠から顔をのぞかせる", prompt: "安全な室内のドア枠に片手を軽く添え、顔を少しのぞかせる。手指と枠の位置を自然にする" },
+] }];
+
+const hanakoExtraLocations = [{ label: "人物が映えるシンプル背景（新着10）", items: [
+  { id: "backdropIvoryWall", label: "アイボリーの塗り壁", prompt: "凹凸の少ないアイボリーの塗り壁と柔らかな拡散光。人物の輪郭を背景から分離する" },
+  { id: "backdropWarmGray", label: "温かいグレーの壁", prompt: "ニュートラルな温かいグレーの壁、控えめな陰影。服の色と肌の質感を主役にする" },
+  { id: "backdropBlush", label: "淡いピンクの無地壁", prompt: "淡いブラッシュピンクの無地壁と柔らかな光。小物を増やさず表情を引き立てる" },
+  { id: "backdropSage", label: "セージグリーンの壁", prompt: "落ち着いたセージグリーンの壁と自然な反射光。人物が背景に埋もれない色差を保つ" },
+  { id: "backdropBlue", label: "くすみブルーの壁", prompt: "くすんだブルーのマットな壁。顔色が青くならない温かい補助光を使う" },
+  { id: "backdropLinen", label: "生成りリネンの背景", prompt: "しわの少ない生成りのリネン背景、柔らかな窓光。布の端や撮影器具は写さない" },
+  { id: "backdropArch", label: "白いアーチ壁", prompt: "白いシンプルなアーチ形の壁。線を少なくし、人物の頭や身体を切らない構図" },
+  { id: "backdropConcrete", label: "淡色モルタルの壁", prompt: "淡色モルタルのマットな壁と均一な光。ストリート感を出しつつ人物を明るく保つ" },
+  { id: "backdropWood", label: "明るい木の板壁", prompt: "明るい木の板壁。木目は控えめで自然にし、服装と表情より目立たせない" },
+  { id: "backdropCreamStudio", label: "クリーム色の無地スタジオ", prompt: "クリーム色のシームレスなスタジオ背景。床との境界を自然にし、光とポーズだけで変化をつける" },
+] }];
+
 const hanakoIdeaCatalog = [
   { id: "vegetable", title: "八百屋の小さな発見", description: "旬の色や形から始まる朝の観察メモ", brief: "旬の野菜や果物から見つけた小さな発見を、店名や住所を出さずに等身大の短文で共有する", pattern: "observation", scene: "vegetableMorning", outfit: "grocer", pose: "vegetable", composition: "detail", lighting: "produce", carousel: "review" },
   { id: "piano", title: "夜のピアノ", description: "演奏前後の気分とバーの静かな余韻", brief: "夜のピアノを弾く前後の気分や音の余韻を、店を特定できる情報なしで短く切り取る", pattern: "scenestory", scene: "pianoNight", outfit: "piano", pose: "piano", composition: "waist", lighting: "bar", carousel: "story" },
@@ -3376,6 +3587,20 @@ const hanakoThreadsLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBe
 const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "cafeCasual", "seiso", "miniLolita", "miniBandGal", "lastTrainCoat", "umbrellaTrench", "warmSleeveKnit", "gateDateJacket", "handholdCardigan", "miniRibbonCardigan", "miniTurtleneckBoots", "miniTweedSet", "miniShirtKnit", "miniMonotone", "miniDenimJacket", "miniPoloSocks", "miniOffShoulder", "miniSweaterDress", "miniBlazer", "animeMagicHeroine", "animeFantasySwordswoman", "animeCyberIdol", "animeShrineGuardian", "animeAcademyMage", "cosplayCafeMaid", "cosplayNurse", "cosplaySecretary", "cosplayTeacher", "cosplayPolice", "cosplayChef", "cosplayBunny", "cosplayHotel", "cosplayGamer", "cosplayOfficeLady", "cosplaySailorMoon", "cosplayFrieren", "cosplayMitsuri", "cosplayShinobu", "cosplayKiki", "cosplayFujiko", "cosplayChisato", "cosplayTakina", "cosplayKana", "cosplayRuby"];
 const hanakoThreadsPoses = ["fingerHeartNearFace", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan", "watchLastTrain", "shareUmbrellaLean", "gentleSleeveHold", "gateTurnBack", "handAlmostTouch", "subwayPoleGlance", "hairTieMoment", "coatPocketLean", "scarfAdjustGaze", "bagBehindBack", "seatNextTap", "shareEarphone", "drinkOffer", "doorHoldLookback", "tiptoeWhisper"];
 const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze", "lastTrainHope", "rainCloseSmile", "coldPleading", "gateFarewell", "handholdNervous", "caughtLooking", "onlyYouSmile", "surpriseEyeContact", "whisperSecret", "missedYou", "jealousPout", "praiseShy", "sleepyTrust", "comeCloserEyes", "goodbyePause"];
+hanakoInstagramLocations.push(...hanakoExtraLocations[0].items.map((item) => item.id));
+hanakoInstagramOutfits.push(...hanakoExtraOutfits[0].items.map((item) => item.id), ...hanakoExtraOutfits[3].items.map((item) => item.id));
+hanakoInstagramPoses.push(...hanakoExtraPoses[0].items.map((item) => item.id));
+hanakoThreadsLocations.push(...hanakoExtraLocations[0].items.map((item) => item.id));
+hanakoThreadsOutfits.push(...hanakoExtraOutfits[0].items.map((item) => item.id), ...hanakoExtraOutfits[3].items.map((item) => item.id));
+hanakoThreadsPoses.push(...hanakoExtraPoses[0].items.map((item) => item.id));
+hanakoThreadsExpressions.push(...hanakoExtraExpressions[0].items.map((item) => item.id));
+for (const [index, look] of hanakoInstagramLooks.entries()) {
+  const start = index * 5;
+  look.locations.push(...hanakoExtraLocations[0].items.slice(index * 3, index === 3 ? 10 : index * 3 + 3).map((item) => item.id));
+  look.outfits.push(...hanakoExtraOutfits[3].items.slice(index * 3, index === 3 ? 10 : index * 3 + 3).map((item) => item.id));
+  look.poses.push(...hanakoExtraPoses[0].items.slice(start, start + 5).map((item) => item.id));
+  look.expressions.push(...hanakoExtraExpressions[0].items.slice(start, start + 5).map((item) => item.id));
+}
 const hanakoThreadsAbFields = {
   outfit: { source: "snsOutfitPreset", label: "コーデの雰囲気" },
   hair: { source: "snsHairPreset", label: "髪型" },
@@ -12895,6 +13120,7 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0
     studioDaylight: "白い塗り壁と大きな拡散窓光、淡い木床を使う明るい撮影スタジオ。窓外に実在の街並みを作らず、選択した時間帯に合う光の色へ調整する",
     studioPastel: "淡いピンクとアイボリーのシームレス背景、柔らかな布と控えめな花を使う撮影スタジオ。装飾を少数に絞り、服と表情を主役にする",
     studioNoir: "黒または深いチャコールの背景に、柔らかなキーライトと弱い輪郭光を当てるシネマ風撮影スタジオ。顔と衣装の質感がつぶれない階調を保つ",
+    ...Object.fromEntries(hanakoExtraLocations[0].items.map((item) => [item.id, item.prompt])),
   };
   const studioDirective = studioScenes[locationPreset] ? `【撮影スタジオの設計】
 ・${studioScenes[locationPreset]}
@@ -13515,6 +13741,9 @@ function buildSocialCreativeDirective(context) {
     doorHoldLookback: "成人女性がドアを安全に押さえ、先にどうぞと肩越しに振り返る。扉と腕の接触を正確にする",
     tiptoeWhisper: "成人女性が背伸びをして内緒話をする直前の距離まで近づく。接触せず、胸元を強調しない上品な構図にする",
   });
+  Object.assign(labels.outfit, ...hanakoExtraOutfits.map((group) => Object.fromEntries(group.items.map((item) => [item.id, item.prompt]))));
+  Object.assign(labels.pose, ...hanakoExtraPoses.map((group) => Object.fromEntries(group.items.map((item) => [item.id, item.prompt]))));
+  Object.assign(labels.location, ...hanakoExtraLocations.map((group) => Object.fromEntries(group.items.map((item) => [item.id, item.prompt]))));
   Object.assign(labels.composition, {
     extremeLow: "地面近くから見上げる強いローアングル。脚を不自然に誇張せず、スカートやワンピースでは下着が見えない正面寄りの安全な角度にする",
     platformStory: "3枚構成。1枚目は駅の時計と横顔、2枚目はホームで迷う全身、3枚目はカメラを見上げる近い表情。終電前の時間の進行を見せる",

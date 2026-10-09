@@ -1340,6 +1340,20 @@ textarea {
 .sns-hanako-idea.selected { border-color: #b85b70; background: #fff4f6; box-shadow: 0 6px 18px rgba(122, 70, 48, .1); }
 .sns-hanako-gas { margin: 0 0 20px; padding: 16px; border: 1px solid rgba(67, 103, 91, .2); border-radius: 16px; background: #f8fcfa; }
 .sns-hanako-gas[hidden] { display: none; }
+.hanako-picker-open { display: block; width: 100%; margin: 6px 0; padding: 8px 10px; border: 1px solid #d8c3d1; border-radius: 9px; background: #fff; color: #8a426b; text-align: left; font-size: 12px; font-weight: 700; }
+.hanako-choice-dialog { width: min(94vw, 650px); max-height: 82vh; padding: 18px; border: 1px solid #d8c3d1; border-radius: 16px; box-shadow: 0 20px 60px #2b142755; }
+.hanako-choice-dialog::backdrop { background: #21152499; }
+.hanako-choice-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.hanako-choice-head strong { font-size: 17px; }
+.hanako-choice-head button { min-width: 36px; min-height: 36px; border: 0; border-radius: 50%; background: #f7edf3; font-size: 22px; }
+#hanakoChoiceSearch { width: 100%; min-height: 42px; padding: 9px 12px; border: 1px solid #cbaabd; border-radius: 9px; font-size: 16px; }
+.hanako-choice-categories { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0; }
+.hanako-choice-categories button { flex: 0 0 auto; padding: 7px 10px; border: 1px solid #d8c3d1; border-radius: 99px; background: #fff; font-size: 12px; }
+.hanako-choice-categories button.active { color: #fff; background: #a64e7f; border-color: #a64e7f; }
+.hanako-choice-results { max-height: 48vh; overflow-y: auto; display: grid; gap: 5px; }
+.hanako-choice-results h4 { margin: 12px 0 4px; color: #834066; font-size: 13px; }
+.hanako-choice-results > button { padding: 10px 12px; border: 1px solid #eadbe4; border-radius: 8px; background: #fff; text-align: left; font-size: 14px; }
+.hanako-choice-results > button.selected { border-color: #a64e7f; background: #fbedf5; font-weight: 800; }
 .sns-hanako-gas .primary { width: 100%; margin-top: 12px; }
 .sns-hanako-time-recommendation { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; align-items: center; margin-top: 12px; padding: 12px 13px; border: 1px solid rgba(185, 120, 91, .22); border-radius: 12px; background: linear-gradient(135deg, #fff8f2, #fff); }
 .sns-hanako-time-recommendation span, .sns-hanako-time-recommendation strong, .sns-hanako-time-recommendation small { display: block; grid-column: 1; }
