@@ -545,3 +545,30 @@ test('OPSから手動で下書きを投稿した場合は自動返信件数の�
  };
  assert.equal((await invoke({action:'publish',commentId:'manual-count'})).status,200);assert.equal(c.status,'published');assert.equal(c.reply_automatic,false);assert.ok(Date.parse(c.reply_published_at));
 });
+
+
+test('自然な会話の指示と本人の手動例を渡し、直近の長文コピーを両AIで再生成する',async()=>{
+ for(const provider of ['gemini','openai']) {
+  const s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],use_history:true,tones:['cute'],max_chars:180,custom_prompt:'',ai_provider:provider,openai_ready:true};
+  const old='そう言ってもらえると朝からとっても嬉しくなっちゃうよ♡';let c={post_id:'test-post',comment_id:'natural-current',username:'guest',comment_text:'いつも可愛い',status:'generating'};let generations=0;secrets.GEMINI_API_KEY='test-key';
+  globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+   if(url.includes('auth/v1/user'))return response({id:'owner'});
+   if(url.includes('rpc/hanako_reply_lock'))return response(true);
+   if(url.includes('rpc/hanako_reply_claim'))return response(c);
+   if(url.includes('rpc/hanako_reply_fans'))return response([]);
+   if(url.includes('hanako_reply_settings'))return response([s]);
+   if(url.includes('username=eq.'))return response([{comment_id:'natural-old',reply_id:'auto-reply',status:'published',comment_text:'可愛い',reply_text:old,commented_at:'2026-10-01T00:00:00Z'}]);
+   if(url.includes('parent_id=in.'))return response([{comment_id:'auto-reply',parent_id:'natural-old',comment_text:old},{comment_id:'human-reply',parent_id:'natural-old',comment_text:'ありがと〜😊'}]);
+   if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([c]);}
+   if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+   if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});
+   if(url.includes('generativelanguage.googleapis.com')||url.includes('api.openai.com')){
+    generations++;const instructions=provider==='gemini'?b.systemInstruction.parts[0].text:b.instructions;const input=JSON.parse(provider==='gemini'?b.contents[0].parts[0].text:b.input);
+    assert.match(instructions,/自然な会話の調整/);assert.match(instructions,/毎回質問で終わらせない/);assert.match(instructions,/絵文字なし/);assert.deepEqual(input.owner_style_examples,['ありがと〜😊']);assert.deepEqual(input.recent_replies,[old,'ありがと〜😊']);
+    const text=generations===1?old:'褒められるとにやける🤭';return provider==='gemini'?response({candidates:[{finishReason:'STOP',content:{parts:[{text}]}}]}):response({status:'completed',output:[{type:'message',content:[{type:'output_text',text}]}]});
+   }
+   throw new Error('Unexpected request '+url);
+  };
+  try{assert.equal((await invoke({action:'run'})).status,200);assert.equal(generations,2);assert.equal(c.reply_text,'褒められるとにやける🤭');}finally{delete secrets.GEMINI_API_KEY;}
+ }
+});

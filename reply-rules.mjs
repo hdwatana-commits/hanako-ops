@@ -1,4 +1,16 @@
 export const TONES = { calm: 'おだやか', friendly: '親しみやすい', energetic: '元気', cute: 'あざと可愛い', flirty: 'ほんのり思わせぶり' };
+export function tooSimilarReply(reply,previous=[]) {
+  const normalize=value=>String(value||'').normalize('NFKC').toLowerCase().replace(/https?:\/\/\S+/g,'').replace(/[^\p{Letter}\p{Number}]/gu,'');
+  const text=normalize(reply);
+  if([...text].length<14)return false;
+  const pairs=value=>{const chars=[...value],result=new Set();for(let i=0;i<chars.length-1;i++)result.add(chars[i]+chars[i+1]);return result;};
+  return previous.some(value=>{
+    const old=normalize(value);if(text===old)return true;
+    if([...text].length<20||[...old].length<20)return false;
+    const a=pairs(text),b=pairs(old),common=[...a].filter(p=>b.has(p)).length;
+    return 2*common/(a.size+b.size)>=0.88;
+  });
+}
 export function replyLanguageHint(value) {
   const text=String(value||'').normalize('NFKC').replace(/https?:\/\/\S+|@[\w.]+/g,'');
   if(/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text))return 'ja';
