@@ -47,3 +47,5 @@ test('挨拶はコメントの時刻ではなく、日本時間の返信時刻�
   assert.equal(wrongGreeting('おはよう',day),true);assert.equal(wrongGreeting('こんばんは',night),false);
   assert.equal(wrongGreeting('ありがとう、嬉しいな',night),false);
 });
+
+test('返信速度は通常と3分の即返信だけを許可し、旧クライアントは既存値を保持する',()=>{const s={enabled:true,mode:'auto',start_time:'06:00',end_time:'01:00',weekdays:[0,1,2,3,4,5,6],delay_minutes:5,tones:['cute'],adapt_tone:true,custom_prompt:'',max_chars:250,use_history:true};assert.equal(validateSettings({...s,delay_mode:'normal'}).delay_mode,'normal');assert.equal(validateSettings({...s,delay_mode:'instant'}).delay_mode,'instant');assert.throws(()=>validateSettings({...s,delay_mode:'immediate'}));assert.equal(Object.hasOwn(validateSettings(s),'delay_mode'),false);});

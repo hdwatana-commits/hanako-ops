@@ -1,4 +1,4 @@
-import { TONES } from './reply-rules.mjs?v=3';
+import { TONES } from './reply-rules.mjs?v=4';
 const section=document.createElement('section');
 section.id='threads-replies'; section.className='view';
 section.innerHTML=`
@@ -10,7 +10,7 @@ section.innerHTML=`
 <label>Geminiの接続先<select name="ai_connection"><option value="default">接続1（現在のアカウント）</option><option value="secondary">接続2</option><option value="third">接続3</option></select></label>
 <label>開始時間（日本時間）<input name="start_time" type="time" value="09:00" required></label>
 <label>終了時間（日本時間）<input name="end_time" type="time" value="23:00" required></label>
-<p class="reply-help">返信待ち時間：コメントごとに5〜45分からランダムに決定。稼働時間外・混雑・API制限時はさらに遅れることがあります。</p><label>自動返信NG対象者<textarea name="ng_users" rows="4" placeholder="ユーザー名を1行ずつ（@付きでも可）"></textarea></label><label>自動返信NGワード<textarea name="ng_words" rows="4" placeholder="除外するワードを1行ずつ"></textarea></label><p class="reply-help">NG対象者はユーザー名の完全一致、NGワードはコメント本文の部分一致。大文字・小文字や全角・半角の違いを同一視します。各200件まで。登録後は「クラウドに保存」を押してください。</p>
+<label>返信速度モード<select name="delay_mode"><option value="normal">通常モード（5〜45分ランダム）</option><option value="instant">即返信モード（コメントから3分後）</option></select></label><p class="reply-help">通常は5〜45分ランダム、即返信はコメントから3分後に返信可能になります。切り替えて「クラウドに保存」で待機中のコメントにも適用します。稼働時間外・混雑・API制限時はさらに遅れることがあります。</p><label>自動返信NG対象者<textarea name="ng_users" rows="4" placeholder="ユーザー名を1行ずつ（@付きでも可）"></textarea></label><label>自動返信NGワード<textarea name="ng_words" rows="4" placeholder="除外するワードを1行ずつ"></textarea></label><p class="reply-help">NG対象者はユーザー名の完全一致、NGワードはコメント本文の部分一致。大文字・小文字や全角・半角の違いを同一視します。各200件まで。登録後は「クラウドに保存」を押してください。</p>
 <label>返信の最大文字数<input name="max_chars" type="number" min="20" max="500" value="180" required></label></div>
 <p class="reply-help">同じ開始・終了時間は24時間。日付をまたぐ場合は開始曜日を基準にします。時間外のコメントは次の稼働時間まで待機します。</p>
 <p class="reply-help" id="replyConnectionHelp">接続先を選んで「クラウドに保存」で変更します。APIキーはSupabaseのSecretsに登録してください。上限到達時の自動切り替えはありません。</p>
@@ -54,6 +54,7 @@ async function load(){
   }
   $('#replyFields').disabled=false;form.querySelector('[type="submit"]').disabled=false;$('#replyRun').disabled=!data.connected;$('#replyCheck').disabled=false;
   if(!data.settings.ai_connection)connectionSelect.value='default';
+  form.elements.namedItem('delay_mode').value=data.settings.delay_mode||'normal';
   $('#replyConnectionHelp').textContent='下のAPIキー登録欄で登録し、接続先を選んで「クラウドに保存」で変更します。上限による待機中は変更できません。自動切り替えはありません。';
   $('#replyKeyFields').disabled=false;renderKeyState();
   status(`${data.settings.enabled?'有効':'停止中'} · ${data.settings.mode==='auto'?'自動投稿':'下書きのみ'} · ${data.connected?'API設定あり（接続の動作確認は今すぐ確認から）':'Threads・AIのサーバー設定が必要です'}${data.settings.last_error?' · '+data.settings.last_error:''}`);
@@ -77,7 +78,7 @@ async function showHistory(username,more=false){const result=await call('history
 $('#replyLoad').onclick=()=>task(load);
 $('#replyCheck').onclick=()=>task(async()=>{status('ThreadsとAIの接続を確認しています。');const result=await call('check');$('#replyCheckResult').textContent=[`AI（${result.openai.provider||'openai'} / ${result.openai.model}）: ${result.openai.ok?'返信生成OK':result.openai.error||'キー未設定'}`,`Threads: ${result.threads.ok?'接続OK（'+result.threads.username+'）':result.threads.error||'認証未設定'}`,result.openai.sample?'生成例: '+result.openai.sample:''].filter(Boolean).join('\n');status(result.ready?'ThreadsとAIの接続を確認しました。': '接続結果を確認してください。');});
 $('#replyRun').onclick=()=>task(async()=>{const result=await call('run');await load();status(({quota_wait:'Gemini無料枠の上限です。待機中のコメントは1時間後に再試行します。',busy:'処理中です。少し待って再度読み込んでください。',off:'自動処理は停止中です。',outside_window:'コメントを確認しました。返信は次の稼働時間まで待機します。',skipped:'本人の返信を確認したためスキップしました。',processed:'返信を1件処理しました。',idle:'コメントを確認しました。ページを順番に収集中です。'})[result.status]||result.status);});
-form.onsubmit=e=>{e.preventDefault();task(async()=>{const f=new FormData(form);await call('save',{settings:{enabled:f.has('enabled'),mode:f.get('mode'),ai_connection:f.get('ai_connection'),start_time:f.get('start_time'),end_time:f.get('end_time'),weekdays:f.getAll('weekdays').map(Number),delay_minutes:5,ng_users:String(f.get('ng_users')||'').split(/\r?\n/),ng_words:String(f.get('ng_words')||'').split(/\r?\n/),tones:f.getAll('tones'),adapt_tone:f.has('adapt_tone'),custom_prompt:f.get('custom_prompt'),max_chars:Number(f.get('max_chars')),use_history:f.has('use_history')}});await load();status('返信設定をクラウドに保存しました。');});};
+form.onsubmit=e=>{e.preventDefault();task(async()=>{const f=new FormData(form);await call('save',{settings:{enabled:f.has('enabled'),mode:f.get('mode'),ai_connection:f.get('ai_connection'),start_time:f.get('start_time'),end_time:f.get('end_time'),weekdays:f.getAll('weekdays').map(Number),delay_minutes:5,delay_mode:f.get('delay_mode'),ng_users:String(f.get('ng_users')||'').split(/\r?\n/),ng_words:String(f.get('ng_words')||'').split(/\r?\n/),tones:f.getAll('tones'),adapt_tone:f.has('adapt_tone'),custom_prompt:f.get('custom_prompt'),max_chars:Number(f.get('max_chars')),use_history:f.has('use_history')}});await load();status('返信設定をクラウドに保存しました。');});};
 $('#replyFilter').onchange=renderQueue;$('#replySearch').oninput=renderFans;
 $('#replyHistoryClose').onclick=()=>$('#replyHistoryPanel').hidden=true;
 $('#replyMore').onclick=()=>task(()=>showHistory(person,true));
