@@ -1,4 +1,18 @@
 export const TONES = { calm: 'おだやか', friendly: '親しみやすい', energetic: '元気', cute: 'あざと可愛い', flirty: 'ほんのり思わせぶり' };
+export function isEmojiOnly(value) {
+  const text=String(value||'').replace(/[\u200B\uFEFF]/g,'').trim();
+  if(!text)return false;
+  const parts=[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(text)].map(p=>p.segment).filter(p=>!/^\s+$/u.test(p));
+  return parts.length>0&&parts.every(p=>/^[0-9#*]\uFE0F?\u20E3$/u.test(p)||/^\p{Regional_Indicator}{2}$/u.test(p)||(/\p{Extended_Pictographic}/u.test(p)&&!/^[©®™]\uFE0E?$/u.test(p)&&/^[\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0E\uFE0F\u200D\u{E0020}-\u{E007F}]+$/u.test(p)));
+}
+export function emojiReply(value,random=Math.random) {
+  if(!isEmojiOnly(value))return null;
+  const sad=/[😢😭😔😞😟🥺💔]/u.test(value);
+  const angry=/[😡🤬😠🖕]/u.test(value);
+  const hearts=/[❤💕💖💗💓💞💘😍🥰🫶]/u.test(value);
+  const choices=angry?['🤍🌿','🌷🤍','🤍']:sad?['🫶🤍','🤍🌷','🥺🫶','🫂🤍']:hearts?['🥰🫶','🤭💕','🫶💗','😊💖','💕✨','🥰🤍']:['😊✨','🤭🌸','🥰🫶','🫶✨','☺️🌷','🤍✨','😊💕','🌸🫶'];
+  return choices[Math.max(0,Math.min(choices.length-1,Math.floor(random()*choices.length)))];
+}
 export const RELATIONSHIP_LEVELS = [
   {name:'はじめまして',comments:0,days:0,replies:0,tone:'親しみやすく、軽い照れ。初対面で恋人扱いしない。'},
   {name:'顔なじみ',comments:3,days:2,replies:2,tone:'また話せた嬉しさと、覚えている好みを自然に伝える。'},

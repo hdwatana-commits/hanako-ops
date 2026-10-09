@@ -477,3 +477,25 @@ test('入金後の匿名接続テストが成功すると残高警告とOpenAI�
  };
  assert.equal((await invoke({action:'openai_check'})).status,200);assert.equal(s.openai_billing_status,'available');assert.equal(s.openai_ready,true);assert.equal(s.ai_retry_at,null);assert.equal(s.last_error,'');
 });
+
+
+test('絵文字のみは通常時もAI残高不足・上限待機中もAIを一度も呼ばずに投稿する',async()=>{
+ for(const wait of ['normal','openai','quota']) {
+  let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],use_history:true,tones:['cute'],max_chars:180,ai_provider:wait==='openai'?'openai':'gemini',openai_ready:false,ai_retry_at:wait==='quota'?new Date(Date.now()+3600000).toISOString():null};
+  let c={post_id:'test-post',comment_id:'emoji-comment',username:'guest',comment_text:'🥰❤️',status:'pending',generation_attempts:1};let published=0;
+  globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+   if(url.includes('auth/v1/user'))return response({id:'owner'});
+   if(url.includes('rpc/hanako_reply_lock'))return response(true);
+   if(url.includes('rpc/hanako_reply_claim'))return response(c);
+   if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...b};return response([s]);}
+   if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([c]);}
+   if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+   if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});
+   if(url.endsWith('/me/threads'))return response({id:'container'});
+   if(url.includes('/container?'))return response({status:'FINISHED'});
+   if(url.endsWith('/me/threads_publish')){published++;return response({id:'published'});}
+   throw new Error('Unexpected AI/history call '+url);
+  };
+  const result=await (await invoke({action:'run'})).json();assert.equal(result.status,'processed');assert.equal(c.status,'published');assert.equal(published,1);assert.ok(c.reply_text);assert.doesNotMatch(c.reply_text,/[a-zA-Zあ-ん]/);if(wait==='quota')assert.ok(s.ai_retry_at);
+ }
+});

@@ -1,5 +1,5 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
-import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting } from '../../../reply-rules.mjs';
+import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting, isEmojiOnly, emojiReply } from '../../../reply-rules.mjs';
 import { HANA_PROMPT, RELATIONSHIP_PROMPT, DESTINATION_PROMPT } from './prompt.ts';
 const env = (name: string) => { const value=Deno.env.get(name); if(!value) throw new Error(`サーバー設定 ${name} が必要です`); return value; };
 const OPENAI_LUNA_MODEL='gpt-6-luna';
@@ -86,6 +86,7 @@ async function checkThreadsOwner() {
   return me;
 }
 async function generate(s: any,c: any,attempt=0): Promise<string> {
+  const emoji=emojiReply(c.comment_text);if(emoji)return emoji;
   const history=s.use_history ? await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(c.username)}&comment_id=neq.${encodeURIComponent(c.comment_id)}&order=commented_at.desc&limit=20&select=comment_id,comment_text,reply_text,post_text,commented_at,status`) : [];
   const ids=history.map((h:any)=>h.comment_id).filter(Boolean);
   const manual=ids.length ? await db(`hanako_reply_comments?${filter()}&is_owner=eq.true&parent_id=in.(${ids.map((id:string)=>encodeURIComponent(id)).join(',')})&select=parent_id,comment_text,commented_at&order=commented_at.asc`) : [];
@@ -286,6 +287,14 @@ async function publish(c: any) {
     throw e;
   }
 }
+async function claimEmoji() {
+  for(let offset=0;offset<1000;offset+=100) {
+    const rows=await db(`hanako_reply_comments?${filter()}&is_owner=eq.false&container_id=is.null&reply_id=is.null&reply_due_at=lte.${encodeURIComponent(new Date().toISOString())}&or=(status.eq.pending,and(status.eq.failed,generation_attempts.lt.3,next_attempt_at.lte.${encodeURIComponent(new Date().toISOString())}))&order=reply_due_at,commented_at&limit=100&offset=${offset}`);
+    for(const row of rows)if(isEmojiOnly(row.comment_text)) {const claimed=await db('rpc/hanako_reply_claim_comment','POST',{owner_id:owner(),target_comment_id:row.comment_id});if(claimed)return claimed;}
+    if(rows.length<100)break;
+  }
+  return null;
+}
 async function run(action: string,body: any) {
   const s=await settings();
   if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()})) return {status:'busy'};
@@ -301,12 +310,12 @@ async function run(action: string,body: any) {
       await updateComment(rows[0].comment_id,{status:'pending',error:'',generation_attempts:0,next_attempt_at:null}); return {status:'pending'};
     }
     if(!s.enabled) return {status:'off'};
-    if(aiProvider(s)==='openai'&&s.openai_ready===false)return {status:'openai_not_ready'};
-    if(s.ai_retry_at&&new Date(s.ai_retry_at).getTime()>Date.now())return {status:'quota_wait',retry_at:s.ai_retry_at};
+    const aiWait=(aiProvider(s)==='openai'&&s.openai_ready===false)||Boolean(s.ai_retry_at&&Date.parse(s.ai_retry_at)>Date.now());
     const me=await checkThreadsOwner();
     const checked=await scanRecent(s,me);
     if(!inWindow(s)) {await updateSettings({last_run:new Date().toISOString(),last_error:''}); return {status:'outside_window'};}
-    const c=await db('rpc/hanako_reply_claim','POST',{owner_id:owner()});
+    const c=aiWait?await claimEmoji():await db('rpc/hanako_reply_claim','POST',{owner_id:owner()});
+    if(!c&&aiWait)return {status:aiProvider(s)==='openai'&&s.openai_ready===false?'openai_not_ready':'quota_wait',retry_at:s.ai_retry_at};
     if(c) {
       try {
         if(await skipOutsideLatest(c)||await skipExcluded(c,await settings()))return {status:'skipped',checked};
@@ -314,11 +323,13 @@ async function run(action: string,body: any) {
           await updateSettings({last_run:new Date().toISOString(),last_error:''});
           return {status:'skipped',checked};
         }
-        const text=await generate(s,c);
+        const emoji=emojiReply(c.comment_text);
+        if(aiWait&&!emoji){await updateComment(c.comment_id,{status:'pending',generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});return {status:'quota_wait',retry_at:s.ai_retry_at};}
+        const text=emoji||await generate(s,c);
         await updateComment(c.comment_id,{status:'draft',reply_text:text,error:'',next_attempt_at:null});
         // Re-read after generation so OFF and changed hours take effect before posting.
         const fresh=await settings();
-        if(fresh.enabled&&fresh.mode==='auto'&&aiProvider(fresh)===aiProvider(s)&&inWindow(fresh)&&(fresh.ai_connection||'default')===(s.ai_connection||'default')) await publish({...c,reply_text:text});
+        if(fresh.enabled&&fresh.mode==='auto'&&(emoji||aiProvider(fresh)===aiProvider(s))&&inWindow(fresh)&&(emoji||(fresh.ai_connection||'default')===(s.ai_connection||'default'))) await publish({...c,reply_text:text});
       } catch(e) {
         if(e instanceof FreeQuotaError) {
           await updateComment(c.comment_id,{status:'pending',error:e.message,generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});
@@ -336,8 +347,8 @@ async function run(action: string,body: any) {
     }
     // Historical fan statistics are lower priority and keep their original cursors.
     let historyError='';
-    if(!c&&new Date().getUTCMinutes()%5===0)try{await scan(s,me);}catch(e){historyError=e instanceof Error?e.message:'履歴の収集に失敗しました';}
-    await updateSettings({last_run:new Date().toISOString(),last_error:historyError,ai_retry_at:null});
+    if(!c&&!aiWait&&new Date().getUTCMinutes()%5===0)try{await scan(s,me);}catch(e){historyError=e instanceof Error?e.message:'履歴の収集に失敗しました';}
+    await updateSettings({last_run:new Date().toISOString(),...(aiWait?{}:{last_error:historyError,ai_retry_at:null})});
     return {status:c?'processed':'idle',checked};
   } catch(e) {await updateSettings({last_error:e instanceof Error?e.message:'処理失敗'}).catch(()=>{});throw e;}
   finally {await updateSettings({lease_until:null});}
