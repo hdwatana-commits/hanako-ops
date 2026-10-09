@@ -1,0 +1,5 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {replyLanguageHint,wrongReplyLanguage} from '../reply-rules.mjs';
+test('外国語と日本語の混在を区別し、URLやメンションを言語判定から外す',()=>{for(const t of ['Yes, of course','Wellcom','🌷You look lovely','Muy bonita','Tu es magnifique'])assert.equal(replyLanguageHint(t),'latin');assert.equal(replyLanguageHint('cuteなお洋服'),'ja');assert.equal(replyLanguageHint('最高'),'unknown');assert.equal(replyLanguageHint('🇯🇵'),'unknown');assert.equal(replyLanguageHint('https://note.com/hanako47258'),'unknown');assert.equal(replyLanguageHint('你好，很漂亮'),'zh');});
+test('日本語の混入と異なる文字体系を検出し、正しい返信と絵文字は通す',()=>{for(const [c,r] of [['Hello','嬉しいな♡'],['Yes, of course','Thank you! ドキドキしちゃう'],['こんにちは','ありがとう♡'],['Hola','Gracias💕'],['你好','谢谢你💕'],['예뻐요','고마워요♡'],['Спасибо','Спасибо💕'],['جميلة','شكرا💕']])assert.equal(wrongReplyLanguage(c,r),/[ぁ-ん]/.test(r)&&!/[ぁ-ん]/.test(c),c+' '+r);assert.equal(wrongReplyLanguage('你好','ありがとう♡'),true);assert.equal(wrongReplyLanguage('예뻐요','Thank you'),true);assert.equal(wrongReplyLanguage('Hello','😊✨'),false);assert.equal(wrongReplyLanguage('最高','ありがとう'),false);});

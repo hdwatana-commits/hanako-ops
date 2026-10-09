@@ -1,5 +1,5 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
-import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting, isEmojiOnly, emojiReply } from '../../../reply-rules.mjs';
+import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting, isEmojiOnly, emojiReply, replyLanguageHint, wrongReplyLanguage } from '../../../reply-rules.mjs';
 import { HANA_PROMPT, RELATIONSHIP_PROMPT, DESTINATION_PROMPT } from './prompt.ts';
 const env = (name: string) => { const value=Deno.env.get(name); if(!value) throw new Error(`サーバー設定 ${name} が必要です`); return value; };
 const OPENAI_LUNA_MODEL='gpt-6-luna';
@@ -95,17 +95,17 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   const relationship=relationshipLevel(stats);
   const conversation=history.reverse().map((h:any)=>({post:h.post_text,comment:h.comment_text,at:h.commented_at,replies:[...(h.status==='published'&&h.reply_text?[h.reply_text]:[]),...manual.filter((r:any)=>r.parent_id===h.comment_id).map((r:any)=>r.comment_text)]}));
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
-  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。自然な日本語を確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${replyCustomPrompt(s.custom_prompt)}\n${HANA_PROFILE}`;
-  const input=JSON.stringify({reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation});
+  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。相手のコメントの言語で自然な文になっているか確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${replyCustomPrompt(s.custom_prompt)}\n${HANA_PROFILE}\n【最優先：返信言語】current_commentの言語だけを基準にし、その言語だけで返信する。日本語の投稿・プロフィール・過去の返信・例文に引きずられない。混在する場合は今回のコメントの主な言語を使う。外国語のコメントに日本語の文章や訳文を添えない。日本語の例文・名前・作品名は必要に応じて相手の言語に訳すかローマ字表記にする。latinは英語と決め付けず、スペイン語・フランス語等も元コメントから判断する。日本語での品質確認よりこの言語ルールを優先する。言語・文字の参考判定: ${replyLanguageHint(c.comment_text)}。`;
+  const input=JSON.stringify({reply_language_hint:replyLanguageHint(c.comment_text),reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation});
   if(aiProvider(s)==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
     const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':await geminiKey(s),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
     const candidate=response.candidates?.[0];
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
     const text=(candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim();
-    if(invalidReply(text,s.max_chars)||wrongGreeting(text)) {
-      if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、内容にだけ返す。'},c,1);
-      throw new Error('返信形式を確認してください');
+    if(invalidReply(text,s.max_chars)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)) {
+      if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。'},c,1);
+      throw new Error('返信形式・コメントと同じ言語になっているか確認してください');
     }
     return text;
   }
@@ -116,8 +116,8 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   })},'AI返信生成');
   if(response.status!=='completed') throw new Error('AIの生成が未完了です');
   const text=(response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim();
-  if((invalidReply(text,s.max_chars)||wrongGreeting(text))&&!attempt)return generate({...s,custom_prompt:s.custom_prompt+'\n挨拶が現在時刻と矛盾したため破棄。時間帯の挨拶を一切付けず、コメントの内容にだけ返す。'},c,1);
-  if(invalidReply(text,s.max_chars)||wrongGreeting(text)) throw new Error('返信形式・時間帯の挨拶を確認してください');
+  if((invalidReply(text,s.max_chars)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text))&&!attempt)return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶の規則に合わないため破棄。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。'},c,1);
+  if(invalidReply(text,s.max_chars)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)) throw new Error('返信形式・言語・時間帯の挨拶を確認してください');
   return text;
 }
 async function probeOpenAI(): Promise<string> {
@@ -259,6 +259,7 @@ async function publish(c: any) {
   if(await skipOutsideLatest(c))return;
   if(await skipExcluded(c,await settings())) return;
   if(await skipIfReplied(c)) return;
+  if(wrongReplyLanguage(c.comment_text,c.reply_text))throw new Error('コメントと返信の言語が合いません。再生成してください');
   if(wrongGreeting(c.reply_text)) throw new Error('返信時刻と挨拶が合いません。再生成してください');
   if(invalidReply(c.reply_text,500)) throw new Error('返信文が会う・電話・連絡先交換の禁止または形式のルールに反しています。再生成してください');
   // Write publishing before any external write. Never automatically retry an uncertain result.
@@ -278,6 +279,7 @@ async function publish(c: any) {
     if(!ready) throw new Error('Threadsの返信準備が時間内に完了しませんでした。投稿状態を確認してください');
     if(await skipExcluded(c,await settings())) return;
     if(await skipOutsideLatest(c))return;
+    if(wrongReplyLanguage(c.comment_text,c.reply_text))throw new Error('コメントと返信の言語が合いません。再生成してください');
     if(wrongGreeting(c.reply_text))throw new Error('返信時刻と挨拶が合いません。再生成してください');
     const result=await meta('me/threads_publish',{creation_id:container.id},'POST');
     if(!result.id) throw new Error('Threads投稿結果IDがありません');
@@ -306,7 +308,7 @@ async function run(action: string,body: any) {
     }
     if(action==='retry') {
       const rows=await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(String(body.commentId))}`);
-      if(!rows[0]||!['failed','generating'].includes(rows[0].status)) throw new Error('再生成できる返信がありません');
+      if(!rows[0]||!['failed','generating','draft'].includes(rows[0].status)||rows[0].container_id||rows[0].reply_id) throw new Error('再生成できる返信がありません');
       await updateComment(rows[0].comment_id,{status:'pending',error:'',generation_attempts:0,next_attempt_at:null}); return {status:'pending'};
     }
     if(!s.enabled) return {status:'off'};

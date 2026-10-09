@@ -499,3 +499,30 @@ test('絵文字のみは通常時もAI残高不足・上限待機中もAIを一�
   const result=await (await invoke({action:'run'})).json();assert.equal(result.status,'processed');assert.equal(c.status,'published');assert.equal(published,1);assert.ok(c.reply_text);assert.doesNotMatch(c.reply_text,/[a-zA-Zあ-ん]/);if(wait==='quota')assert.ok(s.ai_retry_at);
  }
 });
+
+
+test('GeminiとOpenAIは英語コメントへの日本語候補を破棄し英語で一度だけ再生成する',async()=>{
+ for(const provider of ['gemini','openai']) {
+  const s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],use_history:false,tones:['cute'],max_chars:180,custom_prompt:'',ai_provider:provider,openai_ready:true};let c={post_id:'test-post',comment_id:'language-comment',username:'guest',comment_text:'💗 Yes, of course',post_text:'日本語の投稿です',status:'generating'};let generations=0;secrets.GEMINI_API_KEY='test-key';
+  globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+   if(url.includes('auth/v1/user'))return response({id:'owner'});
+   if(url.includes('rpc/hanako_reply_lock'))return response(true);
+   if(url.includes('rpc/hanako_reply_claim'))return response(c);
+   if(url.includes('hanako_reply_settings'))return response([s]);
+   if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([c]);}
+   if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+   if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});
+   if(url.includes('generativelanguage.googleapis.com')||url.includes('api.openai.com')){
+    generations++;const instructions=provider==='gemini'?b.systemInstruction.parts[0].text:b.instructions;assert.match(instructions,/最優先：返信言語/);assert.doesNotMatch(instructions,/自然な日本語を確認してから/);const text=generations===1?'嬉しいな♡':'That makes me smile! 🥰';
+    return provider==='gemini'?response({candidates:[{finishReason:'STOP',content:{parts:[{text}]}}]}):response({status:'completed',output:[{type:'message',content:[{type:'output_text',text}]}]});
+   }
+   throw new Error('Unexpected request '+url);
+  };
+  try{assert.equal((await invoke({action:'run'})).status,200);assert.equal(generations,2);assert.equal(c.reply_text,'That makes me smile! 🥰');}finally{delete secrets.GEMINI_API_KEY;}
+ }
+});
+
+test('英語コメントに保存済みの日本語下書きは投稿しない',async()=>{
+ globalThis.fetch=async url=>{url=String(url);if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([{}]);if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('hanako_reply_comments'))return response([{comment_id:'old-draft',post_id:'test-post',comment_text:'Hello',reply_text:'ありがとう♡',status:'draft'}]);if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});throw new Error('Unexpected publish '+url);};
+ const result=await invoke({action:'publish',commentId:'old-draft'});assert.equal(result.status,400);assert.match((await result.json()).error,/言語/);
+});

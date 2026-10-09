@@ -1,4 +1,4 @@
-import { TONES } from './reply-rules.mjs?v=6';
+import { TONES } from './reply-rules.mjs?v=7';
 const section=document.createElement('section');
 section.id='threads-replies'; section.className='view';
 section.innerHTML=`
@@ -73,7 +73,7 @@ function card(c){const article=document.createElement('article');article.classNa
   if(c.status==='pending'&&c.reply_due_at)article.append(textNode('small','返信可能になる時刻：'+new Date(c.reply_due_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})));
   if(c.status==='failed'&&c.next_attempt_at)article.append(textNode('small','次の自動再生成：'+new Date(c.next_attempt_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo'})));
   if(c.status==='draft'){const publish=textNode('button','この下書きを投稿');publish.onclick=()=>task(async()=>{await call('publish',{commentId:c.comment_id});await load();});article.append(publish);}
-  if(['failed','generating'].includes(c.status)){const retry=textNode('button','再生成の待機に戻す');retry.onclick=()=>task(async()=>{const result=await call('retry',{commentId:c.comment_id});await load();if(result.status==='busy')status('処理中です。数分後に再実行してください。');});article.append(retry);}
+  if(['failed','generating','draft'].includes(c.status)&&!c.container_id&&!c.reply_id){const retry=textNode('button','再生成の待機に戻す');retry.onclick=()=>task(async()=>{const result=await call('retry',{commentId:c.comment_id});await load();if(result.status==='busy')status('処理中です。数分後に再実行してください。');});article.append(retry);}
   const history=textNode('button','この人の履歴');history.onclick=()=>task(()=>showHistory(c.username));article.append(history);return article;
 }
 function renderQueue(){const queue=$('#replyQueue');queue.replaceChildren();const values=(loaded?.replies||[]).filter(c=>$('#replyFilter').value==='all'||c.status===$('#replyFilter').value);if(!values.length)queue.append(textNode('p','対象の返信はありません。'));values.forEach(c=>queue.append(card(c)));}

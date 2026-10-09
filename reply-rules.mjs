@@ -1,4 +1,23 @@
 export const TONES = { calm: 'おだやか', friendly: '親しみやすい', energetic: '元気', cute: 'あざと可愛い', flirty: 'ほんのり思わせぶり' };
+export function replyLanguageHint(value) {
+  const text=String(value||'').normalize('NFKC').replace(/https?:\/\/\S+|@[\w.]+/g,'');
+  if(/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text))return 'ja';
+  for(const [name,pattern] of [['ko',/\p{Script=Hangul}/u],['cyrillic',/\p{Script=Cyrillic}/u],['arabic',/\p{Script=Arabic}/u],['thai',/\p{Script=Thai}/u],['devanagari',/\p{Script=Devanagari}/u]])if(pattern.test(text))return name;
+  if(/你好|您好|谢谢|謝謝|漂亮|好看|喜欢|喜歡|爱你|愛你|早上好|晚上好|你的|你是|我想/u.test(text))return 'zh';
+  if(/\p{Script=Han}/u.test(text))return 'unknown';
+  if(/\p{Script=Latin}/u.test(text))return 'latin';
+  return 'unknown';
+}
+export function wrongReplyLanguage(comment,reply) {
+  const hint=replyLanguageHint(comment);
+  const text=String(reply||'').replace(/https?:\/\/\S+/g,'');
+  if(!/\p{Letter}/u.test(text)||hint==='unknown'||hint==='ja')return false;
+  if(/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text))return true;
+  if(hint==='zh')return !/\p{Script=Han}/u.test(text);
+  if(/\p{Script=Han}/u.test(text))return true;
+  const patterns={latin:/\p{Script=Latin}/u,ko:/\p{Script=Hangul}/u,cyrillic:/\p{Script=Cyrillic}/u,arabic:/\p{Script=Arabic}/u,thai:/\p{Script=Thai}/u,devanagari:/\p{Script=Devanagari}/u};
+  return !patterns[hint].test(text);
+}
 export function isEmojiOnly(value) {
   const text=String(value||'').replace(/[\u200B\uFEFF]/g,'').trim();
   if(!text)return false;
