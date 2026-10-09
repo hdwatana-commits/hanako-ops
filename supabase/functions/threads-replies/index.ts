@@ -109,11 +109,19 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   if(invalidReply(text,s.max_chars)||wrongGreeting(text)) throw new Error('返信形式・時間帯の挨拶を確認してください');
   return text;
 }
-async function checkConnections() {
-  const s=await settings();
+async function probeOpenAI(): Promise<string> {
+  const response=await api('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${await openaiKey()}`,'Content-Type':'application/json'},body:JSON.stringify({model:OPENAI_LUNA_MODEL,store:false,reasoning:{effort:'none'},max_output_tokens:64,instructions:'接続確認です。「こんにちは」とだけ返してください。',input:'接続確認'})},'AI返信生成');
+  if(response.status!=='completed')throw new Error('Lunaの接続テストを完了できませんでした');
+  const text=(response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text||'').join('').trim();
+  if(!text)throw new Error('Lunaの接続テストに返信がありませんでした');
+  return text;
+}
+async function checkConnections(override?:string) {
+  if(override&&!['gemini','openai'].includes(override))throw new Error('接続テストのAIが不正です');
+  const current=await settings();const s=override?{...current,ai_provider:override}:current;
   const result:any={openai:{provider:aiProvider(s),configured:await aiConfigured(s),ok:false,model:aiProvider(s)==='gemini'?(Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite'):OPENAI_LUNA_MODEL},threads:{configured:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')),ok:false}};
   if(result.openai.configured) {
-    try { result.openai.sample=await generate({...s,use_history:false},{comment_text:'今日の服、すごく似合ってる！',post_text:'今日のお気に入りコーデ。',username:'connection-test'});result.openai.ok=true; }
+    try { result.openai.sample=override==='openai'?await probeOpenAI():await generate({...s,use_history:false},{comment_text:'今日の服、すごく似合ってる！',post_text:'今日のお気に入りコーデ。',username:'connection-test'});result.openai.ok=true; }
     catch(e){result.openai.error=e instanceof Error?e.message:'AI接続に失敗しました';}
   }
   if(Deno.env.get('THREADS_ACCESS_TOKEN')) {
@@ -333,7 +341,14 @@ Deno.serve(async request=>{
     const isCron=Boolean(secret)&&request.headers.get('x-cron-secret')===secret;
     if(!isCron) await authenticate(request);
     if(isCron&&!['run','check'].includes(body.action)) return respond({error:'許可されていません'},403);
-    if(body.action==='check') return respond(await checkConnections());
+    if(body.action==='check') {
+      if(body.provider==='openai') {
+        if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()}))return respond({status:'busy'});
+        try {const result=await checkConnections('openai');await updateSettings({openai_ready:result.openai.ok});return respond(result);}
+        finally {await updateSettings({lease_until:null});}
+      }
+      return respond(await checkConnections(body.provider));
+    }
     if(['run','publish','retry'].includes(body.action)) return respond(await run(body.action,body));
     if(body.action==='openai_status')return respond({configured:await openaiConfigured(),ready:Boolean((await settings()).openai_ready),model:OPENAI_LUNA_MODEL});
     if(body.action==='openai_key_save') {
@@ -347,7 +362,7 @@ Deno.serve(async request=>{
     if(body.action==='openai_check') {
       if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()}))throw new Error('返信処理中です。少し待ってから接続テストしてください');
       const current=await settings();
-      try {const sample=await generate({...current,ai_provider:'openai',use_history:false},{username:'connection-test',post_text:'今日のお気に入りコーデ',comment_text:'今日の服、すごく似合ってる！'});await updateSettings({openai_ready:true});return respond({ok:true,sample,model:OPENAI_LUNA_MODEL});}
+      try {const sample=await probeOpenAI();await updateSettings({openai_ready:true});return respond({ok:true,sample,model:OPENAI_LUNA_MODEL});}
       catch(e){await updateSettings({openai_ready:false});throw e;}
       finally {await updateSettings({lease_until:null});}
     }

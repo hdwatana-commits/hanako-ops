@@ -404,7 +404,7 @@ test('所有者がOpenAIキーをVaultに登録し、Lunaの接続テスト後�
   if(url.includes('auth/v1/user'))return response({id:'owner'});
   if(url.includes('rpc/hanako_reply_lock'))return response(true);
   if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...b};return response([s]);}
-  if(url.includes('api.openai.com')){generations++;assert.equal(b.model,'gpt-6-luna');assert.equal(b.reasoning.effort,'none');assert.equal(b.max_output_tokens,1024);assert.equal(b.store,false);assert.equal(opts.headers.Authorization,'Bearer '+openaiVault);return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'ありがとう、嬉しいな♡'}]}]});}
+  if(url.includes('api.openai.com')){generations++;assert.equal(b.model,'gpt-6-luna');assert.equal(b.reasoning.effort,'none');assert.equal(b.max_output_tokens,64);assert.equal(b.store,false);assert.equal(b.input,'接続確認');assert.doesNotMatch(b.instructions,/ハナ|プロフィール|past_conversation/);assert.equal(opts.headers.Authorization,'Bearer '+openaiVault);return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'ありがとう、嬉しいな♡'}]}]});}
   throw new Error('Unexpected request '+url);
  };
  try {
