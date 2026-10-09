@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 let handler; let directReplies=null; let countResult=0;
-let vault={}, vaultWrites=0, vaultReads=0, fetchMock;
+let vault={}, vaultWrites=0, vaultReads=0, fetchMock;let openaiVault=null;
 Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,set:fn=>{fetchMock=async(url,opts={})=>{
+  if(String(url).includes('/rpc/hanako_openai_key_')){const b=JSON.parse(opts.body);assert.equal(b.owner_id,'owner');assert.equal(opts.headers.Authorization,'Bearer service');if(String(url).endsWith('_status'))return response(Boolean(openaiVault));if(String(url).endsWith('_read'))return response(openaiVault);if(String(url).endsWith('_save')){openaiVault=b.key_value;return response(true);}}
   if(opts.method==='HEAD'){assert.match(String(url),/post_id=in/);assert.match(String(url),/status.eq.pending/);assert.match(String(url),/generation_attempts.lt.3/);assert.equal(opts.headers.Prefer,'count=exact');return new Response(null,{headers:{'Content-Range':'*/'+countResult}});}
   if(String(url).includes('/rpc/hanako_gemini_key_')) {
     const body=JSON.parse(opts.body);assert.equal(body.owner_id,'owner');assert.equal(opts.headers.Authorization,'Bearer service');
@@ -394,4 +395,58 @@ test('生成指示はnoteだけの購入案内と軽い甘えを含み、直接U
   throw new Error('Unexpected request');
  };
  try{const result=await (await invoke({action:'check'},{'x-cron-secret':'cron'})).json();assert.equal(result.openai.ok,true);assert.match(result.openai.sample,/https:\/\/note\.com\/hanako47258/);}finally{secrets.REPLY_AI_PROVIDER='openai';delete secrets.GEMINI_API_KEY;}
+});
+
+
+test('所有者がOpenAIキーをVaultに登録し、Lunaの接続テスト後だけ手動で切り替える',async()=>{
+ let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],delay_minutes:5,tones:['cute'],adapt_tone:true,custom_prompt:'',max_chars:180,use_history:false,ai_provider:'gemini',openai_ready:false};let generations=0;
+ globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+  if(url.includes('auth/v1/user'))return response({id:'owner'});
+  if(url.includes('rpc/hanako_reply_lock'))return response(true);
+  if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...b};return response([s]);}
+  if(url.includes('api.openai.com')){generations++;assert.equal(b.model,'gpt-6-luna');assert.equal(b.reasoning.effort,'none');assert.equal(b.max_output_tokens,1024);assert.equal(b.store,false);assert.equal(opts.headers.Authorization,'Bearer '+openaiVault);return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'ありがとう、嬉しいな♡'}]}]});}
+  throw new Error('Unexpected request '+url);
+ };
+ try {
+  const saved=await (await invoke({action:'openai_key_save',key:'sk-'+ 'a'.repeat(40)})).json();assert.equal(saved.saved,true);assert.equal(s.ai_provider,'gemini');assert.equal(s.openai_ready,false);assert.doesNotMatch(JSON.stringify(saved),/a{40}/);
+  assert.equal((await invoke({action:'save',settings:{...s,ai_provider:'openai'}})).status,400);
+  const check=await (await invoke({action:'openai_check'})).json();assert.equal(check.ok,true);assert.equal(s.openai_ready,true);assert.equal(s.ai_provider,'gemini');
+  assert.equal((await invoke({action:'save',settings:{...s,ai_provider:'openai'}})).status,200);assert.equal(s.ai_provider,'openai');assert.equal(generations,1);
+ }finally{openaiVault=null;}
+});
+
+test('AI生成中にGeminiへ切り替えた場合はOpenAIの候補を自動投稿しない',async()=>{
+ let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:false,ai_provider:'openai',openai_ready:true};let c={post_id:'test-post',comment_id:'provider-race',username:'guest',comment_text:'可愛い',status:'pending'};
+ globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+  if(url.includes('auth/v1/user'))return response({id:'owner'});
+  if(url.includes('rpc/hanako_reply_lock'))return response(true);
+  if(url.includes('rpc/hanako_reply_claim'))return response(c);
+  if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...b};return response([{...s}]);}
+  if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([c]);}
+  if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+  if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});
+  if(url.includes('api.openai.com')){s.ai_provider='gemini';return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'ありがとう♡'}]}]});}
+  throw new Error('Unexpected external write '+url);
+ };
+ assert.equal((await invoke({action:'run'})).status,200);assert.equal(c.status,'draft');
+});
+
+test('OpenAIの429も待機し、Geminiや高額モデルへ自動切り替えしない',async()=>{
+ let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:false,ai_provider:'openai',openai_ready:true};let c={post_id:'test-post',comment_id:'openai-quota',username:'guest',comment_text:'可愛い',status:'generating',generation_attempts:1};let generations=0;
+ globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+  if(url.includes('auth/v1/user'))return response({id:'owner'});
+  if(url.includes('rpc/hanako_reply_lock'))return response(true);
+  if(url.includes('rpc/hanako_reply_claim'))return response(c);
+  if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...b};return response([s]);}
+  if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([c]);}
+  if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+  if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});
+  if(url.includes('api.openai.com')){generations++;assert.equal(b.model,'gpt-6-luna');return new Response('{"error":{"code":"insufficient_quota"}}',{status:429});}
+  throw new Error('Unexpected fallback '+url);
+ };
+ const result=await (await invoke({action:'run'})).json();assert.equal(result.status,'quota_wait');assert.equal(c.status,'pending');assert.equal(s.ai_provider,'openai');assert.equal(generations,1);
+});
+
+test('OpenAIの登録・テストはCronと所有者以外に許可しない',async()=>{
+ for(const action of ['openai_key_save','openai_check','openai_status']){assert.equal((await invoke({action},{'x-cron-secret':'cron'})).status,403);globalThis.fetch=async()=>response({id:'other'});assert.equal((await invoke({action})).status,400);}
 });
