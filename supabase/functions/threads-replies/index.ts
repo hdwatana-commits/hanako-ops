@@ -36,6 +36,16 @@ async function api(url: string, options: RequestInit, label: string) {
   try { response=await fetch(url,{...options,signal:AbortSignal.timeout(45000)}); }
   catch { throw new Error(`${label}: 通信または認証設定を確認してください`); }
   const body=await response.json();
+  if(label==='AI返信生成'&&!response.ok) {
+    const code=body?.error?.code;
+    const billing=code==='credit_balance_exhausted'?'balance_empty':['organization_spend_limit_exceeded','project_spend_limit_exceeded','organization_usage_limit_exceeded'].includes(code)?'spend_limit':code==='insufficient_quota'?'billing_problem':response.status===429?'rate_limited':null;
+    if(billing) {
+      const message=({balance_empty:'OpenAIのクレジット残高がなくなりました。返信は待機中です。OpenAIの請求画面で残高を確認してください。',spend_limit:'OpenAIの利用金額上限に達しました。返信は待機中です。',billing_problem:'OpenAIの残高不足または課金・利用上限の問題です。請求画面を確認してください。',rate_limited:'OpenAIの一時的な利用制限です。後で再試行します。'})[billing];
+      await updateSettings({openai_billing_status:billing,openai_billing_checked_at:new Date().toISOString(),...(billing==='rate_limited'?{}:{openai_ready:false})});
+      throw new FreeQuotaError(message);
+    }
+  }
+  if(label==='AI返信生成'&&response.ok)await updateSettings({openai_billing_status:'available',openai_billing_checked_at:new Date().toISOString()});
   if(response.status===429&&['Gemini返信生成','AI返信生成'].includes(label))throw new FreeQuotaError(label==='Gemini返信生成'?'Gemini無料枠の上限です。コメントを待機させて後で再試行します':'OpenAIの利用上限または残高を確認してください。返信を待機させて後で再試行します');
   if(!response.ok||(label!=='データ保存'&&body?.error)) throw new Error(`${label}: HTTP ${response.status}。権限・期限・利用上限を確認してください`);
   return body;
@@ -344,7 +354,7 @@ Deno.serve(async request=>{
     if(body.action==='check') {
       if(body.provider==='openai') {
         if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()}))return respond({status:'busy'});
-        try {const result=await checkConnections('openai');await updateSettings({openai_ready:result.openai.ok});return respond(result);}
+        try {const result=await checkConnections('openai');const current=await settings();await updateSettings({openai_ready:result.openai.ok,...(result.openai.ok&&aiProvider(current)==='openai'?{ai_retry_at:null,last_error:''}:{})});return respond(result);}
         finally {await updateSettings({lease_until:null});}
       }
       return respond(await checkConnections(body.provider));
@@ -355,14 +365,14 @@ Deno.serve(async request=>{
       const key=typeof body.key==='string'?body.key.trim():'';
       if(!/^sk-[A-Za-z0-9_-]{20,}$/.test(key)||key.length>512)throw new Error('OpenAI APIキーを入力してください');
       if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()}))throw new Error('返信処理中です。少し待ってから登録してください');
-      try {await db('rpc/hanako_openai_key_save','POST',{owner_id:owner(),key_value:key});await updateSettings({openai_ready:false});}
+      try {await db('rpc/hanako_openai_key_save','POST',{owner_id:owner(),key_value:key});await updateSettings({openai_ready:false,openai_billing_status:'unknown',openai_billing_checked_at:null});}
       finally {await updateSettings({lease_until:null});}
       return respond({saved:true,configured:await openaiConfigured(),ready:false,model:OPENAI_LUNA_MODEL});
     }
     if(body.action==='openai_check') {
       if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()}))throw new Error('返信処理中です。少し待ってから接続テストしてください');
       const current=await settings();
-      try {const sample=await probeOpenAI();await updateSettings({openai_ready:true});return respond({ok:true,sample,model:OPENAI_LUNA_MODEL});}
+      try {const sample=await probeOpenAI();await updateSettings({openai_ready:true,...(aiProvider(current)==='openai'?{ai_retry_at:null,last_error:''}:{})});return respond({ok:true,sample,model:OPENAI_LUNA_MODEL});}
       catch(e){await updateSettings({openai_ready:false});throw e;}
       finally {await updateSettings({lease_until:null});}
     }

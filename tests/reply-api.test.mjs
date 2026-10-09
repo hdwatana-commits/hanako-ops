@@ -450,3 +450,30 @@ test('OpenAIの429も待機し、Geminiや高額モデルへ自動切り替え�
 test('OpenAIの登録・テストはCronと所有者以外に許可しない',async()=>{
  for(const action of ['openai_key_save','openai_check','openai_status']){assert.equal((await invoke({action},{'x-cron-secret':'cron'})).status,403);globalThis.fetch=async()=>response({id:'other'});assert.equal((await invoke({action})).status,400);}
 });
+
+
+test('OpenAIの残高切れ・金額上限・曖昧な課金エラーと一時制限を区別して保存する',async()=>{
+ for(const [code,status] of [['credit_balance_exhausted','balance_empty'],['project_spend_limit_exceeded','spend_limit'],['insufficient_quota','billing_problem'],['rate_limit_exceeded','rate_limited']]) {
+  let s={ai_provider:'openai',openai_ready:true};
+  globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+   if(url.includes('auth/v1/user'))return response({id:'owner'});
+   if(url.includes('rpc/hanako_reply_lock'))return response(true);
+   if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...b};return response([s]);}
+   if(url.includes('api.openai.com'))return new Response(JSON.stringify({error:{code,message:'do-not-show-private-error'}}),{status:429});
+   throw new Error('Unexpected request');
+  };
+  const result=await invoke({action:'openai_check'});assert.equal(result.status,400);assert.equal(s.openai_billing_status,status);assert.ok(Date.parse(s.openai_billing_checked_at));assert.equal(s.openai_ready,false);assert.doesNotMatch(JSON.stringify(await result.json()),/do-not-show-private-error/);
+ }
+});
+
+test('入金後の匿名接続テストが成功すると残高警告とOpenAIの待機を解除する',async()=>{
+ let s={ai_provider:'openai',openai_ready:false,openai_billing_status:'balance_empty',ai_retry_at:new Date(Date.now()+3600000).toISOString(),last_error:'残高不足'};
+ globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+  if(url.includes('auth/v1/user'))return response({id:'owner'});
+  if(url.includes('rpc/hanako_reply_lock'))return response(true);
+  if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...b};return response([s]);}
+  if(url.includes('api.openai.com'))return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'こんにちは'}]}]});
+  throw new Error('Unexpected request');
+ };
+ assert.equal((await invoke({action:'openai_check'})).status,200);assert.equal(s.openai_billing_status,'available');assert.equal(s.openai_ready,true);assert.equal(s.ai_retry_at,null);assert.equal(s.last_error,'');
+});
