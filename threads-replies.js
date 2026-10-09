@@ -2,7 +2,7 @@ import { TONES } from './reply-rules.mjs?v=7';
 const section=document.createElement('section');
 section.id='threads-replies'; section.className='view';
 section.innerHTML=`
-<div class="panel reply-hero"><p class="eyebrow">HANA · CONVERSATION STUDIO</p><h3>Threads 返信管理</h3><p>ひとつひとつの会話を、ハナらしく。</p><p id="replyStatus" role="status" aria-live="polite">クラウド同期にログインし、「読み込む」で設定を確認してください。</p><p id="replyBillingAlert" class="reply-error" role="alert" hidden></p><p id="replyQueueCount" class="reply-help" role="status" aria-live="polite">順番待ち：—（「読み込む」で更新）</p><div class="button-row"><button id="replyLoad">読み込む</button><button id="replyCheck" disabled>接続とAIをテスト</button><button id="replyRun" disabled>今すぐ確認</button></div><p id="replyCheckResult" class="reply-help"></p></div>
+<div class="panel reply-hero"><p class="eyebrow">HANA · CONVERSATION STUDIO</p><h3>Threads 返信管理</h3><p>ひとつひとつの会話を、ハナらしく。</p><p id="replyStatus" role="status" aria-live="polite">クラウド同期にログインし、「読み込む」で設定を確認してください。</p><p id="replyBillingAlert" class="reply-error" role="alert" hidden></p><p id="replyTodayCount" class="reply-help" role="status">今日の自動返信：—（「読み込む」で更新）</p><p id="replyTodayLegacy" class="reply-help" hidden></p><p id="replyQueueCount" class="reply-help" role="status" aria-live="polite">順番待ち：—（「読み込む」で更新）</p><div class="button-row"><button id="replyLoad">読み込む</button><button id="replyCheck" disabled>接続とAIをテスト</button><button id="replyRun" disabled>今すぐ確認</button></div><p id="replyCheckResult" class="reply-help"></p></div>
 <details class="panel"><summary>返信に使うハナのプロフィール</summary><p class="reply-help">質問に必要な情報を使って返信します。非公開項目の具体的な値は生成AIへ渡しません。</p><pre id="replyProfile" style="white-space:pre-wrap;line-height:1.8">「読み込む」で登録済みプロフィールを確認できます。</pre></details><form id="replySettings" class="panel reply-settings"><div class="panel-heading"><h3>返信の設定</h3><button class="primary" type="submit" disabled>クラウドに保存</button></div>
 <fieldset disabled id="replyFields"><div class="reply-grid">
 <label class="reply-check"><input type="checkbox" name="enabled"> 自動処理を有効にする</label>
@@ -49,6 +49,8 @@ async function load(){
   const billingMessage=billingMessages[data.settings.openai_billing_status]||'';$('#replyBillingAlert').hidden=!billingMessage;$('#replyBillingAlert').textContent=billingMessage;
   $('#replyOpenaiState').textContent=billingMessage||(data.openai?.ready?'Luna：接続テスト済み・選択可能':data.openai?.configured?'キー登録済み。Lunaの接続テストを実行してください。':'OpenAI APIキー未登録');
   $('#replyProfile').textContent=data.profile||'プロフィールを読み込めませんでした。';
+  $('#replyTodayCount').textContent='今日の自動返信：'+(Number.isInteger(data.daily_counts?.automatic)?data.daily_counts.automatic+'件':'取得できませんでした')+'（日本時間・投稿完了分）';
+  $('#replyTodayLegacy').hidden=!data.daily_counts?.legacy;$('#replyTodayLegacy').textContent='今日の追加前の投稿履歴：'+(data.daily_counts?.legacy||0)+'件（自動・手動の区別がないため、上の件数には含めていません）';
   $('#replyQueueCount').textContent='順番待ち：'+(Number.isInteger(data.queue_count)?data.queue_count+'件':'取得できませんでした')+'（待機中＋自動再試行待ち。直近2件のポストが対象）';
   const connectionSelect=form.elements.namedItem('ai_connection');
   for(const option of connectionSelect.options){const available=data.connections?.find(c=>c.id===option.value)?.configured;option.disabled=!available&&option.value!==(data.settings.ai_connection||'default');option.textContent=({default:'接続1（現在のアカウント）',secondary:'接続2',third:'接続3'})[option.value]+(available?' · 登録済み':' · 未登録');}

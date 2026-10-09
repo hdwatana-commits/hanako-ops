@@ -255,7 +255,7 @@ async function skipIfReplied(c:any) {
   } while(after);
   return false;
 }
-async function publish(c: any) {
+async function publish(c: any,automatic=false) {
   if(await skipOutsideLatest(c))return;
   if(await skipExcluded(c,await settings())) return;
   if(await skipIfReplied(c)) return;
@@ -263,7 +263,7 @@ async function publish(c: any) {
   if(wrongGreeting(c.reply_text)) throw new Error('返信時刻と挨拶が合いません。再生成してください');
   if(invalidReply(c.reply_text,500)) throw new Error('返信文が会う・電話・連絡先交換の禁止または形式のルールに反しています。再生成してください');
   // Write publishing before any external write. Never automatically retry an uncertain result.
-  await updateComment(c.comment_id,{status:'publishing',error:''});
+  await updateComment(c.comment_id,{status:'publishing',error:'',reply_automatic:automatic});
   try {
     const container=await meta('me/threads',{media_type:'TEXT',text:c.reply_text,reply_to_id:c.comment_id},'POST');
     if(!container.id) throw new Error('ThreadsコンテナIDがありません');
@@ -283,7 +283,7 @@ async function publish(c: any) {
     if(wrongGreeting(c.reply_text))throw new Error('返信時刻と挨拶が合いません。再生成してください');
     const result=await meta('me/threads_publish',{creation_id:container.id},'POST');
     if(!result.id) throw new Error('Threads投稿結果IDがありません');
-    await updateComment(c.comment_id,{status:'published',reply_id:result.id,error:''});
+    await updateComment(c.comment_id,{status:'published',reply_id:result.id,reply_published_at:new Date().toISOString(),reply_automatic:automatic,error:''});
   } catch(e) {
     await updateComment(c.comment_id,{status:'uncertain',error:'投稿結果が不明です。Threads側を確認してください。自動再送はしません'}).catch(()=>{});
     throw e;
@@ -331,7 +331,7 @@ async function run(action: string,body: any) {
         await updateComment(c.comment_id,{status:'draft',reply_text:text,error:'',next_attempt_at:null});
         // Re-read after generation so OFF and changed hours take effect before posting.
         const fresh=await settings();
-        if(fresh.enabled&&fresh.mode==='auto'&&(emoji||aiProvider(fresh)===aiProvider(s))&&inWindow(fresh)&&(emoji||(fresh.ai_connection||'default')===(s.ai_connection||'default'))) await publish({...c,reply_text:text});
+        if(fresh.enabled&&fresh.mode==='auto'&&(emoji||aiProvider(fresh)===aiProvider(s))&&inWindow(fresh)&&(emoji||(fresh.ai_connection||'default')===(s.ai_connection||'default'))) await publish({...c,reply_text:text},true);
       } catch(e) {
         if(e instanceof FreeQuotaError) {
           await updateComment(c.comment_id,{status:'pending',error:e.message,generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});
@@ -408,7 +408,7 @@ Deno.serve(async request=>{
       return respond({saved:true,connections:registered});
     }
     if(body.action==='key_status') return respond({connections:await connections()});
-    if(body.action==='load') {const current=await settings();return respond({settings:current,openai:{configured:await openaiConfigured(),ready:Boolean(current.openai_ready),model:OPENAI_LUNA_MODEL},profile:HANA_PROFILE,queue_count:await queueCount(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
+    if(body.action==='load') {const current=await settings();return respond({settings:current,openai:{configured:await openaiConfigured(),ready:Boolean(current.openai_ready),model:OPENAI_LUNA_MODEL},profile:HANA_PROFILE,daily_counts:await db('rpc/hanako_reply_daily_counts','POST',{owner_id:owner()}),queue_count:await queueCount(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),
       connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&await aiConfigured(current))});}
     if(body.action==='save') { const value:any=validateSettings(body.settings); const current=await settings();

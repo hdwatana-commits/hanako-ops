@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 let handler; let directReplies=null; let countResult=0;
 let vault={}, vaultWrites=0, vaultReads=0, fetchMock;let openaiVault=null;
 Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,set:fn=>{fetchMock=async(url,opts={})=>{
+  if(String(url).includes('/rpc/hanako_reply_daily_counts')){const b=JSON.parse(opts.body);assert.equal(b.owner_id,'owner');return response({date:'2026-10-10',automatic:12,legacy:3});}
   if(String(url).includes('/rpc/hanako_openai_key_')){const b=JSON.parse(opts.body);assert.equal(b.owner_id,'owner');assert.equal(opts.headers.Authorization,'Bearer service');if(String(url).endsWith('_status'))return response(Boolean(openaiVault));if(String(url).endsWith('_read'))return response(openaiVault);if(String(url).endsWith('_save')){openaiVault=b.key_value;return response(true);}}
   if(opts.method==='HEAD'){assert.match(String(url),/post_id=in/);assert.match(String(url),/status.eq.pending/);assert.match(String(url),/generation_attempts.lt.3/);assert.equal(opts.headers.Prefer,'count=exact');return new Response(null,{headers:{'Content-Range':'*/'+countResult}});}
   if(String(url).includes('/rpc/hanako_gemini_key_')) {
@@ -375,7 +376,7 @@ test('直近2件だけを巡回し、生成前と送信直前の対象変更を�
 test('読み込みは最新100件とは別に順番待ち総件数を返す',async()=>{
  countResult=145;
  globalThis.fetch=async url=>{url=String(url);if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([{ai_connection:'default'}]);if(url.includes('/me/threads?'))return response({data:[{id:'p1'},{id:'p2'}]});if(url.includes('hanako_reply_comments')||url.includes('rpc/hanako_reply_fans'))return response([]);throw new Error('Unexpected request');};
- try {const result=await (await invoke({action:'load'})).json();assert.equal(result.queue_count,145);assert.equal(result.replies.length,0);}finally{countResult=0;}
+ try {const result=await (await invoke({action:'load'})).json();assert.equal(result.queue_count,145);assert.equal(result.replies.length,0);assert.deepEqual(result.daily_counts,{date:'2026-10-10',automatic:12,legacy:3});}finally{countResult=0;}
 });
 
 
@@ -496,7 +497,7 @@ test('絵文字のみは通常時もAI残高不足・上限待機中もAIを一�
    if(url.endsWith('/me/threads_publish')){published++;return response({id:'published'});}
    throw new Error('Unexpected AI/history call '+url);
   };
-  const result=await (await invoke({action:'run'})).json();assert.equal(result.status,'processed');assert.equal(c.status,'published');assert.equal(published,1);assert.ok(c.reply_text);assert.doesNotMatch(c.reply_text,/[a-zA-Zあ-ん]/);if(wait==='quota')assert.ok(s.ai_retry_at);
+  const result=await (await invoke({action:'run'})).json();assert.equal(result.status,'processed');assert.equal(c.status,'published');assert.equal(c.reply_automatic,true);assert.ok(Date.parse(c.reply_published_at));assert.equal(published,1);assert.ok(c.reply_text);assert.doesNotMatch(c.reply_text,/[a-zA-Zあ-ん]/);if(wait==='quota')assert.ok(s.ai_retry_at);
  }
 });
 
@@ -525,4 +526,22 @@ test('GeminiとOpenAIは英語コメントへの日本語候補を破棄し英�
 test('英語コメントに保存済みの日本語下書きは投稿しない',async()=>{
  globalThis.fetch=async url=>{url=String(url);if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([{}]);if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('hanako_reply_comments'))return response([{comment_id:'old-draft',post_id:'test-post',comment_text:'Hello',reply_text:'ありがとう♡',status:'draft'}]);if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});throw new Error('Unexpected publish '+url);};
  const result=await invoke({action:'publish',commentId:'old-draft'});assert.equal(result.status,400);assert.match((await result.json()).error,/言語/);
+});
+
+
+test('OPSから手動で下書きを投稿した場合は自動返信件数の対象にしない',async()=>{
+ let c={comment_id:'manual-count',post_id:'test-post',comment_text:'かわいい',reply_text:'ありがとう♡',status:'draft'};
+ globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+  if(url.includes('auth/v1/user'))return response({id:'owner'});
+  if(url.includes('rpc/hanako_reply_lock'))return response(true);
+  if(url.includes('hanako_reply_settings'))return response([{}]);
+  if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([c]);}
+  if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+  if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});
+  if(url.endsWith('/me/threads'))return response({id:'container'});
+  if(url.includes('/container?'))return response({status:'FINISHED'});
+  if(url.endsWith('/me/threads_publish'))return response({id:'manual-published'});
+  throw new Error('Unexpected request '+url);
+ };
+ assert.equal((await invoke({action:'publish',commentId:'manual-count'})).status,200);assert.equal(c.status,'published');assert.equal(c.reply_automatic,false);assert.ok(Date.parse(c.reply_published_at));
 });
