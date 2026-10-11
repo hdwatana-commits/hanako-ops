@@ -30,14 +30,15 @@ export function mergeFanProfile(previous={},rows=[]){
  const result={...previous};
  for(const r of [...rows].sort((a,b)=>String(a.commented_at).localeCompare(String(b.commented_at)))){
   if(r.is_owner||!r.comment_id)continue;
-  const text=String(r.comment_text||'').normalize('NFKC');
+  const text=String(r.comment_text||'').normalize('NFKC').replace(/\\n/g,'\n');
   const languageText=text.replace(/https?:\/\/\S+|@[a-zA-Z0-9._]+/g,'');
   if(/[\p{L}]/u.test(languageText)&&(!result.nickname_language?.at||result.nickname_language.at<=(r.commented_at||'')))result.nickname_language={value:/[\u3041-\u3096\u30A1-\u30FA]/u.test(languageText)?'ja':'other',at:r.commented_at||''};
   if(/(?:あだ名|名前).{0,12}(?:やめて|呼ばない)|呼ばないで/.test(text))result.nickname_stop={value:true,at:r.commented_at,source_id:r.comment_id};
-  const nickname=text.match(/(?:^|[。！!\n])\s*([\p{L}\p{M}ー・]{2,20})(?:って|と)呼んで(?:ね|ください|ほしい|$)/u);
+  const nickname=text.match(/(?:^|[。！!\n])\s*([\p{L}\p{M}ー・]{2,20})[、,]?(?:って|と)呼んで(?:ね|ください|ほしい|くれると|$)/u);
   if(nickname&&safeNickname(nickname[1]))result.nickname={value:nickname[1],at:r.commented_at,source_id:r.comment_id,quote:text.slice(0,160)};
   // Only direct first-person declarations; questions and conjecture are not facts.
-  if(/[?？]|(?:じゃない|ではない|だったら|かもしれ|例えば|友達|妻|夫|彼女|彼氏)/.test(text))continue;
+  const factsText=text.replace(/[^。！？!?\n]*[?？]/g,'');
+  if(/(?:じゃない|ではない|だったら|かもしれ|例えば|友達|妻|夫|彼女|彼氏)/.test(factsText))continue;
   const checks={
    foods:/(?:^|[。！!\n])\s*(?:(?:私は|僕は|俺は|自分は|私の|僕の|俺の)?好きな食べ物(?:は|が)|my favou?rite food is)\s*([^。！!\n.]{1,60})/i,
    vegetables:/(?:^|[。！!\n])\s*(?:(?:私は|僕は|俺は|自分は|私の|僕の|俺の)?好きな野菜(?:は|が)|my favou?rite vegetable is)\s*([^。！!\n.]{1,60})/i,
@@ -47,11 +48,16 @@ export function mergeFanProfile(previous={},rows=[]){
    style:/(?:私は|僕は|俺は|自分は)\s*([^。！!\n]{1,60}?(?:話が好き|会話が好き|話は苦手|敬語がいい|タメ口がいい))/
   };
   for(const [key,re] of Object.entries(checks)){
-   const m=text.match(re);if(!m)continue;
+   const m=factsText.match(re);if(!m)continue;
    if(key==='age'&&(Number(m[1])<1||Number(m[1])>120))continue;
    if(key==='place'&&/\d|丁目|番地|号室|マンション|アパート/.test(m[1]))continue;
    const at=r.commented_at||'';if(result[key]?.at&&result[key].at>at)continue;
    result[key]={value:m[1].trim()+(key==='age'?'歳':''),source_id:r.comment_id,quote:text.slice(0,160),at,kind:'本人の発言（要確認）'};
+  }
+  if(!/(?:好きじゃ|好きでは|嫌い|苦手|好きな人|が好きらしい|が好きだそう)/.test(factsText))for(const [key,words] of Object.entries({vegetables:'トマト|キャベツ|にんじん|ニンジン|人参|きゅうり|キュウリ|なす|ナス|茄子|白菜|大根|ブロッコリー|ほうれん草|ピーマン|かぼちゃ|南瓜|玉ねぎ',foods:'ラーメン|ハンバーグ|餃子|チャーハン|寿司|カレー|パスタ|焼肉|うどん|そば|蕎麦'})){
+   const re=new RegExp('('+words+')(?:[\\p{P}\\p{S}\\s]|は|が|も|大){0,12}好き','u');const m=factsText.match(re);if(!m)continue;
+   const at=r.commented_at||'';if(result[key]?.at&&result[key].at>at)continue;
+   result[key]={value:m[1],source_id:r.comment_id,quote:text.slice(0,160),at,kind:'本人の発言（要確認）'};
   }
  }
  return result;
