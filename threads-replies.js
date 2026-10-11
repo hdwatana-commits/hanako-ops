@@ -1,4 +1,4 @@
-import { FAN_PROFILE_FIELDS } from './fan-profile.mjs?v=2';
+import { FAN_PROFILE_FIELDS } from './fan-profile.mjs?v=3';
 import { TONES } from './reply-rules.mjs?v=9';
 const section=document.createElement('section');
 section.id='threads-replies'; section.className='view';
@@ -138,3 +138,4 @@ async function showFanProfile(username){
 $('#fanSaveNotes').onclick=()=>task(async()=>{await call('fan_notes',{username:fanPerson,nickname:$('#fanNickname').value.trim(),nickname_enabled:$('#fanNicknameEnabled').checked,notes:$('#fanManualNotes').value,use_notes:$('#fanUseNotes').checked});$('#fanProfileState').textContent='備考を保存しました。';});
 $('#fanRefreshProfile').onclick=()=>task(()=>showFanProfile(fanPerson));
 $('#fanCloseProfile').onclick=()=>fanPanel.hidden=true;
+

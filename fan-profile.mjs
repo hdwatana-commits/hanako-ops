@@ -1,4 +1,4 @@
-export const FAN_PROFILE_FIELDS={foods:'好きな食べ物',vegetables:'好きな野菜',place:'本人が話した地域',age:'本人が話した年齢',character:'本人が話した性格',style:'本人が希望する会話・距離感'};
+export const FAN_PROFILE_FIELDS={foods:'好きな食べ物',vegetables:'好きな野菜',recommended_shops:'おすすめのお店',place:'本人が話した地域',age:'本人が話した年齢',character:'本人が話した性格',style:'本人が希望する会話・距離感'};
 export function safeNickname(value){return typeof value==='string'&&/^[\p{L}\p{M}ー・]{2,20}$/u.test(value)&&!/(?:エロ|変態|奴隷|おじ|おば|童貞|処女|豚|ブス|バカ|馬鹿|会い|電話|sex|fuck|slave)/i.test(value);}
 export function japaneseUsername(value){
  const stem=String(value||'').split(/[._]/)[0].replace(/\d+$/,'').toLowerCase();
@@ -45,6 +45,7 @@ export function mergeFanProfile(previous={},rows=[]){
   const factsText=text.replace(/[^。！？!?\n]*[?？]/g,'');
   if(/(?:じゃない|ではない|だったら|かもしれ|例えば|友達|妻|夫|彼女|彼氏)/.test(factsText))continue;
   const checks={
+   recommended_shops:/(?:^|[。！!\n])\s*(?:(?:私の|僕の|俺の)?(?:おすすめ|お勧め|オススメ)(?:のお店|の店|のレストラン)(?:は|なら)|my recommended (?:restaurant|shop) is)\s*([^。！!\n.]{2,80})/i,
    foods:/(?:^|[。！!\n])\s*(?:(?:私は|僕は|俺は|自分は|私の|僕の|俺の)?好きな食べ物(?:は|が)|my favou?rite food is)\s*([^。！!\n.]{1,60})/i,
    vegetables:/(?:^|[。！!\n])\s*(?:(?:私は|僕は|俺は|自分は|私の|僕の|俺の)?好きな野菜(?:は|が)|my favou?rite vegetable is)\s*([^。！!\n.]{1,60})/i,
    place:/(?:私は|僕は|俺は|自分は)\s*([^。！!\n]{1,25}?)(?:に住んで(?:います|る)|在住です)/,
@@ -70,5 +71,5 @@ export function mergeFanProfile(previous={},rows=[]){
 export function fanReplyContext(profile){
  if(!profile)return null;
  // Age and residence stay in the owner dashboard, not in AI personalization.
- return {nickname:profileNickname(profile,profile.username),preferences:Object.fromEntries(['foods','vegetables','style'].filter(k=>profile.auto_profile?.[k]).map(k=>[k,{value:profile.auto_profile[k].value,kind:'本人の発言（要確認）'}])),owner_notes:profile.use_notes?profile.manual_notes||'':''};
+ return {nickname:profileNickname(profile,profile.username),preferences:Object.fromEntries(['foods','vegetables','recommended_shops','style'].filter(k=>profile.auto_profile?.[k]).map(k=>[k,{value:profile.auto_profile[k].value,kind:'本人の発言（要確認）'}])),owner_notes:profile.use_notes?profile.manual_notes||'':''};
 }
