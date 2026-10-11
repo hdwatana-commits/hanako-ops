@@ -472,6 +472,7 @@ Deno.serve(async request=>{
       return respond({saved:true,connections:registered});
     }
     if(body.action==='key_status') return respond({connections:await connections()});
+    if(body.action==='analytics')return respond({analytics:await db('rpc/hanako_reply_analytics','POST',{owner_id:owner()})});
     if(body.action==='fan_profile'){const profile=await refreshFanProfile(fanUsername(body.username));return respond({profile:{...profile,nickname:profileNickname(profile,profile.username)}});}
     if(body.action==='fan_notes'){
       const username=fanUsername(body.username);

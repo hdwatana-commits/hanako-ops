@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 let handler; let directReplies=null; let countResult=0;
 let vault={}, vaultWrites=0, vaultReads=0, fetchMock;let openaiVault=null;
 Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,set:fn=>{fetchMock=async(url,opts={})=>{
+  if(String(url).includes('/rpc/hanako_reply_analytics')){assert.equal(JSON.parse(opts.body).owner_id,'owner');return response({periods:[],daily:[],queue:{}});}
   if(String(url).includes('/hanako_fan_profiles'))return response([]);
   if(String(url).includes('/rpc/hanako_fan_auto_save'))return new Response(null,{status:204});
   if(String(url).includes('username=ilike.')&&String(url).includes('select=comment_id,comment_text,commented_at,is_owner'))return response([]);
@@ -26,6 +27,7 @@ globalThis.Deno={env:{get:name=>secrets[name]},serve:fn=>{handler=fn;}};
 await import('../supabase/functions/threads-replies/index.ts');
 const response=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
 const invoke=(body,headers={})=>handler(new Request('https://function.test',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer owner',...headers},body:JSON.stringify(body)}));
+test('分析は所有者だけに返し、入力された別のowner_idやCronでは開示しない',async()=>{globalThis.fetch=async()=>response({id:'owner'});const result=await invoke({action:'analytics',owner_id:'other'});assert.equal(result.status,200);assert.ok((await result.json()).analytics);assert.equal((await invoke({action:'analytics'},{'x-cron-secret':'cron'})).status,403);globalThis.fetch=async()=>response({id:'other'});assert.equal((await invoke({action:'analytics'})).status,400);});
 test('設定した1〜4件の元ポストだけを取得し返信ポストを数えない',async()=>{
  for(const post_limit of [1,2,3,4]){
   const scanned=[];let s={enabled:true,mode:'draft',post_limit,started_at:'2026-01-01T00:00:00Z',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6]};

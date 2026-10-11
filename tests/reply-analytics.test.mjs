@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {analyticsRate,analyticsAdvice} from '../reply-analytics.mjs';
+test('対象ゼロを0%と誤表示せず、分母を使って算出する',()=>{assert.equal(analyticsRate(0,0),null);assert.equal(analyticsRate(5,20),25);});
+test('少数サンプルの判断を保留し、失敗と未分類返信を知らせる',()=>{const advice=analyticsAdvice({periods:[{conversation_eligible:3,revisit_eligible:2,unclassified_replies:4}],queue:{failed:2,uncertain:1}}).join('\n');assert.match(advice,/20件未満/);assert.match(advice,/20人未満/);assert.match(advice,/未記録/);assert.match(advice,/再送前/);});
+test('比較可能な件数でも因果関係を断定しない',()=>{const advice=analyticsAdvice({periods:[{conversation_eligible:20,conversation_returned:10,revisit_eligible:20},{conversation_eligible:20,conversation_returned:5}]}).join('\n');assert.match(advice,/\+25.0ポイント/);assert.match(advice,/断定できません/);});

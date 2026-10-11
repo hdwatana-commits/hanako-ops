@@ -1,10 +1,11 @@
+import { renderReplyAnalytics } from './reply-analytics.mjs?v=1';
 import { FAN_PROFILE_FIELDS } from './fan-profile.mjs?v=3';
 import { TONES } from './reply-rules.mjs?v=9';
 const section=document.createElement('section');
 section.id='threads-replies'; section.className='view';
 section.innerHTML=`
 <div class="panel reply-hero"><p class="eyebrow">HANA · CONVERSATION STUDIO</p><h3>Threads 返信管理</h3><p>ひとつひとつの会話を、ハナらしく。</p><p id="replyStatus" role="status" aria-live="polite">クラウド同期にログインし、「読み込む」で設定を確認してください。</p><p id="replyBillingAlert" class="reply-error" role="alert" hidden></p><p id="replyTodayCount" class="reply-help" role="status">今日の自動返信：—（「読み込む」で更新）</p><p id="replyTodayLegacy" class="reply-help" hidden></p><p id="replyQueueCount" class="reply-help" role="status" aria-live="polite">順番待ち：—（「読み込む」で更新）</p><div class="button-row"><button id="replyLoad">読み込む</button><button id="replyCheck" disabled>接続とAIをテスト</button><button id="replyRun" disabled>今すぐ確認</button></div><p id="replyCheckResult" class="reply-help"></p></div>
-<details class="panel"><summary>返信に使うハナのプロフィール</summary><p class="reply-help">質問に必要な情報を使って返信します。非公開項目の具体的な値は生成AIへ渡しません。</p><pre id="replyProfile" style="white-space:pre-wrap;line-height:1.8">「読み込む」で登録済みプロフィールを確認できます。</pre></details><form id="replySettings" class="panel reply-settings"><div class="panel-heading"><h3>返信の設定</h3><button class="primary" type="submit" disabled>クラウドに保存</button></div>
+<section class="panel"><h3>会話の分析・PDCA</h3><p class="reply-help">保存済み履歴を集計します。追加のAI料金はかかりません。</p><button id="replyAnalyticsLoad" type="button">分析を更新</button><div id="replyAnalyticsResult"><p>ログイン後に「分析を更新」で表示します。</p></div></section><details class="panel"><summary>返信に使うハナのプロフィール</summary><p class="reply-help">質問に必要な情報を使って返信します。非公開項目の具体的な値は生成AIへ渡しません。</p><pre id="replyProfile" style="white-space:pre-wrap;line-height:1.8">「読み込む」で登録済みプロフィールを確認できます。</pre></details><form id="replySettings" class="panel reply-settings"><div class="panel-heading"><h3>返信の設定</h3><button class="primary" type="submit" disabled>クラウドに保存</button></div>
 <fieldset disabled id="replyFields"><div class="reply-grid">
 <label class="reply-check"><input type="checkbox" name="enabled"> 自動処理を有効にする</label>
 <label>返信モード<select name="mode"><option value="draft">下書き作成のみ</option><option value="auto">AIで作成して自動投稿</option></select></label>
@@ -139,3 +140,5 @@ $('#fanSaveNotes').onclick=()=>task(async()=>{await call('fan_notes',{username:f
 $('#fanRefreshProfile').onclick=()=>task(()=>showFanProfile(fanPerson));
 $('#fanCloseProfile').onclick=()=>fanPanel.hidden=true;
 
+
+$('#replyAnalyticsLoad').onclick=()=>task(async()=>{status('履歴を集計しています。');const result=await call('analytics');renderReplyAnalytics($('#replyAnalyticsResult'),result.analytics);status('分析を更新しました。');});
