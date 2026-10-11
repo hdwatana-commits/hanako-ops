@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { inWindow, validateSettings, relationshipLevel, exclusionReason, wrongGreeting, replyClock } from '../reply-rules.mjs';
 const s={enabled:false,mode:'draft',start_time:'09:00',end_time:'23:00',weekdays:[0,1,2,3,4,5,6],delay_minutes:5,tones:['cute','friendly'],adapt_tone:true,custom_prompt:'',max_chars:180,use_history:true};
+test('対象ポスト数は1〜4のみ許可し、旧クライアントは既存値を保持する',()=>{for(const n of [1,2,3,4])assert.equal(validateSettings({...s,post_limit:n}).post_limit,n);for(const n of [0,5,2.5,'4',null])assert.throws(()=>validateSettings({...s,post_limit:n}));assert.equal(Object.hasOwn(validateSettings(s),'post_limit'),false);});
 test('日本時間の開始は含み、終了は含まない',()=>{
   assert.equal(inWindow(s,new Date('2026-10-04T00:00:00Z')),true);
   assert.equal(inWindow(s,new Date('2026-10-04T14:00:00Z')),false);

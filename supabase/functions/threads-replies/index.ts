@@ -27,6 +27,7 @@ async function geminiKey(s: any) {
 async function aiConfigured(s?: any) {if(aiProvider(s)==='gemini') return (await connections()).find(x=>x.id===(s?.ai_connection||'default'))?.configured||false;return openaiConfigured();}
 const invalidReply = (text: string,max: number) => !text || [...text].length>max || /```|@|(?:〇|○|◯|×|X){2,}|\S+(?:さん|くん|君|ちゃん|様)/.test(text) || /会[うえいお]|逢|デート|電話|通話|連絡先|待ち合わせ|DM|LINE|\b(?:meet|meeting|date|call|phone|whatsapp|telegram)\b|见面|見面|전화|만나/i.test(text);
 class FreeQuotaError extends Error {}
+class ThreadsReadError extends Error {status:number;constructor(status:number,message:string){super(message);this.status=status;}}
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,apikey,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
 const owner = () => env('HANAKO_OWNER_USER_ID');
 const filter = () => `user_id=eq.${encodeURIComponent(owner())}`;
@@ -47,6 +48,7 @@ async function api(url: string, options: RequestInit, label: string) {
   }
   if(label==='AI返信生成'&&response.ok)await updateSettings({openai_billing_status:'available',openai_billing_checked_at:new Date().toISOString()});
   if(response.status===429&&['Gemini返信生成','AI返信生成'].includes(label))throw new FreeQuotaError(label==='Gemini返信生成'?'Gemini無料枠の上限です。コメントを待機させて後で再試行します':'OpenAIの利用上限または残高を確認してください。返信を待機させて後で再試行します');
+  if(label==='Threads'&&(!response.ok||body?.error))throw new ThreadsReadError(response.status,`Threads: HTTP ${response.status}。権限・期限・利用上限を確認してください`);
   if(!response.ok||(label!=='データ保存'&&body?.error)) throw new Error(`${label}: HTTP ${response.status}。権限・期限・利用上限を確認してください`);
   return body;
 }
@@ -64,7 +66,7 @@ async function settings() {
   return (await db('hanako_reply_settings','POST',{user_id:owner()}))[0];
 }
 async function updateSettings(value: unknown) { return db(`hanako_reply_settings?${filter()}`,'PATCH',value); }
-async function updateComment(id: string,value: unknown) { return db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(id)}`,'PATCH',value); }
+async function updateComment(id: string,value: any) { if(['published','skipped','uncertain'].includes(value?.status)||(value?.status==='failed'&&value.next_attempt_at===null))value={...value,reply_retry_once:false};return db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(id)}`,'PATCH',value); }
 async function queueCount() {
   if(!Deno.env.get('THREADS_ACCESS_TOKEN'))return 0;
   const posts=await latestPosts();
@@ -186,27 +188,32 @@ async function scan(s: any,me: any) {
   await updateSettings({scan_posts:posts,scan_comment_after:after,scan_after:next});
 }
 // Replies do not count as posts. Follow pages until two original posts are found.
-async function latestPosts() {
+async function latestPosts(s?:any) {
+  s=s||await settings();
+  const limit=s.post_limit??2;
   const posts:any[]=[];let after:string|undefined;
   do {
     const page=await meta('me/threads',{fields:'id,text,is_reply',limit:'50',...(after?{after}:{})});
     for(const p of page.data||[])if(!p.is_reply&&!posts.some(x=>x.id===p.id))posts.push(p);
-    if(posts.length>=2)return posts.slice(0,2);
+    if(posts.length>=limit)return posts.slice(0,limit);
     after=page.paging?.next?page.paging?.cursors?.after:undefined;
     if(page.paging?.next&&!after)throw new Error('対象ポストの確認を完了できませんでした');
   } while(after);
   return posts;
 }
 async function skipOutsideLatest(c:any) {
-  if((await latestPosts()).some(p=>p.id===c.post_id))return false;
-  await updateComment(c.comment_id,{status:'skipped',error:'直近2件のポスト以外のため自動返信しません',next_attempt_at:null});
+  const s=await settings();
+  if(c.reply_retry_once)return false;
+  if((await latestPosts(s)).some(p=>p.id===c.post_id))return false;
+  await updateComment(c.comment_id,{status:'skipped',error:`直近${s.post_limit??2}件のポスト以外のため自動返信しません`,next_attempt_at:null});
   return true;
 }
 async function scanRecent(s: any,me: any) {
   const fields='id,text,username,timestamp,is_reply_owned_by_me,replied_to';
-  const newest=await latestPosts();
+  const newest=await latestPosts(s);
   const scope=newest.length?`&post_id=not.in.(${newest.map(p=>encodeURIComponent(p.id)).join(',')})`:'';
-  await db(`hanako_reply_comments?${filter()}&status=in.(pending,failed,draft)&container_id=is.null&reply_id=is.null${scope}`,'PATCH',{status:'skipped',error:'直近2件のポスト以外のため自動返信しません',next_attempt_at:null});
+  await db(`hanako_reply_comments?${filter()}&status=in.(pending,failed,draft)&container_id=is.null&reply_id=is.null&reply_retry_once=eq.false${scope}`,'PATCH',{status:'skipped',error:`直近${s.post_limit??2}件のポスト以外のため自動返信しません`,next_attempt_at:null});
+  if(newest.length)await db(`hanako_reply_comments?${filter()}&status=eq.skipped&error=like.直近*件のポスト以外のため自動返信しません&is_owner=eq.false&container_id=is.null&reply_id=is.null&commented_at=gte.${encodeURIComponent(s.started_at)}&post_id=in.(${newest.map(p=>encodeURIComponent(p.id)).join(',')})`,'PATCH',{status:'pending',error:'',next_attempt_at:null});
   const live=s.live_scan||{};
   let posts=(live.posts||[]).filter((p:any)=>newest.some(n=>n.id===p.id)),next=null,after=live.comment_after||null;
   if(live.posts?.[0]?.id!==posts[0]?.id)after=null;
@@ -245,18 +252,56 @@ async function skipExcluded(c:any,s:any) {
   await updateComment(c.comment_id,{status:'skipped',error,next_attempt_at:null});
   return true;
 }
-async function skipIfReplied(c:any) {
-  let after:string|undefined;
+async function readRootConversation(postId:string,since:string) {
+  const rows:any[]=[];let after:string|undefined;
   do {
-    const page=await meta(`${c.comment_id}/replies`,{fields:'id,is_reply_owned_by_me,username',limit:'50',...(after?{after}:{})});
-    if((page.data||[]).some((r:any)=>r.is_reply_owned_by_me)) {
-      await updateComment(c.comment_id,{status:'skipped',error:'本人が返信済みのためスキップしました',next_attempt_at:null});
-      return true;
-    }
+    const page=await meta(`${postId}/conversation`,{fields:'id,username,timestamp,is_reply_owned_by_me,replied_to',reverse:'true',limit:'50',...(after?{after}:{})});
+    rows.push(...(page.data||[]));
+    if((page.data||[]).some((r:any)=>r.timestamp&&Date.parse(r.timestamp)<Date.parse(since)))break;
     after=page.paging?.next?page.paging?.cursors?.after:undefined;
-    if(page.paging?.next&&!after) throw new Error('手動返信の確認を完了できませんでした');
-  } while(after);
-  return false;
+    if(page.paging?.next&&!after)throw new Error('元の投稿の返信確認を完了できませんでした');
+  }while(after);
+  return rows;
+}
+async function skipIfReplied(c:any) {
+  try {
+    let after:string|undefined;
+    do {
+      const page=await meta(`${c.comment_id}/replies`,{fields:'id,is_reply_owned_by_me,username',limit:'50',...(after?{after}:{})});
+      if((page.data||[]).some((r:any)=>r.is_reply_owned_by_me)) {
+        await updateComment(c.comment_id,{status:'skipped',error:'本人が返信済みのためスキップしました',next_attempt_at:null});return true;
+      }
+      after=page.paging?.next?page.paging?.cursors?.after:undefined;
+      if(page.paging?.next&&!after)throw new Error('手動返信の確認を完了できませんでした');
+    }while(after);
+    return false;
+  }catch(e) {
+    if(!(e instanceof ThreadsReadError)||![400,404].includes(e.status))throw e;
+    const me=await checkThreadsOwner();const rows=await readRootConversation(c.post_id,c.commented_at);
+    if(rows.some((r:any)=>(r.is_reply_owned_by_me||r.username===me.username)&&r.replied_to?.id===c.comment_id)) {
+      await updateComment(c.comment_id,{status:'skipped',error:'本人が返信済みのためスキップしました',next_attempt_at:null});return true;
+    }
+    if(!rows.some((r:any)=>r.id===c.comment_id)) {
+      await updateComment(c.comment_id,{status:'skipped',error:'元の投稿でコメントを確認できません。削除・非公開等のため返信しません',next_attempt_at:null});return true;
+    }
+    return false;
+  }
+}
+async function auditFailedReplies() {
+  const me=await checkThreadsOwner(),s=await settings();
+  const failed=await db(`hanako_reply_comments?${filter()}&status=eq.failed&is_owner=eq.false&container_id=is.null&reply_id=is.null&select=comment_id,post_id,comment_text,username,commented_at&limit=100`);
+  const roots=new Map<string,any[]>();const result:any={retryable:[],already_replied:[],excluded:[],unavailable:[]};
+  for(const id of new Set(failed.map((c:any)=>c.post_id))) {
+    const dates=failed.filter((c:any)=>c.post_id===id).map((c:any)=>c.commented_at).sort();roots.set(String(id),await readRootConversation(String(id),dates[0]));
+  }
+  for(const c of failed) {
+    const rows=roots.get(c.post_id)||[];
+    if(exclusionReason(s,c))result.excluded.push(c.comment_id);
+    else if(rows.some((r:any)=>(r.is_reply_owned_by_me||r.username===me.username)&&r.replied_to?.id===c.comment_id))result.already_replied.push(c.comment_id);
+    else if(!rows.some((r:any)=>r.id===c.comment_id))result.unavailable.push(c.comment_id);
+    else result.retryable.push(c.comment_id);
+  }
+  return result;
 }
 async function publish(c: any,automatic=false) {
   if(await skipOutsideLatest(c))return;
@@ -330,7 +375,7 @@ async function run(action: string,body: any) {
         }
         const emoji=emojiReply(c.comment_text);
         if(aiWait&&!emoji){await updateComment(c.comment_id,{status:'pending',generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});return {status:'quota_wait',retry_at:s.ai_retry_at};}
-        const text=emoji||await generate(s,c);
+            const text=emoji||await generate(s,c);
         await updateComment(c.comment_id,{status:'draft',reply_text:text,error:'',next_attempt_at:null});
         // Re-read after generation so OFF and changed hours take effect before posting.
         const fresh=await settings();
@@ -368,6 +413,7 @@ Deno.serve(async request=>{
     if(!isCron) await authenticate(request);
     if(isCron&&!['run','check'].includes(body.action)) return respond({error:'許可されていません'},403);
     if(body.action==='check') {
+      if(body.audit_failed===true)return respond(await auditFailedReplies());
       if(body.provider==='openai') {
         if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()}))return respond({status:'busy'});
         try {const result=await checkConnections('openai');const current=await settings();await updateSettings({openai_ready:result.openai.ok,...(result.openai.ok&&aiProvider(current)==='openai'?{ai_retry_at:null,last_error:''}:{})});return respond(result);}

@@ -13,8 +13,9 @@ Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,se
     if(String(url).endsWith('_save')){vaultWrites++;vault[body.profile]=body.key_value;return response(true);}
   }
   if(String(url).includes('&status=in.(pending,failed,draft)')&&opts.method==='PATCH')return response([]);
+  if(String(url).includes('&status=eq.skipped&error=like.直近')&&opts.method==='PATCH'){assert.match(String(url),/is_owner=eq.false&container_id=is.null&reply_id=is.null&commented_at=gte/);return response([]);}
   if(new URL(String(url)).pathname==='/v1.0/test-post/conversation')return response({data:[]});
-  if(new URL(String(url)).pathname.endsWith('/replies'))return response(directReplies?directReplies(url,opts):{data:[]});
+  if(new URL(String(url)).pathname.endsWith('/replies')){const value=directReplies?directReplies(url,opts):{data:[]};return value instanceof Response?value:response(value);}
   return fn(url,opts);
 };}});
 const secrets={REPLY_AI_PROVIDER:'openai',SUPABASE_URL:'https://db.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',HANAKO_OWNER_USER_ID:'owner',HANAKO_REPLY_CRON_SECRET:'cron',THREADS_USER_ID:'threads-owner',THREADS_ACCESS_TOKEN:'threads-token',OPENAI_API_KEY:'sk-ai-key'};
@@ -22,6 +23,13 @@ globalThis.Deno={env:{get:name=>secrets[name]},serve:fn=>{handler=fn;}};
 await import('../supabase/functions/threads-replies/index.ts');
 const response=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
 const invoke=(body,headers={})=>handler(new Request('https://function.test',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer owner',...headers},body:JSON.stringify(body)}));
+test('設定した1〜4件の元ポストだけを取得し返信ポストを数えない',async()=>{
+ for(const post_limit of [1,2,3,4]){
+  const scanned=[];let s={enabled:true,mode:'draft',post_limit,started_at:'2026-01-01T00:00:00Z',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6]};
+  globalThis.fetch=async(url,opts={})=>{url=String(url);if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('rpc/hanako_reply_claim'))return response(null);if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...JSON.parse(opts.body)};return response([s]);}if(url.includes('hanako_reply_comments'))return response([]);if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'reply',is_reply:true},...Array.from({length:5},(_,i)=>({id:'p'+(i+1)}))]});if(url.includes('/conversation?')){scanned.push(new URL(url).pathname.split('/').at(-2));return response({data:[]});}throw Error('Unexpected request '+url);};
+  assert.equal((await invoke({action:'run'})).status,200);assert.deepEqual([...new Set(scanned)],Array.from({length:post_limit},(_,i)=>'p'+(i+1)));
+ }
+});
 
 test('選択したGemini接続のみを使用し、キーを画面に返さない',async()=>{
   secrets.REPLY_AI_PROVIDER='gemini';secrets.GEMINI_API_KEY='primary-private';secrets.GEMINI_API_KEY_SECONDARY='secondary-private';
@@ -570,5 +578,26 @@ test('自然な会話の指示と本人の手動例を渡し、直近の長文�
    throw new Error('Unexpected request '+url);
   };
   try{assert.equal((await invoke({action:'run'})).status,200);assert.equal(generations,2);assert.equal(c.reply_text,'褒められるとにやける🤭');}finally{delete secrets.GEMINI_API_KEY;}
+ }
+});
+
+
+test('コメント単体の取得が400でも元の会話で存在・手動返信を確認する',async()=>{
+ for(const scenario of ['exists','manual','missing']) {
+  let c={post_id:'root-test',comment_id:'fallback-test',commented_at:'2026-10-10T00:00:00Z',comment_text:'かわいい',reply_text:'ありがとう♡',status:'draft',reply_retry_once:true};let published=0;
+  directReplies=()=>new Response('{"error":{"code":100}}',{status:400});
+  globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+   if(url.includes('auth/v1/user'))return response({id:'owner'});
+   if(url.includes('rpc/hanako_reply_lock'))return response(true);
+   if(url.includes('hanako_reply_settings'))return response([{}]);
+   if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([c]);}
+   if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
+   if(url.includes('/root-test/conversation?'))return response({data:scenario==='missing'?[]:[{id:'fallback-test',timestamp:c.commented_at},...(scenario==='manual'?[{id:'owned',timestamp:'2026-10-10T00:01:00Z',is_reply_owned_by_me:true,replied_to:{id:'fallback-test'}}]:[])]});
+   if(url.endsWith('/me/threads'))return response({id:'container'});
+   if(url.includes('/container?'))return response({status:'FINISHED'});
+   if(url.endsWith('/me/threads_publish')){published++;return response({id:'published'});}
+   throw new Error('Unexpected request '+url);
+  };
+  try {const result=await invoke({action:'publish',commentId:'fallback-test'});assert.equal(result.status,200);assert.equal(c.status,scenario==='exists'?'published':'skipped');assert.equal(published,scenario==='exists'?1:0);assert.equal(c.reply_retry_once,false);}finally{directReplies=null;}
  }
 });

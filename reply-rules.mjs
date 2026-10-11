@@ -77,6 +77,7 @@ export function validateSettings(input) {
   if (!Number.isInteger(value.delay_minutes)||value.delay_minutes<0||value.delay_minutes>1440) throw new Error('待ち時間は0〜1440分です');
   if (!Number.isInteger(value.max_chars)||value.max_chars<20||value.max_chars>500) throw new Error('文字数は20〜500です');
   if (typeof value.custom_prompt!=='string'||value.custom_prompt.length>8000) throw new Error('カスタマイズは8000文字以内です');
+  if(input.post_limit!==undefined){if(!Number.isInteger(input.post_limit)||input.post_limit<1||input.post_limit>4)throw new Error('対象ポスト数は1〜4件です');value.post_limit=input.post_limit;}
   if(input.ai_provider!==undefined){if(!['gemini','openai'].includes(input.ai_provider))throw new Error('返信AIが不正です');value.ai_provider=input.ai_provider;}
   if(input.delay_mode!==undefined){if(!['normal','instant'].includes(input.delay_mode))throw new Error('返信速度モードが不正です');value.delay_mode=input.delay_mode;}
   if (input.ai_connection !== undefined) {
