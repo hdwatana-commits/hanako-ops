@@ -20,7 +20,7 @@ export function japaneseUsername(value){
 }
 export function profileNickname(profile,username){
  if(profile?.nickname_enabled===false||profile?.auto_profile?.nickname_stop?.value)return '';
- const named=profile?.manual_nickname||profile?.auto_profile?.nickname?.value;
+ const named=profile?.auto_profile?.nickname?.value||profile?.manual_nickname;
  if(safeNickname(named))return named;
  if(profile?.auto_profile?.nickname_language?.value!=='ja')return '';
  const reading=japaneseUsername(username);
@@ -33,9 +33,14 @@ export function mergeFanProfile(previous={},rows=[]){
   const text=String(r.comment_text||'').normalize('NFKC').replace(/\\n/g,'\n');
   const languageText=text.replace(/https?:\/\/\S+|@[a-zA-Z0-9._]+/g,'');
   if(/[\p{L}]/u.test(languageText)&&(!result.nickname_language?.at||result.nickname_language.at<=(r.commented_at||'')))result.nickname_language={value:/[\u3041-\u3096\u30A1-\u30FA]/u.test(languageText)?'ja':'other',at:r.commented_at||''};
-  if(/(?:あだ名|名前).{0,12}(?:やめて|呼ばない)|呼ばないで/.test(text))result.nickname_stop={value:true,at:r.commented_at,source_id:r.comment_id};
-  const nickname=text.match(/(?:^|[。！!\n])\s*([\p{L}\p{M}ー・]{2,20})[、,]?(?:って|と)呼んで(?:ね|ください|ほしい|くれると|$)/u);
-  if(nickname&&safeNickname(nickname[1]))result.nickname={value:nickname[1],at:r.commented_at,source_id:r.comment_id,quote:text.slice(0,160)};
+  const nickAt=r.commented_at||'';
+  const recentNickname=!result.nickname?.at||result.nickname.at<=nickAt;
+  const recentStop=!result.nickname_stop?.at||result.nickname_stop.at<=nickAt;
+  const wantsChange=/(?:あだ名|呼び名|呼び方|名前).{0,16}(?:やめて|呼ばない|違う|変えて|変更|別の)|呼ばないで/.test(text);
+  const nickname=text.match(/(?:^|[。！!\n])\s*(?:じゃあ[、,]?\s*)?[「『]?([\p{L}\p{M}ー・]{2,20})[」』]?[、,]?(?:って|と)呼んで(?:ね|ください|ほしい|くれると|$)/u)
+    ||text.match(/(?:あだ名|呼び名|呼び方|名前)(?:は|を)\s*[「『]?([\p{L}\p{M}ー・]{2,20})[」』]?(?:がいい|にして|に変えて|に変更)/u);
+  if(wantsChange&&recentStop)result.nickname_stop={value:true,at:nickAt,source_id:r.comment_id};
+  if(nickname&&!/^(?:違う.*|別の.*|ほかの.*|他の.*|なし|無し|普通)$/.test(nickname[1])&&safeNickname(nickname[1])&&recentNickname&&recentStop){result.nickname={value:nickname[1],at:nickAt,source_id:r.comment_id,quote:text.slice(0,160)};result.nickname_stop={value:false,at:nickAt,source_id:r.comment_id};}
   // Only direct first-person declarations; questions and conjecture are not facts.
   const factsText=text.replace(/[^。！？!?\n]*[?？]/g,'');
   if(/(?:じゃない|ではない|だったら|かもしれ|例えば|友達|妻|夫|彼女|彼氏)/.test(factsText))continue;
