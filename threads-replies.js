@@ -1,3 +1,4 @@
+import { FAN_PROFILE_FIELDS } from './fan-profile.mjs?v=1';
 import { TONES } from './reply-rules.mjs?v=9';
 const section=document.createElement('section');
 section.id='threads-replies'; section.className='view';
@@ -79,7 +80,7 @@ function card(c){const article=document.createElement('article');article.classNa
   const history=textNode('button','この人の履歴');history.onclick=()=>task(()=>showHistory(c.username));article.append(history);return article;
 }
 function renderQueue(){const queue=$('#replyQueue');queue.replaceChildren();const values=(loaded?.replies||[]).filter(c=>$('#replyFilter').value==='all'||c.status===$('#replyFilter').value);if(!values.length)queue.append(textNode('p','対象の返信はありません。'));values.forEach(c=>queue.append(card(c)));}
-function renderFans(){const list=$('#replyFans');list.replaceChildren();const values=(loaded?.fans||[]).filter(p=>p.username.toLowerCase().includes($('#replySearch').value.toLowerCase()));if(!values.length)list.append(textNode('p','収集済みの交流はありません。'));values.forEach(p=>{const row=document.createElement('article');row.className='reply-card';row.append(textNode('strong',`${p.position}位 · ${p.username}`),textNode('p',`${p.fan_rank} · ${p.score}点`),textNode('small',`コメント ${p.comments}件 / 交流 ${p.active_days}日 / 返答したコメント ${p.replies}件（手動含む）`));const open=textNode('button','履歴を見る');open.onclick=()=>task(()=>showHistory(p.username));row.append(open);list.append(row);});}
+function renderFans(){const list=$('#replyFans');list.replaceChildren();const values=(loaded?.fans||[]).filter(p=>p.username.toLowerCase().includes($('#replySearch').value.toLowerCase()));if(!values.length)list.append(textNode('p','収集済みの交流はありません。'));values.forEach(p=>{const row=document.createElement('article');row.className='reply-card';row.append(textNode('strong',`${p.position}位 · ${p.username}`),textNode('p',`${p.fan_rank} · ${p.score}点`),textNode('small',`コメント ${p.comments}件 / 交流 ${p.active_days}日 / 返答したコメント ${p.replies}件（手動含む）`));const open=textNode('button','履歴を見る');open.onclick=()=>task(()=>showHistory(p.username));const profile=textNode('button','プロフィール・備考');profile.onclick=()=>task(()=>showFanProfile(p.username));row.append(open,profile);list.append(row);});}
 async function showHistory(username,more=false){const result=await call('history',{username,offset:more?offset:0});if(!more){person=username;offset=0;$('#replyHistory').replaceChildren();}result.history.forEach(c=>$('#replyHistory').append(card(c)));offset+=result.history.length;$('#replyMore').hidden=result.history.length<50;$('#replyHistoryTitle').textContent=`${username} の会話履歴`;$('#replyHistoryPanel').hidden=false;$('#replyHistoryPanel').scrollIntoView({behavior:'smooth',block:'start'});}
 $('#replyLoad').onclick=()=>task(load);
 $('#replyCheck').onclick=()=>task(async()=>{status('ThreadsとAIの接続を確認しています。');const result=await call('check');$('#replyCheckResult').textContent=[`AI（${result.openai.provider||'openai'} / ${result.openai.model}）: ${result.openai.ok?'返信生成OK':result.openai.error||'キー未設定'}`,`Threads: ${result.threads.ok?'接続OK（'+result.threads.username+'）':result.threads.error||'認証未設定'}`,result.openai.sample?'生成例: '+result.openai.sample:''].filter(Boolean).join('\n');status(result.ready?'ThreadsとAIの接続を確認しました。': '接続結果を確認してください。');});
@@ -119,3 +120,20 @@ renderKeyState();
 
 $('#replyOpenaiForm').onsubmit=e=>{e.preventDefault();task(async()=>{const field=$('#replyOpenaiKey');try{await call('openai_key_save',{key:field.value});await load();status('OpenAIキーを保存しました。Lunaの接続テストを実行してください。');}finally{field.value='';}});};
 $('#replyOpenaiTest').onclick=()=>task(async()=>{status('個人情報なしの確認文でLunaの接続を確認しています。');const result=await call('openai_check');await load();status('Lunaの接続を確認しました。「返信を作るAI」で選んでクラウドに保存してください。');$('#replyOpenaiState').textContent='Luna：接続テストOK。生成例：'+result.sample;});
+
+const fanPanel=document.createElement('section');fanPanel.className='panel';fanPanel.hidden=true;
+fanPanel.innerHTML='<h3 id="fanProfileTitle"></h3><p class="reply-help">直近200件の本人コメントから、明示的な発言だけを整理します。性格・性的嗜好・年齢・住まいの推測は行いません。年齢と地域は返信AIへ渡しません。プロフィールを開いたときとAI返信生成時に更新します。</p><div id="fanAutoProfile"></div><label>手書き備考（4000文字まで）<textarea id="fanManualNotes" rows="5" maxlength="4000" placeholder="好きな話題、苦手な話題、会話で大切にしたいことなど"></textarea></label><label class="reply-check"><input type="checkbox" id="fanUseNotes"> この備考を返信AIで使用する（選択中のAIへ送信）</label><p class="reply-help">手書き備考は自動更新で上書きしません。機微な情報や住所は記入しないでください。</p><div class="button-row"><button id="fanSaveNotes">備考を保存</button><button id="fanRefreshProfile">履歴から更新</button><button id="fanCloseProfile">閉じる</button></div><p id="fanProfileState" role="status"></p>';
+section.append(fanPanel);let fanPerson='';
+async function showFanProfile(username){
+ const result=await call('fan_profile',{username});fanPerson=username;const profile=result.profile;
+ $('#fanProfileTitle').textContent=username+' のプロフィール';$('#fanAutoProfile').replaceChildren();
+ for(const [key,label] of Object.entries(FAN_PROFILE_FIELDS)){
+  const entry=profile.auto_profile?.[key];const box=document.createElement('details');box.append(textNode('summary',label+'：'+(entry?.value||'未確認')));
+  if(entry){box.append(textNode('p','根拠：'+entry.quote),textNode('small','コメントID '+entry.source_id+' · '+new Date(entry.at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})));}
+  $('#fanAutoProfile').append(box);
+ }
+ $('#fanManualNotes').value=profile.manual_notes||'';$('#fanUseNotes').checked=Boolean(profile.use_notes);$('#fanProfileState').textContent='本人の発言として記録しています。誤抽出・古い情報の可能性があるため根拠も確認してください。';fanPanel.hidden=false;fanPanel.scrollIntoView({behavior:'smooth'});
+}
+$('#fanSaveNotes').onclick=()=>task(async()=>{await call('fan_notes',{username:fanPerson,notes:$('#fanManualNotes').value,use_notes:$('#fanUseNotes').checked});$('#fanProfileState').textContent='備考を保存しました。';});
+$('#fanRefreshProfile').onclick=()=>task(()=>showFanProfile(fanPerson));
+$('#fanCloseProfile').onclick=()=>fanPanel.hidden=true;

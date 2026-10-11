@@ -1,4 +1,5 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
+import { mergeFanProfile, fanReplyContext } from '../../../fan-profile.mjs';
 import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting, isEmojiOnly, emojiReply, replyLanguageHint, wrongReplyLanguage, tooSimilarReply } from '../../../reply-rules.mjs';
 import { HANA_PROMPT, RELATIONSHIP_PROMPT, DESTINATION_PROMPT, NATURAL_REPLY_PROMPT } from './prompt.ts';
 const env = (name: string) => { const value=Deno.env.get(name); if(!value) throw new Error(`サーバー設定 ${name} が必要です`); return value; };
@@ -66,6 +67,15 @@ async function settings() {
   return (await db('hanako_reply_settings','POST',{user_id:owner()}))[0];
 }
 async function updateSettings(value: unknown) { return db(`hanako_reply_settings?${filter()}`,'PATCH',value); }
+function fanUsername(value:any){if(typeof value!=='string'||! /^[a-zA-Z0-9._]{1,30}$/.test(value))throw new Error('ユーザー名が不正です');return value.toLowerCase();}
+async function refreshFanProfile(username:string){
+  username=fanUsername(username);
+  const saved=await db(`hanako_fan_profiles?${filter()}&username=eq.${encodeURIComponent(username)}`);
+  const rows=await db(`hanako_reply_comments?${filter()}&username=ilike.${encodeURIComponent(username.replaceAll('_','\\_'))}&is_owner=eq.false&order=commented_at.desc&limit=200&select=comment_id,comment_text,commented_at,is_owner`);
+  const auto_profile=mergeFanProfile(saved[0]?.auto_profile||{},rows);
+  await db('rpc/hanako_fan_auto_save','POST',{owner_id:owner(),fan_username:username,profile_data:auto_profile});
+  return {...(saved[0]||{}),username,auto_profile};
+}
 async function updateComment(id: string,value: any) { if(['published','skipped','uncertain'].includes(value?.status)||(value?.status==='failed'&&value.next_attempt_at===null))value={...value,reply_retry_once:false};return db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(id)}`,'PATCH',value); }
 async function queueCount() {
   if(!Deno.env.get('THREADS_ACCESS_TOKEN'))return 0;
@@ -101,7 +111,8 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   const styleExamples=manual.filter((r:any)=>r.comment_id&&!generatedIds.has(r.comment_id)).map((r:any)=>r.comment_text).slice(-6);
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
   const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。相手のコメントの言語で自然な文になっているか確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${replyCustomPrompt(s.custom_prompt)}\n${HANA_PROFILE}\n${NATURAL_REPLY_PROMPT}\n【最優先：返信言語】current_commentの言語だけを基準にし、その言語だけで返信する。日本語の投稿・プロフィール・過去の返信・例文に引きずられない。混在する場合は今回のコメントの主な言語を使う。外国語のコメントに日本語の文章や訳文を添えない。日本語の例文・名前・作品名は必要に応じて相手の言語に訳すかローマ字表記にする。latinは英語と決め付けず、スペイン語・フランス語等も元コメントから判断する。日本語での品質確認よりこの言語ルールを優先する。言語・文字の参考判定: ${replyLanguageHint(c.comment_text)}。`;
-  const input=JSON.stringify({reply_language_hint:replyLanguageHint(c.comment_text),reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation,recent_replies:recentReplies,owner_style_examples:styleExamples});
+  const fan_profile=s.use_history&&c.username!=='connection-test'?fanReplyContext(await refreshFanProfile(c.username)):null;
+  const input=JSON.stringify({fan_profile,reply_language_hint:replyLanguageHint(c.comment_text),reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation,recent_replies:recentReplies,owner_style_examples:styleExamples});
   if(aiProvider(s)==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
     const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':await geminiKey(s),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
@@ -457,6 +468,14 @@ Deno.serve(async request=>{
       return respond({saved:true,connections:registered});
     }
     if(body.action==='key_status') return respond({connections:await connections()});
+    if(body.action==='fan_profile')return respond({profile:await refreshFanProfile(fanUsername(body.username))});
+    if(body.action==='fan_notes'){
+      const username=fanUsername(body.username);
+      if(typeof body.notes!=='string'||body.notes.length>4000||typeof body.use_notes!=='boolean')throw new Error('備考は4000文字以内で入力してください');
+      await refreshFanProfile(username);
+      await db(`hanako_fan_profiles?${filter()}&username=eq.${encodeURIComponent(username)}`,'PATCH',{manual_notes:body.notes,use_notes:body.use_notes});
+      return respond({saved:true});
+    }
     if(body.action==='load') {const current=await settings();return respond({settings:current,openai:{configured:await openaiConfigured(),ready:Boolean(current.openai_ready),model:OPENAI_LUNA_MODEL},profile:HANA_PROFILE,daily_counts:await db('rpc/hanako_reply_daily_counts','POST',{owner_id:owner()}),queue_count:await queueCount(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),
       connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&await aiConfigured(current))});}
