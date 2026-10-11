@@ -37,7 +37,7 @@ async function api(url: string, options: RequestInit, label: string) {
   let response: Response;
   try { response=await fetch(url,{...options,signal:AbortSignal.timeout(45000)}); }
   catch { throw new Error(`${label}: 通信または認証設定を確認してください`); }
-  const body=await response.json();
+  const body=response.status===204?null:await response.json();
   if(label==='AI返信生成'&&!response.ok) {
     const code=body?.error?.code;
     const billing=code==='credit_balance_exhausted'?'balance_empty':['organization_spend_limit_exceeded','project_spend_limit_exceeded','organization_usage_limit_exceeded'].includes(code)?'spend_limit':code==='insufficient_quota'?'billing_problem':response.status===429?'rate_limited':null;
