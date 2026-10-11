@@ -1,6 +1,6 @@
 import { renderReplyAnalytics } from './reply-analytics.mjs?v=1';
 import { FAN_PROFILE_FIELDS } from './fan-profile.mjs?v=3';
-import { TONES } from './reply-rules.mjs?v=9';
+import { TONES } from './reply-rules.mjs?v=10';
 const section=document.createElement('section');
 section.id='threads-replies'; section.className='view';
 section.innerHTML=`
@@ -12,7 +12,7 @@ section.innerHTML=`
 <label>返信を作るAI<select name="ai_provider"><option value="gemini">Gemini</option><option value="openai">OpenAI GPT-6 Luna</option></select></label><label>Geminiの接続先<select name="ai_connection"><option value="default">接続1（現在のアカウント）</option><option value="secondary">接続2</option><option value="third">接続3</option></select></label>
 <label>開始時間（日本時間）<input name="start_time" type="time" value="09:00" required></label>
 <label>終了時間（日本時間）<input name="end_time" type="time" value="23:00" required></label>
-<label>返信速度モード<select name="delay_mode"><option value="normal">通常モード（5〜45分ランダム）</option><option value="instant">即返信モード（コメントから3分後）</option></select></label><p class="reply-help">通常は5〜45分ランダム、即返信はコメントから3分後に返信可能になります。切り替えて「クラウドに保存」で待機中のコメントにも適用します。稼働時間外・混雑・API制限時はさらに遅れることがあります。</p><label>自動返信NG対象者<textarea name="ng_users" rows="4" placeholder="ユーザー名を1行ずつ（@付きでも可）"></textarea></label><label>自動返信NGワード<textarea name="ng_words" rows="4" placeholder="除外するワードを1行ずつ"></textarea></label><p class="reply-help">NG対象者はユーザー名の完全一致、NGワードはコメント本文の部分一致。大文字・小文字や全角・半角の違いを同一視します。各200件まで。登録後は「クラウドに保存」を押してください。</p>
+<label>返信速度モード<select name="delay_mode"><option value="normal">通常モード（5〜45分ランダム）</option><option value="instant">即返信モード（コメントから3分後）</option><option value="relaxed">ゆったりモード（1〜2時間ランダム）</option></select></label><p class="reply-help">通常は5〜45分、ゆったりは1〜2時間のランダム、即返信はコメントから3分後に返信可能になります。切り替えて「クラウドに保存」で待機中のコメントにも適用します。稼働時間外・混雑・API制限時はさらに遅れることがあります。</p><label>自動返信NG対象者<textarea name="ng_users" rows="4" placeholder="ユーザー名を1行ずつ（@付きでも可）"></textarea></label><label>自動返信NGワード<textarea name="ng_words" rows="4" placeholder="除外するワードを1行ずつ"></textarea></label><p class="reply-help">NG対象者はユーザー名の完全一致、NGワードはコメント本文の部分一致。大文字・小文字や全角・半角の違いを同一視します。各200件まで。登録後は「クラウドに保存」を押してください。</p>
 <label>自動返信の対象ポスト数<select name="post_limit"><option value="1">最新1件</option><option value="2" selected>最新2件</option><option value="3">最新3件</option><option value="4">最新4件</option></select></label><label>返信の最大文字数<input name="max_chars" type="number" min="20" max="500" value="180" required></label></div>
 <p class="reply-help">同じ開始・終了時間は24時間。日付をまたぐ場合は開始曜日を基準にします。時間外のコメントは次の稼働時間まで待機します。</p>
 <p class="reply-help" id="replyConnectionHelp">接続先を選んで「クラウドに保存」で変更します。APIキーはSupabaseのSecretsに登録してください。上限到達時の自動切り替えはありません。</p>
@@ -142,3 +142,4 @@ $('#fanCloseProfile').onclick=()=>fanPanel.hidden=true;
 
 
 $('#replyAnalyticsLoad').onclick=()=>task(async()=>{status('履歴を集計しています。');const result=await call('analytics');renderReplyAnalytics($('#replyAnalyticsResult'),result.analytics);status('分析を更新しました。');});
+

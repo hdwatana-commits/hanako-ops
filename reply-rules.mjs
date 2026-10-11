@@ -79,7 +79,7 @@ export function validateSettings(input) {
   if (typeof value.custom_prompt!=='string'||value.custom_prompt.length>8000) throw new Error('カスタマイズは8000文字以内です');
   if(input.post_limit!==undefined){if(!Number.isInteger(input.post_limit)||input.post_limit<1||input.post_limit>4)throw new Error('対象ポスト数は1〜4件です');value.post_limit=input.post_limit;}
   if(input.ai_provider!==undefined){if(!['gemini','openai'].includes(input.ai_provider))throw new Error('返信AIが不正です');value.ai_provider=input.ai_provider;}
-  if(input.delay_mode!==undefined){if(!['normal','instant'].includes(input.delay_mode))throw new Error('返信速度モードが不正です');value.delay_mode=input.delay_mode;}
+  if(input.delay_mode!==undefined){if(!['normal','instant','relaxed'].includes(input.delay_mode))throw new Error('返信速度モードが不正です');value.delay_mode=input.delay_mode;}
   if (input.ai_connection !== undefined) {
     if (!['default','secondary','third'].includes(input.ai_connection)) throw new Error('Gemini接続が不正です');
     value.ai_connection=input.ai_connection;
@@ -107,3 +107,4 @@ export function wrongGreeting(text,now=new Date()) {
   const evening=/こんばん[はわ]|good\s*evening|晚上好|晚安/i.test(text);
   return (period!=='朝'&&morning)||(period!=='夜'&&evening);
 }
+

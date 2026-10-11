@@ -1,15 +1,15 @@
-const CACHE_NAME = "hanako-room-ops-v356";
+const CACHE_NAME = "hanako-room-ops-v357";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
-  "./threads-replies.js?v=30",
+  "./threads-replies.js?v=31",
   "./reply-analytics.mjs?v=1",
   "./fan-profile.mjs?v=3",
   "./threads-replies.css?v=2",
-  "./reply-rules.mjs?v=9",
+  "./reply-rules.mjs?v=10",
   "./",
   "./index.html",
-  "./styles.css?v=356",
-  "./app.js?v=356",
+  "./styles.css?v=357",
+  "./app.js?v=357",
   "./cloud-sync.js?v=307",
   "./ops-engine.js?v=222",
   "./ops-phase2-engine.js?v=222",
@@ -414,8 +414,8 @@ const APP_SHELL = [
 const CORE_SHELL = [
   "./",
   "./index.html",
-    "./styles.css?v=356",
-    "./app.js?v=356",
+    "./styles.css?v=357",
+    "./app.js?v=357",
     "./cloud-sync.js?v=307",
     "./ops-engine.js?v=222",
     "./ops-phase2-engine.js?v=222",
@@ -498,5 +498,6 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
+
 
 
