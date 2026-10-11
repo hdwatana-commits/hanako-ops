@@ -1,5 +1,5 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
-import { mergeFanProfile, fanReplyContext } from '../../../fan-profile.mjs';
+import { mergeFanProfile, fanReplyContext, profileNickname, safeNickname } from '../../../fan-profile.mjs';
 import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting, isEmojiOnly, emojiReply, replyLanguageHint, wrongReplyLanguage, tooSimilarReply } from '../../../reply-rules.mjs';
 import { HANA_PROMPT, RELATIONSHIP_PROMPT, DESTINATION_PROMPT, NATURAL_REPLY_PROMPT } from './prompt.ts';
 const env = (name: string) => { const value=Deno.env.get(name); if(!value) throw new Error(`サーバー設定 ${name} が必要です`); return value; };
@@ -26,7 +26,7 @@ async function geminiKey(s: any) {
   return stored || env(name).trim();
 }
 async function aiConfigured(s?: any) {if(aiProvider(s)==='gemini') return (await connections()).find(x=>x.id===(s?.ai_connection||'default'))?.configured||false;return openaiConfigured();}
-const invalidReply = (text: string,max: number) => !text || [...text].length>max || /```|@|(?:〇|○|◯|×|X){2,}|\S+(?:さん|くん|君|ちゃん|様)/.test(text) || /会[うえいお]|逢|デート|電話|通話|連絡先|待ち合わせ|DM|LINE|\b(?:meet|meeting|date|call|phone|whatsapp|telegram)\b|见面|見面|전화|만나/i.test(text);
+const invalidReply = (text: string,max: number,nickname='') => !text || [...text].length>max || /```|@|(?:〇|○|◯|×|X){2,}|\S+(?:さん|くん|君|ちゃん|様)/.test(nickname?text.replaceAll(nickname,''):text) || /会[うえいお]|逢|デート|電話|通話|連絡先|待ち合わせ|DM|LINE|\b(?:meet|meeting|date|call|phone|whatsapp|telegram)\b|见面|見面|전화|만나/i.test(text);
 class FreeQuotaError extends Error {}
 class ThreadsReadError extends Error {status:number;constructor(status:number,message:string){super(message);this.status=status;}}
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,apikey,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
@@ -110,8 +110,10 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   const generatedIds=new Set(history.map((h:any)=>h.reply_id).filter(Boolean));
   const styleExamples=manual.filter((r:any)=>r.comment_id&&!generatedIds.has(r.comment_id)).map((r:any)=>r.comment_text).slice(-6);
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
-  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}\n相手の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。相手のコメントの言語で自然な文になっているか確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${replyCustomPrompt(s.custom_prompt)}\n${HANA_PROFILE}\n${NATURAL_REPLY_PROMPT}\n【最優先：返信言語】current_commentの言語だけを基準にし、その言語だけで返信する。日本語の投稿・プロフィール・過去の返信・例文に引きずられない。混在する場合は今回のコメントの主な言語を使う。外国語のコメントに日本語の文章や訳文を添えない。日本語の例文・名前・作品名は必要に応じて相手の言語に訳すかローマ字表記にする。latinは英語と決め付けず、スペイン語・フランス語等も元コメントから判断する。日本語での品質確認よりこの言語ルールを優先する。言語・文字の参考判定: ${replyLanguageHint(c.comment_text)}。`;
+  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名を時々自然に使ってよい。それ以外の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。相手のコメントの言語で自然な文になっているか確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${replyCustomPrompt(s.custom_prompt)}\n${HANA_PROFILE}\n${NATURAL_REPLY_PROMPT}\n【最優先：返信言語】current_commentの言語だけを基準にし、その言語だけで返信する。日本語の投稿・プロフィール・過去の返信・例文に引きずられない。混在する場合は今回のコメントの主な言語を使う。外国語のコメントに日本語の文章や訳文を添えない。日本語の例文・名前・作品名は必要に応じて相手の言語に訳すかローマ字表記にする。latinは英語と決め付けず、スペイン語・フランス語等も元コメントから判断する。日本語での品質確認よりこの言語ルールを優先する。言語・文字の参考判定: ${replyLanguageHint(c.comment_text)}。`;
   const fan_profile=s.use_history&&c.username!=='connection-test'?fanReplyContext(await refreshFanProfile(c.username)):null;
+  if(fan_profile?.nickname&&wrongReplyLanguage(c.comment_text,fan_profile.nickname))fan_profile.nickname='';
+  if(fan_profile?.nickname&&recentReplies.some((text:string)=>text.includes(fan_profile.nickname)))fan_profile.nickname='';
   const input=JSON.stringify({fan_profile,reply_language_hint:replyLanguageHint(c.comment_text),reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation,recent_replies:recentReplies,owner_style_examples:styleExamples});
   if(aiProvider(s)==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
@@ -119,7 +121,7 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
     const candidate=response.candidates?.[0];
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
     const text=(candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim();
-    if(invalidReply(text,s.max_chars)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)) {
+    if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)) {
       if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。直近の長い返信と同じ表現を繰り返さず、今回の内容に合う短く自然な別の言い方にする。'},c,1);
       throw new Error('返信形式・言語・直近の返信の繰り返しを確認してください');
     }
@@ -132,8 +134,8 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   })},'AI返信生成');
   if(response.status!=='completed') throw new Error('AIの生成が未完了です');
   const text=(response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim();
-  if((invalidReply(text,s.max_chars)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies))&&!attempt)return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶・表現の繰り返しの規則に合わないため破棄。直近の長い返信とは別の言い方で、短く自然に返す。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。直近の長い返信とは別の言い方で、短く自然に返す。'},c,1);
-  if(invalidReply(text,s.max_chars)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)) throw new Error('返信形式・言語・時間帯・直近の返信の繰り返しを確認してください');
+  if((invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies))&&!attempt)return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶・表現の繰り返しの規則に合わないため破棄。直近の長い返信とは別の言い方で、短く自然に返す。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。直近の長い返信とは別の言い方で、短く自然に返す。'},c,1);
+  if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)) throw new Error('返信形式・言語・時間帯・直近の返信の繰り返しを確認してください');
   return text;
 }
 async function probeOpenAI(): Promise<string> {
@@ -320,7 +322,9 @@ async function publish(c: any,automatic=false) {
   if(await skipIfReplied(c)) return;
   if(wrongReplyLanguage(c.comment_text,c.reply_text))throw new Error('コメントと返信の言語が合いません。再生成してください');
   if(wrongGreeting(c.reply_text)) throw new Error('返信時刻と挨拶が合いません。再生成してください');
-  if(invalidReply(c.reply_text,500)) throw new Error('返信文が会う・電話・連絡先交換の禁止または形式のルールに反しています。再生成してください');
+  const profile=c.username?await db(`hanako_fan_profiles?${filter()}&username=eq.${encodeURIComponent(fanUsername(c.username))}`):[];
+  const nickname=profileNickname(profile[0],c.username);
+  if(invalidReply(c.reply_text,500,nickname)) throw new Error('返信文が会う・電話・連絡先交換の禁止または形式のルールに反しています。再生成してください');
   // Write publishing before any external write. Never automatically retry an uncertain result.
   await updateComment(c.comment_id,{status:'publishing',error:'',reply_automatic:automatic});
   try {
@@ -468,12 +472,14 @@ Deno.serve(async request=>{
       return respond({saved:true,connections:registered});
     }
     if(body.action==='key_status') return respond({connections:await connections()});
-    if(body.action==='fan_profile')return respond({profile:await refreshFanProfile(fanUsername(body.username))});
+    if(body.action==='fan_profile'){const profile=await refreshFanProfile(fanUsername(body.username));return respond({profile:{...profile,nickname:profileNickname(profile,profile.username)}});}
     if(body.action==='fan_notes'){
       const username=fanUsername(body.username);
       if(typeof body.notes!=='string'||body.notes.length>4000||typeof body.use_notes!=='boolean')throw new Error('備考は4000文字以内で入力してください');
+      if(body.nickname!==undefined&&body.nickname!==''&&!safeNickname(body.nickname))throw new Error('あだ名は2〜20文字の自然な呼び名を入力してください');
+      if(body.nickname_enabled!==undefined&&typeof body.nickname_enabled!=='boolean')throw new Error('あだ名の使用設定が不正です');
       await refreshFanProfile(username);
-      await db(`hanako_fan_profiles?${filter()}&username=eq.${encodeURIComponent(username)}`,'PATCH',{manual_notes:body.notes,use_notes:body.use_notes});
+      await db(`hanako_fan_profiles?${filter()}&username=eq.${encodeURIComponent(username)}`,'PATCH',{manual_notes:body.notes,use_notes:body.use_notes,...(body.nickname!==undefined?{manual_nickname:body.nickname}:{}),...(body.nickname_enabled!==undefined?{nickname_enabled:body.nickname_enabled}:{})});
       return respond({saved:true});
     }
     if(body.action==='load') {const current=await settings();return respond({settings:current,openai:{configured:await openaiConfigured(),ready:Boolean(current.openai_ready),model:OPENAI_LUNA_MODEL},profile:HANA_PROFILE,daily_counts:await db('rpc/hanako_reply_daily_counts','POST',{owner_id:owner()}),queue_count:await queueCount(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
