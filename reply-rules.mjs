@@ -65,6 +65,13 @@ export function inWindow(settings, now = new Date()) {
   if (start > end) return time >= start ? settings.weekdays.includes(weekday) : time < end && settings.weekdays.includes((weekday+6)%7);
   return settings.weekdays.includes(weekday) && (start === end || (time >= start && time < end));
 }
+export const NOTE_ARTICLE_URL='https://note.com/hanako47258/n/n5ec014ec2673';
+export function hasNotePromotion(text){return /note\.com|\bnote\b|ノート|記事.{0,24}(?:買|購入)|(?:買|購入).{0,24}記事/iu.test(String(text||''));}
+export function wrongNoteReply(text,allowed){const value=String(text||'');return (!allowed&&hasNotePromotion(value))||/https?:\/\/note\.com\/(?!hanako47258\/n\/n5ec014ec2673(?:[\s♡♥💕☺️😊🥰。！!]|$))\S*/iu.test(value);}
+export function repeatedEnding(text,recent=[]){
+ const ending=value=>String(value||'').replace(/https?:\/\/\S+/g,'').replace(/[\p{P}\p{S}\p{M}\s]+$/gu,'').match(/(?:嬉しいな|うれしいな|嬉しいよ|ドキドキしちゃう|しちゃう|だよね|だよ|だね|だな|だもん|ちゃう|かな|かもね|かも|ですね|ですよ|です|ます|なの|ね)$/u)?.[0];
+ const current=ending(text);return Boolean(current&&recent.length>=2&&recent.slice(-2).every(old=>ending(old)===current));
+}
 export function validateSettings(input) {
   const value = { enabled: input.enabled, mode: input.mode, start_time: input.start_time, end_time: input.end_time,
     weekdays: input.weekdays, delay_minutes: input.delay_minutes, tones: input.tones, adapt_tone: input.adapt_tone,
@@ -107,4 +114,5 @@ export function wrongGreeting(text,now=new Date()) {
   const evening=/こんばん[はわ]|good\s*evening|晚上好|晚安/i.test(text);
   return (period!=='朝'&&morning)||(period!=='夜'&&evening);
 }
+
 

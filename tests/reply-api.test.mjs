@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-let handler; let directReplies=null; let countResult=0;
+let handler; let directReplies=null; let countResult=0;let noteAllowed=true;let noteClaimed=true;
 let vault={}, vaultWrites=0, vaultReads=0, fetchMock;let openaiVault=null;
 Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,set:fn=>{fetchMock=async(url,opts={})=>{
+  if(String(url).includes('/rpc/hanako_note_available'))return response(noteAllowed);
+  if(String(url).includes('/rpc/hanako_note_claim'))return response(noteClaimed);
   if(String(url).includes('/rpc/hanako_reply_analytics')){assert.equal(JSON.parse(opts.body).owner_id,'owner');return response({periods:[],daily:[],queue:{}});}
   if(String(url).includes('/hanako_fan_profiles'))return response([]);
   if(String(url).includes('/rpc/hanako_fan_auto_save'))return new Response(null,{status:204});
@@ -27,6 +29,12 @@ globalThis.Deno={env:{get:name=>secrets[name]},serve:fn=>{handler=fn;}};
 await import('../supabase/functions/threads-replies/index.ts');
 const response=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
 const invoke=(body,headers={})=>handler(new Request('https://function.test',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer owner',...headers},body:JSON.stringify(body)}));
+test('Note上限後は案内候補を破棄して別の会話を生成し、手動の再案内も投稿しない',async()=>{
+ let c={comment_id:'note-limit',post_id:'test-post',username:'guest',comment_text:'写真見たい',status:'pending'};let generations=0,writes=0;
+ const s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],use_history:false,tones:['cute'],max_chars:180,custom_prompt:'',ai_provider:'openai',openai_ready:true};
+ globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([s]);if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('rpc/hanako_reply_claim'))return response({...c,status:'generating'});if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([]);}if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});if(url.includes('api.openai.com')){assert.equal(JSON.parse(b.input).note_allowed,false);generations++;return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:generations===1?'noteの記事を買ってね https://note.com/hanako47258/n/n5ec014ec2673':'最近はどんな音楽を聴いてる？'}]}]});}if(opts.method==='POST'&&url.includes('graph.threads.net'))writes++;throw Error('Unexpected request '+url);};
+ noteAllowed=false;try{assert.equal((await invoke({action:'run'})).status,200);assert.equal(generations,2);assert.doesNotMatch(c.reply_text,/note/i);assert.equal(writes,0);}finally{noteAllowed=true;}
+});
 test('分析は所有者だけに返し、入力された別のowner_idやCronでは開示しない',async()=>{globalThis.fetch=async()=>response({id:'owner'});const result=await invoke({action:'analytics',owner_id:'other'});assert.equal(result.status,200);assert.ok((await result.json()).analytics);assert.equal((await invoke({action:'analytics'},{'x-cron-secret':'cron'})).status,403);globalThis.fetch=async()=>response({id:'other'});assert.equal((await invoke({action:'analytics'})).status,400);});
 test('設定した1〜4件の元ポストだけを取得し返信ポストを数えない',async()=>{
  for(const post_limit of [1,2,3,4]){
@@ -404,7 +412,7 @@ test('生成指示はnoteだけの購入案内と軽い甘えを含み、直接U
   if(url.includes('generativelanguage.googleapis.com')){
    const instructions=JSON.parse(opts.body).systemInstruction.parts[0].text;
    assert.match(instructions,/写真やイラスト/);assert.match(instructions,/案内先はnoteだけ/);assert.match(instructions,/買って読んでくれたら嬉しい/);assert.match(instructions,/購入を断られたら/);assert.doesNotMatch(instructions,/Instagramとnoteの両方/);assert.match(instructions,/https:\/\/note\.com\/hanako47258/);assert.match(instructions,/音声通話・ビデオ通話/);assert.match(instructions,/ほのめかさない/);assert.match(instructions,/感想だけ/);assert.match(instructions,/同じ言語/);assert.match(instructions,/買えば会える/);
-   return response({candidates:[{finishReason:'STOP',content:{parts:[{text:'noteの記事、買って読んでくれたら嬉しいな♡ https://note.com/hanako47258'}]}}]});
+   return response({candidates:[{finishReason:'STOP',content:{parts:[{text:'noteの記事、買って読んでくれたら嬉しいな♡ https://note.com/hanako47258/n/n5ec014ec2673'}]}}]});
   }
   throw new Error('Unexpected request');
  };
@@ -606,3 +614,4 @@ test('コメント単体の取得が400でも元の会話で存在・手動返�
   try {const result=await invoke({action:'publish',commentId:'fallback-test'});assert.equal(result.status,200);assert.equal(c.status,scenario==='exists'?'published':'skipped');assert.equal(published,scenario==='exists'?1:0);assert.equal(c.reply_retry_once,false);}finally{directReplies=null;}
  }
 });
+
