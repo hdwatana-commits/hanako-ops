@@ -3403,6 +3403,26 @@ const hanakoExtraOutfits = [
     { id: "fashionMonochrome", label: "黒ニット×白フレアのモノトーン", prompt: "端正な黒の長袖ニットと白いフレアスカート。素材感の違いで魅せるシンプルなモノトーン" },
     { id: "fashionSatinSkirt", label: "短丈ニット×サテンスカート", prompt: "淡い短丈ニットと光沢を抑えたサテンのミモレ丈スカート。肌見せより素材の上品さを主役にする" },
   ] },
+  { label: "八百屋であざと可愛い（新着3）", items: [
+    { id: "grocerRibbonApron", label: "細リボンブラウス×淡色エプロン", prompt: "成人女性の八百屋コーデ。白い細リボンブラウス、セージ色の清潔なエプロン、濃色パンツ。実在店舗名を出さず、作業しやすさとあざとすぎない可愛さを両立する" },
+    { id: "grocerCardiganDenim", label: "ふんわりカーデ×デニムエプロン", prompt: "成人女性の八百屋コーデ。淡いピンクのカーディガン、白トップス、無地のデニムエプロン、動きやすいロングボトム。野菜の色に負けない柔らかな配色" },
+    { id: "grocerPoloApron", label: "ポロニット×ギャルソンエプロン", prompt: "成人女性の八百屋コーデ。ネイビーのポロニット、生成りのギャルソンエプロン、端正なパンツ。袖と髪を衛生的に整え、親しみやすく見せる" },
+  ] },
+  { label: "夜のバーで清楚可愛い（新着3）", items: [
+    { id: "barNavyPianist", label: "ネイビーの清楚ピアノワンピ", prompt: "成人女性の夜のバー衣装。深いネイビーの袖付き膝下ワンピース、小粒パール、低めヒール。胸元を開けず、間接照明に映える清楚な演奏会スタイル" },
+    { id: "barWhiteBlouse", label: "白ブラウス×黒フレア", prompt: "成人女性の夜のバー衣装。透けない白ブラウス、黒のミモレ丈フレアスカート、華奢なイヤリング。モノトーンで清潔感と夜の華やかさを両立する" },
+    { id: "barVelvetDress", label: "深緑ベルベットの上品ワンピ", prompt: "成人女性の夜のバー衣装。深緑の控えめなベルベットワンピース、長袖、膝下丈、小さな金色アクセサリー。露出に頼らず素材と陰影で魅せる" },
+  ] },
+  { label: "受け身寄り職業ムード（新着3）", items: [
+    { id: "softAssistant", label: "控えめなアシスタント風", prompt: "成人女性の架空のアシスタント風コーデ。淡色ブラウス、柔らかなカーディガン、膝丈スカート、メモ帳。従属や強制ではなく、控えめで一生懸命な好印象を表す" },
+    { id: "shyApprentice", label: "初々しいパティシエ見習い風", prompt: "成人女性の架空のパティシエ見習い風。清潔なコックコート、淡色エプロン、小さなスカーフ。失敗を恐れつつ頑張る初々しさを健全に表現する" },
+    { id: "gentleReception", label: "緊張気味の受付スタッフ風", prompt: "成人女性の架空の受付スタッフ風。上品なジャケット、膝丈スカート、スカーフ、無地の名札。控えめな緊張と丁寧さを主役にし、実在企業を示さない" },
+  ] },
+  { label: "主導的な職業ムード（新着3）", items: [
+    { id: "confidentDirector", label: "自信あるクリエイティブディレクター風", prompt: "成人女性の架空のクリエイティブディレクター風。黒のテーラードジャケット、白トップス、端正なパンツ、資料フォルダー。威圧ではなく判断力と余裕を見せる" },
+    { id: "coolBartender", label: "クールな女性バーテンダー風", prompt: "成人女性の架空のバーテンダー風。白シャツ、黒ベスト、細いタイ、黒パンツ。実在店を示さず、落ち着いた所作とプロらしい自信を見せる" },
+    { id: "sharpLawyer", label: "知的な女性弁護士風", prompt: "成人女性の架空の弁護士風。ネイビーの端正なスーツ、白ブラウス、細身の眼鏡、書類ケース。権力の乱用ではなく知性と堂々とした姿勢を表す" },
+  ] },
 ];
 
 const hanakoExtraExpressions = [{ label: "キュンとする表情（新着20）", items: [
@@ -3426,6 +3446,26 @@ const hanakoExtraExpressions = [{ label: "キュンとする表情（新着20）
   { id: "proudLittleSmile", label: "うまくできた時の得意げな笑み", prompt: "小さな成功を喜び、照れながらも少し得意げに微笑む" },
   { id: "gentleGoodbye", label: "またねの名残惜しい微笑み", prompt: "振り返りながら目を合わせ、少し名残惜しさのある柔らかな笑み" },
   { id: "blinkingSmile", label: "まばたき後のふんわり笑顔", prompt: "自然なまばたきの後に視線が合い、ふっと表情がやわらぐ瞬間" },
+] },
+{ label: "八百屋であざと可愛い表情（新着3）", items: [
+  { id: "grocerPeekSmile", label: "野菜越しののぞき込み笑顔", prompt: "成人女性が旬の野菜の横から顔を少しのぞかせ、目が合った瞬間に嬉しそうに微笑む。幼くせず自然な愛嬌にする" },
+  { id: "grocerTasteQuestion", label: "どっちが好き？の問いかけ顔", prompt: "成人女性が二つの野菜を見比べてからカメラへ首を少し傾け、好みを尋ねるように目元で笑う" },
+  { id: "grocerProudSmile", label: "おすすめを見つけた得意げ笑顔", prompt: "成人女性がきれいな野菜を見つけ、少し得意げに口角を上げながら相手だけへ視線を向ける" },
+] },
+{ label: "夜のバーで清楚可愛い表情（新着3）", items: [
+  { id: "barQuietSmile", label: "演奏後の静かな微笑み", prompt: "成人女性が演奏を終えて肩の力を抜き、余韻を残した穏やかな目元で小さく微笑む" },
+  { id: "barSoftSideGaze", label: "照明の中の清楚な横目", prompt: "成人女性がグラスや鍵盤から視線を上げ、横目でカメラと合ってから控えめに微笑む。誘惑的にしすぎない" },
+  { id: "barWelcomeEyes", label: "一席あけて迎える優しい目", prompt: "成人女性が近くの席へ案内するように、安心感のある目元と上品な微笑みを見せる" },
+] },
+{ label: "受け身寄り職業表情（新着3）", items: [
+  { id: "softAwaitingReply", label: "返事を待つ緊張の微笑み", prompt: "成人女性が指示ではなく返事を待つ場面で、少し緊張しながらも信頼を感じる控えめな微笑みを見せる" },
+  { id: "shyCorrection", label: "教えてもらって照れる顔", prompt: "成人女性が優しく助言された直後、視線を少し落としてから感謝を込めてはにかむ。萎縮や恐怖は描かない" },
+  { id: "earnestUpward", label: "一生懸命な控えめ上目遣い", prompt: "成人女性がメモを確認してからあごを少し引き、真剣さと少しの不安を含む柔らかな上目遣いで見つめる" },
+] },
+{ label: "主導的な職業表情（新着3）", items: [
+  { id: "leaderKnowingSmile", label: "答えを知っている余裕の笑み", prompt: "成人女性がまっすぐ目を合わせ、片方の口角をほんの少し上げる。威圧せず、判断力と余裕を感じる表情" },
+  { id: "leaderBrowChallenge", label: "片眉を上げた軽い挑戦", prompt: "成人女性が片眉を自然に少し上げ、相手の答えを楽しみに待つような知的で遊び心のある表情" },
+  { id: "leaderApproval", label: "よくできましたの満足顔", prompt: "成人女性が相手の成果を認め、落ち着いた目元と小さな微笑みで肯定を伝える。上から目線にしすぎない" },
 ] }];
 
 const hanakoExtraPoses = [{ label: "インフルエンサー撮影ポーズ（新着20）", items: [
@@ -3449,6 +3489,26 @@ const hanakoExtraPoses = [{ label: "インフルエンサー撮影ポーズ（�
   { id: "poseSitCrossAnkle", label: "座って足首をそろえる", prompt: "椅子に浅すぎず座り、両足首を自然にそろえる上品なポートレート" },
   { id: "poseCushionTurn", label: "クッションを抱えて振り向く", prompt: "クッションを両腕で自然に抱え、横から振り向く。腕と布の境界を明確にする" },
   { id: "poseFramePeek", label: "ドア枠から顔をのぞかせる", prompt: "安全な室内のドア枠に片手を軽く添え、顔を少しのぞかせる。手指と枠の位置を自然にする" },
+] },
+{ label: "八百屋であざと可愛いポーズ（新着3）", items: [
+  { id: "poseGrocerPeek", label: "野菜かごの横からのぞく", prompt: "成人女性が野菜かごの横から上半身を少しだけのぞかせ、両手はかごの縁へ自然に添える。商品を傷めない" },
+  { id: "poseGrocerCompare", label: "両手で二つを見比べる", prompt: "成人女性が左右の手に一つずつ野菜を持ち、どちらが好きか尋ねるようにカメラを見る。指と商品を正確に描く" },
+  { id: "poseGrocerOffer", label: "おすすめをそっと差し出す", prompt: "成人女性が旬の野菜を両手で胸元より下からカメラ側へ軽く差し出す。手前へ誇張せず、衛生的で自然な接客姿勢にする" },
+] },
+{ label: "夜のバーで清楚可愛いポーズ（新着3）", items: [
+  { id: "poseBarPianoTurn", label: "鍵盤から静かに振り返る", prompt: "成人女性がピアノ椅子へ安定して座り、片手を鍵盤の近くへ置いたまま上半身だけを自然に振り返る" },
+  { id: "poseBarGlassHold", label: "ノンアルグラスを両手で持つ", prompt: "成人女性が透明なノンアルコールドリンクのグラスを両手で持ち、飲む前に穏やかに目を合わせる" },
+  { id: "poseBarSeatInvite", label: "隣の席を上品に示す", prompt: "成人女性がカウンター横の空席を開いた手で控えめに示し、もう片手は身体の前へ自然に置く" },
+] },
+{ label: "受け身寄り職業ポーズ（新着3）", items: [
+  { id: "poseAssistantNotes", label: "メモを抱えて返事を待つ", prompt: "成人女性がメモ帳を胸元より下で両手に持ち、姿勢を整えて相手の返事を待つ。萎縮せず丁寧な印象にする" },
+  { id: "poseApprenticePresent", label: "仕上がりを控えめに見せる", prompt: "成人女性が完成品のトレーを両手で安全に持ち、少し緊張しながら相手へ確認を求める。食品と指を自然に描く" },
+  { id: "poseReceptionGuide", label: "両手をそろえて案内する", prompt: "成人女性が身体の前で両手を上品にそろえ、軽く会釈して進行方向を示す。従属的に誇張しない" },
+] },
+{ label: "主導的な職業ポーズ（新着3）", items: [
+  { id: "poseDirectorBrief", label: "資料を片手に方針を示す", prompt: "成人女性が資料フォルダーを片手に持ち、もう片方の開いた手で要点を示す。腕組みで威圧せず堂々と立つ" },
+  { id: "poseBartenderCounter", label: "カウンター越しに静かに見つめる", prompt: "成人女性が清潔なバーカウンターへ片手を軽く添え、背筋を伸ばして落ち着いた視線を向ける" },
+  { id: "poseLawyerGlasses", label: "眼鏡を整えて問いかける", prompt: "成人女性が片手で眼鏡のつるを軽く整え、もう片手に閉じた書類ケースを持って相手へ問いかける" },
 ] }];
 
 const hanakoExtraLocations = [{ label: "人物が映えるシンプル背景（新着10）", items: [
@@ -3590,10 +3650,15 @@ const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh
 hanakoInstagramLocations.push(...hanakoExtraLocations[0].items.map((item) => item.id));
 hanakoInstagramOutfits.push(...hanakoExtraOutfits[0].items.map((item) => item.id), ...hanakoExtraOutfits[3].items.map((item) => item.id));
 hanakoInstagramPoses.push(...hanakoExtraPoses[0].items.map((item) => item.id));
+hanakoInstagramOutfits.push(...hanakoExtraOutfits.slice(4).flatMap((group) => group.items.map((item) => item.id)));
+hanakoInstagramPoses.push(...hanakoExtraPoses.slice(1).flatMap((group) => group.items.map((item) => item.id)));
 hanakoThreadsLocations.push(...hanakoExtraLocations[0].items.map((item) => item.id));
 hanakoThreadsOutfits.push(...hanakoExtraOutfits[0].items.map((item) => item.id), ...hanakoExtraOutfits[3].items.map((item) => item.id));
 hanakoThreadsPoses.push(...hanakoExtraPoses[0].items.map((item) => item.id));
 hanakoThreadsExpressions.push(...hanakoExtraExpressions[0].items.map((item) => item.id));
+hanakoThreadsOutfits.push(...hanakoExtraOutfits.slice(4).flatMap((group) => group.items.map((item) => item.id)));
+hanakoThreadsPoses.push(...hanakoExtraPoses.slice(1).flatMap((group) => group.items.map((item) => item.id)));
+hanakoThreadsExpressions.push(...hanakoExtraExpressions.slice(1).flatMap((group) => group.items.map((item) => item.id)));
 for (const [index, look] of hanakoInstagramLooks.entries()) {
   const start = index * 5;
   look.locations.push(...hanakoExtraLocations[0].items.slice(index * 3, index === 3 ? 10 : index * 3 + 3).map((item) => item.id));
