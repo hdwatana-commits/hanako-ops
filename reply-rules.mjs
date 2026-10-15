@@ -66,6 +66,12 @@ export function inWindow(settings, now = new Date()) {
   return settings.weekdays.includes(weekday) && (start === end || (time >= start && time < end));
 }
 export const NOTE_ARTICLE_URL='https://note.com/hanako47258/n/n5ec014ec2673';
+export function specialCodeReply(value){
+ const text=String(value||'').normalize('NFKC');
+ if(/[?？]|(?:もし|例えば|買わない|買いません|言ってない|言っていない|と言えば|って言えば|と言ったら|って言ったら|どういう意味)/.test(text))return '';
+ if(!/(?:バナナ|ばなな|🍌)/u.test(text)||!/(?:漬け?物|つけもの|お新香)/.test(text)||!/(?:お?釣り|お?つり).{0,8}(?:いらない|要らない|不要)/.test(text))return '';
+ return 'その暗号、受け取ったよ♡ あとで連絡するね☺️';
+}
 export function hasNotePromotion(text){return /note\.com|\bnote\b|ノート|記事.{0,24}(?:買|購入)|(?:買|購入).{0,24}記事/iu.test(String(text||''));}
 export function wrongNoteReply(text,allowed){const value=String(text||'');return (!allowed&&hasNotePromotion(value))||/https?:\/\/note\.com\/(?!hanako47258\/n\/n5ec014ec2673(?:[\s♡♥💕☺️😊🥰。！!]|$))\S*/iu.test(value);}
 export function repeatedEnding(text,recent=[]){
@@ -114,5 +120,6 @@ export function wrongGreeting(text,now=new Date()) {
   const evening=/こんばん[はわ]|good\s*evening|晚上好|晚安/i.test(text);
   return (period!=='朝'&&morning)||(period!=='夜'&&evening);
 }
+
 
 

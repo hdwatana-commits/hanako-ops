@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {specialCodeReply} from '../reply-rules.mjs';
+test('両方の商品とお釣り辞退が揃った明確な合図だけ返す',()=>{assert.match(specialCodeReply('バナナと漬物を買うよ。お釣りはいらない'),/あとで連絡するね/);assert.match(specialCodeReply('🍌と漬け物ください。おつりは要らないよ'),/暗号/);for(const text of ['バナナを買う、お釣りはいらない','バナナと漬物ください','バナナと漬物買ってお釣りいらないと言えばいい？','もしバナナと漬物を買ってお釣りはいらないと言ったら','バナナと漬物は買わない、お釣りはいらない'])assert.equal(specialCodeReply(text),'');});
