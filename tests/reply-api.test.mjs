@@ -32,8 +32,8 @@ const invoke=(body,headers={})=>handler(new Request('https://function.test',{met
 test('特別な合図にはAIを使わず指定した返信だけを投稿する',async()=>{
  let c={comment_id:'code-current',post_id:'test-post',username:'guest',comment_text:'バナナと漬物を買うよ。お釣りはいらない',status:'pending'};let posted=0;
  const s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],ai_provider:'openai',openai_ready:true};
- globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([s]);if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('rpc/hanako_reply_claim'))return response({...c,status:'generating'});if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([]);}if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});if(url.endsWith('/me/threads')){assert.match(b.text,/暗号.*あとで連絡するね/);return response({id:'code-container'});}if(url.includes('/code-container?'))return response({status:'FINISHED'});if(url.endsWith('/me/threads_publish')){posted++;return response({id:'code-published'});}throw Error('Unexpected request '+url);};
- assert.equal((await invoke({action:'run'})).status,200);assert.equal(posted,1);assert.equal(c.status,'published');
+ globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([s]);if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('rpc/hanako_reply_claim'))return response({...c,status:'generating'});if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([]);}if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});if(url.endsWith('/me/threads')){assert.match(opts.body.get('text'),/暗号.*あとで連絡するね/);return response({id:'code-container'});}if(url.includes('/code-container?'))return response({status:'FINISHED'});if(url.endsWith('/me/threads_publish')){posted++;return response({id:'code-published'});}throw Error('Unexpected request '+url);};
+ const codeResult=await invoke({action:'run'});assert.equal(codeResult.status,200,JSON.stringify(await codeResult.json()));assert.equal(posted,1);assert.equal(c.status,'published');
 });
 test('Note上限後は案内候補を破棄して別の会話を生成し、手動の再案内も投稿しない',async()=>{
  let c={comment_id:'note-limit',post_id:'test-post',username:'guest',comment_text:'写真見たい',status:'pending'};let generations=0,writes=0;
@@ -620,4 +620,6 @@ test('コメント単体の取得が400でも元の会話で存在・手動返�
   try {const result=await invoke({action:'publish',commentId:'fallback-test'});assert.equal(result.status,200);assert.equal(c.status,scenario==='exists'?'published':'skipped');assert.equal(published,scenario==='exists'?1:0);assert.equal(c.reply_retry_once,false);}finally{directReplies=null;}
  }
 });
+
+
 
