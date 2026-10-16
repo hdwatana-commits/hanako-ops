@@ -3423,6 +3423,10 @@ const hanakoExtraOutfits = [
     { id: "coolBartender", label: "クールな女性バーテンダー風", prompt: "成人女性の架空のバーテンダー風。白シャツ、黒ベスト、細いタイ、黒パンツ。実在店を示さず、落ち着いた所作とプロらしい自信を見せる" },
     { id: "sharpLawyer", label: "知的な女性弁護士風", prompt: "成人女性の架空の弁護士風。ネイビーの端正なスーツ、白ブラウス、細身の眼鏡、書類ケース。権力の乱用ではなく知性と堂々とした姿勢を表す" },
   ] },
+  { label: "エヴァンゲリオン風コスプレ（新着2）", items: [
+    { id: "cosReiBandageGym", label: "綾波レイ風｜包帯×体操服アレンジ", prompt: "成人女性による『新世紀エヴァンゲリオン』綾波レイ風のイベントコスプレ。短い淡い水色の髪、赤い瞳、白い半袖の体操トップス、不透明で丈が安定した濃紺のスポーツショーツ、白い室内運動靴。額と片腕の包帯は清潔な演出用で、血、傷口、痛み、拘束感を描かない。未成年に見せず、健康的な全身ファッション撮影にする" },
+    { id: "cosAsukaClassic", label: "惣流・アスカ・ラングレー風", prompt: "成人女性による『新世紀エヴァンゲリオン』惣流・アスカ・ラングレー風のイベントコスプレ。長い赤褐色のツインテール、赤いヘアクリップ、青い瞳、赤を基調にした近未来的なパイロットスーツ風衣装。身体へ過度に密着させず、不透明な素材で健全なヒロイン撮影にする" },
+  ] },
 ];
 
 const hanakoExtraExpressions = [{ label: "キュンとする表情（新着20）", items: [
@@ -3509,6 +3513,12 @@ const hanakoExtraPoses = [{ label: "インフルエンサー撮影ポーズ（�
   { id: "poseDirectorBrief", label: "資料を片手に方針を示す", prompt: "成人女性が資料フォルダーを片手に持ち、もう片方の開いた手で要点を示す。腕組みで威圧せず堂々と立つ" },
   { id: "poseBartenderCounter", label: "カウンター越しに静かに見つめる", prompt: "成人女性が清潔なバーカウンターへ片手を軽く添え、背筋を伸ばして落ち着いた視線を向ける" },
   { id: "poseLawyerGlasses", label: "眼鏡を整えて問いかける", prompt: "成人女性が片手で眼鏡のつるを軽く整え、もう片手に閉じた書類ケースを持って相手へ問いかける" },
+] },
+{ label: "エヴァンゲリオン風コスプレポーズ（新着4）", items: [
+  { id: "poseReiQuietStand", label: "綾波風｜静かな直立と横目", prompt: "成人女性が体育倉庫の安全な通路で背筋を伸ばして静かに立ち、腕は身体の横へ自然に下ろし、横目からカメラへ視線を戻す。包帯へ触れず、負傷や弱さを強調しない" },
+  { id: "poseReiBallHold", label: "綾波風｜ボールを両手で持つ", prompt: "成人女性が清潔なバレーボールを胸元より下で両手に持ち、無表情に近い穏やかな目線を向ける。指、ボール、腕の重なりを正確にし、健康的な体育撮影にする" },
+  { id: "poseAsukaConfident", label: "アスカ風｜腰に手を添える自信ポーズ", prompt: "成人女性が片手を腰へ軽く添え、もう片腕は自然に下ろし、片足を半歩前へ出して自信のある視線を向ける。胸や腰を誇張せず、堂々としたヒロインらしさを見せる" },
+  { id: "poseAsukaHairFlip", label: "アスカ風｜ツインテールを払って振り返る", prompt: "成人女性が長い赤褐色の髪を片手で肩の後ろへ軽く払い、肩越しに振り返る。髪、手指、腕の位置を自然にし、挑戦的だが健全な表情にする" },
 ] }];
 
 const hanakoExtraLocations = [{ label: "人物が映えるシンプル背景（新着10）", items: [
@@ -3522,6 +3532,11 @@ const hanakoExtraLocations = [{ label: "人物が映えるシンプル背景（�
   { id: "backdropConcrete", label: "淡色モルタルの壁", prompt: "淡色モルタルのマットな壁と均一な光。ストリート感を出しつつ人物を明るく保つ" },
   { id: "backdropWood", label: "明るい木の板壁", prompt: "明るい木の板壁。木目は控えめで自然にし、服装と表情より目立たせない" },
   { id: "backdropCreamStudio", label: "クリーム色の無地スタジオ", prompt: "クリーム色のシームレスなスタジオ背景。床との境界を自然にし、光とポーズだけで変化をつける" },
+] },
+{ label: "移動・学校設備の背景（新着3）", items: [
+  { id: "gymStorage", label: "体育倉庫", prompt: "成人モデルの撮影用として整頓された明るい体育倉庫。ボール、マット、跳び箱を背景へ安全に配置し、出入口と通路を塞がない。学校名、生徒、未成年、閉じ込められた印象を描かない" },
+  { id: "airplaneCabin", label: "飛行機の機内", prompt: "飛行中の安全で清潔な旅客機内。成人女性はシートベルトを正しく着用するか通路に立たず着席し、実在航空会社のロゴ、便名、座席番号を出さない" },
+  { id: "shinkansenCabin", label: "新幹線の車内", prompt: "走行中の清潔な高速鉄道の車内。成人女性は座席へ安全に着席し、荷物を通路へ置かない。実在鉄道会社、列車名、駅名、座席番号を出さない" },
 ] }];
 
 const hanakoIdeaCatalog = [
@@ -3648,11 +3663,13 @@ const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkT
 const hanakoThreadsPoses = ["fingerHeartNearFace", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan", "watchLastTrain", "shareUmbrellaLean", "gentleSleeveHold", "gateTurnBack", "handAlmostTouch", "subwayPoleGlance", "hairTieMoment", "coatPocketLean", "scarfAdjustGaze", "bagBehindBack", "seatNextTap", "shareEarphone", "drinkOffer", "doorHoldLookback", "tiptoeWhisper"];
 const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze", "lastTrainHope", "rainCloseSmile", "coldPleading", "gateFarewell", "handholdNervous", "caughtLooking", "onlyYouSmile", "surpriseEyeContact", "whisperSecret", "missedYou", "jealousPout", "praiseShy", "sleepyTrust", "comeCloserEyes", "goodbyePause"];
 hanakoInstagramLocations.push(...hanakoExtraLocations[0].items.map((item) => item.id));
+hanakoInstagramLocations.push(...hanakoExtraLocations.slice(1).flatMap((group) => group.items.map((item) => item.id)));
 hanakoInstagramOutfits.push(...hanakoExtraOutfits[0].items.map((item) => item.id), ...hanakoExtraOutfits[3].items.map((item) => item.id));
 hanakoInstagramPoses.push(...hanakoExtraPoses[0].items.map((item) => item.id));
 hanakoInstagramOutfits.push(...hanakoExtraOutfits.slice(4).flatMap((group) => group.items.map((item) => item.id)));
 hanakoInstagramPoses.push(...hanakoExtraPoses.slice(1).flatMap((group) => group.items.map((item) => item.id)));
 hanakoThreadsLocations.push(...hanakoExtraLocations[0].items.map((item) => item.id));
+hanakoThreadsLocations.push(...hanakoExtraLocations.slice(1).flatMap((group) => group.items.map((item) => item.id)));
 hanakoThreadsOutfits.push(...hanakoExtraOutfits[0].items.map((item) => item.id), ...hanakoExtraOutfits[3].items.map((item) => item.id));
 hanakoThreadsPoses.push(...hanakoExtraPoses[0].items.map((item) => item.id));
 hanakoThreadsExpressions.push(...hanakoExtraExpressions[0].items.map((item) => item.id));
