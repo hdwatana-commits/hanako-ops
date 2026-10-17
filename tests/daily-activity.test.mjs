@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {isDailyActivityQuestion,dailyActivityReply,cosplayUpdate} from '../daily-activity.mjs';
+test('単純な今日の質問に共通の内容を使い、職業や別の質問を取り違えない',()=>{const plan={answer_ja:'今日はお買い物を楽しむ日だよ☺️'};for(const text of ['今日は何してる？','いつも何やってるの','どう過ごしてるの'])assert.equal(dailyActivityReply(text,plan),plan.answer_ja);for(const text of ['お仕事は何してる？','明日は何してる？','今日は何してる？好きな曲は？','今日は誰と何してる？'])assert.equal(isDailyActivityQuestion(text),false);});
+test('明日のアスカ予告は指定日だけ有効にする',()=>{assert.match(cosplayUpdate('2026-10-17'),/2026年10月18日/);assert.equal(cosplayUpdate('2026-10-18'),'');assert.equal(cosplayUpdate('2026-10-19'),'');});

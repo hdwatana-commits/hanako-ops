@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 let handler; let directReplies=null; let countResult=0;let noteAllowed=true;let noteClaimed=true;
 let vault={}, vaultWrites=0, vaultReads=0, fetchMock;let openaiVault=null;
 Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,set:fn=>{fetchMock=async(url,opts={})=>{
+  if(String(url).includes('/rpc/hanako_daily_activity_get'))return response({day_jst:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}),activity_code:'shopping',day_kind:'holiday',answer_ja:'今日はお買い物を楽しむ日だよ☺️'});
+  if(String(url).includes('/rpc/hanako_instagram_available'))return response(true);
+  if(String(url).includes('/rpc/hanako_instagram_claim'))return response(true);
   if(String(url).includes('/rpc/hanako_note_available'))return response(noteAllowed);
   if(String(url).includes('/rpc/hanako_note_claim'))return response(noteClaimed);
   if(String(url).includes('/rpc/hanako_reply_analytics')){assert.equal(JSON.parse(opts.body).owner_id,'owner');return response({periods:[],daily:[],queue:{}});}
@@ -29,6 +32,16 @@ globalThis.Deno={env:{get:name=>secrets[name]},serve:fn=>{handler=fn;}};
 await import('../supabase/functions/threads-replies/index.ts');
 const response=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
 const invoke=(body,headers={})=>handler(new Request('https://function.test',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer owner',...headers},body:JSON.stringify(body)}));
+test('同じ日の活動質問は相手が違っても同じ共通設定でAIなしに投稿する',async()=>{
+ const answers=[];
+ for(const username of ['guest1','guest2']){
+  let c={comment_id:'activity-'+username,post_id:'test-post',username,comment_text:'今日は何してる？',status:'pending'};
+  const s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],ai_provider:'openai',openai_ready:true};
+  globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([s]);if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('rpc/hanako_reply_claim'))return response({...c,status:'generating'});if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([]);}if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});if(url.endsWith('/me/threads')){answers.push(opts.body.get('text'));return response({id:'activity-container'});}if(url.includes('/activity-container?'))return response({status:'FINISHED'});if(url.endsWith('/me/threads_publish'))return response({id:'activity-published'});throw Error('Unexpected request '+url);};
+  const result=await invoke({action:'run'});assert.equal(result.status,200,JSON.stringify(await result.json()));assert.equal(c.status,'published');
+ }
+ assert.deepEqual(answers,['今日はお買い物を楽しむ日だよ☺️','今日はお買い物を楽しむ日だよ☺️']);
+});
 test('特別な合図にはAIを使わず指定した返信だけを投稿する',async()=>{
  let c={comment_id:'code-current',post_id:'test-post',username:'guest',comment_text:'バナナと漬物を買うよ。お釣りはいらない',status:'pending'};let posted=0;
  const s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],ai_provider:'openai',openai_ready:true};

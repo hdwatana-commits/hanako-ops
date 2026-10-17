@@ -3,6 +3,7 @@ const root=new URL('./',import.meta.url);
 const rules=await readFile(new URL('reply-rules.mjs',root),'utf8');
 const profile=await readFile(new URL('hana-profile.mjs',root),'utf8');
 const fanProfile=await readFile(new URL('fan-profile.mjs',root),'utf8');
+const dailyActivity=await readFile(new URL('daily-activity.mjs',root),'utf8');
 const prompt=await readFile(new URL('supabase/functions/threads-replies/prompt.ts',root),'utf8');
 const code=await readFile(new URL('supabase/functions/threads-replies/index.ts',root),'utf8');
-await writeFile(new URL('threads-replies-dashboard.ts',root),'export {};\n'+rules.replaceAll('export ','')+'\n'+profile.replaceAll('export ','')+'\n'+fanProfile.replaceAll('export ','')+'\n'+prompt.replace('export ','')+'\n'+code.replace(/^import .*;\r?\n/gm,''));
+await writeFile(new URL('threads-replies-dashboard.ts',root),'export {};\n'+rules.replaceAll('export ','')+'\n'+profile.replaceAll('export ','')+'\n'+fanProfile.replaceAll('export ','')+'\n'+dailyActivity.replaceAll('export ','')+'\n'+prompt.replace('export ','')+'\n'+code.replace(/^import .*;\r?\n/gm,''));

@@ -1,7 +1,8 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
+import { isDailyActivityQuestion, dailyActivityReply, cosplayUpdate, outdatedCosplayReply } from '../../../daily-activity.mjs';
 import { mergeFanProfile, fanReplyContext, profileNickname, safeNickname } from '../../../fan-profile.mjs';
-import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting, isEmojiOnly, emojiReply, replyLanguageHint, wrongReplyLanguage, tooSimilarReply, hasNotePromotion, wrongNoteReply, repeatedEnding, specialCodeReply } from '../../../reply-rules.mjs';
-import { HANA_PROMPT, RELATIONSHIP_PROMPT, DESTINATION_PROMPT, NATURAL_REPLY_PROMPT } from './prompt.ts';
+import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting, isEmojiOnly, emojiReply, replyLanguageHint, wrongReplyLanguage, tooSimilarReply, hasNotePromotion, wrongNoteReply, repeatedEnding, specialCodeReply, hasInstagramPromotion, wrongInstagramReply } from '../../../reply-rules.mjs';
+import { HANA_PROMPT, RELATIONSHIP_PROMPT, DESTINATION_PROMPT, NATURAL_REPLY_PROMPT, INSTAGRAM_PROMPT } from './prompt.ts';
 const env = (name: string) => { const value=Deno.env.get(name); if(!value) throw new Error(`サーバー設定 ${name} が必要です`); return value; };
 const OPENAI_LUNA_MODEL='gpt-6-luna';
 const openaiConfigured=async()=>Boolean(await db('rpc/hanako_openai_key_status','POST',{owner_id:owner()}))||Boolean(['OPENAI_API_KEY','HanakoOPS Replies'].some(n=>/^sk-\S+$/.test(Deno.env.get(n)?.trim()||'')));
@@ -98,7 +99,9 @@ async function checkThreadsOwner() {
   return me;
 }
 async function generate(s: any,c: any,attempt=0): Promise<string> {
-  const emoji=specialCodeReply(c.comment_text)||emojiReply(c.comment_text);if(emoji)return emoji;
+  const dailyActivity=c.username==='connection-test'?null:await db('rpc/hanako_daily_activity_get','POST',{owner_id:owner()});
+  const activityReply=dailyActivityReply(c.comment_text,dailyActivity);if(activityReply)return activityReply;
+  const emoji=specialCodeReply(c.comment_text)||emojiReply(c.comment_text)||(isDailyActivityQuestion(c.comment_text)?dailyActivityReply(c.comment_text,await db('rpc/hanako_daily_activity_get','POST',{owner_id:owner()})):'');if(emoji)return emoji;
   const history=s.use_history ? await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(c.username)}&comment_id=neq.${encodeURIComponent(c.comment_id)}&order=commented_at.desc&limit=20&select=comment_id,comment_text,reply_text,post_text,commented_at,status,reply_id`) : [];
   const ids=history.map((h:any)=>h.comment_id).filter(Boolean);
   const manual=ids.length ? await db(`hanako_reply_comments?${filter()}&is_owner=eq.true&parent_id=in.(${ids.map((id:string)=>encodeURIComponent(id)).join(',')})&select=comment_id,parent_id,comment_text,commented_at&order=commented_at.asc`) : [];
@@ -110,19 +113,21 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   const generatedIds=new Set(history.map((h:any)=>h.reply_id).filter(Boolean));
   const styleExamples=manual.filter((r:any)=>r.comment_id&&!generatedIds.has(r.comment_id)).map((r:any)=>r.comment_text).slice(-6);
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
+  const instagramAllowed=c.username==='connection-test'?true:await db('rpc/hanako_instagram_available','POST',{owner_id:owner(),fan_username:c.username});
   const noteAllowed=c.username==='connection-test'?true:await db('rpc/hanako_note_available','POST',{owner_id:owner(),fan_username:c.username});
-  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名を時々自然に使ってよい。それ以外の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。相手のコメントの言語で自然な文になっているか確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${replyCustomPrompt(s.custom_prompt)}\n${HANA_PROFILE}\n${NATURAL_REPLY_PROMPT}\n【最優先：Note案内回数】note_allowedがfalseなら今日はこの相手へNoteを案内済み。リンク・noteへの誘導・記事購入のお願いを一切書かず、質問に答えるか別の話題へ自然に移る。この制限は他の購入案内の指示より優先する。\n【最優先：返信言語】current_commentの言語だけを基準にし、その言語だけで返信する。日本語の投稿・プロフィール・過去の返信・例文に引きずられない。混在する場合は今回のコメントの主な言語を使う。外国語のコメントに日本語の文章や訳文を添えない。日本語の例文・名前・作品名は必要に応じて相手の言語に訳すかローマ字表記にする。latinは英語と決め付けず、スペイン語・フランス語等も元コメントから判断する。日本語での品質確認よりこの言語ルールを優先する。言語・文字の参考判定: ${replyLanguageHint(c.comment_text)}。`;
+  const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}
+${INSTAGRAM_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名を時々自然に使ってよい。それ以外の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。相手のコメントの言語で自然な文になっているか確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${replyCustomPrompt(s.custom_prompt)}\n${HANA_PROFILE}\n${NATURAL_REPLY_PROMPT}\n【最優先：Note案内回数】note_allowedがfalseなら今日はこの相手へNoteを案内済み。リンク・noteへの誘導・記事購入のお願いを一切書かず、質問に答えるか別の話題へ自然に移る。この制限は他の購入案内の指示より優先する。\n【最優先：返信言語】current_commentの言語だけを基準にし、その言語だけで返信する。日本語の投稿・プロフィール・過去の返信・例文に引きずられない。混在する場合は今回のコメントの主な言語を使う。外国語のコメントに日本語の文章や訳文を添えない。日本語の例文・名前・作品名は必要に応じて相手の言語に訳すかローマ字表記にする。latinは英語と決め付けず、スペイン語・フランス語等も元コメントから判断する。日本語での品質確認よりこの言語ルールを優先する。言語・文字の参考判定: ${replyLanguageHint(c.comment_text)}。`;
   const fan_profile=s.use_history&&c.username!=='connection-test'?fanReplyContext(await refreshFanProfile(c.username)):null;
   if(fan_profile?.nickname&&wrongReplyLanguage(c.comment_text,fan_profile.nickname))fan_profile.nickname='';
   if(fan_profile?.nickname&&recentReplies.some((text:string)=>text.includes(fan_profile.nickname)))fan_profile.nickname='';
-  const input=JSON.stringify({note_allowed:noteAllowed,fan_profile,reply_language_hint:replyLanguageHint(c.comment_text),reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation,recent_replies:recentReplies,owner_style_examples:styleExamples});
+  const input=JSON.stringify({daily_activity:dailyActivity,cosplay_update:cosplayUpdate(dailyActivity?.day_jst),instagram_allowed:instagramAllowed,note_allowed:noteAllowed,fan_profile,reply_language_hint:replyLanguageHint(c.comment_text),reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation,recent_replies:recentReplies,owner_style_examples:styleExamples});
   if(aiProvider(s)==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
     const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':await geminiKey(s),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
     const candidate=response.candidates?.[0];
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
     const text=(candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim();
-    if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||wrongNoteReply(text,noteAllowed)) {
+    if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,dailyActivity?.day_jst)||wrongInstagramReply(text,instagramAllowed)) {
       if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258/n/n5ec014ec2673 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。直近の長い返信と同じ表現を繰り返さず、今回の内容に合う短く自然な別の言い方にする。'},c,1);
       throw new Error('返信形式・言語・直近の返信の繰り返しを確認してください');
     }
@@ -135,8 +140,8 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   })},'AI返信生成');
   if(response.status!=='completed') throw new Error('AIの生成が未完了です');
   const text=(response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim();
-  if((invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||wrongNoteReply(text,noteAllowed))&&!attempt)return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶・表現の繰り返しの規則に合わないため破棄。直近の返信とは冒頭・語尾・話題を変えて短く自然に返す。Noteの案内可否を必ず守る。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。直近の長い返信とは別の言い方で、短く自然に返す。'},c,1);
-  if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||wrongNoteReply(text,noteAllowed)) throw new Error('返信形式・言語・時間帯・直近の返信の繰り返しを確認してください');
+  if((invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,dailyActivity?.day_jst)||wrongInstagramReply(text,instagramAllowed))&&!attempt)return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶・表現の繰り返しの規則に合わないため破棄。直近の返信とは冒頭・語尾・話題を変えて短く自然に返す。Noteの案内可否を必ず守る。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。直近の長い返信とは別の言い方で、短く自然に返す。'},c,1);
+  if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,dailyActivity?.day_jst)||wrongInstagramReply(text,instagramAllowed)) throw new Error('返信形式・言語・時間帯・直近の返信の繰り返しを確認してください');
   return text;
 }
 async function probeOpenAI(): Promise<string> {
@@ -321,6 +326,9 @@ async function publish(c: any,automatic=false) {
   if(await skipOutsideLatest(c))return;
   if(await skipExcluded(c,await settings())) return;
   if(await skipIfReplied(c)) return;
+  if(outdatedCosplayReply(c.reply_text,new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'})))throw new Error('アスカ予告の日付が過ぎています。再生成してください');
+  const activityPlan=isDailyActivityQuestion(c.comment_text)?await db('rpc/hanako_daily_activity_get','POST',{owner_id:owner()}):null;
+  if(activityPlan){c={...c,reply_text:dailyActivityReply(c.comment_text,activityPlan)};await updateComment(c.comment_id,{reply_text:c.reply_text});}
   if(wrongReplyLanguage(c.comment_text,c.reply_text))throw new Error('コメントと返信の言語が合いません。再生成してください');
   if(wrongGreeting(c.reply_text)) throw new Error('返信時刻と挨拶が合いません。再生成してください');
   const profile=c.username?await db(`hanako_fan_profiles?${filter()}&username=eq.${encodeURIComponent(fanUsername(c.username))}`):[];
@@ -336,6 +344,17 @@ async function publish(c: any,automatic=false) {
       if(hasNotePromotion(text))throw new Error('Noteは同じ相手へ1日1回までです');
       c={...c,reply_text:text};await updateComment(c.comment_id,{reply_text:text,status:'draft'});
     }else noteDay=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
+  }
+  let instagramDay='';
+  if(hasInstagramPromotion(c.reply_text)){
+    if(wrongInstagramReply(c.reply_text,true))throw new Error('Instagramの案内先を指定のプロフィールURLへ変更して再生成してください');
+    const claimed=await db('rpc/hanako_instagram_claim','POST',{owner_id:owner(),fan_username:c.username,target_comment_id:c.comment_id});
+    if(!claimed){
+      if(!automatic)throw new Error('今日はこの相手へInstagramを案内済みです。案内なしで再生成してください');
+      const text=await generate(await settings(),c);
+      if(hasInstagramPromotion(text))throw new Error('Instagramは同じ相手へ1日1回までです');
+      c={...c,reply_text:text};await updateComment(c.comment_id,{reply_text:text,status:'draft'});
+    }else instagramDay=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
   }
   // Write publishing before any external write. Never automatically retry an uncertain result.
   await updateComment(c.comment_id,{status:'publishing',error:'',reply_automatic:automatic});
@@ -356,8 +375,12 @@ async function publish(c: any,automatic=false) {
     if(await skipOutsideLatest(c))return;
     if(wrongReplyLanguage(c.comment_text,c.reply_text))throw new Error('コメントと返信の言語が合いません。再生成してください');
     if(wrongGreeting(c.reply_text))throw new Error('返信時刻と挨拶が合いません。再生成してください');
+    if(activityPlan&&activityPlan.day_jst!==new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}))throw new Error('日付が変わったため古い活動の返信を停止しました');
     if(noteDay&&noteDay!==new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'})){
       if(!await db('rpc/hanako_note_claim','POST',{owner_id:owner(),fan_username:c.username,target_comment_id:c.comment_id}))throw new Error('日付変更後のNote案内上限です。投稿を止めました');
+    }
+    if(instagramDay&&instagramDay!==new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'})){
+      if(!await db('rpc/hanako_instagram_claim','POST',{owner_id:owner(),fan_username:c.username,target_comment_id:c.comment_id}))throw new Error('日付変更後のInstagram案内上限です');
     }
     const result=await meta('me/threads_publish',{creation_id:container.id},'POST');
     if(!result.id) throw new Error('Threads投稿結果IDがありません');
@@ -370,7 +393,7 @@ async function publish(c: any,automatic=false) {
 async function claimEmoji() {
   for(let offset=0;offset<1000;offset+=100) {
     const rows=await db(`hanako_reply_comments?${filter()}&is_owner=eq.false&container_id=is.null&reply_id=is.null&reply_due_at=lte.${encodeURIComponent(new Date().toISOString())}&or=(status.eq.pending,and(status.eq.failed,generation_attempts.lt.3,next_attempt_at.lte.${encodeURIComponent(new Date().toISOString())}))&order=reply_due_at,commented_at&limit=100&offset=${offset}`);
-    for(const row of rows)if(isEmojiOnly(row.comment_text)||specialCodeReply(row.comment_text)) {const claimed=await db('rpc/hanako_reply_claim_comment','POST',{owner_id:owner(),target_comment_id:row.comment_id});if(claimed)return claimed;}
+    for(const row of rows)if(isEmojiOnly(row.comment_text)||specialCodeReply(row.comment_text)||isDailyActivityQuestion(row.comment_text)) {const claimed=await db('rpc/hanako_reply_claim_comment','POST',{owner_id:owner(),target_comment_id:row.comment_id});if(claimed)return claimed;}
     if(rows.length<100)break;
   }
   return null;
@@ -403,7 +426,7 @@ async function run(action: string,body: any) {
           await updateSettings({last_run:new Date().toISOString(),last_error:''});
           return {status:'skipped',checked};
         }
-        const emoji=specialCodeReply(c.comment_text)||emojiReply(c.comment_text);
+        const emoji=specialCodeReply(c.comment_text)||emojiReply(c.comment_text)||(isDailyActivityQuestion(c.comment_text)?dailyActivityReply(c.comment_text,await db('rpc/hanako_daily_activity_get','POST',{owner_id:owner()})):'');
         if(aiWait&&!emoji){await updateComment(c.comment_id,{status:'pending',generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});return {status:'quota_wait',retry_at:s.ai_retry_at};}
             const text=emoji||await generate(s,c);
         await updateComment(c.comment_id,{status:'draft',reply_text:text,error:'',next_attempt_at:null});
@@ -498,7 +521,7 @@ Deno.serve(async request=>{
       await db(`hanako_fan_profiles?${filter()}&username=eq.${encodeURIComponent(username)}`,'PATCH',{manual_notes:body.notes,use_notes:body.use_notes,...(body.nickname!==undefined?{manual_nickname:body.nickname}:{}),...(body.nickname_enabled!==undefined?{nickname_enabled:body.nickname_enabled}:{})});
       return respond({saved:true});
     }
-    if(body.action==='load') {const current=await settings();return respond({settings:current,openai:{configured:await openaiConfigured(),ready:Boolean(current.openai_ready),model:OPENAI_LUNA_MODEL},profile:HANA_PROFILE,daily_counts:await db('rpc/hanako_reply_daily_counts','POST',{owner_id:owner()}),queue_count:await queueCount(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
+    if(body.action==='load') {const current=await settings();return respond({settings:current,openai:{configured:await openaiConfigured(),ready:Boolean(current.openai_ready),model:OPENAI_LUNA_MODEL},profile:HANA_PROFILE,daily_activity:await db('rpc/hanako_daily_activity_get','POST',{owner_id:owner()}),daily_counts:await db('rpc/hanako_reply_daily_counts','POST',{owner_id:owner()}),queue_count:await queueCount(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),
       connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&await aiConfigured(current))});}
     if(body.action==='save') { const value:any=validateSettings(body.settings); const current=await settings();
@@ -519,6 +542,9 @@ Deno.serve(async request=>{
     return respond({error:'操作が不正です'},400);
   } catch(e) {return respond({error:e instanceof Error?e.message:'処理に失敗しました'},400);}
 });
+
+
+
 
 
 
