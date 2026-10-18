@@ -1,5 +1,5 @@
 import { analyze, timeline, styles } from './reel-engine.mjs';
-import { mountInstagramMusic } from './reel-music.mjs?v=1';
+import { mountInstagramMusic } from './reel-music.mjs?v=2';
 import { drawCaption } from './reel-captions.mjs?v=1';
 import { mountCaptionEditor } from './reel-caption-editor.mjs?v=1';
 const root = document.querySelector('#reels');

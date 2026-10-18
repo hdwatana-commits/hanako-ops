@@ -4,6 +4,17 @@ export function mountInstagramMusic(root) {
   $('Mode').insertAdjacentHTML('beforeend','<option value="instagram">Instagram公式音楽を検索・選択</option>');
   $('AudioPanel').insertAdjacentHTML('afterend', `<section id="reelInstagramMusic" hidden aria-label="Instagram公式音楽">
     <p class="reel-note">Facebookページに連携したクリエイター／ビジネスアカウント向け。OPSのクラウドログインが必要です。</p>
+    <details id="reelMusicConnection"><summary>Instagram音楽の接続設定（初回・エラー時）</summary>
+      <p class="reel-note">OPSの「同期済み」とInstagramの接続は別です。Facebookページを連携したプロアカウントと、Facebook Loginの instagram_basic / instagram_content_publish 権限が必要です。アカウントID・トークンはMetaの開発者設定で取得してください。</p>
+      <button id="reelMusicConnectionCheck" type="button">登録状況を確認</button>
+      <label>数字のInstagramプロアカウントID<input id="reelMusicAccountId" type="text" inputmode="numeric" autocomplete="off" maxlength="30" placeholder="ユーザー名やFacebookページIDではありません"></label>
+      <label>Facebook Loginのアクセストークン<input id="reelMusicToken" type="password" autocomplete="off" spellcheck="false" maxlength="4096"></label>
+      <label>APIバージョン<input id="reelMusicGraphVersion" value="v23.0" pattern="v[0-9]+[.][0-9]+"></label>
+      <button id="reelMusicConnect" type="button">音楽APIを接続テストして保存</button>
+      <p id="reelMusicConnectionStatus" role="status" aria-live="polite"></p>
+      <p class="reel-note">トークンはチャットに送らず、この欄に入力してください。実際に楽曲を取得できた場合だけ暗号化して保存し、再表示しません。コメント返信で使用中の接続は上書きしません。</p>
+      <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Metaのアプリ設定を開く</a>
+    </details>
     <label>曲名・アーティスト名<input id="reelMusicQuery" type="search" maxlength="120" placeholder="曲名やアーティスト名"></label>
     <label>音源の種類<select id="reelMusicType"><option value="music">音楽</option><option value="original_sound">オリジナル音源</option></select></label>
     <div class="reel-row"><button id="reelMusicSearch" type="button">楽曲を検索</button><button id="reelMusicTrending" type="button">人気の音源</button><button id="reelMusicFavorites" type="button">お気に入り</button></div>
@@ -33,9 +44,21 @@ export function mountInstagramMusic(root) {
     const token = await cloud.getAccessToken();
     const response = await fetch(`${cloud.url}/functions/v1/instagram-audio`, { method:'POST', headers:{ apikey:cloud.key, Authorization:`Bearer ${token}`, 'Content-Type':'application/json' }, body:JSON.stringify({ action,...payload }), signal:AbortSignal.timeout(55000) });
     const data = await response.json().catch(()=>({}));
-    if (!response.ok) throw Error(data.error || data.message || 'Instagram音楽連携に失敗しました。Facebookページ連携と権限を確認してください。');
+    if (!response.ok) {
+      if (['INSTAGRAM_SETUP_REQUIRED','FACEBOOK_LOGIN_REQUIRED','SETUP_REQUIRED'].includes(data.code)) $('MusicConnection').open=true;
+      const error=new Error(data.error || data.message || 'Instagram音楽連携に失敗しました。Facebookページ連携と権限を確認してください。');error.code=data.code;throw error;
+    }
     return data;
   }
+  $('MusicConnectionCheck').onclick=async()=>{
+    try{const data=await api('connectionStatus');$('MusicConnectionStatus').textContent=data.configured?'Instagramの接続情報は登録済みです。「楽曲を検索」で音楽APIへの接続を確認してください。':data.message;if(data.account_id)$('MusicAccountId').value=data.account_id;}
+    catch(e){$('MusicConnectionStatus').textContent=e.message;}
+  };
+  $('MusicConnect').onclick=async()=>{
+    const token=$('MusicToken');$('MusicConnect').disabled=true;
+    try{$('MusicConnectionStatus').textContent='Instagramアカウントと音楽APIを確認しています…';const data=await api('connect',{account_id:$('MusicAccountId').value.trim(),token:token.value.trim(),graph_version:$('MusicGraphVersion').value.trim()});$('MusicConnectionStatus').textContent=`@${data.username} の音楽API接続を確認し、暗号化して保存しました。「楽曲を検索」をご利用ください。`;say('Instagram音楽APIの接続が完了しました。曲名・アーティストを検索できます。');}
+    catch(e){$('MusicConnectionStatus').textContent=e.message;}finally{token.value='';$('MusicConnect').disabled=false;}
+  };
   function button(text, handler) { const b = document.createElement('button'); b.type='button'; b.textContent=text; b.onclick=handler; return b; }
   function link(text, url) { const a=document.createElement('a');a.textContent=text;a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a; }
   function showSelected(audio) {
