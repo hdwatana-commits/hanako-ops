@@ -1,15 +1,15 @@
 // Music analysis stays on the device. BPM is an estimate, not genre recognition.
 export const styles = {
-  hana:{label:'ハナ・かわいい',description:'ハートと泡、柔らかな光',beats:4,zoom:.035,minHold:.9,transition:.18,palette:['#ffe3ef','#f8bad3'],filter:'none',family:'cute'},
-  cinema:{label:'シネマ・ムード',description:'余韻を残すゆっくりしたカット',beats:8,zoom:.018,minHold:1.8,transition:.5,palette:['#ded4cc','#9b8e85'],filter:'saturate(.85) contrast(1.03)',family:'cinema'},
-  pop:{label:'ポップ・テンポ',description:'拍で弾むズームと軽い光',beats:2,zoom:.045,minHold:.65,transition:.08,palette:['#ffe4ad','#ffc4d9'],filter:'saturate(1.08)',family:'pop'},
-  editorial:{label:'雑誌風エディトリアル',description:'白い余白と洗練された額縁',beats:4,zoom:.022,minHold:1.1,transition:.22,palette:['#f9f6f0','#d8c6bc'],filter:'saturate(.91) contrast(1.02)',family:'editorial'},
-  clean:{label:'クリーン・ミニマル',description:'アイボリー、控えめな動き',beats:4,zoom:.012,minHold:1.4,transition:.38,palette:['#fffef9','#e9e6df'],filter:'saturate(.9) brightness(1.03)',family:'clean'},
-  film:{label:'パリ・フィルム',description:'暖かな色と細かなフィルム粒子',beats:4,zoom:.025,minHold:1.2,transition:.3,palette:['#f0d4ab','#b99a7a'],filter:'sepia(.16) saturate(.87) contrast(1.04)',family:'film'},
-  airy:{label:'エアリー・ソフト',description:'透ける光、ふわっとした切替',beats:8,zoom:.023,minHold:1.6,transition:.6,palette:['#ffedf1','#e9e5fa'],filter:'saturate(.85) brightness(1.05)',family:'airy'},
-  luxe:{label:'モノクロ・ラグジュアリー',description:'モノクロと静かな高級感',beats:8,zoom:.015,minHold:1.6,transition:.35,palette:['#2b292b','#bcb7b2'],filter:'grayscale(1) contrast(1.08)',family:'luxe'},
-  street:{label:'ストリート・ビート',description:'強い拍で切り替えるシャープな動き',beats:2,zoom:.04,minHold:.6,transition:.06,palette:['#ddd8ef','#6b6283'],filter:'saturate(.91) contrast(1.07)',family:'street'},
-  travel:{label:'トラベル・ダイアリー',description:'ポストカードの余白と陽だまり',beats:4,zoom:.026,minHold:1.1,transition:.3,palette:['#f4e6cc','#a6c9cc'],filter:'sepia(.08) saturate(.96) brightness(1.03)',family:'travel'},
+  hana:{label:'ハナ・かわいい',description:'ハートが弾ける、きらめく写真コラージュ',beats:4,zoom:.035,minHold:.9,transition:.18,palette:['#ffe3ef','#f8bad3'],filter:'none',family:'cute'},
+  cinema:{label:'シネマ・ムード',description:'立体ズームと流れる光のシネマ演出',beats:8,zoom:.018,minHold:1.8,transition:.5,palette:['#ded4cc','#9b8e85'],filter:'saturate(.85) contrast(1.03)',family:'cinema'},
+  pop:{label:'ポップ・テンポ',description:'弾む写真、星のバーストとリズムリング',beats:2,zoom:.045,minHold:.65,transition:.08,palette:['#ffe4ad','#ffc4d9'],filter:'saturate(1.08)',family:'pop'},
+  editorial:{label:'雑誌風エディトリアル',description:'重なる表紙カード、立体感のある雑誌風',beats:4,zoom:.022,minHold:1.1,transition:.22,palette:['#f9f6f0','#d8c6bc'],filter:'saturate(.91) contrast(1.02)',family:'editorial'},
+  clean:{label:'クリーン・ミニマル',description:'浮かぶ写真と細いフレーム、上品な光',beats:4,zoom:.012,minHold:1.4,transition:.38,palette:['#fffef9','#e9e6df'],filter:'saturate(.9) brightness(1.03)',family:'clean'},
+  film:{label:'パリ・フィルム',description:'揺れるポラロイド、光漏れとフィルム粒子',beats:4,zoom:.025,minHold:1.2,transition:.3,palette:['#f0d4ab','#b99a7a'],filter:'sepia(.16) saturate(.87) contrast(1.04)',family:'film'},
+  airy:{label:'エアリー・ソフト',description:'大きなハートと透明な泡、夢のような光',beats:8,zoom:.023,minHold:1.6,transition:.6,palette:['#ffedf1','#e9e5fa'],filter:'saturate(.85) brightness(1.05)',family:'airy'},
+  luxe:{label:'モノクロ・ラグジュアリー',description:'モノクロ写真に金のフレームと星の輝き',beats:8,zoom:.015,minHold:1.6,transition:.35,palette:['#2b292b','#bcb7b2'],filter:'grayscale(1) contrast(1.08)',family:'luxe'},
+  street:{label:'ストリート・ビート',description:'左右に滑る写真、回転するネオンフレーム',beats:2,zoom:.04,minHold:.6,transition:.06,palette:['#ddd8ef','#6b6283'],filter:'saturate(.91) contrast(1.07)',family:'street'},
+  travel:{label:'トラベル・ダイアリー',description:'旅の写真が重なる、動くスクラップブック',beats:4,zoom:.026,minHold:1.1,transition:.3,palette:['#f4e6cc','#a6c9cc'],filter:'sepia(.08) saturate(.96) brightness(1.03)',family:'travel'},
 };
 const quantile=(array,q)=>{const sorted=[...array].sort((a,b)=>a-b);return sorted[Math.floor((sorted.length-1)*q)]||0;};
 export function analyze(samples,rate){

@@ -1,6 +1,6 @@
-import { analyze, timeline, styles, createEditPlan } from './reel-engine.mjs?v=2';
-import { drawPhotoScene } from './reel-style-renderer.mjs?v=1';
-import { mountEditStyles } from './reel-edit-styles.mjs?v=1';
+import { analyze, timeline, styles, createEditPlan } from './reel-engine.mjs?v=3';
+import { drawPhotoScene } from './reel-style-renderer.mjs?v=2';
+import { mountEditStyles } from './reel-edit-styles.mjs?v=2';
 import { mountInstagramMusic } from './reel-music.mjs?v=4';
 import { drawCaption } from './reel-captions.mjs?v=1';
 import { mountCaptionEditor } from './reel-caption-editor.mjs?v=2';
@@ -40,7 +40,7 @@ let captionAnalysis = null;
 const captionEditor = mountCaptionEditor(root, {
   getAnalysis: analyzeCaptionMusic,
   getAudio: () => $('Mode').value === 'file' && audioFile ? { element: $('AudioPreview'), start: Number($('Start').value) } : null,
-  onPreviewStart: () => instagramMusic.pause(),
+  onPreviewStart: () => {root.dispatchEvent(new Event('reel-preview-stop'));instagramMusic.pause();},
   drawFrame: (ctx, time, cues, appearance) => {
     const captionPlan = { cues, appearance };
     if (photos.length === 4) {
@@ -64,7 +64,7 @@ const editStyles = mountEditStyles(root, {
 function currentEditPlan(analysis) {
   const music = $('Mode').value === 'instagram' ? instagramMusic.getRhythm() : { bpm: 0, source: 'manual' };
   const generic = Number($('Bpm').value) || 0;
-  return createEditPlan(Number($('Duration').value), $('Style').value, analysis, { offset: Number($('Offset').value), manualBpm: generic || music.bpm, manualSource: generic ? 'manual' : music.source });
+  return {...createEditPlan(Number($('Duration').value), $('Style').value, analysis, { offset: Number($('Offset').value), manualBpm: generic || music.bpm, manualSource: generic ? 'manual' : music.source }),effectLevel:Number($('EffectLevel')?.value||1)};
 }
 for (const id of ['Audio', 'Start', 'Mode', 'Duration']) $(id).addEventListener('change', () => { captionAnalysis = null; });
 async function analyzeCaptionMusic() {
@@ -170,7 +170,7 @@ $('Generate').onclick = async () => {
     if (sound && (!audioFile || !$('Rights').checked)) throw Error('音楽ファイルと利用権の確認が必要です。');
     if (sound && audioFile.size > 40 * 1024 * 1024) throw Error('音楽は40MB以下にしてください。');
     busy = true; instagramMusic.setGenerating(true); cancel = false; $('Inputs').disabled = true; $('Generate').disabled = true; $('Cancel').hidden = false; $('Progress').value = 0;
-    captionEditor.pause(); $('AudioPreview').pause(); instagramMusic.pause();
+    root.dispatchEvent(new Event('reel-preview-stop')); captionEditor.pause(); $('AudioPreview').pause(); instagramMusic.pause();
     context = new (window.AudioContext || window.webkitAudioContext)(); await context.resume();
     if (context.state !== 'running') throw Error('音声処理を開始できません。もう一度制作ボタンを押してください。');
     let buffer, analysis = null;
