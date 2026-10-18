@@ -7577,8 +7577,45 @@ async function generateCoordinate() {
 }
 
 function setCoordinatePrompts(coordinate) {
+  renderCoordinateProductNameCopies(coordinate);
   if (coordGeminiPrompt) coordGeminiPrompt.value = adaptPromptToSelectedAi(buildOutfitImagePrompt(coordinate));
   if (coordGeminiCaptionPrompt) coordGeminiCaptionPrompt.value = adaptPromptToSelectedAi(buildCoordinateCaptionPrompt(coordinate));
+}
+
+function shortCoordinateProductName(name) {
+  const text = String(name || "").replace(/\s+/g, " ").trim();
+  const characters = typeof Intl.Segmenter === "function"
+    ? Array.from(new Intl.Segmenter("ja", { granularity: "grapheme" }).segment(text), (part) => part.segment)
+    : Array.from(text);
+  return characters.slice(0, 20).join("");
+}
+
+function renderCoordinateProductNameCopies(coordinate) {
+  const section = document.querySelector("#coordProductNameCopies");
+  const list = document.querySelector("#coordProductNameCopyList");
+  if (!section || !list) return;
+  list.replaceChildren();
+  for (const product of coordinate.products || []) {
+    const name = shortCoordinateProductName(product.name);
+    if (!name) continue;
+    const row = document.createElement("div");
+    row.className = "coord-product-name-copy";
+    const detail = document.createElement("div");
+    const category = document.createElement("strong");
+    category.textContent = product.category || "商品";
+    const preview = document.createElement("p");
+    preview.textContent = name;
+    preview.title = product.name;
+    detail.append(category, preview);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "商品名を20文字コピー";
+    button.setAttribute("aria-label", `${product.category || "商品"}：${name}をコピー`);
+    button.addEventListener("click", () => copyText(name));
+    row.append(detail, button);
+    list.append(row);
+  }
+  section.hidden = !list.childElementCount;
 }
 
 async function copyCoordinateImagePrompt() {

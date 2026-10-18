@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #f6f4f2;
   --ink: #241f21;
   --muted: #746b6f;
@@ -6393,3 +6393,5 @@ button.chatgpt-transfer-button:disabled {
     width: 100%;
   }
 }
+
+.coord-product-name-copies{margin:18px 0;padding:16px;border:1px solid #edcedd;border-radius:16px;background:#fff7fb}.coord-product-name-copy{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #f0dce5}.coord-product-name-copy>div{min-width:0}.coord-product-name-copy strong{font-size:13px;color:#925475}.coord-product-name-copy p{margin:5px 0;overflow-wrap:anywhere}.coord-product-name-copy button{min-height:44px;flex-shrink:0}@media(max-width:600px){.coord-product-name-copy{align-items:stretch;flex-direction:column}.coord-product-name-copy button{width:100%}}

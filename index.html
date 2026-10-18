@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=360">
+    <link rel="stylesheet" href="styles.css?v=371">
     <script src="config.js?v=222"></script>
     <script src="cloud-sync.js?v=307"></script>
     <script src="ops-engine.js?v=222"></script>
@@ -1528,6 +1528,11 @@
                 <canvas id="coordBoard" width="1080" height="1351" aria-label="コーデ画像ボード"></canvas>
               </div>
               <div class="coord-ai-result" id="coordAiResult" hidden></div>
+              <section id="coordProductNameCopies" class="coord-product-name-copies" hidden aria-label="コーデ商品の商品名コピー">
+                <h4>コーデに使った商品の名前</h4>
+                <p class="coord-note">各商品の名前を先頭から20文字までコピーできます。20文字未満はそのままコピーします。</p>
+                <div id="coordProductNameCopyList"></div>
+              </section>
               <label class="field-label" for="coordGeneratedImage">AIで作った画像を添付</label>
               <input id="coordGeneratedImage" type="file" accept="image/*">
               <div class="coord-prompt-grid">
@@ -1976,7 +1981,7 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=370"></script>
+    <script src="app.js?v=371"></script>
     <script type="module" src="reel-maker.mjs?v=8"></script>
     <script type="module" src="threads-replies.js?v=34"></script>
   </body>
