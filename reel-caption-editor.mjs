@@ -1,12 +1,15 @@
 import {buildCaptionPlan,validateCaptionCues,drawCaption} from './reel-captions.mjs?v=1';
 export function mountCaptionEditor(root,{getAnalysis,getAudio,drawFrame,onPreviewStart=()=>{}}){
   const $=name=>root.querySelector('#reel'+name);
-  $('Inputs').querySelector('details').insertAdjacentHTML('beforebegin',`<section class="reel-caption-editor" aria-label="歌詞字幕">
+  $('Inputs').querySelector(':scope > details').insertAdjacentHTML('beforebegin',`<section class="reel-caption-editor" aria-label="歌詞字幕">
     <label class="reel-caption-toggle"><input id="reelLyricsEnabled" type="checkbox"> ♡ 歌詞に合わせて、かわいい字幕を入れる</label>
-    <div id="reelLyricsControls" hidden><p class="reel-note">利用権のある歌詞を貼り付けてください。1行ずつ表示します。時刻付きLRCも使えます。歌詞の自動取得・歌声の文字起こしは行いません。</p>
+    <div id="reelLyricsControls" hidden><p class="reel-note">Instagram公式音楽から歌詞を自動取得する機能はありません。利用権のある歌詞を貼り付けるか、時刻付きLRCを読み込んでください。一度保存すれば、同じ曲の選択時に呼び出せます。</p>
+    <p id="reelLyricsTrack" class="reel-note">公式音楽を選ぶと、曲ごとに歌詞を保存できます。</p>
     <label>動画に使う部分の歌詞<textarea id="reelLyricsText" rows="5" maxlength="2400" placeholder="1行目の歌詞\n2行目の歌詞\n3行目の歌詞"></textarea></label>
     <label>LRCファイルを読み込む<input id="reelLyricsFile" type="file" accept=".lrc,text/plain"></label>
     <label><input id="reelLyricsRights" type="checkbox"> この歌詞を字幕として表示する権利・許可があります</label>
+    <div class="reel-row"><button id="reelLyricsSave" type="button" disabled>この曲に歌詞を保存</button><button id="reelLyricsLoad" type="button" disabled>保存した歌詞を呼び出す</button></div>
+    <p class="reel-note">歌詞はこの端末・OPSユーザーごとに保存します。呼び出した後も、使用する部分と利用権を確認してください。曲の開始位置や表示時刻は毎回調整できます。</p>
     <div class="reel-row"><label>字幕のかわいさ<select id="reelLyricsStyle"><option value="pink">ふわふわピンク</option><option value="sparkle">キラキラホワイト</option><option value="karaoke">カラオケ風ポップ</option></select></label><label>字幕の位置<select id="reelLyricsPosition"><option value="1120">中央より下（安全領域内）</option><option value="800">中央</option><option value="440">上（安全領域内）</option></select></label></div>
     <div class="reel-row"><label>歌い始め・表示開始（動画の秒）<input id="reelLyricsStart" type="number" min="0" value="0" step="0.05"></label><label>表示終了（動画の秒）<input id="reelLyricsEnd" type="number" min="0" value="15" step="0.05"></label></div>
     <details><summary>LRC・字幕全体の調整</summary><label>LRCの時刻基準<select id="reelLyricsTimeBase"><option value="video">動画の先頭を0秒</option><option value="audio">音楽ファイルの先頭を0秒（開始位置を差し引く）</option></select></label><label>字幕全体をずらす（秒）<input id="reelLyricsOffset" type="number" min="-30" max="30" step="0.05" value="0"></label><p class="reel-note">LRCの行は次の時刻まで表示します。空の時刻行で字幕を消せます。カラオケ風の文字色変化は演出であり、単語ごとの歌唱認識ではありません。</p></details>
@@ -22,6 +25,15 @@ export function mountCaptionEditor(root,{getAnalysis,getAudio,drawFrame,onPrevie
     </div></section>`);
   let plan=null,planSignature='',manual=false,working=false,playing=false,animation=0,previewTime=0,clockStart=0,clockTime=0,audioClock=null,taps=null,tapIncomplete=false,lastOffset=0;
   const say=message=>{$('LyricsStatus').textContent=message;};
+  let lyricTrack=null;
+  const lyricKey=()=>`hanako-reel-lyrics:${new window.HanakoCloudSync(window.HANAKO_CLOUD_CONFIG||{}).user?.id||'signed-out'}`;
+  function savedLyrics(){try{const value=JSON.parse(localStorage.getItem(lyricKey())||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}}
+  function updateLibrary(){const active=$('Mode').value==='instagram'&&lyricTrack;$('LyricsSave').disabled=!active;$('LyricsLoad').disabled=!active||typeof savedLyrics()[lyricTrack.audio_id]?.text!=='string';$('LyricsTrack').textContent=active?`歌詞の保存先：${lyricTrack.title} ／ ${lyricTrack.artist||''}`:'公式音楽を選ぶと、曲ごとに歌詞を保存できます。';}
+  function loadLyrics(){const saved=lyricTrack&&savedLyrics()[lyricTrack.audio_id];if(typeof saved?.text!=='string'||saved.text.length>2400)return;$('LyricsText').value=saved.text;$('LyricsRights').checked=false;invalidate();say('この曲に保存した歌詞を呼び出しました。使用する部分と利用権を確認し、「自動配置」を押してください。');}
+  root.addEventListener('reel-music-selected',event=>{lyricTrack=event.detail;updateLibrary();if(!$('LyricsText').value.trim())loadLyrics();});
+  $('Mode').addEventListener('change',updateLibrary);
+  $('LyricsLoad').onclick=loadLyrics;
+  $('LyricsSave').onclick=()=>{try{if(!lyricTrack||$('Mode').value!=='instagram')return;if(!$('LyricsText').value.trim())throw Error('保存する歌詞を入力してください。');if(!$('LyricsRights').checked)throw Error('歌詞を使用する権利・許可を確認してから保存してください。');const entries=Object.entries(savedLyrics()).filter(([id])=>id!==lyricTrack.audio_id).slice(-29);const library=Object.fromEntries(entries);library[lyricTrack.audio_id]={text:$('LyricsText').value,title:lyricTrack.title};localStorage.setItem(lyricKey(),JSON.stringify(library));updateLibrary();say('この曲に歌詞を保存しました。同じ曲を選ぶと、入力欄が空の場合に自動で呼び出します。');}catch(e){say(e.message||'歌詞を保存できません。端末の保存領域を確認してください。');}};
   const duration=()=>Number($('Duration').value);
   function options(){return {duration:duration(),start:Number($('LyricsStart').value),end:Number($('LyricsEnd').value),offset:Number($('LyricsOffset').value),timeBase:$('LyricsTimeBase').value,audioStart:$('Mode').value==='file'?Number($('Start').value):0};}
   const signature=()=>JSON.stringify({text:$('LyricsText').value,...options(),mode:$('Mode').value});

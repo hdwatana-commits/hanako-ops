@@ -1,9 +1,9 @@
 import { analyze, timeline, styles, createEditPlan } from './reel-engine.mjs?v=2';
 import { drawPhotoScene } from './reel-style-renderer.mjs?v=1';
 import { mountEditStyles } from './reel-edit-styles.mjs?v=1';
-import { mountInstagramMusic } from './reel-music.mjs?v=3';
+import { mountInstagramMusic } from './reel-music.mjs?v=4';
 import { drawCaption } from './reel-captions.mjs?v=1';
-import { mountCaptionEditor } from './reel-caption-editor.mjs?v=1';
+import { mountCaptionEditor } from './reel-caption-editor.mjs?v=2';
 const root = document.querySelector('#reels');
 root.innerHTML = `
   <div class="reel-wrap"><p class="eyebrow">Instagram → リール自動制作</p><h2>4枚の写真に、かわいいリズムを。</h2>

@@ -1,7 +1,8 @@
 // Catalog preview and publishing are separate: Meta's preview URL is never embedded in an MP4.
 export function mountInstagramMusic(root) {
   const $ = id => root.querySelector('#reel' + id);
-  $('Mode').insertAdjacentHTML('beforeend','<option value="instagram">Instagram公式音楽を検索・選択</option>');
+  $('Mode').insertAdjacentHTML('afterbegin','<option value="instagram">Instagram公式音楽を検索・選択</option>');
+  $('Mode').value='instagram';
   $('AudioPanel').insertAdjacentHTML('afterend', `<section id="reelInstagramMusic" hidden aria-label="Instagram公式音楽">
     <p class="reel-note">Facebookページに連携したクリエイター／ビジネスアカウント向け。OPSのクラウドログインが必要です。</p>
     <details id="reelMusicConnection"><summary>Instagram音楽の接続設定（初回・エラー時）</summary>
@@ -24,6 +25,18 @@ export function mountInstagramMusic(root) {
     <div class="reel-row"><button id="reelMusicTapTempo" type="button">♪ 拍に合わせて4回以上タップ</button><button id="reelMusicTempoReset" type="button">テンポをリセット</button></div><p id="reelMusicTempoStatus" role="status">曲を試聴しながら拍をタップするかBPMを入力すると、そのテンポで編集します。音源の開始位置・拍の位置の一致は保証できません。</p><audio id="reelMusicPreview" controls preload="none" hidden></audio>
     <p class="reel-note">検索対象はMetaが第三者利用を認めた音源で、Instagramアプリの全楽曲とは異なります。試聴URLがない曲はInstagram上で試聴します。音源は投稿時にInstagramが付与し、保存MP4は無音です。音源の開始位置指定・波形取得・正確なビート同期は今回の公式仕様では提供されていません。広告利用可否は別途確認してください。</p>
   </section>`);
+  // Keep first-time setup out of the everyday search flow.
+  const catalog=$('InstagramMusic');
+  catalog.querySelector('p.reel-note').remove();
+  catalog.append($('MusicConnection'));
+  catalog.classList.add('reel-music-catalog');
+  $('MusicQuery').placeholder='曲名・アーティスト名で検索';
+  $('MusicResults').setAttribute('aria-label','楽曲の検索結果');
+  const empty=document.createElement('p');empty.className='reel-music-empty';empty.textContent='曲名・アーティスト名を入れて検索。「人気の音源」からも選べます。';$('MusicResults').append(empty);
+  const rhythm=document.createElement('details');rhythm.className='reel-music-rhythm';
+  const summary=document.createElement('summary');summary.textContent='曲のテンポに合わせる（任意）';rhythm.append(summary);
+  for(const node of[$('MusicBpm').closest('label'),$('MusicTapTempo').parentElement,$('MusicTempoStatus')])rhythm.append(node);
+  $('MusicSelected').after($('MusicPreview'),rhythm);
   $('Result').insertAdjacentHTML('beforeend', `<section id="reelMusicPublishPanel" hidden class="reel-music-publish"><h3>選んだ音楽でInstagramへ</h3>
     <p id="reelMusicPublishTrack"></p><p class="reel-note">動画を一時的に非公開ストレージへ送り、Metaに渡します。保存MP4は無音のままです。音楽を合成した完成リールの事前プレビューは公式APIで提供されていません。</p>
     <label>キャプション<textarea id="reelMusicCaption" rows="3" maxlength="2200"></textarea></label>
@@ -67,6 +80,7 @@ export function mountInstagramMusic(root) {
   function showSelected(audio) {
     if(selected?.audio_id!==audio.audio_id){tempoTaps=[];$('MusicBpm').value='';tempoSource='music-bpm';root.dispatchEvent(new Event('reel-rhythm-change'));}
     selected = audio; $('MusicSelected').hidden = false; $('MusicSelected').replaceChildren();
+    root.dispatchEvent(new CustomEvent('reel-music-selected',{detail:{audio_id:audio.audio_id,title:audio.title,artist:audio.artist}}));
     const title = document.createElement('strong'); title.textContent=`選択中：${audio.title} ／ ${audio.artist}`; $('MusicSelected').append(title);
     $('MusicPreview').pause(); $('MusicPreview').hidden = !audio.preview_url;
     if (audio.preview_url) $('MusicPreview').src=audio.preview_url; else $('MusicPreview').removeAttribute('src');
@@ -74,6 +88,7 @@ export function mountInstagramMusic(root) {
   }
   function render(tracks, fromFavorites = false) {
     $('MusicResults').replaceChildren();
+    if(!tracks.length){const empty=document.createElement('p');empty.className='reel-music-empty';empty.textContent=fromFavorites?'お気に入りはまだありません。検索した曲の「☆ お気に入り」で追加できます。':'見つかりませんでした。別の曲名・アーティスト名で検索してください。';$('MusicResults').append(empty);}
     for (const audio of tracks) {
       const card=document.createElement('article');card.className='reel-music-track';
       const title=document.createElement('strong');title.textContent=audio.title;
