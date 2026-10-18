@@ -214,3 +214,8 @@ $('Share').onclick = async () => {
     else { $('Download').click(); status('ダウンロードした動画を写真アプリへ保存してください。'); }
   } catch (e) { if (e.name !== 'AbortError') status('共有できませんでした。MP4をダウンロードしてください。'); }
 };
+
+// Direct link for saved bookmarks and support instructions.
+if (new URL(location.href).searchParams.get('view') === 'reels') {
+  document.querySelector('.nav-tab[data-view="reels"]')?.click();
+}

@@ -26,7 +26,7 @@ try {
 });
  const errors=[]; page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`http://127.0.0.1:${server.address().port}/`);
- await page.click('[data-view="reels"]');
+ await page.click('.home-hero-actions [data-open-view="reels"]');
  await page.waitForSelector('#reelGenerate');
  assert.equal(await page.locator('#viewTitle').textContent(),'Instagram → リール自動制作');
  await page.click('#reelGenerate'); assert.match(await page.locator('#reelStatus').textContent(),/4枚/);
