@@ -593,6 +593,9 @@ function enhanceCoordinateSelectOptions() {
     ["headbandWave", "細カチューシャ＋ゆる巻き"], ["sidePartCurl", "大人っぽいサイド分け巻き髪"],
     ["tuckedLong", "両耳かけの清楚ロング"], ["messyPony", "無造作すぎないゆるポニー"],
   ]);
+  appendOptionGroup(hairSelect, "hanLinxinLongBraid", "VIVANT2・ハン リンシン風", [
+    ["hanLinxinLongBraid", "黒髪を一本に編んだ非常に長い三つ編み"],
+  ]);
   const lightingSelect = document.querySelector("#snsLightingPreset");
   appendOptionGroup(lightingSelect, "subwayFluorescent", "日常をドラマにする光", [
     ["subwayFluorescent", "地下鉄ホームの柔らかな白色光"], ["rainReflection", "雨上がりの路面反射光"],
@@ -3428,6 +3431,9 @@ const hanakoExtraOutfits = [
     { id: "cosReiBandageGym", label: "綾波レイ風｜包帯×体操服アレンジ", prompt: "成人女性による『新世紀エヴァンゲリオン』綾波レイ風のイベントコスプレ。短い淡い水色の髪、赤い瞳、白い半袖の体操トップス、不透明で丈が安定した濃紺のスポーツショーツ、白い室内運動靴。額と片腕の包帯は清潔な演出用で、血、傷口、痛み、拘束感を描かない。未成年に見せず、健康的な全身ファッション撮影にする" },
     { id: "cosAsukaClassic", label: "惣流・アスカ・ラングレー風", prompt: "成人女性による『新世紀エヴァンゲリオン』惣流・アスカ・ラングレー風のイベントコスプレ。長い赤褐色のツインテール、赤いヘアクリップ、青い瞳、赤を基調にした近未来的なパイロットスーツ風衣装。身体へ過度に密着させず、不透明な素材で健全なヒロイン撮影にする" },
   ] },
+  { label: "VIVANT2・ハン リンシン風（新着1）", items: [
+    { id: "cosHanLinxin", label: "ハン・リンシン風｜黒×金の情報組織責任者", prompt: "成人女性による日曜劇場『VIVANT』第2シーズンのハン・リンシンを想起させるコスプレ。黒のハイネックまたは立ち襟のロングジャケット、金色のチャイナボタン、黒のワイドパンツまたはロングスカート、控えめな金のアクセサリー。非常に長い一本の黒い三つ編みと深い赤の口紅を合わせる。武器、暴力、実在組織の印章は描かず、民間情報組織の責任者らしい威厳を出す" },
+  ] },
 ];
 
 const hanakoExtraExpressions = [{ label: "キュンとする表情（新着20）", items: [
@@ -3471,6 +3477,11 @@ const hanakoExtraExpressions = [{ label: "キュンとする表情（新着20）
   { id: "leaderKnowingSmile", label: "答えを知っている余裕の笑み", prompt: "成人女性がまっすぐ目を合わせ、片方の口角をほんの少し上げる。威圧せず、判断力と余裕を感じる表情" },
   { id: "leaderBrowChallenge", label: "片眉を上げた軽い挑戦", prompt: "成人女性が片眉を自然に少し上げ、相手の答えを楽しみに待つような知的で遊び心のある表情" },
   { id: "leaderApproval", label: "よくできましたの満足顔", prompt: "成人女性が相手の成果を認め、落ち着いた目元と小さな微笑みで肯定を伝える。上から目線にしすぎない" },
+] },
+{ label: "ハン・リンシン風の表情（新着3）", items: [
+  { id: "hanLinxinAppraisal", label: "相手を値踏みする静かな眼差し", prompt: "成人女性が革張りソファへ深く座り、あごをわずかに引いて相手の反応を静かに観察する。眉を動かしすぎず、口元は閉じたまま知性と警戒を表す" },
+  { id: "hanLinxinPhoneResolve", label: "電話越しに決断する鋭い表情", prompt: "成人女性が電話の相手へ低く落ち着いて指示する場面。目線を一点へ定め、唇を軽く結び、焦りではなく即断する責任者の覚悟を見せる" },
+  { id: "hanLinxinControlledThreat", label: "微笑まずに圧をかける冷静な表情", prompt: "成人女性が正面から相手を見据え、目元だけをわずかに細める。怒鳴ったり睨みつけたりせず、自分の正義と揺るがない意志が伝わる抑制された表情" },
 ] }];
 
 const hanakoExtraPoses = [{ label: "インフルエンサー撮影ポーズ（新着20）", items: [
@@ -3524,6 +3535,11 @@ const hanakoExtraPoses = [{ label: "インフルエンサー撮影ポーズ（�
   { id: "poseAsukaHairFlip", label: "アスカ風｜ツインテールを払って振り返る", prompt: "成人女性が長い赤褐色の髪を片手で肩の後ろへ軽く払い、肩越しに振り返る。髪、手指、腕の位置を自然にし、挑戦的だが健全な表情にする" },
   { id: "poseAsukaArmsCrossed", label: "アスカ風｜腕を軽く組んだ余裕の立ち姿", prompt: "成人女性が胸元を隠す位置で腕を軽く組み、背筋を伸ばして片足へ自然に重心を置く。あごをわずかに上げ、自信は見せても威圧的になりすぎない" },
   { id: "poseAsukaStepForward", label: "アスカ風｜一歩踏み出す挑戦ポーズ", prompt: "成人女性がカメラへ向かって力強く一歩踏み出し、片手を開いたまま前方へ軽く示す。走ったり飛びかかったりせず、足運び、指、髪の揺れを自然に描く" },
+] },
+{ label: "ハン・リンシン風のポーズ（新着3）", items: [
+  { id: "poseHanLinxinSofa", label: "革張りソファで指揮する", prompt: "成人女性が豪奢な革張りソファへ深く腰掛け、背筋を保ち、片腕を肘掛けへ置き、もう片手を膝上へ静かに置く。長い三つ編みを身体の前へ自然に流し、余裕ある責任者の存在感を見せる" },
+  { id: "poseHanLinxinPhone", label: "電話を耳に当てて作戦判断する", prompt: "成人女性がスマートフォンを片手で耳へ当て、窓辺または重厚な机の横へ立つ。反対の手は机の縁へ軽く添え、長い三つ編み、電話、指を自然に分離して描く" },
+  { id: "poseHanLinxinConfront", label: "両手を背後で組み静かに対峙する", prompt: "成人女性が両手を背中側で軽く組み、肩を開いてまっすぐ立ち、相手との距離を保ったまま正面を見据える。威嚇動作や武器を使わず、静かな姿勢だけで緊張感を作る" },
 ] }];
 
 const hanakoExtraLocations = [{ label: "人物が映えるシンプル背景（新着10）", items: [
@@ -3542,6 +3558,11 @@ const hanakoExtraLocations = [{ label: "人物が映えるシンプル背景（�
   { id: "gymStorage", label: "体育倉庫", prompt: "成人モデルの撮影用として整頓された明るい体育倉庫。ボール、マット、跳び箱を背景へ安全に配置し、出入口と通路を塞がない。学校名、生徒、未成年、閉じ込められた印象を描かない" },
   { id: "airplaneCabin", label: "飛行機の機内", prompt: "飛行中の安全で清潔な旅客機内。成人女性はシートベルトを正しく着用するか通路に立たず着席し、実在航空会社のロゴ、便名、座席番号を出さない" },
   { id: "shinkansenCabin", label: "新幹線の車内", prompt: "走行中の清潔な高速鉄道の車内。成人女性は座席へ安全に着席し、荷物を通路へ置かない。実在鉄道会社、列車名、駅名、座席番号を出さない" },
+] },
+{ label: "VIVANT2・シンシー風の場所（新着3）", items: [
+  { id: "hanLinxinOrnateOffice", label: "深紅と木彫の豪奢な執務室", prompt: "深紅の壁、重厚な木彫家具、革張りソファ、暖色の卓上ランプがある架空の海外執務室。実在の国章、組織名、住所、読める文書を出さず、静かな権力と緊張感を表す" },
+  { id: "hanLinxinNightDining", label: "夜景を望む秘密の会食室", prompt: "床から天井までの窓越しに匿名の夜景が見える、磨かれた長い食卓とキャンドルのある架空の会食室。実在都市を特定できるランドマークや店名を出さない" },
+  { id: "hanLinxinCommandRoom", label: "薄暗い民間情報組織の作戦室", prompt: "暗い木材と黒い机、抽象化された地図、閉じた資料フォルダー、控えめな間接照明のある架空の作戦室。実在機密、判読可能な個人情報、武器を描かない" },
 ] }];
 
 const hanakoIdeaCatalog = [
@@ -13767,7 +13788,7 @@ function buildSocialCreativeDirective(context) {
     cosplayRuby: "成人女性による『【推しの子】』の星野ルビー風コスプレ。金髪のロングヘア、星型の髪飾り、白とピンクを基調にした明るいアイドルステージ衣装。未成年に見せず健全で華やかにする",
   });
   Object.assign(labels.hair, {
-    seeThroughBangBob: "シースルーバングの艶感ボブ", sidePonyRibbon: "小さなリボンを添えたサイドポニー", highPonyLoose: "後れ毛を少し残した高めポニー", lowTwinAdult: "幼く見えない低めツインテール", halfTwinRibbon: "細いリボンを添えた大人ハーフツイン", princessHalfUp: "上品な編み込み入りハーフアップ", oneSideBraid: "片側へ流すゆるい三つ編み", fluffyBob: "空気感のあるふんわりボブ", wetLookLong: "清潔感のあるウェット質感のロング", straightBangLong: "薄め前髪の艶ストレートロング", curtainBangWave: "カーテンバングの柔らかなウェーブ", lowBunLoose: "顔まわりに後れ毛を残した低めシニヨン", braidPony: "編み込みを混ぜたローポニー", ribbonLowPony: "ベルベットリボンの低めポニー", earTuckBob: "片耳かけの端正なボブ", softWolf: "毛先を軽く動かしたソフトウルフ", headbandWave: "細いカチューシャと艶ウェーブ", sidePartCurl: "深めサイドパートの大きなカール", tuckedLong: "両耳を軽く出した清楚なロング", messyPony: "計算された後れ毛のラフポニー",
+    seeThroughBangBob: "シースルーバングの艶感ボブ", sidePonyRibbon: "小さなリボンを添えたサイドポニー", highPonyLoose: "後れ毛を少し残した高めポニー", lowTwinAdult: "幼く見えない低めツインテール", halfTwinRibbon: "細いリボンを添えた大人ハーフツイン", princessHalfUp: "上品な編み込み入りハーフアップ", oneSideBraid: "片側へ流すゆるい三つ編み", fluffyBob: "空気感のあるふんわりボブ", wetLookLong: "清潔感のあるウェット質感のロング", straightBangLong: "薄め前髪の艶ストレートロング", curtainBangWave: "カーテンバングの柔らかなウェーブ", lowBunLoose: "顔まわりに後れ毛を残した低めシニヨン", braidPony: "編み込みを混ぜたローポニー", ribbonLowPony: "ベルベットリボンの低めポニー", earTuckBob: "片耳かけの端正なボブ", softWolf: "毛先を軽く動かしたソフトウルフ", headbandWave: "細いカチューシャと艶ウェーブ", sidePartCurl: "深めサイドパートの大きなカール", tuckedLong: "両耳を軽く出した清楚なロング", messyPony: "計算された後れ毛のラフポニー", hanLinxinLongBraid: "艶のある黒髪を頭頂から一本にきっちり編み、腰より下まで届く非常に長い三つ編み。前髪と顔まわりは端正にまとめ、編み目を太く均一に保つ",
   });
   Object.assign(labels.pose, {
     fingerHeartNearFace: "成人女性が顔の横で片手の親指と人差し指を使って小さな指ハートを作り、自然に微笑む。指は5本で関節と重なりを写実的にする",
