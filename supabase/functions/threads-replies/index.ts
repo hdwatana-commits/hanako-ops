@@ -1,4 +1,5 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
+import {instagramReplies} from './instagram.ts';
 import { isDailyActivityQuestion, dailyActivityReply, cosplayUpdate, outdatedCosplayReply } from '../../../daily-activity.mjs';
 import { mergeFanProfile, fanReplyContext, profileNickname, safeNickname } from '../../../fan-profile.mjs';
 import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting, isEmojiOnly, emojiReply, replyLanguageHint, wrongReplyLanguage, tooSimilarReply, hasNotePromotion, wrongNoteReply, repeatedEnding, specialCodeReply, hasInstagramPromotion, wrongInstagramReply } from '../../../reply-rules.mjs';
@@ -113,14 +114,14 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   const generatedIds=new Set(history.map((h:any)=>h.reply_id).filter(Boolean));
   const styleExamples=manual.filter((r:any)=>r.comment_id&&!generatedIds.has(r.comment_id)).map((r:any)=>r.comment_text).slice(-6);
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
-  const instagramAllowed=c.username==='connection-test'?true:await db('rpc/hanako_instagram_available','POST',{owner_id:owner(),fan_username:c.username});
+  const instagramAllowed=c.platform==='instagram'?false:c.username==='connection-test'?true:await db('rpc/hanako_instagram_available','POST',{owner_id:owner(),fan_username:c.username});
   const noteAllowed=c.username==='connection-test'?true:await db('rpc/hanako_note_available','POST',{owner_id:owner(),fan_username:c.username});
   const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}
-${INSTAGRAM_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名を時々自然に使ってよい。それ以外の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。相手のコメントの言語で自然な文になっているか確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${replyCustomPrompt(s.custom_prompt)}\n${HANA_PROFILE}\n${NATURAL_REPLY_PROMPT}\n【最優先：Note案内回数】note_allowedがfalseなら今日はこの相手へNoteを案内済み。リンク・noteへの誘導・記事購入のお願いを一切書かず、質問に答えるか別の話題へ自然に移る。この制限は他の購入案内の指示より優先する。\n【最優先：返信言語】current_commentの言語だけを基準にし、その言語だけで返信する。日本語の投稿・プロフィール・過去の返信・例文に引きずられない。混在する場合は今回のコメントの主な言語を使う。外国語のコメントに日本語の文章や訳文を添えない。日本語の例文・名前・作品名は必要に応じて相手の言語に訳すかローマ字表記にする。latinは英語と決め付けず、スペイン語・フランス語等も元コメントから判断する。日本語での品質確認よりこの言語ルールを優先する。言語・文字の参考判定: ${replyLanguageHint(c.comment_text)}。`;
+${INSTAGRAM_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名を時々自然に使ってよい。それ以外の名前・ユーザー名・敬称・仮名で呼びかけない。「〇〇」「○○」「〇〇くん」「〇〇さん」等のプレースホルダーも絶対に出さない。相手の性別を推測しない。相手のコメントの言語で自然な文になっているか確認してから返信する。\n選択されたテンション: ${s.tones.map((x:string)=>TONES[x]).join('、')}。${s.adapt_tone?'この範囲で相手に合わせる。':'選択された口調を優先する。'}\n最大${s.max_chars}文字。\n所有者の追加設定:\n${replyCustomPrompt(s.custom_prompt)}\n${HANA_PROFILE}\n${NATURAL_REPLY_PROMPT}\n【最優先：Instagram返信】reply_platformがinstagramならInstagramの投稿・リールの初回コメントへの1回だけの返答。会話継続の質問や自分のInstagramへの案内はしない。短く自然に質問へ答え、同じ相手とのThreads履歴を推測しない。\n【最優先：Note案内回数】note_allowedがfalseなら今日はこの相手へNoteを案内済み。リンク・noteへの誘導・記事購入のお願いを一切書かず、質問に答えるか別の話題へ自然に移る。この制限は他の購入案内の指示より優先する。\n【最優先：返信言語】current_commentの言語だけを基準にし、その言語だけで返信する。日本語の投稿・プロフィール・過去の返信・例文に引きずられない。混在する場合は今回のコメントの主な言語を使う。外国語のコメントに日本語の文章や訳文を添えない。日本語の例文・名前・作品名は必要に応じて相手の言語に訳すかローマ字表記にする。latinは英語と決め付けず、スペイン語・フランス語等も元コメントから判断する。日本語での品質確認よりこの言語ルールを優先する。言語・文字の参考判定: ${replyLanguageHint(c.comment_text)}。`;
   const fan_profile=s.use_history&&c.username!=='connection-test'?fanReplyContext(await refreshFanProfile(c.username)):null;
   if(fan_profile?.nickname&&wrongReplyLanguage(c.comment_text,fan_profile.nickname))fan_profile.nickname='';
   if(fan_profile?.nickname&&recentReplies.some((text:string)=>text.includes(fan_profile.nickname)))fan_profile.nickname='';
-  const input=JSON.stringify({daily_activity:dailyActivity,cosplay_update:cosplayUpdate(dailyActivity?.day_jst),instagram_allowed:instagramAllowed,note_allowed:noteAllowed,fan_profile,reply_language_hint:replyLanguageHint(c.comment_text),reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation,recent_replies:recentReplies,owner_style_examples:styleExamples});
+  const input=JSON.stringify({reply_platform:c.platform||'threads',daily_activity:dailyActivity,cosplay_update:cosplayUpdate(dailyActivity?.day_jst),instagram_allowed:instagramAllowed,note_allowed:noteAllowed,fan_profile,reply_language_hint:replyLanguageHint(c.comment_text),reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(テキストなし。内容を憶測しない)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation,recent_replies:recentReplies,owner_style_examples:styleExamples});
   if(aiProvider(s)==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
     const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':await geminiKey(s),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
@@ -464,7 +465,11 @@ Deno.serve(async request=>{
     const secret=Deno.env.get('HANAKO_REPLY_CRON_SECRET') || Deno.env.get('HANAKO_CRON_SECRET');
     const isCron=Boolean(secret)&&request.headers.get('x-cron-secret')===secret;
     if(!isCron) await authenticate(request);
-    if(isCron&&!['run','check'].includes(body.action)) return respond({error:'許可されていません'},403);
+    if(isCron&&!['run','check','ig_check','ig_run'].includes(body.action)) return respond({error:'許可されていません'},403);
+    if(['ig_check','ig_run','ig_load','ig_save','ig_connect'].includes(body.action)){
+      const ig=instagramReplies({db,owner,updateSettings,isQuotaError:(e:any)=>e instanceof FreeQuotaError,env:(name:string,optional=false)=>optional?Deno.env.get(name):env(name),settings,generate,inWindow,exclusionReason,hasNotePromotion,wrongNoteReply,hasInstagramPromotion,wrongGreeting,wrongReplyLanguage});
+      return respond(await (body.action==='ig_check'?ig.check():body.action==='ig_run'?ig.run():body.action==='ig_load'?ig.load():body.action==='ig_connect'?ig.connect(body.connection):ig.save(body.settings)));
+    }
     if(body.action==='check') {
       if(body.audit_failed===true)return respond(await auditFailedReplies());
       if(body.provider==='openai') {
@@ -542,6 +547,9 @@ Deno.serve(async request=>{
     return respond({error:'操作が不正です'},400);
   } catch(e) {return respond({error:e instanceof Error?e.message:'処理に失敗しました'},400);}
 });
+
+
+
 
 
 

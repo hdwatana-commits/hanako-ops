@@ -32,6 +32,7 @@ globalThis.Deno={env:{get:name=>secrets[name]},serve:fn=>{handler=fn;}};
 await import('../supabase/functions/threads-replies/index.ts');
 const response=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
 const invoke=(body,headers={})=>handler(new Request('https://function.test',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer owner',...headers},body:JSON.stringify(body)}));
+test('Instagram設定と認証登録は所有者だけに許可しCronは設定変更できない',async()=>{globalThis.fetch=async()=>response({id:'other'});for(const action of ['ig_save','ig_load','ig_connect'])assert.equal((await invoke({action})).status,400);for(const action of ['ig_save','ig_load','ig_connect'])assert.equal((await invoke({action},{'x-cron-secret':'cron'})).status,403);});
 test('同じ日の活動質問は相手が違っても同じ共通設定でAIなしに投稿する',async()=>{
  const answers=[];
  for(const username of ['guest1','guest2']){
