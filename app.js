@@ -561,6 +561,28 @@ function enhanceCoordinateSelectOptions() {
       compositionSelect.appendChild(option);
     });
   }
+  appendOptionGroup(compositionSelect, "influencerThreeQuarter", "インフルエンサー視点（新着20）", [
+    ["influencerThreeQuarter", "斜め45度・顔とコーデが映える3/4視点"],
+    ["influencerHighDiagonal", "斜め上からの柔らかな見下ろし"],
+    ["influencerLowDiagonal", "斜め下からの控えめローアングル"],
+    ["influencerShoulderBack", "肩越しに振り返る後方3/4視点"],
+    ["influencerForegroundBlur", "前景ぼかし越しの自然なスナップ"],
+    ["influencerDoorFrame", "ドア枠で人物を囲むフレーム構図"],
+    ["influencerMirrorSide", "鏡と本人を斜めに入れるサイド構図"],
+    ["influencerWindowReflection", "窓の反射を薄く重ねた横顔構図"],
+    ["influencerWalkTracking", "歩く人物を斜め前から追う視点"],
+    ["influencerCafeTable", "テーブル越しの会話距離視点"],
+    ["influencerSeatedAisle", "通路側から座る人物を斜め撮り"],
+    ["influencerLeadingLines", "廊下や街路の線で人物へ導く構図"],
+    ["influencerNegativeSpace", "余白を大きく残した雑誌風全身"],
+    ["influencerTeleCompression", "望遠圧縮で背景を上品にぼかす"],
+    ["influencerFloorHigh", "床座りを斜め上から収める構図"],
+    ["influencerProfileRim", "逆光の縁取りを生かす真横視点"],
+    ["influencerCenteredSymmetry", "建築の中央線を使う左右対称構図"],
+    ["influencerHandDetailLead", "手元ディテールから顔へ導く構図"],
+    ["influencerEnvironmentalWide", "場所の空気も伝える斜め引き構図"],
+    ["influencerCandidTilt", "水平をわずかに外した自然な瞬間撮り"],
+  ]);
   if (locationSelect && ![...locationSelect.options].some((option) => option.value === "studioDaylight")) {
     const studioGroup = document.createElement("optgroup");
     studioGroup.label = "撮影用スタジオ";
@@ -3796,7 +3818,7 @@ function recommendHanakoThreads() {
   const poses = valid("snsPosePreset", hanakoThreadsPoses);
   if (!locations.length || !outfits.length || !poses.length) return;
   const pickOne = (items) => items[Math.floor(Math.random() * items.length)];
-  const weightedCompositions = ["face", "face", "face", "bust", "bust", "bust", "waist", "editorial"];
+  const weightedCompositions = ["face", "face", "bust", "bust", "waist", "editorial", "influencerThreeQuarter", "influencerHighDiagonal", "influencerLowDiagonal", "influencerShoulderBack", "influencerForegroundBlur", "influencerDoorFrame", "influencerMirrorSide", "influencerWindowReflection", "influencerWalkTracking", "influencerCafeTable", "influencerSeatedAisle", "influencerLeadingLines", "influencerNegativeSpace", "influencerTeleCompression", "influencerFloorHigh", "influencerProfileRim", "influencerCenteredSymmetry", "influencerHandDetailLead", "influencerEnvironmentalWide", "influencerCandidTilt"];
   const recent = state.hanakoThreadsRecent || [];
   const choices = Array.from({ length: 30 }, () => ({ location: pickOne(locations), outfit: pickOne(outfits), pose: pickOne(poses), expression: pickOne(hanakoThreadsExpressions), composition: pickOne(weightedCompositions) }));
   const score = (item) => recent.reduce((total, previous, index) => total + (previous === JSON.stringify(item) ? 100 : 0) + (["location", "outfit", "pose", "expression"].reduce((sum, key) => sum + (JSON.parse(previous)[key] === item[key] ? 1 : 0), 0) * (recent.length - index)), 0);
@@ -13862,6 +13884,26 @@ function buildSocialCreativeDirective(context) {
     sleeveDetail: "1枚目は袖口をつまむ手元、2枚目は二人の距離が分かる膝上、3枚目は見上げる表情。手指と袖の接触を正確にする",
     gateLookback: "改札を背景に奥行きを作り、進行方向と振り返る視線を対比する。全身、肩越し、表情アップの順で別れ際の感情を進める",
     handReach: "差し出しかけた手を画面下の手前へ控えめに置き、人物の目線まで自然に導く。手元、二人称距離、表情の3枚で直前の緊張を見せる",
+    influencerThreeQuarter: "カメラを人物の正面から約45度ずらした3/4視点。顔の両目を自然に見せながら肩と服の立体感を出し、35〜50mm相当で歪みを抑える",
+    influencerHighDiagonal: "人物の目線より少し高い斜め前から撮る。頭頂を見下ろしすぎず、瞳と頬が柔らかく見える角度で上半身または膝上まで収める",
+    influencerLowDiagonal: "腰より下へカメラを置かない控えめな斜めローアングル。脚を過度に長くせず、顔、胴体、足の比率を自然に保って堂々と見せる",
+    influencerShoulderBack: "人物の斜め後方から肩越しに振り返る瞬間を撮る。顔を隠さず、首をひねりすぎず、背中と背景の奥行きを上品に見せる",
+    influencerForegroundBlur: "花、カップ、柱など安全な前景を画面端へ薄くぼかし、その奥の人物の瞳へ正確にピントを合わせる。前景で顔や手を隠さない",
+    influencerDoorFrame: "ドア枠やアーチを画面周囲の自然な額縁として使い、人物を少し中央からずらす。枠が身体を切らず、垂直線を歪ませない",
+    influencerMirrorSide: "本人を斜め横から、鏡像を画面奥へ入れる。実像と鏡像の顔、髪、衣装、手足を一致させ、スマートフォンで顔を隠さない",
+    influencerWindowReflection: "窓辺の横顔へ街や空の反射を薄く重ねる。反射を二重の顔にせず、目と輪郭を明瞭に残した映画的な構図",
+    influencerWalkTracking: "歩く人物の斜め前を同じ速度で追う自然なスナップ。前足と後ろ足の重心、服と髪の揺れを自然にし、背景だけへ軽い動きを出す",
+    influencerCafeTable: "テーブル越しの会話距離から、カップや手元を画面下へ少し入れて顔へ視線を導く。テーブルで胴体を不自然に切らず、50mm相当の自然な遠近感にする",
+    influencerSeatedAisle: "列車やカフェの通路側から、座る人物を斜め45度で撮る。膝、足首、座面の接地を自然にし、通路や他人の動線を塞がない",
+    influencerLeadingLines: "廊下、手すり、街路の線が人物へ収束する位置を選ぶ。人物の頭から線が生えないよう少し位置をずらし、背景の奥行きを強調する",
+    influencerNegativeSpace: "人物を画面の左右どちらか約3分の1へ置き、視線の先に広い余白を残す雑誌風全身構図。余白へ文字や不要な小物を生成しない",
+    influencerTeleCompression: "85mm相当の望遠で背景を引き寄せ、人物と背景を柔らかく分離する。顔を平板にせず、瞳へピントを合わせて玉ぼけを控えめにする",
+    influencerFloorHigh: "床や低いベンチへ安全に座る人物を、斜め上から膝上または全身で収める。頭を大きく脚を小さくしすぎず、胸元を覗き込まない",
+    influencerProfileRim: "人物の真横から横顔を撮り、逆光で髪と肩へ細い縁取りを作る。鼻やあごの輪郭を自然に保ち、背景へ十分な明暗差を置く",
+    influencerCenteredSymmetry: "アーチ、窓、廊下などの建築中心線へ人物を置く左右対称構図。水平と垂直を正し、静かな存在感を出す",
+    influencerHandDetailLead: "バッグ、カップ、襟元などの手元を手前へ置き、斜め奥の顔まで視線が流れる構図。手を大きく誇張せず、指を自然な5本にする",
+    influencerEnvironmentalWide: "人物を画面の3分の1程度に収め、場所の光、奥行き、空気感を広く見せる斜め引き構図。人物の顔は判別できる大きさを保つ",
+    influencerCandidTilt: "カメラの水平を1〜3度だけ外した手持ちスナップ風。建物が倒れて見えるほど傾けず、人物の自然な笑顔や動作の一瞬を捉える",
   });
   Object.assign(labels.location, {
     stationPlatformNight: "終電前でも照明が明るく人目のある安全な駅ホーム。架空の駅で、実在駅名や路線ロゴを出さず、黄色い線から十分離れる",
