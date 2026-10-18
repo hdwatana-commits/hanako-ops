@@ -1,5 +1,7 @@
 import { analyze, timeline, styles } from './reel-engine.mjs';
 import { mountInstagramMusic } from './reel-music.mjs?v=1';
+import { drawCaption } from './reel-captions.mjs?v=1';
+import { mountCaptionEditor } from './reel-caption-editor.mjs?v=1';
 const root = document.querySelector('#reels');
 root.innerHTML = `
   <div class="reel-wrap"><p class="eyebrow">Instagram → リール自動制作</p><h2>4枚の写真に、かわいいリズムを。</h2>
@@ -32,6 +34,39 @@ root.innerHTML = `
 const $ = id => root.querySelector('#reel' + id);
 let photos = [], audioFile = null, audioUrl = '', resultUrl = '', result = null, busy = false, cancel = false;
 const instagramMusic = mountInstagramMusic(root);
+let captionAnalysis = null;
+const captionEditor = mountCaptionEditor(root, {
+  getAnalysis: analyzeCaptionMusic,
+  getAudio: () => $('Mode').value === 'file' && audioFile ? { element: $('AudioPreview'), start: Number($('Start').value) } : null,
+  onPreviewStart: () => instagramMusic.pause(),
+  drawFrame: (ctx, time, cues, appearance) => {
+    const captionPlan = { cues, appearance };
+    if (photos.length === 4) {
+      const cuts = timeline(Number($('Duration').value), $('Style').value, captionAnalysis, Number($('Offset').value), Number($('Bpm').value));
+      const text = { value: $('Text').value, start: Number($('TextStart').value), end: Number($('TextEnd').value), color: $('Color').value, y: Number($('Position').value) };
+      draw(ctx, time, cuts, $('Style').value, captionAnalysis, text, captionPlan);
+    } else {
+      ctx.fillStyle = '#f8dce8'; ctx.fillRect(0, 0, 1080, 1920);
+      if (photos[0]) { const img = photos[0].image, scale = Math.min(1080 / img.width, 1920 / img.height); ctx.drawImage(img, (1080 - img.width * scale) / 2, (1920 - img.height * scale) / 2, img.width * scale, img.height * scale); }
+      drawCaption(ctx, time, cues, appearance);
+    }
+  },
+});
+async function analyzeCaptionMusic() {
+  captionAnalysis = null;
+  if ($('Mode').value !== 'file' || !audioFile) return null;
+  if (audioFile.size > 40 * 1024 * 1024) throw Error('音楽は40MB以下にしてください。');
+  const context = new (window.AudioContext || window.webkitAudioContext)();
+  try {
+    await context.resume();
+    const buffer = await context.decodeAudioData(await audioFile.arrayBuffer());
+    const start = Number($('Start').value), duration = Number($('Duration').value);
+    if (!Number.isFinite(start) || start < 0 || start + duration > buffer.duration) throw Error('音楽の開始位置と動画の長さを確認してください。');
+    const count = Math.floor(duration * buffer.sampleRate), from = Math.floor(start * buffer.sampleRate), mono = new Float32Array(count);
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) { const data = buffer.getChannelData(channel); for (let i = 0; i < count; i++) mono[i] += data[from + i] / buffer.numberOfChannels; }
+    captionAnalysis = analyze(mono, buffer.sampleRate); return captionAnalysis;
+  } finally { await context.close(); }
+}
 const status = text => { $('Status').textContent = text; };
 function number(id, min, max) {
   const value = Number($(id).value);
@@ -74,7 +109,7 @@ $('Photos').onchange = async event => {
     for (const file of files) photos.push(await loadPhoto(file));
     status(`${photos.length}/4枚を選択しました。`);
   } catch (e) { status(e.message); }
-  finally { photoList(); event.target.value = ''; $('Inputs').disabled = false; $('Generate').disabled = false; }
+  finally { photoList(); captionEditor.render(); event.target.value = ''; $('Inputs').disabled = false; $('Generate').disabled = false; }
 };
 $('Audio').onchange = event => {
   if (audioUrl) URL.revokeObjectURL(audioUrl);
@@ -87,7 +122,7 @@ $('Cancel').onclick = () => { cancel = true; };
 document.addEventListener('visibilitychange', () => { if (busy && document.hidden) cancel = true; });
 window.addEventListener('beforeunload', e => { if (busy) { e.preventDefault(); e.returnValue = ''; } });
 
-function draw(ctx, t, cuts, style, analysis, text) {
+function draw(ctx, t, cuts, style, analysis, text, captions = null) {
   let index = 0; while (index + 1 < cuts.length && cuts[index + 1] <= t) index++;
   const image = photos[index % 4].image;
   const elapsed = t - cuts[index], end = cuts[index + 1] || Number($('Duration').value);
@@ -124,6 +159,7 @@ function draw(ctx, t, cuts, style, analysis, text) {
     }).slice(0, 5);
     lines.forEach((line, i) => { const y = text.y + i * 64; ctx.strokeText(line, 510, y); ctx.fillText(line, 510, y); }); ctx.restore();
   }
+  if (captions) drawCaption(ctx, t, captions.cues, captions.appearance);
 }
 
 $('Generate').onclick = async () => {
@@ -142,7 +178,7 @@ $('Generate').onclick = async () => {
     if (sound && (!audioFile || !$('Rights').checked)) throw Error('音楽ファイルと利用権の確認が必要です。');
     if (sound && audioFile.size > 40 * 1024 * 1024) throw Error('音楽は40MB以下にしてください。');
     busy = true; instagramMusic.setGenerating(true); cancel = false; $('Inputs').disabled = true; $('Generate').disabled = true; $('Cancel').hidden = false; $('Progress').value = 0;
-    $('AudioPreview').pause(); instagramMusic.pause();
+    captionEditor.pause(); $('AudioPreview').pause(); instagramMusic.pause();
     context = new (window.AudioContext || window.webkitAudioContext)(); await context.resume();
     if (context.state !== 'running') throw Error('音声処理を開始できません。もう一度制作ボタンを押してください。');
     let buffer, analysis = null;
@@ -159,10 +195,12 @@ $('Generate').onclick = async () => {
       analysis = analyze(mono, buffer.sampleRate);
     }
     if (cancel) throw Error('制作を中止しました。画面を開いたまま再試行してください。');
+    captionAnalysis = analysis;
+    const captions = captionEditor.capture(analysis);
     const style = $('Style').value;
     const cuts = timeline(duration, style, analysis, offset, manual);
     const canvas = document.createElement('canvas'); canvas.width = 1080; canvas.height = 1920;
-    const ctx = canvas.getContext('2d', { alpha: false }); draw(ctx, 0, cuts, style, analysis, text);
+    const ctx = canvas.getContext('2d', { alpha: false }); draw(ctx, 0, cuts, style, analysis, text, captions);
     stream = canvas.captureStream(30);
     if (sound) {
       source = context.createBufferSource(); source.buffer = buffer;
@@ -180,7 +218,7 @@ $('Generate').onclick = async () => {
     const started = context.currentTime;
     recorder.start(1000); if (source) source.start(started, start, duration);
     const label = manual ? `手動 ${manual} BPM` : analysis?.reliable ? `推定 ${analysis.bpm || '—'} BPM` : sound ? 'ビート検出の信頼度が低いためBPM手動調整を推奨' : '無音・仮リズム';
-    const frame = () => { draw(ctx, Math.min(duration, context.currentTime - started), cuts, style, analysis, text); animation = requestAnimationFrame(frame); }; frame();
+    const frame = () => { draw(ctx, Math.min(duration, context.currentTime - started), cuts, style, analysis, text, captions); animation = requestAnimationFrame(frame); }; frame();
     timer = setInterval(() => {
       const t = context.currentTime - started;
       $('Progress').value = Math.min(99, t / duration * 100); status(`${label} ／ 制作中 ${Math.min(duration, Math.floor(t))}/${duration}秒`);
@@ -194,7 +232,7 @@ $('Generate').onclick = async () => {
     result = new File([blob], 'hanako-reel.mp4', { type: 'video/mp4' }); resultUrl = URL.createObjectURL(result);
     instagramMusic.setResult(result, duration, instagramChoice);
     $('Preview').src = resultUrl; $('Download').href = resultUrl; $('Result').hidden = false; $('Progress').value = 100;
-    status(`完成しました。${label} ／ 写真切り替え${cuts.length}カット。再生して音と画質をご確認ください。`);
+    status(`完成しました。${label} ／ 写真切り替え${cuts.length}カット${captions ? ` ／ 歌詞字幕${captions.cues.length}行` : ''}。再生して音と画質をご確認ください。`);
     $('Generate').textContent = 'リールを再生成';
   } catch (e) { status(e.message || '制作に失敗しました。もう一度お試しください。'); }
   finally {

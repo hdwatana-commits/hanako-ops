@@ -37,7 +37,7 @@ try {
  wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(rate,24);wav.writeUInt32LE(rate*2,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(samples*2,40);
  for(let i=0;i<samples;i++){const phase=i%(rate/2);const value=phase<600?Math.sin(i*2*Math.PI*440/rate)*Math.exp(-phase/100)*.7:0;wav.writeInt16LE(Math.round(value*32767),44+i*2);}
  await page.setInputFiles('#reelAudio',{name:'licensed-test.wav',mimeType:'audio/wav',buffer:wav});await page.check('#reelRights');
- await page.click('#reels summary'); await page.locator('#reelText').fill('かわいい\n今日のコーデ');
+ await page.click('details:has(#reelText) > summary'); await page.locator('#reelText').fill('かわいい\n今日のコーデ');
  await page.click('#reelGenerate');
  await page.waitForFunction(()=>!document.querySelector('#reelResult').hidden,{},{timeout:45000});
  const info=await page.evaluate(async()=>{const v=document.querySelector('#reelPreview');await new Promise((resolve,reject)=>{if(v.readyState>=1)resolve();else{v.onloadedmetadata=resolve;v.onerror=reject;}});return {width:v.videoWidth,height:v.videoHeight,duration:v.duration,bytes:(await(await fetch(v.src)).blob()).size,status:document.querySelector('#reelStatus').textContent};});
