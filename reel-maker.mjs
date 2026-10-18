@@ -1,5 +1,7 @@
-import { analyze, timeline, styles } from './reel-engine.mjs';
-import { mountInstagramMusic } from './reel-music.mjs?v=2';
+import { analyze, timeline, styles, createEditPlan } from './reel-engine.mjs?v=2';
+import { drawPhotoScene } from './reel-style-renderer.mjs?v=1';
+import { mountEditStyles } from './reel-edit-styles.mjs?v=1';
+import { mountInstagramMusic } from './reel-music.mjs?v=3';
 import { drawCaption } from './reel-captions.mjs?v=1';
 import { mountCaptionEditor } from './reel-caption-editor.mjs?v=1';
 const root = document.querySelector('#reels');
@@ -52,6 +54,19 @@ const captionEditor = mountCaptionEditor(root, {
     }
   },
 });
+const editStyles = mountEditStyles(root, {
+  getAnalysis: analyzeCaptionMusic,
+  getPhoto: () => photos[0]?.url,
+  getPlan: analysis => currentEditPlan(analysis),
+  drawPreview: (ctx, time, plan) => draw(ctx, time, plan.cuts, plan.style, captionAnalysis, { value: '' }, null, plan),
+  onChange: () => captionEditor.render(),
+});
+function currentEditPlan(analysis) {
+  const music = $('Mode').value === 'instagram' ? instagramMusic.getRhythm() : { bpm: 0, source: 'manual' };
+  const generic = Number($('Bpm').value) || 0;
+  return createEditPlan(Number($('Duration').value), $('Style').value, analysis, { offset: Number($('Offset').value), manualBpm: generic || music.bpm, manualSource: generic ? 'manual' : music.source });
+}
+for (const id of ['Audio', 'Start', 'Mode', 'Duration']) $(id).addEventListener('change', () => { captionAnalysis = null; });
 async function analyzeCaptionMusic() {
   captionAnalysis = null;
   if ($('Mode').value !== 'file' || !audioFile) return null;
@@ -99,6 +114,7 @@ function photoList() {
     ]) { const button = document.createElement('button'); button.type = 'button'; button.textContent = label; button.disabled = disabled; button.setAttribute('aria-label', `写真${index + 1} ${label}`); button.onclick = action; card.append(button); }
     $('PhotoList').append(card);
   });
+  editStyles.refresh();
 }
 $('Photos').onchange = async event => {
   const files = [...event.target.files];
@@ -122,33 +138,9 @@ $('Cancel').onclick = () => { cancel = true; };
 document.addEventListener('visibilitychange', () => { if (busy && document.hidden) cancel = true; });
 window.addEventListener('beforeunload', e => { if (busy) { e.preventDefault(); e.returnValue = ''; } });
 
-function draw(ctx, t, cuts, style, analysis, text, captions = null) {
-  let index = 0; while (index + 1 < cuts.length && cuts[index + 1] <= t) index++;
-  const image = photos[index % 4].image;
-  const elapsed = t - cuts[index], end = cuts[index + 1] || Number($('Duration').value);
-  const p = elapsed / (end - cuts[index]);
-  const accent = analysis?.peaks.some(b => Math.abs(b.time + Number($('Offset').value) - t) < .07);
-  ctx.fillStyle = '#f5dfe7'; ctx.fillRect(0, 0, 1080, 1920);
-  const cover = Math.max(1080 / image.width, 1920 / image.height);
-  ctx.save(); ctx.filter = 'blur(32px) brightness(.85)';
-  ctx.drawImage(image, (1080 - image.width * cover * 1.1) / 2, (1920 - image.height * cover * 1.1) / 2, image.width * cover * 1.1, image.height * cover * 1.1); ctx.restore();
-  // Keep the whole image within a padded frame even at maximum zoom.
-  const scale = Math.min(1000 / image.width, 1600 / image.height) * (1 + styles[style].zoom * (index % 2 ? 1 - p : p));
-  ctx.save();
-  ctx.globalAlpha = Math.min(1, elapsed / .13 + .15);
-  ctx.drawImage(image, (1080 - image.width * scale) / 2 + Math.sin(p * Math.PI) * 7, (1920 - image.height * scale) / 2 + Math.cos(p * Math.PI) * 8, image.width * scale, image.height * scale); ctx.restore();
-  if (style === 'hana') {
-    for (let i = 0; i < 16; i++) {
-      const x = (i * 173 + Math.sin(t * .6 + i) * 28) % 1080;
-      const y = 1920 - ((t * (27 + i % 4 * 10) + i * 139) % 2100);
-      ctx.save(); ctx.globalAlpha = .28 + .15 * Math.sin(t + i); ctx.fillStyle = '#ffc1d8'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
-      if (i % 3 === 0) { ctx.font = '40px sans-serif'; ctx.fillText('♥', x, y); }
-      else if (i % 3 === 1) { ctx.beginPath(); ctx.arc(x, y, 18 + i % 4 * 7, 0, Math.PI * 2); ctx.stroke(); }
-      else { ctx.font = '32px sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('✦', x, y); }
-      ctx.restore();
-    }
-  }
-  if (style === 'pop' && accent) { ctx.fillStyle = 'rgba(255,255,255,.13)'; ctx.fillRect(0, 0, 1080, 1920); }
+function draw(ctx, t, cuts, style, analysis, text, captions = null, editPlan = null) {
+  const plan = editPlan || currentEditPlan(analysis);
+  drawPhotoScene(ctx, { photos, time: t, plan });
   if (text.value && t >= text.start && t <= text.end) {
     ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, (t - text.start) / .3, (text.end - t) / .3));
     ctx.font = 'bold 48px sans-serif'; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.lineWidth = 7; ctx.strokeStyle = '#57404b'; ctx.fillStyle = text.color;
@@ -197,10 +189,12 @@ $('Generate').onclick = async () => {
     if (cancel) throw Error('制作を中止しました。画面を開いたまま再試行してください。');
     captionAnalysis = analysis;
     const captions = captionEditor.capture(analysis);
-    const style = $('Style').value;
-    const cuts = timeline(duration, style, analysis, offset, manual);
+    const plan = currentEditPlan(analysis);
+    const style = plan.style;
+    const cuts = plan.cuts;
+    editStyles.setAnalysis(analysis); editStyles.updatePlan(plan);
     const canvas = document.createElement('canvas'); canvas.width = 1080; canvas.height = 1920;
-    const ctx = canvas.getContext('2d', { alpha: false }); draw(ctx, 0, cuts, style, analysis, text, captions);
+    const ctx = canvas.getContext('2d', { alpha: false }); draw(ctx, 0, cuts, style, analysis, text, captions, plan);
     stream = canvas.captureStream(30);
     if (sound) {
       source = context.createBufferSource(); source.buffer = buffer;
@@ -217,8 +211,8 @@ $('Generate').onclick = async () => {
     try { wake = await navigator.wakeLock?.request('screen'); } catch { /* Screen must stay foreground. */ }
     const started = context.currentTime;
     recorder.start(1000); if (source) source.start(started, start, duration);
-    const label = manual ? `手動 ${manual} BPM` : analysis?.reliable ? `推定 ${analysis.bpm || '—'} BPM` : sound ? 'ビート検出の信頼度が低いためBPM手動調整を推奨' : '無音・仮リズム';
-    const frame = () => { draw(ctx, Math.min(duration, context.currentTime - started), cuts, style, analysis, text, captions); animation = requestAnimationFrame(frame); }; frame();
+    const label = plan.source === 'audio' ? `音声解析・推定 ${plan.bpm} BPM` : plan.bpm ? `${plan.source === 'music-tap' ? 'タップ' : '指定'} ${plan.bpm} BPM（拍位置は手動）` : sound ? '解析低信頼・仮テンポ（BPM調整を推奨）' : '無音・仮テンポ';
+    const frame = () => { draw(ctx, Math.min(duration, context.currentTime - started), cuts, style, analysis, text, captions, plan); animation = requestAnimationFrame(frame); }; frame();
     timer = setInterval(() => {
       const t = context.currentTime - started;
       $('Progress').value = Math.min(99, t / duration * 100); status(`${label} ／ 制作中 ${Math.min(duration, Math.floor(t))}/${duration}秒`);
@@ -232,7 +226,7 @@ $('Generate').onclick = async () => {
     result = new File([blob], 'hanako-reel.mp4', { type: 'video/mp4' }); resultUrl = URL.createObjectURL(result);
     instagramMusic.setResult(result, duration, instagramChoice);
     $('Preview').src = resultUrl; $('Download').href = resultUrl; $('Result').hidden = false; $('Progress').value = 100;
-    status(`完成しました。${label} ／ 写真切り替え${cuts.length}カット${captions ? ` ／ 歌詞字幕${captions.cues.length}行` : ''}。再生して音と画質をご確認ください。`);
+    status(`完成しました。${label} ／ ${styles[style].label} ／ 写真切り替え${cuts.length}カット${captions ? ` ／ 歌詞字幕${captions.cues.length}行` : ''}。再生して音と画質をご確認ください。`);
     $('Generate').textContent = 'リールを再生成';
   } catch (e) { status(e.message || '制作に失敗しました。もう一度お試しください。'); }
   finally {

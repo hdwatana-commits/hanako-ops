@@ -19,7 +19,9 @@ export function mountInstagramMusic(root) {
     <label>音源の種類<select id="reelMusicType"><option value="music">音楽</option><option value="original_sound">オリジナル音源</option></select></label>
     <div class="reel-row"><button id="reelMusicSearch" type="button">楽曲を検索</button><button id="reelMusicTrending" type="button">人気の音源</button><button id="reelMusicFavorites" type="button">お気に入り</button></div>
     <p id="reelMusicStatus" role="status" aria-live="polite"></p><div id="reelMusicResults" class="reel-music-results"></div>
-    <div id="reelMusicSelected" class="reel-music-selected" hidden></div><audio id="reelMusicPreview" controls preload="none" hidden></audio>
+    <div id="reelMusicSelected" class="reel-music-selected" hidden></div>
+    <label>この曲のテンポ（BPM・任意）<input id="reelMusicBpm" type="number" min="50" max="200" step="1" placeholder="例：120"></label>
+    <div class="reel-row"><button id="reelMusicTapTempo" type="button">♪ 拍に合わせて4回以上タップ</button><button id="reelMusicTempoReset" type="button">テンポをリセット</button></div><p id="reelMusicTempoStatus" role="status">曲を試聴しながら拍をタップするかBPMを入力すると、そのテンポで編集します。音源の開始位置・拍の位置の一致は保証できません。</p><audio id="reelMusicPreview" controls preload="none" hidden></audio>
     <p class="reel-note">検索対象はMetaが第三者利用を認めた音源で、Instagramアプリの全楽曲とは異なります。試聴URLがない曲はInstagram上で試聴します。音源は投稿時にInstagramが付与し、保存MP4は無音です。音源の開始位置指定・波形取得・正確なビート同期は今回の公式仕様では提供されていません。広告利用可否は別途確認してください。</p>
   </section>`);
   $('Result').insertAdjacentHTML('beforeend', `<section id="reelMusicPublishPanel" hidden class="reel-music-publish"><h3>選んだ音楽でInstagramへ</h3>
@@ -30,6 +32,7 @@ export function mountInstagramMusic(root) {
     <button id="reelMusicPublish" type="button" disabled>確認してInstagramへ公開</button>
     <button id="reelMusicDelete" type="button" hidden>サーバーの一時動画を削除</button><p id="reelMusicPublishStatus" role="status" aria-live="polite"></p>
   </section>`);
+  let tempoTaps=[],tempoSource='music-bpm';
   let selected = null, generated = null, job = null, working = false, rendering = false, searchSequence = 0;
   const client = () => new window.HanakoCloudSync(window.HANAKO_CLOUD_CONFIG || {});
   const say = text => { $('MusicStatus').textContent = text; };
@@ -62,6 +65,7 @@ export function mountInstagramMusic(root) {
   function button(text, handler) { const b = document.createElement('button'); b.type='button'; b.textContent=text; b.onclick=handler; return b; }
   function link(text, url) { const a=document.createElement('a');a.textContent=text;a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a; }
   function showSelected(audio) {
+    if(selected?.audio_id!==audio.audio_id){tempoTaps=[];$('MusicBpm').value='';tempoSource='music-bpm';root.dispatchEvent(new Event('reel-rhythm-change'));}
     selected = audio; $('MusicSelected').hidden = false; $('MusicSelected').replaceChildren();
     const title = document.createElement('strong'); title.textContent=`選択中：${audio.title} ／ ${audio.artist}`; $('MusicSelected').append(title);
     $('MusicPreview').pause(); $('MusicPreview').hidden = !audio.preview_url;
@@ -103,6 +107,17 @@ export function mountInstagramMusic(root) {
   $('MusicSearch').onclick=()=>search();$('MusicTrending').onclick=()=>search(true);
   $('MusicQuery').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();search();}};
   $('MusicFavorites').onclick=()=>{++searchSequence;$('MusicSearch').disabled=false;$('MusicTrending').disabled=false;render(favorites(),true);say('お気に入りはこの端末・OPSユーザーごとに保存します。選択時に最新の利用可否を確認します。');};
+  $('MusicBpm').oninput=()=>{tempoSource='music-bpm';tempoTaps=[];root.dispatchEvent(new Event('reel-rhythm-change'));};
+  $('MusicTempoReset').onclick=()=>{tempoTaps=[];$('MusicBpm').value='';$('MusicTempoStatus').textContent='テンポをリセットしました。試聴しながら拍に合わせて4回以上タップしてください。';root.dispatchEvent(new Event('reel-rhythm-change'));};
+  $('MusicTapTempo').onclick=()=>{
+    const now=performance.now()/1000;if(tempoTaps.length&&now-tempoTaps.at(-1)>1.5)tempoTaps=[];
+    if(tempoTaps.length&&now-tempoTaps.at(-1)<.25)return;
+    tempoTaps.push(now);tempoTaps=tempoTaps.slice(-9);
+    if(tempoTaps.length<4){$('MusicTempoStatus').textContent=`${tempoTaps.length}回タップ。拍に合わせて続けてください。`;return;}
+    const gaps=tempoTaps.slice(1).map((time,i)=>time-tempoTaps[i]).sort((a,b)=>a-b),median=gaps[Math.floor(gaps.length/2)],bpm=Math.round(60/median);
+    if(bpm<50||bpm>200){$('MusicTempoStatus').textContent='50〜200 BPMの範囲で、1拍ごとにタップしてください。';return;}
+    $('MusicBpm').value=String(bpm);tempoSource='music-tap';$('MusicTempoStatus').textContent=`タップから約${bpm} BPMに設定しました。曲の拍の位置まで自動同期するものではありません。`;root.dispatchEvent(new Event('reel-rhythm-change'));
+  };
   $('MusicPreview').onerror=()=>say('試聴URLの期限切れまたは再生非対応です。もう一度「試聴」を押して更新してください。');
   function updateMode() {
     const official=$('Mode').value==='instagram';$('InstagramMusic').hidden=!official;$('AudioPanel').hidden=$('Mode').value!=='file';
@@ -150,6 +165,7 @@ export function mountInstagramMusic(root) {
   };
   try{const saved=JSON.parse(localStorage.getItem(pendingKey())||'null');if(saved?.job_id){job=saved;showJob();$('MusicPublishPanel').hidden=false;$('Result').hidden=false;publishSay('前回の投稿準備があります。「投稿状況を確認」で結果を確認してください。');}}catch{}
   return {
+    getRhythm(){const value=$('MusicBpm').value,bpm=value?Number(value):0;if(bpm&&(!Number.isFinite(bpm)||bpm<50||bpm>200))throw Error('曲のBPMは50〜200で入力してください。');return {bpm,source:tempoSource};},
     captureChoice(){if(working||rendering||job)throw Error('投稿準備が残っています。投稿状況を確認してから一時動画を削除してください。');if($('Mode').value==='instagram'){if(!selected)throw Error('Instagram公式音楽から楽曲を選択してください。');return {...selected};}return null;},
     setGenerating(value){rendering=value;$('MusicPrepare').disabled=value;$('MusicPublish').disabled=value||working||job?.state!=='FINISHED'||!$('MusicConsent').checked;},
     pause(){ $('MusicPreview').pause(); },
