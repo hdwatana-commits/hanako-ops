@@ -15,7 +15,7 @@ returns boolean language plpgsql security definer set search_path='' as $$
 declare secret_name text; secret_id uuid;
 begin
  if auth.jwt()->>'role' is distinct from 'service_role' then raise exception 'service role required';end if;
- if owner_id is null or token_value is null or token_value!~'^[A-Za-z0-9._-]{20,4096}$' then raise exception 'invalid token';end if;
+ if owner_id is null or token_value is null or length(token_value) not between 20 and 4096 or token_value!~'^[A-Za-z0-9._-]+$' then raise exception 'invalid token';end if;
  secret_name:='hanako_ig_reply_'||owner_id::text;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(secret_name,0));
  select id into secret_id from vault.secrets where name=secret_name;
