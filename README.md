@@ -267,3 +267,9 @@ HANAKO_OWNER_USER_ID
 - Knowledge DBを使って「今日は何が売れる？」「売れない理由は？」「今週おすすめブランドは？」に根拠付きで答えます。
 - 探索枠は10〜20%を目安にし、実績重視と未知商品の検証を両立します。
 - SupabaseへPhase 4テーブルを追加する場合は `supabase-ops-phase4.sql` をSQL Editorで実行してください。
+
+## Instagramリール自動制作
+
+メニューの `Instagram → リール自動制作` から写真4枚と利用権のある音楽でMP4を制作できます。音楽を後付けする無音モードもあります。追加APIキーは不要です。制作中は画面を開いたままにしてください。
+
+実装・配布ファイル、API確認状況、制限、iPhone操作手順、テスト結果は [リール制作の運用メモ](docs/reel-maker-implementation.md) を参照してください。

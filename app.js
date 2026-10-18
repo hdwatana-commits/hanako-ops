@@ -1,4 +1,4 @@
-﻿const APP_VERSION = (() => {
+const APP_VERSION = (() => {
   try {
     return new URL(document.currentScript?.src || location.href).searchParams.get("v") || "開発版";
   } catch {
@@ -268,6 +268,7 @@ const travelAnglePresets = {
 };
 
 const views = {
+  reels: "Instagram → リール自動制作",
   brief: "ホーム",
   products: "商品を探す・登録",
   generator: "SNS投稿を作る",

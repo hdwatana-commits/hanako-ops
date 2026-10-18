@@ -1,6 +1,7 @@
-const CACHE_NAME = "hanako-room-ops-v359";
+const CACHE_NAME = "hanako-room-ops-v360";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
+  "./reel-maker.mjs?v=1", "./reel-engine.mjs", "./reel-maker.css?v=1",
   "./threads-replies.js?v=33",
   "./reply-analytics.mjs?v=1",
   "./fan-profile.mjs?v=3",
@@ -9,7 +10,7 @@ const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=359",
-  "./app.js?v=359",
+  "./app.js?v=360",
   "./cloud-sync.js?v=307",
   "./ops-engine.js?v=222",
   "./ops-phase2-engine.js?v=222",
@@ -415,7 +416,7 @@ const CORE_SHELL = [
   "./",
   "./index.html",
     "./styles.css?v=359",
-    "./app.js?v=359",
+    "./app.js?v=360",
     "./cloud-sync.js?v=307",
     "./ops-engine.js?v=222",
     "./ops-phase2-engine.js?v=222",
@@ -467,6 +468,9 @@ self.addEventListener("fetch", (event) => {
     || url.pathname.endsWith("/ops-phase3-engine.js")
     || url.pathname.endsWith("/ops-phase4-engine.js")
     || url.pathname.endsWith("/room-review-generator.js")
+    || url.pathname.endsWith("/reel-maker.mjs")
+    || url.pathname.endsWith("/reel-engine.mjs")
+    || url.pathname.endsWith("/reel-maker.css")
     || url.pathname.endsWith("/sw.js")
   );
 
