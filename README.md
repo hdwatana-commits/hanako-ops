@@ -273,3 +273,7 @@ HANAKO_OWNER_USER_ID
 メニューの `Instagram → リール自動制作` から写真4枚と利用権のある音楽でMP4を制作できます。音楽を後付けする無音モードもあります。追加APIキーは不要です。制作中は画面を開いたままにしてください。
 
 実装・配布ファイル、API確認状況、制限、iPhone操作手順、テスト結果は [リール制作の運用メモ](docs/reel-maker-implementation.md) を参照してください。
+
+## Instagram公式音楽連携
+
+リール制作画面の音楽選択で `Instagram公式音楽を検索・選択` を選ぶと、公式Audio APIの楽曲検索・試聴・お気に入り・選択が使えます。Facebookページ連携とFacebook Loginの権限が必要です。保存MP4は無音で、音楽は明示的に許可したInstagram投稿時に付与します。[設定条件・制限・テスト](docs/instagram-audio-integration.md) を参照してください。

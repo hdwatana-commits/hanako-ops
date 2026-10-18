@@ -1,0 +1,72 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+import vm from 'node:vm';
+const source=readFileSync(new URL('../supabase/functions/instagram-audio/index.ts',import.meta.url),'utf8');
+const audio={audio_id:'1234',title:'Test song',display_artist:'Artist',duration_in_ms:60000,download_url:'https://scontent.fbcdn.net/preview',on_platform_audio_preview_link:'https://www.instagram.com/reels/audio/1234/',is_ads_eligible:false};
+function worker(overrides={}){
+ let handler;const calls=[],objects=new Map();let published=0;
+ const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service-secret',HANAKO_OWNER_USER_ID:'owner',INSTAGRAM_ACCESS_TOKEN:'meta-secret',INSTAGRAM_USER_ID:'555'};
+ const fetch=async(url,options={})=>{
+  const u=new URL(url),p=u.pathname;calls.push({url:String(url),...options});
+  if(p==='/auth/v1/user')return Response.json({id:overrides.nonOwner?'other':'owner'});
+  if(u.hostname==='graph.facebook.com'){
+   assert.equal(options.headers.Authorization,'Bearer meta-secret');assert.equal(u.searchParams.has('access_token'),false);
+   if(overrides.metaError)return Response.json({error:{code:200,message:'Permission denied'}},{status:403});
+   if(p.endsWith('/ig_audio'))return Response.json({audio:[{...audio,...overrides.audio}]});
+   if(p.endsWith('/1234'))return Response.json(audio);
+   if(p.endsWith('/555/media'))return Response.json({id:'777'});
+   if(p.endsWith('/777'))return Response.json({status_code:published?'PUBLISHED':'FINISHED'});
+   if(p.endsWith('/555/media_publish')){published++;if(overrides.uncertain)throw Error('timeout');return Response.json({id:'888'});}
+  }
+  if(p.endsWith('/bucket/hanako-private-reels'))return Response.json({public:false});
+  if(p.includes('/object/list/'))return Response.json([]);
+  if(p.includes('/object/upload/sign/'))return Response.json({url:p.replace('/storage/v1','')+'?token=upload-token'});
+  if(p.includes('/object/info/'))return Response.json({size:2000,content_type:'video/mp4'});
+  if(p.includes('/object/sign/'))return Response.json({signedURL:p.replace('/storage/v1','')+'?token=video-token'});
+  if(p.endsWith('/object/hanako-private-reels')&&options.method==='DELETE')return Response.json([]);
+  if(p.includes('/object/authenticated/')){
+   const key=p.replace('/object/authenticated/','/object/');return objects.has(key)?Response.json(objects.get(key)):Response.json({message:'not found'},{status:404});
+  }
+  if(p.includes('/object/hanako-private-reels/')&&['POST','PUT'].includes(options.method)){
+   if(options.method==='POST'&&objects.has(p))return Response.json({message:'already exists'},{status:409});
+   objects.set(p,JSON.parse(options.body));return Response.json({Key:p});
+  }
+  throw Error('unexpected '+p);
+ };
+ const context=vm.createContext({Deno:{env:{get:n=>env[n]||''},serve:fn=>handler=fn},fetch,URL,Response,Request,URLSearchParams,AbortSignal,crypto,Date,console});
+ vm.runInContext(stripTypeScriptTypes(source,{mode:'transform'}),context);
+ return {calls,request:async(body,token='user-token')=>{const r=await handler(new Request('https://example.supabase.co/functions/v1/instagram-audio',{method:'POST',headers:{...(token?{Authorization:`Bearer ${token}`}:{})},body:JSON.stringify(body)}));return{status:r.status,data:await r.json()};}};
+}
+test('catalog requires validated owner; no unauthenticated or cross-user access',async()=>{
+ const a=worker();assert.equal((await a.request({action:'search'},'')).status,401);assert.equal(a.calls.length,0);
+ const b=worker({nonOwner:true});assert.equal((await b.request({action:'search'})).status,403);assert.equal(b.calls.length,1);
+});
+test('search uses official endpoint and search_query; normalizes preview metadata',async()=>{
+ const w=worker();const result=await w.request({action:'search',query:'artist',audio_type:'music'});assert.equal(result.status,200);assert.equal(result.data.audio[0].artist,'Artist');assert.equal(result.data.audio[0].preview_url,audio.download_url);assert.equal(result.data.audio[0].is_ads_eligible,false);
+ const call=w.calls.find(c=>c.url.includes('/ig_audio'));assert.equal(new URL(call.url).searchParams.get('search_query'),'artist');assert.equal(JSON.stringify(result).includes('meta-secret'),false);
+});
+test('unsafe preview URLs are removed and permission failures are actionable',async()=>{
+ const w=worker({audio:{download_url:'https://evil.example/audio'}});assert.equal((await w.request({action:'search'})).data.audio[0].preview_url,null);
+ const denied=await worker({metaError:true}).request({action:'search'});assert.equal(denied.data.code,'META_200');assert.match(denied.data.error,/Facebook/);
+});
+test('prepare issues private upload scoped to owner; no music embedding or early publish',async()=>{
+ const w=worker();const result=await w.request({action:'prepare',audio_id:'1234',size:2000,duration:15});assert.equal(result.status,200);assert.match(result.data.upload_url,/storage\/v1\/object\/upload\/sign\/hanako-private-reels\/owner\//);assert.equal(w.calls.some(c=>c.url.includes('/media_publish')),false);
+ assert.equal((await w.request({action:'jobStatus',job_id:'../../other'})).status,400);
+ assert.equal((await w.request({action:'prepare',audio_id:'1234',size:50*1024*1024,duration:15})).status,400);
+});
+test('explicit publish attaches selected audio and repeated calls cannot create duplicates',async()=>{
+ const w=worker();const prepared=await w.request({action:'prepare',audio_id:'1234',size:2000,duration:15});const job_id=prepared.data.job_id;
+ const created=await w.request({action:'createReel',job_id,caption:'Hello'});assert.equal(created.status,200,JSON.stringify(created));
+ const create=w.calls.find(c=>c.url.endsWith('/555/media'));const form=new URLSearchParams(create.body);assert.equal(form.get('media_type'),'REELS');assert.equal(JSON.parse(form.get('audio_configuration')).audio_id,'1234');assert.equal(form.has('audio_start_time'),false);
+ assert.equal((await w.request({action:'publish',job_id})).status,400);
+ assert.equal((await w.request({action:'publish',job_id,confirm:true})).data.state,'published');
+ assert.equal((await w.request({action:'publish',job_id,confirm:true})).data.state,'published');
+ assert.equal(w.calls.filter(c=>c.url.endsWith('/555/media_publish')).length,1);
+});
+test('ambiguous publish response leaves durable lock that prevents retries',async()=>{
+ const w=worker({uncertain:true});const p=await w.request({action:'prepare',audio_id:'1234',size:2000,duration:15});const job_id=p.data.job_id;await w.request({action:'createReel',job_id});
+ assert.equal((await w.request({action:'publish',job_id,confirm:true})).data.code,'META_UNCERTAIN');
+ const next=await w.request({action:'publish',job_id,confirm:true});assert.equal(next.data.state,'published');assert.equal(w.calls.filter(c=>c.url.endsWith('/555/media_publish')).length,1);
+});

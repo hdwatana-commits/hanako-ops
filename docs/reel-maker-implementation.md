@@ -58,3 +58,6 @@ Windows Chrome headless、390×844のモバイル幅で合格。実際のアプ�
 追加：reel-engine.mjs、reel-maker.mjs、reel-maker.css、tests/reel-engine.test.mjs、tests/reel-browser-smoke.mjs、docs/reel-maker-implementation.md。
 変更：index.html、app.js（画面名1項目のみ）、sw.js、version.json、README.md。
 検証成果物：tests/reel-smoke-output.mp4、tests/reel-mobile-preview.png、tests/reel-regression-results.txt。
+
+### 公式音楽連携の更新（v365）
+Meta公式資料の直接取得に成功し、公式Audio API連携を実装した。上記の「未接続・未実装」は初期実装時の記録。[最新の仕様と実装](instagram-audio-integration.md) を参照。

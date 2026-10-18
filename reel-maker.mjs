@@ -1,8 +1,9 @@
 import { analyze, timeline, styles } from './reel-engine.mjs';
+import { mountInstagramMusic } from './reel-music.mjs?v=1';
 const root = document.querySelector('#reels');
 root.innerHTML = `
   <div class="reel-wrap"><p class="eyebrow">Instagram → リール自動制作</p><h2>4枚の写真に、かわいいリズムを。</h2>
-  <p>写真はそのまま。音楽に合わせてハートや光を重ねます。素材は端末内で処理します。</p>
+  <p>写真はそのまま。音楽に合わせてハートや光を重ねます。動画制作は端末内で処理します。Instagramへの投稿準備時だけ動画をサーバーへ送ります。</p>
   <fieldset id="reelInputs"><legend>リールの素材とスタイル</legend>
   <label>① 写真を4枚選択 <input id="reelPhotos" type="file" accept="image/jpeg,image/png,image/heic,image/heif" multiple></label>
   <p class="reel-note">写真全体を表示し、余白は背景ぼかしで補完します。HEICを読めない端末ではJPGに変換してください。</p>
@@ -11,7 +12,7 @@ root.innerHTML = `
   <div id="reelAudioPanel"><input id="reelAudio" aria-label="音楽ファイル" type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,.mp3,.m4a,.wav"><audio id="reelAudioPreview" controls preload="metadata"></audio>
   <label><input id="reelRights" type="checkbox"> この音楽を動画で使用する権利を持っています</label>
   <label>音楽の開始位置（秒）<input id="reelStart" type="number" value="0" min="0" step="0.1"></label></div>
-  <p id="reelMusicNotice" class="reel-note">Instagram公式楽曲検索は利用条件を確認中のため未接続です。クリエイターアカウントでも商用利用権は別途確認してください。</p>
+  <p id="reelMusicNotice" class="reel-note">Instagram公式音楽の検索・選択にも対応しています。音楽の選択方法を切り替えてください。</p>
   <div class="reel-row"><label>③ 編集スタイル<select id="reelStyle"><option value="hana">おまかせ（ハナ・かわいい系）</option><option value="cinema">おしゃれ・シネマ系</option><option value="pop">ポップ・テンポ系</option></select></label>
   <label>長さ<select id="reelDuration"><option>15</option><option>20</option><option>30</option></select>秒</label></div>
   <details><summary>テキスト・リズムを調整</summary><p>権利上問題のない文章を入力してください。改行できます。</p>
@@ -30,6 +31,7 @@ root.innerHTML = `
   <a href="https://www.instagram.com/" target="_blank" rel="noopener">Instagramを開く</a></div></div>`;
 const $ = id => root.querySelector('#reel' + id);
 let photos = [], audioFile = null, audioUrl = '', resultUrl = '', result = null, busy = false, cancel = false;
+const instagramMusic = mountInstagramMusic(root);
 const status = text => { $('Status').textContent = text; };
 function number(id, min, max) {
   const value = Number($(id).value);
@@ -80,10 +82,6 @@ $('Audio').onchange = event => {
   audioUrl = audioFile ? URL.createObjectURL(audioFile) : '';
   $('AudioPreview').src = audioUrl; $('Rights').checked = false;
 };
-$('Mode').onchange = () => {
-  $('AudioPanel').hidden = $('Mode').value === 'silent';
-  $('MusicNotice').textContent = $('Mode').value === 'silent' ? '無音で生成します。音源を取得しないため、Instagramで追加する音楽との正確なビート同期は保証できません。' : 'Instagram公式楽曲検索は利用条件を確認中のため未接続です。利用権のある音楽を選択してください。';
-};
 $('Duration').onchange = () => { $('TextEnd').value = $('Duration').value; };
 $('Cancel').onclick = () => { cancel = true; };
 document.addEventListener('visibilitychange', () => { if (busy && document.hidden) cancel = true; });
@@ -133,6 +131,7 @@ $('Generate').onclick = async () => {
   let context, stream, source, recorder, timer, animation, wake;
   try {
     if (photos.length !== 4) throw Error('写真を4枚選択してください。');
+    const instagramChoice = instagramMusic.captureChoice();
     const mime = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2'].find(type => globalThis.MediaRecorder?.isTypeSupported(type));
     if (!mime || !HTMLCanvasElement.prototype.captureStream) throw Error('このブラウザではH.264/AACのMP4制作に対応していません。最新のiPhone Safariでお試しください。');
     const duration = number('Duration', 15, 30), start = number('Start', 0, 86400);
@@ -142,8 +141,8 @@ $('Generate').onclick = async () => {
     const sound = $('Mode').value === 'file';
     if (sound && (!audioFile || !$('Rights').checked)) throw Error('音楽ファイルと利用権の確認が必要です。');
     if (sound && audioFile.size > 40 * 1024 * 1024) throw Error('音楽は40MB以下にしてください。');
-    busy = true; cancel = false; $('Inputs').disabled = true; $('Generate').disabled = true; $('Cancel').hidden = false; $('Progress').value = 0;
-    $('AudioPreview').pause();
+    busy = true; instagramMusic.setGenerating(true); cancel = false; $('Inputs').disabled = true; $('Generate').disabled = true; $('Cancel').hidden = false; $('Progress').value = 0;
+    $('AudioPreview').pause(); instagramMusic.pause();
     context = new (window.AudioContext || window.webkitAudioContext)(); await context.resume();
     if (context.state !== 'running') throw Error('音声処理を開始できません。もう一度制作ボタンを押してください。');
     let buffer, analysis = null;
@@ -193,6 +192,7 @@ $('Generate').onclick = async () => {
     if (!blob.size) throw Error('動画を生成できませんでした。もう一度お試しください。');
     if (resultUrl) URL.revokeObjectURL(resultUrl);
     result = new File([blob], 'hanako-reel.mp4', { type: 'video/mp4' }); resultUrl = URL.createObjectURL(result);
+    instagramMusic.setResult(result, duration, instagramChoice);
     $('Preview').src = resultUrl; $('Download').href = resultUrl; $('Result').hidden = false; $('Progress').value = 100;
     status(`完成しました。${label} ／ 写真切り替え${cuts.length}カット。再生して音と画質をご確認ください。`);
     $('Generate').textContent = 'リールを再生成';
@@ -204,7 +204,7 @@ $('Generate').onclick = async () => {
     stream?.getTracks().forEach(track => track.stop());
     try { await context?.close(); } catch { /* Release remaining UI even if context was interrupted. */ }
     try { await wake?.release(); } catch { /* Lock may have been released by the OS. */ }
-    busy = false; $('Inputs').disabled = false; $('Generate').disabled = false; $('Cancel').hidden = true;
+    busy = false; instagramMusic.setGenerating(false); $('Inputs').disabled = false; $('Generate').disabled = false; $('Cancel').hidden = true;
   }
 };
 $('Share').onclick = async () => {
