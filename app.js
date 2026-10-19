@@ -13362,19 +13362,17 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0
   const allowedLocations = threadsMode ? hanakoThreadsLocations : null;
   const locationPreset = allowedLocations && !allowedLocations.includes(requestedLocation) ? "studioDaylight" : requestedLocation;
   const locationSelect = document.querySelector("#snsLocationPreset");
-  const customLocation = String(c.creativeProfile?.location || "").trim();
-  const locationLabel = instagramMode && customLocation
-    ? customLocation
-    : instagramMode || threadsMode
-      ? [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "撮影スタジオ"
-      : customLocation || [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || "選択した場所";
+  const explicitLocation = String(c.creativeProfile?.location || "").trim();
+  const extraLocation = extractSocialExtraLocation(c.creativeProfile?.extra);
+  const customLocation = explicitLocation || extraLocation;
+  const locationLabel = customLocation || [...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || (instagramMode || threadsMode ? "撮影スタジオ" : "選択した場所");
   const studioScenes = {
     studioDaylight: "白い塗り壁と大きな拡散窓光、淡い木床を使う明るい撮影スタジオ。窓外に実在の街並みを作らず、選択した時間帯に合う光の色へ調整する",
     studioPastel: "淡いピンクとアイボリーのシームレス背景、柔らかな布と控えめな花を使う撮影スタジオ。装飾を少数に絞り、服と表情を主役にする",
     studioNoir: "黒または深いチャコールの背景に、柔らかなキーライトと弱い輪郭光を当てるシネマ風撮影スタジオ。顔と衣装の質感がつぶれない階調を保つ",
     ...Object.fromEntries(hanakoExtraLocations[0].items.map((item) => [item.id, item.prompt])),
   };
-  const studioDirective = studioScenes[locationPreset] ? `【撮影スタジオの設計】
+  const studioDirective = !customLocation && studioScenes[locationPreset] ? `【撮影スタジオの設計】
 ・${studioScenes[locationPreset]}
 ・撮影機材、スタンド、電源コード、背景紙の端は画面に入れず、完成したポートレートとして見せる
 ・全カットで背景色と小物の連続性を保ち、別のスタジオや屋外へ勝手に移動しない` : "";
@@ -13395,6 +13393,10 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0
 ・背景は「${locationLabel}」。場所の雰囲気を具体的に写し、別の場所や世界都市の名所を混ぜない
 ・住所、店名、看板、窓外の特徴、郵便物、家族写真など、個人や正確な場所を特定できる情報を写さない
 ・「${locationLabel}」を含む場所の文字情報は画像内に表示しない`;
+  const customLocationPriority = customLocation ? `【最優先・自由指定の撮影場所】
+・撮影場所は「${locationLabel}」。場所プリセット「${[...(locationSelect?.options || [])].find((option) => option.value === locationPreset)?.textContent?.trim() || locationPreset}」より、この自由指定を優先する
+・全画像を「${locationLabel}」で統一し、スタジオ、世界都市、選択済みプリセット、別の屋内外へ変更しない
+・自由指定に含まれない看板、地名、ランドマークを勝手に追加しない` : "";
   const abLayout = getHanakoThreadsAbLayout(c.creativeProfile?.hanakoThreadsAbAxis || "outfit", c.creativeProfile?.hanakoThreadsAbLayout || "auto");
   const abSideBySide = threadsAbMode && abLayout === "sideBySide";
   const buzzKawaiiMode = threadsMode && !threadsAbMode && Boolean(c.creativeProfile?.hanakoBuzzKawaiiMode);
@@ -13503,6 +13505,8 @@ ${threadsAbDirective}
 ${sensualDirective}
 
 ${world}
+
+${customLocationPriority}
 
 ${studioDirective}
 
@@ -13833,6 +13837,15 @@ ${travelSafety}
 ・場所表記に「mood」「イメージ」「撮影地」などを足さず、別の都市名、英語だけの表記、略称へ変えない`;
 }
 
+function extractSocialExtraLocation(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const labeled = text.match(/(?:撮影場所|ロケーション|場所|背景|舞台)\s*(?:は|を|に|：|:|＝|=)?\s*([^。\n、,;；]{2,100})/i);
+  if (labeled?.[1]) return labeled[1].trim();
+  const shooting = text.match(/([^。\n、,;；]{2,100}?)(?:で|にて)\s*(?:撮影|撮る|写す)/);
+  return shooting?.[1]?.trim() || "";
+}
+
 function buildSocialCreativeDirective(context) {
   const profile = { ...socialCreativeDefaults, ...(context.creativeProfile || {}) };
   const labels = {
@@ -14060,7 +14073,13 @@ function buildSocialCreativeDirective(context) {
     const select = document.querySelector(`#${presetSelectIds[group] || ""}`);
     return [...(select?.options || [])].find((option) => option.value === key)?.textContent?.trim() || fallback;
   };
-  const location = profile.location || (profile.locationPreset === "world" ? `${context.socialCity}・${context.socialLandmark}` : preset("location", profile.locationPreset, `${context.socialCity}・${context.socialLandmark}`));
+  const extraLocation = extractSocialExtraLocation(profile.extra);
+  const location = profile.location || extraLocation || (profile.locationPreset === "world" ? `${context.socialCity}・${context.socialLandmark}` : preset("location", profile.locationPreset, `${context.socialCity}・${context.socialLandmark}`));
+  const extraPriority = profile.extra ? `【最優先・追加の自由指定】
+・次の指定は、投稿案、各プリセット、おまかせ設定、都市くじより優先する: ${profile.extra}
+・追加指定とほかの設定が矛盾する場合は、追加指定を採用し、矛盾するプリセットを画像へ混ぜない
+・追加指定に場所・背景・撮影地があれば、その場所だけを全画像で使用し、選択済みの場所や世界都市へ戻さない
+${extraLocation ? `・追加指定から読み取った撮影場所は「${extraLocation}」。別の場所へ置換・補完しない` : "・場所の指定がない部分だけ、選択済み設定で補う"}` : "";
   const concept = socialConceptCatalog.find((item) => item.id === profile.selectedConcept);
   const hanakoExpression = hanakoExpressionOptions[profile.hanakoExpression] || hanakoExpressionOptions.bashful;
   const hanakoIdea = hanakoIdeaCatalog.find((item) => item.id === profile.hanakoIdea) || hanakoIdeaCatalog[0];
@@ -14084,7 +14103,7 @@ function buildSocialCreativeDirective(context) {
 ・甘めきれいめ、柔らかい自然光、生活の途中を切り取った表情。過度な広告バナー、情報カード、派手な比較レイアウトは使わない
 ・${profile.hanakoInstagramMode ? "Instagramでは独立した写真を3枚だけ。同じ場所・衣装・髪型で、ポーズ・表情・構図を変える" : profile.hanakoThreadsAbMode ? "Threads A/B比較では写真2枚だけ。1枚目A、2枚目B。比較項目以外を固定する" : profile.hanakoBuzzKawaiiMode ? "バズかわでは独立した写真4枚だけ。同じ場所・衣装・髪型・光を固定し、アップ、全身、中距離、余韻の4構図を使い分ける" : profile.hanakoThreadsMode ? `Threads専用モードでは独立した写真${getHanakoDedicatedShotCount(profile)}枚だけ。同じ場所・衣装・髪型・構図で、可愛さと返信しやすさを優先する` : "Threadsは4枚を基本に、1枚目は感情が伝わる主役写真、2枚目は全身または場面、3枚目は小物や手元、4枚目は余韻のある風景にする"}
 ・スプレッドシートの分析${hanakoThreadsProfile.sheetSampleSize}件と、最新20件CSVを取り込んだ場合はその新しい統計を優先する。既存投稿の文章をコピーせず、世界観と構造だけを再現する` : "";
-  return `【発信キャラクターと制作設計】
+  return `${extraPriority ? `${extraPriority}\n\n` : ""}【発信キャラクターと制作設計】
 ・公開上の役割: ${profile.characterRole}
 ・人柄・話し方: ${profile.characterVoice}
 ・公開・安全境界: ${profile.safetyBoundary}
@@ -14097,7 +14116,7 @@ function buildSocialCreativeDirective(context) {
 ・光・時間帯: ${profile.lighting || preset("lighting", profile.lightingPreset, "選択された都市と場面に合う自然な光")}
 ・場所: ${location}
 ・複数枚の見せ方: ${preset("carousel", profile.carouselPreset, "場面ストーリー")}
-・追加指定: ${profile.extra || "なし"}
+・追加指定（最優先）: ${profile.extra || "なし"}
 ・未確認の実体験や個人情報は補完せず、創作の情景は投稿文で事実として断定しない${hanakoDirective}`;
 }
 

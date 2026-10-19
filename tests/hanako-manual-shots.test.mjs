@@ -4,10 +4,12 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const source = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+const helperStart = source.indexOf("function extractSocialExtraLocation(");
+const helperEnd = source.indexOf("\nfunction buildSocialCreativeDirective(", helperStart);
 const start = source.indexOf("function buildHanakoLifestyleImagePrompt(");
 const end = source.indexOf("\nfunction buildHanakoLifestyleCopyPrompt(", start);
-assert.ok(start >= 0 && end > start);
-const functionSource = source.slice(start, end);
+assert.ok(helperStart >= 0 && helperEnd > helperStart && start >= 0 && end > start);
+const functionSource = `${source.slice(helperStart, helperEnd)}\n${source.slice(start, end)}`;
 
 function makePrompt(profile, shotIndex) {
   const options = {
@@ -62,6 +64,14 @@ test("Buzz kawaii mode creates a distinct fourth story shot", () => {
   assert.match(prompt, /続きを想像したくなる静かな一枚/);
   assert.match(prompt, /第4カットの画像ファイル1個だけ/);
   assert.doesNotMatch(prompt, /4枚とも構図とカメラ位置を固定/);
+});
+
+test("extra instructions override the location preset in Threads mode", () => {
+  const profile = { hanakoThreadsMode: true, threadsImageCount: 3, locationPreset: "homeWindow", extra: "場所は雨上がりの東京駅前。赤い傘を持つ", hanakoExpression: "smile", compositionPreset: "face" };
+  const prompt = makePrompt(profile, 0);
+  assert.match(prompt, /撮影場所は「雨上がりの東京駅前」/);
+  assert.match(prompt, /場所プリセット「自宅の窓辺」より、この自由指定を優先/);
+  assert.doesNotMatch(prompt, /全画像で同じ成人女性、同じ場所「自宅の窓辺」/);
 });
 
 test("Threads A/B never creates a side-by-side image", () => {
