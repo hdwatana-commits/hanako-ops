@@ -1,9 +1,10 @@
+import {themeStories} from './reel-theme-stage.mjs?v=1';
 import {styles} from './reel-engine.mjs?v=4';
 export function mountEditStyles(root,{getAnalysis,getPlan,getPhoto,drawPreview,onChange}){
   const $=name=>root.querySelector('#reel'+name),select=$('Style');
   select.replaceChildren();const auto=document.createElement('option');auto.value='auto';auto.textContent='おまかせ（曲のテンポ・強弱で選ぶ）';select.append(auto);
   for(const[key,style]of Object.entries(styles)){const option=document.createElement('option');option.value=key;option.textContent=style.label;select.append(option);}select.value='auto';
-  select.closest('.reel-row').insertAdjacentHTML('afterend',`<div id="reelStyleGallery" class="reel-style-gallery" aria-label="編集スタイルの見本"></div><p id="reelStyleDescription" class="reel-note"></p>
+  select.closest('.reel-row').insertAdjacentHTML('afterend',`<div id="reelStyleGallery" class="reel-style-gallery" aria-label="編集スタイルの見本"></div><p id="reelStyleDescription" class="reel-note"></p><p id="reelStyleStory" class="reel-note" aria-live="polite"></p>
     <button id="reelAnalyzeEdit" type="button">♪ 音楽に合わせた編集を確認</button><p id="reelEditSummary" role="status" aria-live="polite">音声ファイルは制作時にテンポ・強弱を解析します。Instagram公式音楽は曲のBPM指定・タップに対応します。</p>
     <label>演出の華やかさ<select id="reelEffectLevel"><option value="1">華やか（おすすめ）</option><option value="1.35">もっとダイナミック</option><option value="0.55">やさしく</option></select></label>
     <details id="reelStylePreviewDetails" open><summary>動く仕上がりプレビュー</summary><canvas id="reelStyleCanvas" width="270" height="480" aria-label="編集スタイルのプレビュー"></canvas><button id="reelStylePlay" type="button">▶ この演出を再生</button><p id="reelStyleClock" role="status"></p><p class="reel-note">写真を選び、再生すると切り替え・ズーム・飾りの動きを確認できます。プレビューは無音です。Instagram公式音楽との正確な同期を確認するものではありません。</p></details>`);
@@ -24,7 +25,7 @@ export function mountEditStyles(root,{getAnalysis,getPlan,getPhoto,drawPreview,o
   function refresh(){
     const source=getPhoto();root.querySelectorAll('#reelStyleGallery button').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.style===select.value));const img=button.querySelector('img');img.hidden=!source;if(source)img.src=source;});
     $('StyleDescription').textContent=select.value==='auto'?'おまかせ：解析したBPM・強弱に合わせてスタイルとカット間隔を選びます。ジャンルや歌詞を認識する機能ではありません。':styles[select.value].description;
-    try{const plan=getPlan(analysis);if($('StylePreviewDetails').open&&!playing)paint(Math.min(1,plan.duration/3),plan);}catch(e){$('EditSummary').textContent=e.message;}
+    try{const plan=getPlan(analysis);$('StyleStory').textContent='演出の流れ：'+themeStories[styles[plan.style].family];if($('StylePreviewDetails').open&&!playing)paint(Math.min(1,plan.duration/3),plan);}catch(e){$('EditSummary').textContent=e.message;}
   }
   function updatePlan(plan){
     const source=plan.source==='audio'?`音声解析・推定 ${plan.bpm} BPM` :plan.source==='music-tap'?`試聴しながらタップ・${plan.bpm} BPM（拍の位置は未検証）`:plan.bpm?`指定 ${plan.bpm} BPM（拍の位置は手動）`:'音源未解析・仮の120 BPM（同期保証なし）';

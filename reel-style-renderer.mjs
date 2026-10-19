@@ -1,3 +1,4 @@
+import {sceneLayout,drawThemeStage} from './reel-theme-stage.mjs?v=1';
 import {styles,beatPulse} from './reel-engine.mjs?v=4';
 const clamp=x=>Math.max(0,Math.min(1,x)),ease=x=>1-Math.pow(1-clamp(x),3);
 // Uniform transforms preserve faces, clothing and the entire input photo.
@@ -25,12 +26,14 @@ export function drawPhotoScene(ctx,{photos,time,plan}){
   if(['pop','street'].includes(family)){ctx.save();ctx.translate(540,960);ctx.rotate(time*.055);ctx.strokeStyle=family==='pop'?'rgba(255,255,255,.45)':'rgba(225,202,255,.5)';ctx.lineWidth=12;for(let i=0;i<8;i++){const r=340+i*125+pulse*45*level;ctx.strokeRect(-r,-r,r*2,r*2);}ctx.restore();}
   const collage=['cute','editorial','travel','film'].includes(family);
   if(image&&collage&&level>=1){card(ctx,photos[(shot.photo+photos.length-1)%photos.length]?.image||image,140,520,290,440,-.18+Math.sin(time*.8)*.035,profile.filter,.75,12);card(ctx,photos[(shot.photo+1)%photos.length]?.image||image,930,1390,300,440,.15+Math.cos(time*.7)*.035,profile.filter,.8,12);}
+  drawThemeStage(ctx,{family,time,index,phase,pulse,duration:plan.duration,level});
   const draw=(photo,progress,opacity,number,incoming=true)=>{
     const img=photos[photo]?.image||image;if(!img)return;
     const m=sceneMotion(family,progress,pulse,number,level),enter=incoming?(1-ease(elapsed/Math.max(.18,shot.transition||.28)))*level:0,dir=number%2?-1:1,intro=index===0?1-ease(time/.55):0;
-    let x=540+m.x,y=960+m.y,angle=m.angle;
+    const layout=sceneLayout(family,number,progress,level);
+    let x=layout.x+m.x,y=layout.y+m.y,angle=m.angle+layout.angle;
     if(family==='street')x+=enter*dir*1080;else if(family==='pop')y+=enter*dir*380;else if(collage){y+=enter*180;angle+=enter*.1*dir;}
-    const scale=m.zoom*(1-enter*(['pop','street','cute'].includes(family)?.16:.07)-intro*.08),width=(collage?830:family==='clean'?880:900)*scale,height=(collage?1400:1510)*scale;
+    const scale=m.zoom*(1-enter*(['pop','street','cute'].includes(family)?.16:.07)-intro*.08),width=layout.width*scale,height=layout.height*scale;
     ctx.save();ctx.globalAlpha=opacity;if(collage)card(ctx,img,x,y,width,height,angle,profile.filter,1,family==='film'?28:18);else{const fit=Math.min(width/img.width,height/img.height);ctx.translate(x,y);ctx.rotate(angle);ctx.shadowColor='rgba(30,15,35,.22)';ctx.shadowBlur=28;ctx.filter=profile.filter;ctx.drawImage(img,-img.width*fit/2,-img.height*fit/2,img.width*fit,img.height*fit);}ctx.restore();
   };
   const mix=index?clamp(elapsed/Math.max(.18,shot.transition||.28)):1;
@@ -45,4 +48,5 @@ export function drawPhotoScene(ctx,{photos,time,plan}){
   if(['cinema','airy','film','travel'].includes(family)){const x=-400+(time*.17%1)*1900,g=ctx.createLinearGradient(x-180,0,x+300,1920);g.addColorStop(0,'rgba(255,236,210,0)');g.addColorStop(.5,`rgba(255,236,210,${.16*level})`);g.addColorStop(1,'rgba(255,236,210,0)');ctx.fillStyle=g;ctx.fillRect(0,0,1080,1920);}
   if(family==='film'){ctx.save();ctx.fillStyle='rgba(84,45,32,.1)';const seed=Math.floor(time*12);for(let i=0;i<170;i++)ctx.fillRect((i*193+seed*71)%1080,(i*277+seed*31)%1920,3,3);ctx.restore();}
   if(['editorial','luxe','clean'].includes(family)){ctx.save();ctx.strokeStyle=family==='luxe'?'rgba(241,221,181,.75)':'rgba(134,91,108,.4)';ctx.lineWidth=family==='luxe'?3:2;ctx.strokeRect(38+Math.sin(time)*5,110,1004,1680);for(const x of[60,1020])star(ctx,x,180+Math.sin(time)*20,22+pulse*12,family==='luxe'?'#e9d4a7':'#b77792');ctx.restore();}
+  drawThemeStage(ctx,{family,time,index,phase,pulse,duration:plan.duration,level,front:true});
 }

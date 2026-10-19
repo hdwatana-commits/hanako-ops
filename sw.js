@@ -1,11 +1,12 @@
-const CACHE_NAME = "hanako-room-ops-v372";
+const CACHE_NAME = "hanako-room-ops-v373";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
+  "./reel-theme-stage.mjs?v=1",
   "./reel-source.mjs?v=1",
-  "./reel-style-renderer.mjs?v=3", "./reel-edit-styles.mjs?v=3", "./reel-engine.mjs?v=4",
+  "./reel-style-renderer.mjs?v=4", "./reel-edit-styles.mjs?v=4", "./reel-engine.mjs?v=4",
   "./reel-captions.mjs?v=1", "./reel-caption-editor.mjs?v=3",
   "./reel-music.mjs?v=4",
-  "./reel-maker.mjs?v=9", "./reel-engine.mjs", "./reel-maker.css?v=8",
+  "./reel-maker.mjs?v=10", "./reel-engine.mjs", "./reel-maker.css?v=8",
   "./threads-replies.js?v=34",
   "./reply-analytics.mjs?v=1",
   "./fan-profile.mjs?v=3",
@@ -476,6 +477,7 @@ self.addEventListener("fetch", (event) => {
     || url.pathname.endsWith("/reel-source.mjs")
     || url.pathname.endsWith("/reel-captions.mjs")
     || url.pathname.endsWith("/reel-caption-editor.mjs")
+    || url.pathname.endsWith("/reel-theme-stage.mjs")
     || url.pathname.endsWith("/reel-style-renderer.mjs")
     || url.pathname.endsWith("/reel-edit-styles.mjs")
     || url.pathname.endsWith("/reel-maker.mjs")

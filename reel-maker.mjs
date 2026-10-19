@@ -1,6 +1,6 @@
 import { analyze, timeline, styles, createEditPlan } from './reel-engine.mjs?v=4';
-import { drawPhotoScene } from './reel-style-renderer.mjs?v=3';
-import { mountEditStyles } from './reel-edit-styles.mjs?v=3';
+import { drawPhotoScene } from './reel-style-renderer.mjs?v=4';
+import { mountEditStyles } from './reel-edit-styles.mjs?v=4';
 import { mountInstagramMusic } from './reel-music.mjs?v=4';
 import { drawCaption } from './reel-captions.mjs?v=1';
 import { mountCaptionEditor } from './reel-caption-editor.mjs?v=3';
