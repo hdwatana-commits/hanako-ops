@@ -60,13 +60,14 @@ export function chooseStyle(requested,analysis,manualBpm=0){
   if(bpm<=108)return 'cinema';
   return 'editorial';
 }
-export function createEditPlan(duration,requested,analysis,{offset=0,manualBpm=0,manualSource='manual'}={}){
+export function createEditPlan(duration,requested,analysis,{offset=0,manualBpm=0,manualSource='manual',photoCount=4}={}){
+  photoCount=Number.isInteger(photoCount)&&photoCount>=4&&photoCount<=12?photoCount:4;
   const style=chooseStyle(requested,analysis,manualBpm),profile=styles[style],cuts=[0];
   const actual=Boolean(analysis?.reliable),bpm=manualBpm||(actual?analysis.bpm:0);
   let beats=manualBpm?Array.from({length:Math.ceil((duration+2)*manualBpm/60)},(_,i)=>({time:i*60/manualBpm+offset,strength:.5})):(actual?(analysis.beats?.length?analysis.beats:analysis.peaks).map(p=>({time:p.time+offset,strength:p.strength||.5})):[]);
   const source=manualBpm?manualSource:actual?'audio':'estimated';
   if(!beats.length)beats=Array.from({length:Math.ceil(duration*2)},(_,i)=>({time:i*.5+offset,strength:.35}));
-  const maximumHold=Math.max(profile.minHold,duration/4-(60/(bpm||120))*.5);
+  const maximumHold=Math.max(Math.min(profile.minHold,duration/photoCount*.7),duration/photoCount-(60/(bpm||120))*.5);
   let count=0;
   for(const beat of beats){
     const t=beat.time;if(t<0)continue;
@@ -74,7 +75,8 @@ export function createEditPlan(duration,requested,analysis,{offset=0,manualBpm=0
     const step=dynamic&&intensity>.75?Math.max(2,profile.beats/2):dynamic&&intensity<.2?Math.min(12,profile.beats*2):profile.beats;
     if((count>=step||t-cuts.at(-1)>=maximumHold)&&t-cuts.at(-1)>=profile.minHold&&t<duration-.4){cuts.push(t);count=0;}count++;
   }
-  const shots=cuts.map((start,i)=>({start,end:cuts[i+1]??duration,photo:i%4,intensity:intensityAt(analysis,start-offset),transition:profile.transition*(actual&&intensityAt(analysis,start-offset)>.75?.7:1)}));
+  while(cuts.length<photoCount){let longest=0;for(let i=1;i<cuts.length;i++)if((cuts[i+1]??duration)-cuts[i]>(cuts[longest+1]??duration)-cuts[longest])longest=i;cuts.splice(longest+1,0,(cuts[longest]+(cuts[longest+1]??duration))/2);}
+  const shots=cuts.map((start,i)=>({start,end:cuts[i+1]??duration,photo:i%photoCount,intensity:intensityAt(analysis,start-offset),transition:Math.min((cuts[i+1]??duration)-start,profile.transition*(actual&&intensityAt(analysis,start-offset)>.75?.7:1))}));
   return {style,requested,bpm,source,beats,shots,cuts,duration,offset,confidence:actual?analysis.confidence:0,contrast:analysis?.contrast||0};
 }
 export function beatPulse(plan,time){let pulse=0;for(const beat of plan.beats){const delta=time-beat.time;if(delta>=0&&delta<.24)pulse=Math.max(pulse,Math.exp(-delta*15)*Math.min(1,beat.strength||.5));}return pulse;}

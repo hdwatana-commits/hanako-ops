@@ -1,4 +1,4 @@
-import {styles} from './reel-engine.mjs?v=3';
+import {styles} from './reel-engine.mjs?v=4';
 export function mountEditStyles(root,{getAnalysis,getPlan,getPhoto,drawPreview,onChange}){
   const $=name=>root.querySelector('#reel'+name),select=$('Style');
   select.replaceChildren();const auto=document.createElement('option');auto.value='auto';auto.textContent='おまかせ（曲のテンポ・強弱で選ぶ）';select.append(auto);

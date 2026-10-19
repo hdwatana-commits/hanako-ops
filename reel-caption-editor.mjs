@@ -121,6 +121,8 @@ export function mountCaptionEditor(root,{getAnalysis,getAudio,drawFrame,onPrevie
   $('AudioPreview').addEventListener('ended',()=>{if(playing)stop();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
   return {
+    hasText(){return Boolean($('LyricsText').value.trim());},
+    importTranscript(cues){stop();const checked=validateCaptionCues(cues,duration());if(!checked.length)throw Error('歌詞・音声を認識できませんでした。別の区間か、手入力をお試しください。');$('LyricsEnabled').checked=true;$('LyricsControls').hidden=false;$('LyricsText').value=checked.map(c=>c.text).join('\n');$('LyricsStart').value='0';$('LyricsEnd').value=String(duration());$('LyricsOffset').value='0';lastOffset=0;$('LyricsTimeBase').value='video';$('LyricsRights').checked=false;plan={cues:checked,basis:'transcription'};manual=true;tapIncomplete=false;planSignature=signature();table();previewTime=0;say('音声認識の下書きです。歌詞の間違い・抜け・時刻を確認し、使用する権利を確認してください。');render();},
     pause(){stop();},
     capture(analysis){
       if(!$('LyricsEnabled').checked)return null;

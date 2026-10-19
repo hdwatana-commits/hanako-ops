@@ -12,3 +12,6 @@ verify_jwt = true
 
 [functions.instagram-audio]
 verify_jwt = true
+
+[functions.reel-transcribe]
+verify_jwt = true

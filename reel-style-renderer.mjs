@@ -1,4 +1,4 @@
-import {styles,beatPulse} from './reel-engine.mjs?v=3';
+import {styles,beatPulse} from './reel-engine.mjs?v=4';
 const clamp=x=>Math.max(0,Math.min(1,x)),ease=x=>1-Math.pow(1-clamp(x),3);
 // Uniform transforms preserve faces, clothing and the entire input photo.
 export function sceneMotion(family,phase,pulse,index,level=1){
@@ -24,7 +24,7 @@ export function drawPhotoScene(ctx,{photos,time,plan}){
   if(['cute','airy'].includes(family)){ctx.save();ctx.globalAlpha=.14*level;for(let i=0;i<5;i++)heart(ctx,100+i*220,350+Math.sin(time*.6+i)*160+i%2*1000,140+40*Math.sin(time+i),'#f191b7');ctx.restore();}
   if(['pop','street'].includes(family)){ctx.save();ctx.translate(540,960);ctx.rotate(time*.055);ctx.strokeStyle=family==='pop'?'rgba(255,255,255,.45)':'rgba(225,202,255,.5)';ctx.lineWidth=12;for(let i=0;i<8;i++){const r=340+i*125+pulse*45*level;ctx.strokeRect(-r,-r,r*2,r*2);}ctx.restore();}
   const collage=['cute','editorial','travel','film'].includes(family);
-  if(image&&collage&&level>=1){card(ctx,photos[(shot.photo+3)%4]?.image||image,140,520,290,440,-.18+Math.sin(time*.8)*.035,profile.filter,.75,12);card(ctx,photos[(shot.photo+1)%4]?.image||image,930,1390,300,440,.15+Math.cos(time*.7)*.035,profile.filter,.8,12);}
+  if(image&&collage&&level>=1){card(ctx,photos[(shot.photo+photos.length-1)%photos.length]?.image||image,140,520,290,440,-.18+Math.sin(time*.8)*.035,profile.filter,.75,12);card(ctx,photos[(shot.photo+1)%photos.length]?.image||image,930,1390,300,440,.15+Math.cos(time*.7)*.035,profile.filter,.8,12);}
   const draw=(photo,progress,opacity,number,incoming=true)=>{
     const img=photos[photo]?.image||image;if(!img)return;
     const m=sceneMotion(family,progress,pulse,number,level),enter=incoming?(1-ease(elapsed/Math.max(.18,shot.transition||.28)))*level:0,dir=number%2?-1:1,intro=index===0?1-ease(time/.55):0;
