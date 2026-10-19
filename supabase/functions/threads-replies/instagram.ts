@@ -1,6 +1,12 @@
 import {firstInstagramComments,instagramPairFilter} from '../../../instagram-reply-rules.mjs';
+export async function instagramReplyMemory(db:any,ownerId:string,authorId:string,commentId:string){
+ const base=`hanako_ig_reply_queue?user_id=eq.${encodeURIComponent(ownerId)}&status=eq.published&comment_id=neq.${encodeURIComponent(commentId)}`;
+ const history=await db(`${base}&author_id=eq.${encodeURIComponent(authorId)}&order=commented_at.desc&limit=20&select=comment_id,comment_text,reply_text,caption,commented_at,status,reply_id`);
+ const recent=await db(`${base}&order=updated_at.desc&limit=12&select=reply_text`);
+ return {instagram_history:history.map((h:any)=>({...h,post_text:h.caption})),instagram_recent_replies:recent.map((h:any)=>h.reply_text).filter(Boolean)};
+}
 export function instagramReplies(deps:any){
- const instagramTone="\\n【Instagram専用：スーパードMモード】名前は演出上のラベル。実際の口調は照れ屋で甘えん坊、優しく可愛く、褒められるとすぐドキドキする。『はわっ💕』『照れちゃう…🫣』『そんなこと言われたらドキドキするよ💦』のような表現をコメントの温度に合わせて時々使う。毎回同じ擬音や語尾にせず、擬音は多くても1返信に1つ、普通のお礼や質問には内容に沿って自然に答える。外国語には同じ言語で自然に表現し、日本語の擬音を無理に入れない。性的な喘ぎ声・具体的な性行為・性癖の強調・服従や何でも従う約束はしない。";
+ const instagramTone="\\n【Instagram専用：スーパードMモード】名前は演出上のラベル。実際の口調は照れ屋で甘えん坊、優しく可愛く、褒められるとすぐドキドキする。お礼・共感・投稿の具体的な感想・軽い冗談・質問への回答から、今回のコメントに合う反応を選ぶ。毎回褒め言葉への照れで返さず、照れやドキドキは合う場面だけ使う。例文のコピーはせず、投稿のキャプションと相手の言葉を具体的に拾う。past_conversationはこのInstagram利用者との過去の交流だけで、別投稿でも既出の話を考慮してよい。recent_repliesには他の相手への返信も含むため、言い回しの重複回避だけに使い、他人との会話内容をこの相手の経験として扱わない。同じ冒頭・語尾・擬音・感想の型を続けず、普通のお礼や落ち着いた返答も自然に選ぶ。毎回同じ擬音や語尾にせず、擬音は多くても1返信に1つ、普通のお礼や質問には内容に沿って自然に答える。外国語には同じ言語で自然に表現し、日本語の擬音を無理に入れない。性的な喘ぎ声・具体的な性行為・性癖の強調・服従や何でも従う約束はしない。";
  const {db,owner,env,settings,generate,inWindow,exclusionReason,hasNotePromotion,wrongNoteReply,hasInstagramPromotion,wrongGreeting,wrongReplyLanguage}=deps;
  const filter=()=>`user_id=eq.${encodeURIComponent(owner())}`;
  let credentials:any=null;
@@ -38,7 +44,7 @@ export function instagramReplies(deps:any){
    const original=first.find((x:any)=>x.from.id===c.author_id);if(!original||original.id!==c.comment_id){await patch(c,{status:'skipped',error:'最初のコメントを確認できません'});return {status:'skipped'};}
    const excluded=exclusionReason(s,{username:c.username,comment_text:c.comment_text});if(excluded||await alreadyReplied(c,comments,me)){await patch(c,{status:'skipped',error:excluded||'本人が既に返信済みです'});return {status:'skipped'};}
    if(!await db('rpc/hanako_ig_claim_pair','POST',{owner_id:owner(),target_media:c.media_id,target_author:c.author_id}))return {status:'busy'};
-   const input={comment_id:c.comment_id,username:`ig_${c.author_id}`,comment_text:c.comment_text,post_text:c.caption,platform:'instagram'};
+   const input={comment_id:c.comment_id,username:`ig_${c.author_id}`,comment_text:c.comment_text,post_text:c.caption,platform:'instagram',...await instagramReplyMemory(db,owner(),c.author_id,c.comment_id)};
    let text:string;try{text=await generate({...s,use_history:false,custom_prompt:s.custom_prompt+instagramTone+'\nInstagramの投稿・リールへの初回コメントだけの返信。会話を続ける質問は付けず、短く自然に返す。Instagramへの案内や自分のInstagramリンクは書かない。あだ名を創作しない。'},input);}catch(e){if(deps.isQuotaError?.(e)){await patch(c,{status:'pending',attempts:c.attempts,error:'AIの上限です。待機します'});await deps.updateSettings({ai_retry_at:new Date(Date.now()+3600000).toISOString()});return {status:'quota_wait'};}await patch(c,{status:'failed',error:e instanceof Error?e.message:'生成失敗'});throw e;}
    await patch(c,{status:'draft',reply_text:text});if(cfg.mode==='draft')return {status:'draft'};
    const fresh=await config(),freshSettings=await settings();if(!fresh.enabled||fresh.mode!=='auto'||!inWindow(freshSettings)||JSON.stringify([freshSettings.ai_provider,freshSettings.ai_connection])!==JSON.stringify([s.ai_provider,s.ai_connection]))return {status:'draft'};
