@@ -804,10 +804,12 @@
                   </div>
                 </div>
                 <div class="sns-hanako-photobook">
-                  <label class="sns-hanako-photobook-switch" for="snsHanakoThreadsMode"><span><strong>スレッズモード</strong><small>可愛さ重視・同じ構図の写真3枚と返信しやすいキャプション1つ</small></span><input id="snsHanakoThreadsMode" type="checkbox"></label>
+                  <button class="primary" id="createHanakoBuzzKawaii" type="button">バズかわ4枚おまかせ作成</button>
+                  <small id="snsHanakoBuzzKawaiiStatus" aria-live="polite">感情テーマから、場所・服装・髪型・表情・ポーズ・構図・光をまとめて選びます。</small>
+                  <label class="sns-hanako-photobook-switch" for="snsHanakoThreadsMode"><span><strong>スレッズモード</strong><small>可愛さ重視の連作写真と返信しやすいキャプション1つ</small></span><input id="snsHanakoThreadsMode" type="checkbox"></label>
                   <div class="sns-hanako-photobook-settings" id="snsHanakoThreadsSettings" hidden>
                     <small>場所・髪型・服装・構図を各画像で固定。海外都市は選ばず、顔アップやバストアップを多めにおすすめします。</small>
-                    <label class="field-label" for="snsHanakoThreadsCount">投稿する画像枚数</label><select id="snsHanakoThreadsCount"><option value="3">3枚</option><option value="2">2枚</option></select>
+                    <label class="field-label" for="snsHanakoThreadsCount">投稿する画像枚数</label><select id="snsHanakoThreadsCount"><option value="4">4枚</option><option value="3">3枚</option><option value="2">2枚</option></select>
                     <button id="rerollHanakoThreads" type="button">おすすめの組み合わせを変更</button>
                     <label class="sns-hanako-photobook-switch" for="snsHanakoThreadsAbMode"><span><strong>A/B比較モード</strong><small>条件を揃えたA・Bの2枚と、選びやすい問いかけを作成</small></span><input id="snsHanakoThreadsAbMode" type="checkbox"></label>
                     <div class="sns-hanako-photobook-settings" id="snsHanakoThreadsAbSettings" hidden>
@@ -1222,7 +1224,7 @@
                   <p id="snsReferenceBoardStatus">「画像と投稿文を作る」を押すと、ここにAIへ渡す画像ボードが表示されます。</p>
                 </div>
                 <div class="sns-gemini-quick-actions">
-                  <div id="snsHanakoShotControl" hidden><label class="field-label" for="snsHanakoShotIndex">今回AIへ送る画像</label><select id="snsHanakoShotIndex"><option value="0">1枚目</option><option value="1">2枚目</option><option value="2">3枚目</option></select><small>1回につき1枚だけ生成します。各画像を別々に保存し、必要な枚数まで順番に作ってください。投稿文は右のボタンで1つ作ります。</small></div>
+                <div id="snsHanakoShotControl" hidden><label class="field-label" for="snsHanakoShotIndex">今回AIへ送る画像</label><select id="snsHanakoShotIndex"><option value="0">1枚目</option><option value="1">2枚目</option><option value="2">3枚目</option><option value="3">4枚目</option></select><small>1回につき1枚だけ生成します。各画像を別々に保存し、必要な枚数まで順番に作ってください。投稿文は右のボタンで1つ作ります。</small></div>
                   <button class="primary" id="sendSocialGeminiImage" type="button"><span>1</span>画像と投稿文を作る</button>
                   <button id="sendSocialGeminiCopy" type="button"><span>2</span>投稿文を作りに行く</button>
                 </div>

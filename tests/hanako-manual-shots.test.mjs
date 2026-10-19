@@ -13,7 +13,7 @@ function makePrompt(profile, shotIndex) {
   const options = {
     snsLocationPreset: [{ value: "homeWindow", textContent: "自宅の窓辺" }],
     snsPosePreset: ["pose1", "pose2", "pose3"].map((value) => ({ value, textContent: value })),
-    snsCompositionPreset: ["face", "bust", "waist"].map((value) => ({ value, textContent: value })),
+    snsCompositionPreset: ["face", "bust", "waist", "full", "thigh"].map((value) => ({ value, textContent: value })),
     snsHairPreset: [{ value: "hair", textContent: "ロングヘア" }],
     snsOutfitPreset: [{ value: "dress", textContent: "ワンピース" }],
   };
@@ -29,6 +29,7 @@ function makePrompt(profile, shotIndex) {
     hanakoThreadsLocations: ["homeWindow"],
     hanakoExtraLocations: [{ items: [] }],
     hanakoThreadsExpressions: ["smile", "soft", "bashful"],
+    hanakoBuzzKawaiiThemes: [{ id: "protect", label: "守ってあげたい", expressions: ["smile", "soft", "bashful", "smile"] }],
     hanakoExpressionOptions: { smile: { label: "笑顔" }, soft: { label: "やさしい笑顔" }, bashful: { label: "はにかみ" } },
     hanakoThreadsAbFields: { outfit: { source: "snsOutfitPreset", label: "服装" }, pose: { source: "snsPosePreset", label: "ポーズ" } },
     hanakoThreadsAbLooks: [],
@@ -51,6 +52,16 @@ test("Threads two-image mode makes two separate calls", () => {
   assert.match(makePrompt(profile, 0), /全2枚のうち、今回は1枚目/);
   assert.match(makePrompt(profile, 1), /全2枚のうち、今回は2枚目/);
   assert.doesNotMatch(makePrompt(profile, 1), /今回は3枚目/);
+});
+
+test("Buzz kawaii mode creates a distinct fourth story shot", () => {
+  const profile = { hanakoThreadsMode: true, hanakoBuzzKawaiiMode: true, hanakoBuzzKawaiiTheme: "protect", threadsImageCount: 4, locationPreset: "homeWindow", hanakoExpression: "smile", compositionPreset: "face" };
+  const prompt = makePrompt(profile, 3);
+  assert.match(prompt, /全4枚のうち、今回は4枚目/);
+  assert.match(prompt, /表情アップ→全身→親密な仕草→余韻/);
+  assert.match(prompt, /続きを想像したくなる静かな一枚/);
+  assert.match(prompt, /第4カットの画像ファイル1個だけ/);
+  assert.doesNotMatch(prompt, /4枚とも構図とカメラ位置を固定/);
 });
 
 test("Threads A/B never creates a side-by-side image", () => {

@@ -3321,6 +3321,8 @@ const socialCreativeDefaults = {
   hanakoPhotobookMode: false,
   hanakoInstagramMode: false,
   hanakoThreadsMode: false,
+  hanakoBuzzKawaiiMode: false,
+  hanakoBuzzKawaiiTheme: "",
   hanakoThreadsAbMode: false,
   hanakoThreadsAbAxis: "outfit",
   hanakoThreadsAbB: "",
@@ -3713,6 +3715,16 @@ const hanakoThreadsLocations = ["homeLiving", "homeSofa", "homeBedroom", "homeBe
 const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkTweedDress", "blackRibbonKnit", "whiteLaceDenim", "cardiganFloralDress", "navyPoloMini", "creamWrapSkirt", "cafeCasual", "seiso", "miniLolita", "miniBandGal", "lastTrainCoat", "umbrellaTrench", "warmSleeveKnit", "gateDateJacket", "handholdCardigan", "miniRibbonCardigan", "miniTurtleneckBoots", "miniTweedSet", "miniShirtKnit", "miniMonotone", "miniDenimJacket", "miniPoloSocks", "miniOffShoulder", "miniSweaterDress", "miniBlazer", "animeMagicHeroine", "animeFantasySwordswoman", "animeCyberIdol", "animeShrineGuardian", "animeAcademyMage", "cosplayCafeMaid", "cosplayNurse", "cosplaySecretary", "cosplayTeacher", "cosplayPolice", "cosplayChef", "cosplayBunny", "cosplayHotel", "cosplayGamer", "cosplayOfficeLady", "cosplaySailorMoon", "cosplayFrieren", "cosplayMitsuri", "cosplayShinobu", "cosplayKiki", "cosplayFujiko", "cosplayChisato", "cosplayTakina", "cosplayKana", "cosplayRuby"];
 const hanakoThreadsPoses = ["fingerHeartNearFace", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan", "watchLastTrain", "shareUmbrellaLean", "gentleSleeveHold", "gateTurnBack", "handAlmostTouch", "subwayPoleGlance", "hairTieMoment", "coatPocketLean", "scarfAdjustGaze", "bagBehindBack", "seatNextTap", "shareEarphone", "drinkOffer", "doorHoldLookback", "tiptoeWhisper"];
 const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze", "lastTrainHope", "rainCloseSmile", "coldPleading", "gateFarewell", "handholdNervous", "caughtLooking", "onlyYouSmile", "surpriseEyeContact", "whisperSecret", "missedYou", "jealousPout", "praiseShy", "sleepyTrust", "comeCloserEyes", "goodbyePause"];
+const hanakoBuzzKawaiiThemes = [
+  { id: "protect", label: "守ってあげたい", locations: ["homeWindow", "cafe", "busStopEvening", "stationCanopyRain"], outfits: ["sweetIvoryKnitMini", "warmSleeveKnit", "handholdCardigan", "softBlueShirtDress"], poses: ["gentleSleeveHold", "cupHold", "handsBackLean", "scarfAdjustGaze"], expressions: ["bashful", "coldPleading", "waitingForAnswer", "sleepyTrust"], compositions: ["face", "bust", "influencerHighDiagonal"], lights: ["morning", "cloudy", "warm"] },
+  { id: "surprise", label: "不意にドキッ", locations: ["subwayPlatform", "bookstoreAisle", "convenienceNight", "pedestrianBridge"], outfits: ["blackRibbonKnit", "miniTweedSet", "miniBlazer", "creamWrapSkirt"], poses: ["lookback", "hairTieMoment", "doorHoldLookback", "subwayPoleGlance"], expressions: ["caughtLooking", "surpriseEyeContact", "lookAwayThenMeet", "shySideSmile"], compositions: ["influencerShoulderBack", "influencerCandidTilt", "influencerTeleCompression"], lights: ["blue", "neon", "warm"] },
+  { id: "girlfriend", label: "彼女感", locations: ["homeKitchen", "cafeTerrace", "riverside", "shoppingArcade"], outfits: ["cardiganFloralDress", "whiteLaceDenim", "cafeCasual", "miniRibbonCardigan"], poses: ["drinkOffer", "shareEarphone", "seatNextTap", "jacketAdjust"], expressions: ["softEyeContact", "missedYou", "onlyYouSmile", "bigsmile"], compositions: ["waist", "influencerCafeTable", "influencerThreeQuarter"], lights: ["cafe", "morning", "golden"] },
+  { id: "littleDevil", label: "清楚×小悪魔", locations: ["studioDaylight", "homeVanity", "pianoBar", "rooftop"], outfits: ["pinkTweedDress", "satinBowBlouse", "miniMonotone", "miniOffShoulder"], poses: ["ribbonAdjust", "chairSideTurn", "tiptoeWhisper", "bagBehindBack"], expressions: ["secretSmile", "playfulBrow", "upward", "halfLiddedSmile"], compositions: ["editorial", "influencerLowDiagonal", "influencerMirrorSide"], lights: ["warm", "bar", "neon"] },
+  { id: "walkHome", label: "一緒に帰りたい", locations: ["ticketGateNight", "stationPlatformNight", "riversideNightWalk", "winterStreetLights"], outfits: ["lastTrainCoat", "gateDateJacket", "miniTurtleneckBoots", "umbrellaTrench"], poses: ["gateTurnBack", "watchLastTrain", "handAlmostTouch", "coatPocketLean"], expressions: ["lastTrainHope", "gateFarewell", "goodbyePause", "expectantGaze"], compositions: ["influencerWalkTracking", "influencerLeadingLines", "influencerEnvironmentalWide"], lights: ["blue", "neon", "warm"] },
+  { id: "compliment", label: "褒めたくなる", locations: ["studioPastel", "museum", "bookstore", "homeLiving"], outfits: ["pinkTweedDress", "navyPoloMini", "miniTweedSet", "softBlueShirtDress"], poses: ["jacketOnShoulder", "hairTouch", "fingerHeartNearFace", "stepTowardCamera"], expressions: ["praiseShy", "sunlitSquint", "coveredLaugh", "curiousTilt"], compositions: ["influencerCenteredSymmetry", "influencerProfileRim", "thigh"], lights: ["morning", "cloudy", "golden"] },
+  { id: "conversation", label: "コメントしたくなる", locations: ["cafe", "laundromat", "supermarketAisle", "homeSofa"], outfits: ["cafeCasual", "homeHoodie", "miniShirtKnit", "whiteLaceDenim"], poses: ["cheekHands", "cupHold", "seatNextTap", "drinkOffer"], expressions: ["curiousTilt", "gentlePout", "wink", "surpriseSmile"], compositions: ["bust", "influencerForegroundBlur", "influencerCafeTable"], lights: ["cafe", "cloudy", "warm"] },
+  { id: "cinema", label: "映画のワンシーン", locations: ["stationCanopyRain", "pedestrianBridge", "pianoBar", "rooftop"], outfits: ["umbrellaTrench", "blackRibbonKnit", "miniBlazer", "gateDateJacket"], poses: ["shareUmbrellaLean", "lookback", "gateTurnBack", "scarfAdjustGaze"], expressions: ["rainCloseSmile", "dontWantToLeave", "comeCloserEyes", "onlyYouSmile"], compositions: ["influencerDoorFrame", "influencerWindowReflection", "influencerNegativeSpace"], lights: ["blue", "neon", "bar"] },
+];
 hanakoInstagramLocations.push(...hanakoExtraLocations[0].items.map((item) => item.id));
 hanakoInstagramLocations.push(...hanakoExtraLocations.slice(1).flatMap((group) => group.items.map((item) => item.id)));
 hanakoInstagramOutfits.push(...hanakoExtraOutfits[0].items.map((item) => item.id), ...hanakoExtraOutfits[3].items.map((item) => item.id));
@@ -3802,7 +3814,12 @@ function renderHanakoThreadsSettings() {
   if (settings) settings.hidden = !enabled;
   renderHanakoShotControl(profile);
   const countSelect = document.querySelector("#snsHanakoThreadsCount");
-  if (countSelect) { countSelect.value = String(profile.threadsImageCount === 2 ? 2 : 3); countSelect.disabled = Boolean(profile.hanakoThreadsAbMode); }
+  if (countSelect) { countSelect.value = String([2, 3, 4].includes(profile.threadsImageCount) ? profile.threadsImageCount : 3); countSelect.disabled = Boolean(profile.hanakoThreadsAbMode); }
+  const buzzStatus = document.querySelector("#snsHanakoBuzzKawaiiStatus");
+  const buzzTheme = hanakoBuzzKawaiiThemes.find((item) => item.id === profile.hanakoBuzzKawaiiTheme);
+  if (buzzStatus) buzzStatus.textContent = profile.hanakoBuzzKawaiiMode && buzzTheme
+    ? `選択中：${buzzTheme.label}｜4枚を表情アップ→全身→親密な仕草→余韻で構成します。`
+    : "感情テーマから、場所・服装・髪型・表情・ポーズ・構図・光をまとめて選びます。";
   renderHanakoThreadsAbSettings();
   for (const id of ["snsLocationPreset", "hanakoGasLocation"]) {
     const select = document.querySelector(`#${id}`);
@@ -3835,8 +3852,66 @@ function recommendHanakoThreads() {
   set("snsThreadsImageCount", abEnabled ? "2" : String(getSocialCreativeProfile().threadsImageCount === 2 ? 2 : 3));
   set("snsHanakoSensualLevel", "off");
   for (const id of ["snsVisualLocation", "snsOutfit", "snsPose", "snsComposition"]) set(id, "");
+  state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoBuzzKawaiiMode: false, hanakoBuzzKawaiiTheme: "" };
   saveSocialCreativeProfile();
   renderHanakoGasSettings();
+}
+
+function createHanakoBuzzKawaii() {
+  const valuesIn = (id, values) => {
+    const available = new Set([...(document.querySelector(`#${id}`)?.options || [])].map((option) => option.value));
+    return values.filter((value) => available.has(value));
+  };
+  const pick = (items) => items[Math.floor(Math.random() * items.length)];
+  const recent = state.hanakoBuzzKawaiiRecent || [];
+  const recentThemes = recent.slice(0, 4).map((item) => item.theme);
+  const freshThemes = hanakoBuzzKawaiiThemes.filter((theme) => !recentThemes.includes(theme.id));
+  const themePool = freshThemes.length ? freshThemes : hanakoBuzzKawaiiThemes;
+  const hairPool = valuesIn("snsHairPreset", ["straight", "wave", "looseWave", "lowpony", "highPony", "halfup", "ribbonHalfup", "looseBraid", "bob", "outerBob", "earTuck", "wind"]);
+  const candidates = Array.from({ length: 40 }, () => {
+    const theme = pick(themePool);
+    const location = pick(valuesIn("snsLocationPreset", theme.locations));
+    const outfit = pick(valuesIn("snsOutfitPreset", theme.outfits));
+    const pose = pick(valuesIn("snsPosePreset", theme.poses));
+    const expression = pick(valuesIn("snsHanakoExpression", theme.expressions));
+    const composition = pick(valuesIn("snsCompositionPreset", theme.compositions));
+    const lighting = pick(valuesIn("snsLightingPreset", theme.lights));
+    return { theme: theme.id, location, outfit, hair: pick(hairPool), pose, expression, composition, lighting };
+  }).filter((item) => Object.values(item).every(Boolean));
+  if (!candidates.length) return showToast("バズかわ設定の候補を作れませんでした");
+  const similarity = (candidate, previous) => ["theme", "location", "outfit", "hair", "pose", "expression", "composition", "lighting"]
+    .reduce((sum, key) => sum + (candidate[key] === previous[key] ? 1 : 0), 0);
+  const chosen = candidates.sort((a, b) => recent.reduce((sum, item, index) => sum + similarity(a, item) * (recent.length - index), 0)
+    - recent.reduce((sum, item, index) => sum + similarity(b, item) * (recent.length - index), 0))[0];
+  const set = (id, value) => { const input = document.querySelector(`#${id}`); if (input) input.value = value; };
+  document.querySelector("#snsHanakoMode").checked = true;
+  document.querySelector("#snsHanakoThreadsMode").checked = true;
+  document.querySelector("#snsHanakoInstagramMode").checked = false;
+  document.querySelector("#snsHanakoPhotobookMode").checked = false;
+  document.querySelector("#snsHanakoThreadsAbMode").checked = false;
+  activePlatform = "Threads";
+  document.querySelectorAll("#platformTabs button").forEach((button) => button.classList.toggle("active", button.dataset.platform === "Threads"));
+  set("snsLocationPreset", chosen.location);
+  set("snsOutfitPreset", chosen.outfit);
+  set("snsHairPreset", chosen.hair);
+  set("snsPosePreset", chosen.pose);
+  set("snsHanakoExpression", chosen.expression);
+  set("snsCompositionPreset", chosen.composition);
+  set("snsLightingPreset", chosen.lighting);
+  set("snsHanakoThreadsCount", "4");
+  set("snsThreadsImageCount", "4");
+  set("snsHanakoSensualLevel", "off");
+  for (const id of ["snsVisualLocation", "snsOutfit", "snsHairStyle", "snsPose", "snsComposition", "snsLighting"]) set(id, "");
+  state.hanakoBuzzKawaiiRecent = [chosen, ...recent].slice(0, 30);
+  state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoBuzzKawaiiMode: true, hanakoBuzzKawaiiTheme: chosen.theme };
+  saveSocialCreativeProfile();
+  renderHanakoPhotobookSettings();
+  renderHanakoInstagramSettings();
+  renderHanakoThreadsSettings();
+  renderHanakoGasSettings();
+  renderSocialConcepts();
+  const theme = hanakoBuzzKawaiiThemes.find((item) => item.id === chosen.theme);
+  showToast(`「${theme?.label || "バズかわ"}」で4枚の設定を作りました`);
 }
 
 function recommendHanakoThreadsAb({ rerollA = false } = {}) {
@@ -4212,7 +4287,8 @@ function saveSocialCreativeProfile() {
     const location = document.querySelector("#snsLocationPreset");
     if (threadsMode && location && !hanakoThreadsLocations.includes(location.value)) location.value = "studioDaylight";
     const abLayout = getHanakoThreadsAbLayout(value("snsHanakoThreadsAbAxis") || "outfit", value("snsHanakoThreadsAbLayout") || "auto");
-    for (const [id, fixed] of [["snsThreadsImageCount", threadsAbMode ? "2" : instagramMode ? "3" : String(value("snsHanakoThreadsCount") === "2" ? 2 : 3)], ["snsHanakoSensualLevel", instagramMode ? "mishap" : "off"]]) {
+    const selectedThreadsCount = [2, 3, 4].includes(Number(value("snsHanakoThreadsCount"))) ? Number(value("snsHanakoThreadsCount")) : 3;
+    for (const [id, fixed] of [["snsThreadsImageCount", threadsAbMode ? "2" : instagramMode ? "3" : String(selectedThreadsCount)], ["snsHanakoSensualLevel", instagramMode ? "mishap" : "off"]]) {
       const input = document.querySelector(`#${id}`);
       if (input) input.value = fixed;
     }
@@ -4247,6 +4323,8 @@ function saveSocialCreativeProfile() {
     hanakoPhotobookMode: Boolean(document.querySelector("#snsHanakoPhotobookMode")?.checked),
     hanakoInstagramMode: instagramMode,
     hanakoThreadsMode: threadsMode,
+    hanakoBuzzKawaiiMode: threadsMode && !threadsAbMode && Boolean(getSocialCreativeProfile().hanakoBuzzKawaiiMode),
+    hanakoBuzzKawaiiTheme: threadsMode && !threadsAbMode ? getSocialCreativeProfile().hanakoBuzzKawaiiTheme : "",
     hanakoThreadsAbMode: threadsAbMode,
     hanakoThreadsAbAxis: value("snsHanakoThreadsAbAxis") || "outfit",
     hanakoThreadsAbB: value("snsHanakoThreadsAbB"),
@@ -4441,6 +4519,7 @@ function bindSocialPatternStudio() {
     if (getSocialCreativeProfile().hanakoThreadsAbMode) recommendHanakoThreadsAb({ rerollA: true });
     else recommendHanakoThreads();
   });
+  document.querySelector("#createHanakoBuzzKawaii")?.addEventListener("click", createHanakoBuzzKawaii);
   document.querySelector("#snsHanakoThreadsAbMode")?.addEventListener("change", (event) => {
     saveSocialCreativeProfile();
     if (event.currentTarget.checked) recommendHanakoThreadsAb({ rerollA: true });
@@ -4450,6 +4529,9 @@ function bindSocialPatternStudio() {
   document.querySelector("#snsHanakoThreadsAbB")?.addEventListener("change", saveSocialCreativeProfile);
   document.querySelector("#snsHanakoThreadsCount")?.addEventListener("change", (event) => {
     document.querySelector("#snsThreadsImageCount").value = event.currentTarget.value;
+    if (Number(event.currentTarget.value) !== 4) {
+      state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoBuzzKawaiiMode: false, hanakoBuzzKawaiiTheme: "" };
+    }
     saveSocialCreativeProfile();
     renderHanakoThreadsSettings();
   });
@@ -12911,7 +12993,7 @@ function generateHanakoLifestyleCopy(context, variant = 0) {
 
 function getHanakoDedicatedShotCount(profile = getSocialCreativeProfile()) {
   if (profile.hanakoInstagramMode) return 3;
-  if (profile.hanakoThreadsMode) return profile.hanakoThreadsAbMode ? 2 : profile.threadsImageCount === 2 ? 2 : 3;
+  if (profile.hanakoThreadsMode) return profile.hanakoThreadsAbMode ? 2 : [2, 3, 4].includes(profile.threadsImageCount) ? profile.threadsImageCount : 3;
   return 0;
 }
 
@@ -13315,7 +13397,8 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0
 ・「${locationLabel}」を含む場所の文字情報は画像内に表示しない`;
   const abLayout = getHanakoThreadsAbLayout(c.creativeProfile?.hanakoThreadsAbAxis || "outfit", c.creativeProfile?.hanakoThreadsAbLayout || "auto");
   const abSideBySide = threadsAbMode && abLayout === "sideBySide";
-  const count = threadsAbMode ? 2 : instagramMode ? 3 : threadsMode ? (Number(c.creativeProfile?.threadsImageCount) === 2 ? 2 : 3) : photobookMode ? photobookCount : Math.max(1, Math.min(7, Number(c.creativeProfile?.threadsImageCount || 4)));
+  const buzzKawaiiMode = threadsMode && !threadsAbMode && Boolean(c.creativeProfile?.hanakoBuzzKawaiiMode);
+  const count = threadsAbMode ? 2 : instagramMode ? 3 : threadsMode ? ([2, 3, 4].includes(Number(c.creativeProfile?.threadsImageCount)) ? Number(c.creativeProfile.threadsImageCount) : 3) : photobookMode ? photobookCount : Math.max(1, Math.min(7, Number(c.creativeProfile?.threadsImageCount || 4)));
   const oneImagePerRequest = instagramMode || threadsMode;
   const shotIndex = Math.max(0, Math.min(count - 1, Number(requestedShotIndex) || 0));
   const selected = c.creativeProfile || {};
@@ -13347,8 +13430,17 @@ ${instagramShotPlan}
 ・ハプニングモードのドキッとする親密さは視線、仕草、布の揺れ、距離で表現し、衣服は整ったまま保つ。下着、胸元、透け、着替え、事故や盗撮を描かない
 ・生成した画像の中へキャプションや文字を入れない` : "";
   const threadsComposition = optionLabel("snsCompositionPreset", selected.compositionPreset || "face");
-  const threadsExpressions = [selected.hanakoExpression || "bashful", ...hanakoThreadsExpressions.filter((expression) => expression !== selected.hanakoExpression).slice(0, 2)];
-  const threadsShotPlan = threadsMode ? `${shotIndex + 1}枚目｜${shotIndex === 0 ? "上部で選んだポーズと表情を主役にする" : shotIndex === 1 ? "同じ位置・同じ画角のまま、少し照れた笑顔や手元の仕草を変える" : "同じ位置・同じ画角のまま、目線をカメラへ戻して余韻を作る"}。表情: ${hanakoExpressionOptions[threadsExpressions[shotIndex]]?.label || "自然な笑顔"}。構図は全画像で「${threadsComposition}」に固定。` : "";
+  const buzzTheme = buzzKawaiiMode ? (hanakoBuzzKawaiiThemes.find((item) => item.id === selected.hanakoBuzzKawaiiTheme) || hanakoBuzzKawaiiThemes[0]) : null;
+  const threadsExpressions = buzzKawaiiMode
+    ? [selected.hanakoExpression || buzzTheme.expressions[0], ...buzzTheme.expressions.filter((expression) => expression !== selected.hanakoExpression)].slice(0, 4)
+    : [selected.hanakoExpression || "bashful", ...hanakoThreadsExpressions.filter((expression) => expression !== selected.hanakoExpression).slice(0, 3)];
+  const buzzShotRoles = [
+    `表情アップ。${optionLabel("snsCompositionPreset", "face")}または${optionLabel("snsCompositionPreset", "bust")}で瞳と自然な微笑みを主役にし、スクロールを止める`,
+    `全身・コーデ。${optionLabel("snsCompositionPreset", "full")}または${optionLabel("snsCompositionPreset", "thigh")}で服と場所の関係を見せる`,
+    `親密な仕草。手元、髪、振り返り、差し出す動作のいずれかを中距離で捉え、見ている相手との距離を縮める`,
+    `余韻。横顔、肩越し、歩き出す直前のいずれかを斜め構図で捉え、続きを想像したくなる静かな一枚にする`,
+  ];
+  const threadsShotPlan = threadsMode ? `${shotIndex + 1}枚目｜${buzzKawaiiMode ? buzzShotRoles[shotIndex] : shotIndex === 0 ? "上部で選んだポーズと表情を主役にする" : shotIndex === 1 ? "同じ位置・同じ画角のまま、少し照れた笑顔や手元の仕草を変える" : "同じ位置・同じ画角のまま、目線をカメラへ戻して余韻を作る"}。表情: ${hanakoExpressionOptions[threadsExpressions[shotIndex]]?.label || "自然な笑顔"}。${buzzKawaiiMode ? "4枚のカメラ距離と角度は重複させない。" : `構図は全画像で「${threadsComposition}」に固定。`}` : "";
   const abAxis = hanakoThreadsAbFields[selected.hanakoThreadsAbAxis] ? selected.hanakoThreadsAbAxis : "outfit";
   const abField = hanakoThreadsAbFields[abAxis];
   const abAKey = document.querySelector(`#${abField.source}`)?.value || "";
@@ -13371,8 +13463,8 @@ ${instagramShotPlan}
   const threadsDirective = threadsMode && !threadsAbMode ? `【スレッズモード｜可愛さ重視の${count}枚組】
 ・Threads投稿用の全${count}枚のうち、今回は${shotIndex + 1}枚目の独立写真1枚だけを作る。共通キャプションは別依頼で作る。男性にも女性にも親しみやすい、自然な可愛さと清潔感を最優先する
 ・全画像で同じ成人女性、同じ場所「${locationLabel}」、同じ服装、同じ髪型、同じ光・時間帯を固定する。海外都市や世界都市くじには切り替えない
-・全画像で構図「${threadsComposition}」を厳密に固定する。カメラの高さ、角度、レンズ感、人物までの距離、顔と肩の大きさ、余白、縦4:5の切り取りを揃える。全身・引き・手元アップなど別構図へ変えない
-・変化をつけるのは表情、視線、手元、首の傾きなどの小さな仕草だけ。別人や別の撮影に見せない
+・${buzzKawaiiMode ? `今回の感情テーマは「${buzzTheme.label}」。1枚目は表情アップ、2枚目は全身、3枚目は親密な仕草、4枚目は余韻として、同じ日の短い物語にする` : `全画像で構図「${threadsComposition}」を厳密に固定する。カメラの高さ、角度、レンズ感、人物までの距離、顔と肩の大きさ、余白、縦4:5の切り取りを揃える`}
+・${buzzKawaiiMode ? "35〜85mm相当の自然なポートレート域で、アップ・全身・中距離・斜めの余韻を使い分ける。4枚のカメラ距離、角度、視線、身体の向きを重複させない" : "変化をつけるのは表情、視線、手元、首の傾きなどの小さな仕草だけ。別人や別の撮影に見せない"}
 ・顔アップまたはバストアップを選択した回は、顔立ちと自然な笑顔を主役にして、胸部ではなく表情へ視線を導く
 ${threadsShotPlan}
 ・画像内に文字やキャプションは入れない` : "";
@@ -13421,7 +13513,7 @@ ${imageRoles}
 ・${oneImagePerRequest ? "今回の出力は単一場面の写真1枚だけ。残りは別リクエストで作る" : "コラージュではなく、個別保存できる独立画像を指定枚数作る"}
 ・${oneImagePerRequest ? "この1枚は必ず幅1080×高さ1350pxの縦4:5" : `全${count}枚を1枚ずつ独立した縦画像として作る。各画像は必ず幅1080×高さ1350px、縦4:5。1枚でも横型や寸法違いにしない`}
 ・顔、手、靴、小物を四辺から十分に離し、頭頂、指先、足先を不自然に切らない
-・${threadsAbMode ? "A/Bの2枚は構図とカメラ位置を固定し、比較項目だけを変える" : threadsMode ? `${count}枚とも構図とカメラ位置を固定し、表情・視線・小さな仕草だけを変える` : "アップ→引き→中距離→寄り→動き→環境→余韻とカメラ距離・角度・視線を変え、同じ構図を複製しない"}
+・${threadsAbMode ? "A/Bの2枚は構図とカメラ位置を固定し、比較項目だけを変える" : buzzKawaiiMode ? "4枚は表情アップ→全身→親密な仕草→余韻の順で、カメラ距離・角度・視線を明確に変え、同じ構図を複製しない" : threadsMode ? `${count}枚とも構図とカメラ位置を固定し、表情・視線・小さな仕草だけを変える` : "アップ→引き→中距離→寄り→動き→環境→余韻とカメラ距離・角度・視線を変え、同じ構図を複製しない"}
 ・${abSideBySide ? "左右のパネルで色温度・光・背景の余白をそろえる。A/B以外のコラージュや追加パネルは作らない" : "誌面のように色、光、人物の位置、背景の余白にリズムを作る。ただし複数枚を1枚へレイアウトしない"}
 ・${threadsAbMode ? "同じ成人女性、同じ場所、同じ色調を保ち、A/Bで指定した比較項目以外を変えない" : "同じ成人女性、同じ服装、同じ場所、同じ色調を保つ"}
 ・${abSideBySide ? "画像内の文字は左右パネル下隅の小さなA/B印だけ。それ以外の場所名、本文、見出し、キャプション、ハッシュタグ、商品名、価格、ロゴ、透かし、宣伝文句を描かない" : "画像内には文字を一切入れない。場所名、都市名、ランドマーク名、投稿本文、見出し、キャプション、ハッシュタグ、商品名、価格、ロゴ、透かし、宣伝文句を描かない"}
@@ -13985,12 +14077,12 @@ function buildSocialCreativeDirective(context) {
 ・絵文字は平均1個を目安に0〜2個。ハッシュタグ、長い前置き、説明過多、広告調のCTAは避ける
 ・返信を増やす時は「今日は何して過ごす？」「どっちが好き？」のように、1秒で答えられる質問を最後に一つだけ置く。毎投稿を二択にはしない
 ・${profile.hanakoInstagramMode || profile.hanakoThreadsMode ? "この専用モードでは商品名、ROOM誘導、購入案内を入れない" : "商品名やROOM誘導は本文の主役にせず、必要な時だけ最後に「愛用品はROOMにそっと」の距離感で添える"}
-・${profile.hanakoThreadsAbMode ? "A/B比較では同じ構図で2枚。比較項目だけ変え、ほかの条件を揃える" : profile.hanakoThreadsMode ? "画像は自然なスナップ写真の空気。3枚は同じ構図を保ち、表情と小さな仕草だけ変える" : "画像は自然なスナップ写真の空気。本人・コーデ・手元・風景の順で変化をつけ、同じ構図を複製しない"}
+・${profile.hanakoThreadsAbMode ? "A/B比較では同じ構図で2枚。比較項目だけ変え、ほかの条件を揃える" : profile.hanakoBuzzKawaiiMode ? "バズかわ4枚では、表情アップ→全身→親密な仕草→余韻の順で、同じ人物・服・場所を保ちながら構図と感情を進める" : profile.hanakoThreadsMode ? `画像は自然なスナップ写真の空気。${getHanakoDedicatedShotCount(profile)}枚は同じ構図を保ち、表情と小さな仕草だけ変える` : "画像は自然なスナップ写真の空気。本人・コーデ・手元・風景の順で変化をつけ、同じ構図を複製しない"}
 ・ビジュアル方針: ${hanakoThreadsProfile.visualStyle}
 ・選択した表情: ${hanakoExpression.label}。${hanakoExpression.prompt}
 ・${profile.hanakoThreadsAbMode ? (profile.hanakoThreadsAbAxis === "expression" ? "A/Bで指定した表情だけを変え、顔立ち・構図・光を揃える" : "A/Bでは表情と視線を揃え、比較項目以外に差を作らない") : "選択した表情は人物が主役のカットで最も明確に見せる。全画像を同じ顔に固定せず、ほかのカットはその感情につながる自然な表情変化にする"}
 ・甘めきれいめ、柔らかい自然光、生活の途中を切り取った表情。過度な広告バナー、情報カード、派手な比較レイアウトは使わない
-・${profile.hanakoInstagramMode ? "Instagramでは独立した写真を3枚だけ。同じ場所・衣装・髪型で、ポーズ・表情・構図を変える" : profile.hanakoThreadsAbMode ? "Threads A/B比較では写真2枚だけ。1枚目A、2枚目B。比較項目以外を固定する" : profile.hanakoThreadsMode ? `Threads専用モードでは独立した写真${getHanakoDedicatedShotCount(profile)}枚だけ。同じ場所・衣装・髪型・構図で、可愛さと返信しやすさを優先する` : "Threadsは4枚を基本に、1枚目は感情が伝わる主役写真、2枚目は全身または場面、3枚目は小物や手元、4枚目は余韻のある風景にする"}
+・${profile.hanakoInstagramMode ? "Instagramでは独立した写真を3枚だけ。同じ場所・衣装・髪型で、ポーズ・表情・構図を変える" : profile.hanakoThreadsAbMode ? "Threads A/B比較では写真2枚だけ。1枚目A、2枚目B。比較項目以外を固定する" : profile.hanakoBuzzKawaiiMode ? "バズかわでは独立した写真4枚だけ。同じ場所・衣装・髪型・光を固定し、アップ、全身、中距離、余韻の4構図を使い分ける" : profile.hanakoThreadsMode ? `Threads専用モードでは独立した写真${getHanakoDedicatedShotCount(profile)}枚だけ。同じ場所・衣装・髪型・構図で、可愛さと返信しやすさを優先する` : "Threadsは4枚を基本に、1枚目は感情が伝わる主役写真、2枚目は全身または場面、3枚目は小物や手元、4枚目は余韻のある風景にする"}
 ・スプレッドシートの分析${hanakoThreadsProfile.sheetSampleSize}件と、最新20件CSVを取り込んだ場合はその新しい統計を優先する。既存投稿の文章をコピーせず、世界観と構造だけを再現する` : "";
   return `【発信キャラクターと制作設計】
 ・公開上の役割: ${profile.characterRole}
