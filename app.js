@@ -3896,8 +3896,8 @@ function renderHanakoThreadsSettings() {
   const buzzStatus = document.querySelector("#snsHanakoBuzzKawaiiStatus");
   const buzzTheme = hanakoBuzzKawaiiThemes.find((item) => item.id === profile.hanakoBuzzKawaiiTheme);
   if (buzzStatus) buzzStatus.textContent = profile.hanakoBuzzKawaiiMode && buzzTheme
-    ? `選択中：${buzzTheme.label}｜4枚を表情アップ→全身→親密な仕草→余韻で構成します。`
-    : "感情テーマから、場所・服装・髪型・表情・ポーズ・構図・光をまとめて選びます。";
+    ? `選択中：${buzzTheme.label}｜目が合う→一緒に歩きたい→自分への仕草→別れ際の余韻で4枚を構成します。`
+    : "清潔感と恋人目線を軸に、場所・服装・髪型・表情・ポーズ・構図・光をまとめて選びます。";
   renderHanakoThreadsAbSettings();
   for (const id of ["snsLocationPreset", "hanakoGasLocation"]) {
     const select = document.querySelector(`#${id}`);
@@ -13514,13 +13514,24 @@ ${instagramShotPlan}
   const threadsExpressions = buzzKawaiiMode
     ? [selected.hanakoExpression || buzzTheme.expressions[0], ...buzzTheme.expressions.filter((expression) => expression !== selected.hanakoExpression)].slice(0, 4)
     : [selected.hanakoExpression || "bashful", ...hanakoThreadsExpressions.filter((expression) => expression !== selected.hanakoExpression).slice(0, 3)];
+  const buzzThemeStories = {
+    protect: ["少し心細そうに見上げた直後、安心して微笑む", "袖やバッグを両手で持つ自然な全身", "温かい飲み物や空席をこちらへ勧める", "帰りかけてから名残惜しそうに振り返る"],
+    surprise: ["ふいに目が合い、一瞬驚いてから照れ笑いする", "振り向いた動きとコーデ全体を見せる", "髪を整える途中で再び目が合う", "歩き出したあと肩越しにもう一度見る"],
+    girlfriend: ["待ち合わせで相手を見つけた瞬間の嬉しい笑顔", "隣を歩きたくなる自然なデートコーデの全身", "飲み物や片方のイヤホンをこちらへ差し出す", "会話の途中で横を向き、また目を合わせて笑う"],
+    littleDevil: ["何か知っているように口角だけで小さく笑う", "清楚な服と余裕ある立ち姿を全身で見せる", "内緒話の直前で少しだけ距離を縮める", "先に歩きながら、ついて来るか確かめるように振り返る"],
+    walkHome: ["帰り道でまだ話したそうに静かに見つめる", "夜の光と帰り道コーデを安全な全身構図で見せる", "袖口や手元を近づけてもう少し一緒にいたい気持ちを示す", "改札や曲がり角の手前で立ち止まって振り返る"],
+    compliment: ["褒められた瞬間、嬉しさを隠しきれず目元で笑う", "褒めたくなる服の形と配色を全身で明瞭に見せる", "襟や髪を整えながら反応を待つ", "少し照れて視線を外し、最後に小さく目を戻す"],
+    conversation: ["答えたくなる好奇心のある表情でまっすぐ見る", "日常の場所になじむ親近感ある全身", "隣の空席や手元の小物を示して会話へ誘う", "答えを待ちながら頬を少し緩める自然な余韻"],
+    cinema: ["映画の冒頭のように光の中で静かに目が合う", "場所の奥行きと衣装を見せる物語的な全身", "雨、窓、手元の小物を介して距離が近づく", "光の方向へ歩き出し、横顔か肩越しの視線を残す"],
+  };
+  const buzzStory = buzzThemeStories[buzzTheme?.id] || buzzThemeStories.girlfriend;
   const buzzShotRoles = [
-    `表情アップ。${optionLabel("snsCompositionPreset", "face")}または${optionLabel("snsCompositionPreset", "bust")}で瞳と自然な微笑みを主役にし、スクロールを止める`,
-    `全身・コーデ。${optionLabel("snsCompositionPreset", "full")}または${optionLabel("snsCompositionPreset", "thigh")}で服と場所の関係を見せる`,
-    `親密な仕草。手元、髪、振り返り、差し出す動作のいずれかを中距離で捉え、見ている相手との距離を縮める`,
-    `余韻。横顔、肩越し、歩き出す直前のいずれかを斜め構図で捉え、続きを想像したくなる静かな一枚にする`,
+    `最初の1秒で止まる表情アップ。${buzzStory[0]}。瞳へ正確にピントを合わせ、顔を画面いっぱいにしすぎず髪と肩も残す`,
+    `保存したくなる全身・コーデ。${buzzStory[1]}。服のシルエット、靴、場所の空気を一度に読み取れる自然な立ち姿にする`,
+    `自分に向けられたと感じる親密な中距離。${buzzStory[2]}。カメラを信頼する相手の目線として扱い、合意ある自然な距離感を作る`,
+    `もう一度見返したくなる余韻。${buzzStory[3]}。視線を一度外してから戻す途中を捉え、続きを想像したくなる静かな一枚として進行方向へ空間を残す`,
   ];
-  const threadsShotPlan = threadsMode ? `${shotIndex + 1}枚目｜${buzzKawaiiMode ? buzzShotRoles[shotIndex] : shotIndex === 0 ? "上部で選んだポーズと表情を主役にする" : shotIndex === 1 ? "同じ位置・同じ画角のまま、少し照れた笑顔や手元の仕草を変える" : "同じ位置・同じ画角のまま、目線をカメラへ戻して余韻を作る"}。表情: ${hanakoExpressionOptions[threadsExpressions[shotIndex]]?.label || "自然な笑顔"}。${buzzKawaiiMode ? "4枚のカメラ距離と角度は重複させない。" : `構図は全画像で「${threadsComposition}」に固定。`}` : "";
+  const threadsShotPlan = threadsMode ? `${shotIndex + 1}枚目｜${buzzKawaiiMode ? buzzShotRoles[shotIndex] : shotIndex === 0 ? "上部で選んだポーズと表情を主役にする" : shotIndex === 1 ? "同じ位置・同じ画角のまま、少し照れた笑顔や手元の仕草を変える" : "同じ位置・同じ画角のまま、目線をカメラへ戻して余韻を作る"}。表情: ${hanakoExpressionOptions[threadsExpressions[shotIndex]]?.label || "自然な笑顔"}。${buzzKawaiiMode ? "このカットでは上部のポーズ・構図を参考にしつつ、この枚数固有の役割を優先する。4枚のカメラ距離と角度は重複させない。" : `構図は全画像で「${threadsComposition}」に固定。`}` : "";
   const abAxis = hanakoThreadsAbFields[selected.hanakoThreadsAbAxis] ? selected.hanakoThreadsAbAxis : "outfit";
   const abField = hanakoThreadsAbFields[abAxis];
   const abAKey = document.querySelector(`#${abField.source}`)?.value || "";
@@ -13543,8 +13554,10 @@ ${instagramShotPlan}
   const threadsDirective = threadsMode && !threadsAbMode ? `【スレッズモード｜可愛さ重視の${count}枚組】
 ・Threads投稿用の全${count}枚のうち、今回は${shotIndex + 1}枚目の独立写真1枚だけを作る。共通キャプションは別依頼で作る。男性にも女性にも親しみやすい、自然な可愛さと清潔感を最優先する
 ・全画像で同じ成人女性、同じ場所「${locationLabel}」、同じ服装、同じ髪型、同じ光・時間帯を固定する。海外都市や世界都市くじには切り替えない
-・${buzzKawaiiMode ? `今回の感情テーマは「${buzzTheme.label}」。1枚目は表情アップ、2枚目は全身、3枚目は親密な仕草、4枚目は余韻として、同じ日の短い物語にする` : `全画像で構図「${threadsComposition}」を厳密に固定する。カメラの高さ、角度、レンズ感、人物までの距離、顔と肩の大きさ、余白、縦4:5の切り取りを揃える`}
-・${buzzKawaiiMode ? "35〜85mm相当の自然なポートレート域で、アップ・全身・中距離・斜めの余韻を使い分ける。4枚のカメラ距離、角度、視線、身体の向きを重複させない" : "変化をつけるのは表情、視線、手元、首の傾きなどの小さな仕草だけ。別人や別の撮影に見せない"}
+・${buzzKawaiiMode ? `今回の感情テーマは「${buzzTheme.label}」。4枚を「目が合う→一緒に歩きたい→自分に向けた仕草→別れ際の余韻」という感情の流れでつなぎ、男性視聴者が自分と同じ場面にいるように感じる自然な恋人目線を作る` : `全画像で構図「${threadsComposition}」を厳密に固定する。カメラの高さ、角度、レンズ感、人物までの距離、顔と肩の大きさ、余白、縦4:5の切り取りを揃える`}
+・${buzzKawaiiMode ? "魅力は露出や身体の強調ではなく、清潔感、目線、照れ、反応を待つ間、日常の親近感で作る。35〜85mm相当の自然なポートレート域で、アップ・全身・中距離・斜めの余韻を使い分ける" : "変化をつけるのは表情、視線、手元、首の傾きなどの小さな仕草だけ。別人や別の撮影に見せない"}
+・${buzzKawaiiMode ? "4枚を並べた時に、1枚目と3枚目はカメラ目線、2枚目は自然な視線外し、4枚目は肩越しまたは横顔から目線を戻す途中にする。同じ笑顔、同じ手の位置、同じ身体の向きを繰り返さない" : "顔アップまたはバストアップを選択した回は、顔立ちと自然な笑顔を主役にして、胸部ではなく表情へ視線を導く"}
+・${buzzKawaiiMode ? "本人画像の魅力と選択した服を忠実に保ち、花束、意味のない装飾、過剰なハート、文字、作り物めいたピンク一色の背景を勝手に加えない" : "選択した場所、衣装、髪型、表情を自然な一場面としてまとめる"}
 ・顔アップまたはバストアップを選択した回は、顔立ちと自然な笑顔を主役にして、胸部ではなく表情へ視線を導く
 ${threadsShotPlan}
 ・画像内に文字やキャプションは入れない` : "";
