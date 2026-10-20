@@ -583,6 +583,18 @@ function enhanceCoordinateSelectOptions() {
     ["influencerEnvironmentalWide", "場所の空気も伝える斜め引き構図"],
     ["influencerCandidTilt", "水平をわずかに外した自然な瞬間撮り"],
   ]);
+  appendOptionGroup(compositionSelect, "creativeThroughShelf", "斬新だけど人物映えする構図（新着10）", [
+    ["creativeThroughShelf", "棚のすき間越しに覗くレイヤー構図"],
+    ["creativeReflectionPuddle", "水たまりの反射と本人を同時に写す"],
+    ["creativeCeilingCorner", "天井と壁の斜線を生かす対角構図"],
+    ["creativeHalfHiddenDoor", "ドアの端から半分だけ覗く構図"],
+    ["creativeShadowDouble", "本人と長い影を並べる二重主役構図"],
+    ["creativeEscalatorLayers", "エスカレーターの平行線で奥行きを作る"],
+    ["creativeForegroundHands", "手元の前景から表情へ導く構図"],
+    ["creativeGlassRefraction", "ガラスの屈折を薄く重ねる構図"],
+    ["creativeTopDownSpiral", "曲線を使った安全な真上視点"],
+    ["creativeSplitDepth", "前景・人物・背景の三層構図"],
+  ]);
   if (locationSelect && ![...locationSelect.options].some((option) => option.value === "studioDaylight")) {
     const studioGroup = document.createElement("optgroup");
     studioGroup.label = "撮影用スタジオ";
@@ -614,6 +626,18 @@ function enhanceCoordinateSelectOptions() {
     ["earTuckBob", "片耳かけの外ハネボブ"], ["softWolf", "柔らかな韓国風ウルフレイヤー"],
     ["headbandWave", "細カチューシャ＋ゆる巻き"], ["sidePartCurl", "大人っぽいサイド分け巻き髪"],
     ["tuckedLong", "両耳かけの清楚ロング"], ["messyPony", "無造作すぎないゆるポニー"],
+  ]);
+  appendOptionGroup(hairSelect, "cuteTwinBunsLoose", "可愛い系ヘア（新着10）", [
+    ["cuteTwinBunsLoose", "後れ毛ふんわり低めツインお団子"],
+    ["cuteRibbonBraids", "細リボンを編み込んだツイン三つ編み"],
+    ["cuteBubblePony", "小さなリボン付きバブルポニー"],
+    ["cuteMiniBraids", "顔まわりのミニ三つ編み＋ゆる巻き"],
+    ["cuteSideBun", "片側へ寄せたふんわりサイドお団子"],
+    ["cuteLayeredBob", "丸みのあるレイヤーボブ＋薄め前髪"],
+    ["cuteHeartHalfUp", "ハート風ねじりのハーフアップ"],
+    ["cuteScarfPony", "細スカーフを結んだ低めポニー"],
+    ["cuteBraidedCrown", "細い編み込みカチューシャヘア"],
+    ["cuteFlippedLob", "毛先が弾む外ハネロブ"],
   ]);
   appendOptionGroup(hairSelect, "hanLinxinLongBraid", "VIVANT2・ハン リンシン風", [
     ["hanLinxinLongBraid", "黒髪を一本に編んだ非常に長い三つ編み"],
@@ -3458,6 +3482,18 @@ const hanakoExtraOutfits = [
   { label: "VIVANT2・ハン リンシン風（新着1）", items: [
     { id: "cosHanLinxin", label: "ハン・リンシン風｜黒×金の情報組織責任者", prompt: "成人女性による日曜劇場『VIVANT』第2シーズンのハン・リンシンを想起させるコスプレ。黒のハイネックまたは立ち襟のロングジャケット、金色のチャイナボタン、黒のワイドパンツまたはロングスカート、控えめな金のアクセサリー。非常に長い一本の黒い三つ編みと深い赤の口紅を合わせる。武器、暴力、実在組織の印章は描かず、民間情報組織の責任者らしい威厳を出す" },
   ] },
+  { label: "毎日着たい可愛いコーデ（新着10）", items: [
+    { id: "cuteCherryCardigan", label: "さくらんぼカーデ×白フレア", prompt: "成人女性向け。小さなさくらんぼ刺繍の淡色カーディガン、白い膝丈フレアスカート、小ぶりな赤いバッグ。柄を増やしすぎず清潔感を保つ" },
+    { id: "cuteSailorKnit", label: "セーラーカラーニット×デニム", prompt: "成人女性向け。アイボリーの小さなセーラーカラーニット、濃色ストレートデニム、赤いフラットシューズ。制服ではなく休日の大人可愛い装いにする" },
+    { id: "cuteGinghamDress", label: "ギンガムワンピ×赤カーデ", prompt: "成人女性向け。細かな黒白ギンガムの膝下ワンピース、短い赤カーディガン、黒いローファー。柄の大きさと縫い目を全画像で統一する" },
+    { id: "cuteLaceCollar", label: "レース襟ブラウス×淡色パンツ", prompt: "成人女性向け。小さなレース襟の白ブラウス、淡いピンクベージュのハイウエストパンツ、華奢なメリージェーン。甘さと動きやすさを両立する" },
+    { id: "cuteBowDenim", label: "後ろリボンニット×デニムスカート", prompt: "成人女性向け。背中上部に小さなリボンがある淡色ニット、膝丈デニムスカート、白いスニーカー。背中や胸元を開けすぎない" },
+    { id: "cutePastelTweed", label: "パステルツイード×プリーツ", prompt: "成人女性向け。ミントとアイボリーの控えめなツイードジャケット、白いプリーツスカート、小さなチェーンバッグ。装飾を少数に絞って高見えさせる" },
+    { id: "cutePeterPan", label: "丸襟ワンピ×細ベルト", prompt: "成人女性向け。小さな丸襟のネイビーワンピース、白い細ベルト、低いヒール。膝下丈で幼く見えないクラシカルな可愛さにする" },
+    { id: "cuteRibbonVest", label: "リボンブラウス×ニットベスト", prompt: "成人女性向け。細いリボンの白ブラウス、淡いブルーのニットベスト、グレーのAラインスカート。学生服ではなく大人のプレッピーにする" },
+    { id: "cuteRoseSkirt", label: "無地ニット×小花柄スカート", prompt: "成人女性向け。くすみピンクの無地ニット、細かなローズ柄の膝下スカート、ブラウンの小ぶりバッグ。柄は自然に連続させる" },
+    { id: "cuteCloudHoodie", label: "雲色パーカー×チュール重ね", prompt: "成人女性向け。淡い空色のコンパクトパーカー、不透明な裏地付きチュールスカート、白いスニーカー。部屋着に見えない軽やかな街歩きコーデ" },
+  ] },
 ];
 
 const hanakoExtraExpressions = [{ label: "キュンとする表情（新着20）", items: [
@@ -3506,6 +3542,22 @@ const hanakoExtraExpressions = [{ label: "キュンとする表情（新着20）
   { id: "hanLinxinAppraisal", label: "相手を値踏みする静かな眼差し", prompt: "成人女性が革張りソファへ深く座り、あごをわずかに引いて相手の反応を静かに観察する。眉を動かしすぎず、口元は閉じたまま知性と警戒を表す" },
   { id: "hanLinxinPhoneResolve", label: "電話越しに決断する鋭い表情", prompt: "成人女性が電話の相手へ低く落ち着いて指示する場面。目線を一点へ定め、唇を軽く結び、焦りではなく即断する責任者の覚悟を見せる" },
   { id: "hanLinxinControlledThreat", label: "微笑まずに圧をかける冷静な表情", prompt: "成人女性が正面から相手を見据え、目元だけをわずかに細める。怒鳴ったり睨みつけたりせず、自分の正義と揺るがない意志が伝わる抑制された表情" },
+] },
+{ label: "ふんわり可愛い表情（新着6）", items: [
+  { id: "cuteNoseCrinkle", label: "鼻を少しくしゅっとした笑顔", prompt: "成人女性が楽しくて鼻をほんの少しくしゅっとさせ、目元まで自然に笑う。顔を歪ませず愛嬌のある瞬間にする" },
+  { id: "cuteCheekSmile", label: "頬がふわっと上がる微笑み", prompt: "成人女性が嬉しさを隠しきれず、頬が柔らかく上がる控えめな微笑み。過度な美肌加工を避ける" },
+  { id: "cuteOopsSmile", label: "しまった、の照れ笑い", prompt: "成人女性が小さな失敗に気づいて一瞬目を丸くし、すぐ申し訳なさそうに照れ笑いする自然な表情" },
+  { id: "cuteHappyTears", label: "嬉しくて目が少し潤む笑顔", prompt: "成人女性の瞳が嬉しさでわずかに潤み、泣き崩れず穏やかに微笑む。涙を過度に強調しない" },
+  { id: "cuteSecretGiggle", label: "内緒でくすっと笑う顔", prompt: "成人女性が声を抑えてくすっと笑い、カメラの相手と秘密を共有するように目を合わせる" },
+  { id: "cuteSnackDelight", label: "ひと口で幸せになった顔", prompt: "成人女性が小さなひと口を味わった直後、目元が明るくなって幸せそうに微笑む。食べ物と口元を自然にする" },
+] },
+{ label: "ツンデレな表情（新着6）", items: [
+  { id: "tsunSidePout", label: "横を向いたまま少し拗ねる", prompt: "成人女性が顔を少し横へ向け、唇をわずかに結びつつ目だけカメラへ戻す。怒りではなく照れ隠しが伝わるツンデレ表情" },
+  { id: "tsunHiddenSmile", label: "笑顔を隠しきれない強がり顔", prompt: "成人女性が平静を装って口元を結ぶが、片方の口角と目元に嬉しさが漏れる。嫌悪や威圧にしない" },
+  { id: "tsunArchedBrow", label: "片眉を上げた『別に』顔", prompt: "成人女性が片眉をほんの少し上げ、視線を外しながらも相手の反応を気にしている。高圧的にならない可愛い強がり" },
+  { id: "tsunBlushGlance", label: "頬を赤らめた鋭い横目", prompt: "成人女性が照れて頬を少し赤らめ、困ったような横目でカメラを見る。睨みではなく動揺と好意を中心にする" },
+  { id: "tsunReluctantThanks", label: "仕方なくお礼を言う照れ顔", prompt: "成人女性が視線を少し落とし、素直になりきれないまま小さく感謝を伝える。口元にはごく薄い微笑みを残す" },
+  { id: "tsunTurnBack", label: "背を向けかけて振り返る顔", prompt: "成人女性が背を向けて歩き出しかけ、やはり気になって肩越しに振り返る。名残惜しさを隠す可愛いツンデレ表情" },
 ] }];
 
 const hanakoExtraPoses = [{ label: "インフルエンサー撮影ポーズ（新着20）", items: [
@@ -3590,6 +3642,20 @@ const hanakoExtraLocations = [{ label: "人物が映えるシンプル背景（�
   { id: "hanLinxinHeadquartersHall", label: "シンシー本部風の静かな回廊", prompt: "濃色の木製パネル、深紅の絨毯、等間隔の暖色壁灯が続く架空の民間情報組織本部の回廊。人通りは少なく、実在組織の標章、監視映像、読める案内表示を出さない" },
   { id: "hanLinxinPrivateStudy", label: "古書と地図に囲まれた私設書斎", prompt: "天井までの本棚、革張りの椅子、重厚な机、抽象化された古地図、柔らかな卓上ランプがある静かな私設書斎。書名や文書は判読不能にし、知性と日常の思索時間を表す" },
   { id: "hanLinxinGardenPavilion", label: "石庭を望む東屋と回廊", prompt: "石畳、暗い木の柱、控えめな植栽、水面を望む屋根付きの東屋がある架空の庭園。早朝または夕方の静かな光を使い、実在する寺院、邸宅、国を特定できる意匠を避ける" },
+] },
+{ label: "地味だけど映える日常風景（新着12）", items: [
+  { id: "dailyApartmentHall", label: "普通のマンション廊下", prompt: "清潔だが飾り気のないマンションの共用廊下。白い壁、等間隔の照明、控えめな生活感を生かし、部屋番号、表札、住所、住人を判読できないようにする" },
+  { id: "dailyParcelLocker", label: "宅配ロッカー前", prompt: "マンションの宅配ロッカーが並ぶ明るい共用スペース。ロッカー番号、伝票、住所、個人名、配送会社ロゴを読めないようにし、通行を妨げない" },
+  { id: "dailyBikeParking", label: "住宅街の自転車置き場", prompt: "屋根付きで整頓された住宅街の自転車置き場。自転車を背景の反復要素として使い、防犯登録、住宅名、人物の顔を特定できないようにする" },
+  { id: "dailyCoinParking", label: "静かなコインパーキング", prompt: "昼間または夕方の小さなコインパーキング。人物は車道や駐車枠の外の安全な歩道側に立ち、車のナンバー、会社名、料金表示を判読不能にする" },
+  { id: "dailyCrosswalkWait", label: "いつもの横断歩道の待ち時間", prompt: "住宅街にある普通の横断歩道の手前。人物は歩道内で安全に信号を待ち、実在する地名、店舗名、車のナンバーを出さない" },
+  { id: "dailyDrugstoreAisle", label: "ドラッグストアの日用品売場", prompt: "明るく清潔なドラッグストアの日用品売場。陳列棚の色と反復を背景にし、実在ブランド名、価格、効能表示、他の買い物客の顔を判読できないようにする" },
+  { id: "dailyHomeEntrance", label: "帰宅した玄関", prompt: "靴が少数きれいに並んだ一般的な住居の玄関。鍵、郵便物、住所、家族写真を写さず、帰宅直後の自然な生活感と柔らかな室内光を生かす" },
+  { id: "dailyElevatorLobby", label: "エレベーターホール", prompt: "無機質で明るいマンションまたはオフィスのエレベーターホール。階数、建物名、監視画面、案内表示を判読不能にし、扉の反射で顔を重複させない" },
+  { id: "dailyOfficePantry", label: "オフィスの給湯スペース", prompt: "小さく清潔なオフィスの給湯スペース。無地のマグカップと簡素な棚を背景にし、会社名、書類、名札、端末画面、同僚の顔を出さない" },
+  { id: "dailyPublicBench", label: "近所の何気ないベンチ", prompt: "住宅街の小さな緑地にある普通のベンチ。派手な観光要素を避け、木漏れ日と日常の静けさを主役にし、場所を特定できる看板を出さない" },
+  { id: "dailyLaundryBalcony", label: "洗濯物のない生活ベランダ", prompt: "安全な手すりと無地の外壁がある一般的な住居のベランダ。洗濯物、室内、住所、隣家の生活情報を写さず、人物は手すりから十分離れる" },
+  { id: "dailyTrainSeat", label: "いつもの通勤電車の座席", prompt: "空いている架空の通勤電車内の座席。人物は正しく着席し、路線名、駅名、広告、乗客の顔を判読不能にして、静かな移動時間を表す" },
 ] }];
 
 const hanakoIdeaCatalog = [
@@ -3716,10 +3782,10 @@ const hanakoThreadsOutfits = ["sweetIvoryKnitMini", "softBlueShirtDress", "pinkT
 const hanakoThreadsPoses = ["fingerHeartNearFace", "hairTouch", "cheekHands", "cupHold", "jacketAdjust", "handsBackLean", "lookback", "nyanNyan", "wanWan", "watchLastTrain", "shareUmbrellaLean", "gentleSleeveHold", "gateTurnBack", "handAlmostTouch", "subwayPoleGlance", "hairTieMoment", "coatPocketLean", "scarfAdjustGaze", "bagBehindBack", "seatNextTap", "shareEarphone", "drinkOffer", "doorHoldLookback", "tiptoeWhisper"];
 const hanakoThreadsExpressions = ["bashful", "bigsmile", "upward", "coveredLaugh", "surpriseSmile", "softEyeContact", "shySideSmile", "sunlitSquint", "curiousTilt", "expectantGaze", "lastTrainHope", "rainCloseSmile", "coldPleading", "gateFarewell", "handholdNervous", "caughtLooking", "onlyYouSmile", "surpriseEyeContact", "whisperSecret", "missedYou", "jealousPout", "praiseShy", "sleepyTrust", "comeCloserEyes", "goodbyePause"];
 const hanakoBuzzKawaiiThemes = [
-  { id: "protect", label: "守ってあげたい", locations: ["homeWindow", "cafe", "busStopEvening", "stationCanopyRain"], outfits: ["sweetIvoryKnitMini", "warmSleeveKnit", "handholdCardigan", "softBlueShirtDress"], poses: ["gentleSleeveHold", "cupHold", "handsBackLean", "scarfAdjustGaze"], expressions: ["bashful", "coldPleading", "waitingForAnswer", "sleepyTrust"], compositions: ["face", "bust", "influencerHighDiagonal"], lights: ["morning", "cloudy", "warm"] },
-  { id: "surprise", label: "不意にドキッ", locations: ["subwayPlatform", "bookstoreAisle", "convenienceNight", "pedestrianBridge"], outfits: ["blackRibbonKnit", "miniTweedSet", "miniBlazer", "creamWrapSkirt"], poses: ["lookback", "hairTieMoment", "doorHoldLookback", "subwayPoleGlance"], expressions: ["caughtLooking", "surpriseEyeContact", "lookAwayThenMeet", "shySideSmile"], compositions: ["influencerShoulderBack", "influencerCandidTilt", "influencerTeleCompression"], lights: ["blue", "neon", "warm"] },
-  { id: "girlfriend", label: "彼女感", locations: ["homeKitchen", "cafeTerrace", "riverside", "shoppingArcade"], outfits: ["cardiganFloralDress", "whiteLaceDenim", "cafeCasual", "miniRibbonCardigan"], poses: ["drinkOffer", "shareEarphone", "seatNextTap", "jacketAdjust"], expressions: ["softEyeContact", "missedYou", "onlyYouSmile", "bigsmile"], compositions: ["waist", "influencerCafeTable", "influencerThreeQuarter"], lights: ["cafe", "morning", "golden"] },
-  { id: "littleDevil", label: "清楚×小悪魔", locations: ["studioDaylight", "homeVanity", "pianoBar", "rooftop"], outfits: ["pinkTweedDress", "satinBowBlouse", "miniMonotone", "miniOffShoulder"], poses: ["ribbonAdjust", "chairSideTurn", "tiptoeWhisper", "bagBehindBack"], expressions: ["secretSmile", "playfulBrow", "upward", "halfLiddedSmile"], compositions: ["editorial", "influencerLowDiagonal", "influencerMirrorSide"], lights: ["warm", "bar", "neon"] },
+  { id: "protect", label: "守ってあげたい", locations: ["homeWindow", "cafe", "busStopEvening", "stationCanopyRain", "dailyApartmentHall", "dailyHomeEntrance"], outfits: ["sweetIvoryKnitMini", "warmSleeveKnit", "handholdCardigan", "softBlueShirtDress", "cuteCherryCardigan", "cutePeterPan"], poses: ["gentleSleeveHold", "cupHold", "handsBackLean", "scarfAdjustGaze"], expressions: ["bashful", "coldPleading", "waitingForAnswer", "sleepyTrust", "cuteCheekSmile", "cuteOopsSmile"], compositions: ["face", "bust", "influencerHighDiagonal", "creativeHalfHiddenDoor"], lights: ["morning", "cloudy", "warm"] },
+  { id: "surprise", label: "不意にドキッ", locations: ["subwayPlatform", "bookstoreAisle", "convenienceNight", "pedestrianBridge", "dailyElevatorLobby", "dailyCrosswalkWait"], outfits: ["blackRibbonKnit", "miniTweedSet", "miniBlazer", "creamWrapSkirt", "cuteSailorKnit"], poses: ["lookback", "hairTieMoment", "doorHoldLookback", "subwayPoleGlance"], expressions: ["caughtLooking", "surpriseEyeContact", "lookAwayThenMeet", "shySideSmile", "tsunBlushGlance", "tsunTurnBack"], compositions: ["influencerShoulderBack", "influencerCandidTilt", "influencerTeleCompression", "creativeShadowDouble"], lights: ["blue", "neon", "warm"] },
+  { id: "girlfriend", label: "彼女感", locations: ["homeKitchen", "cafeTerrace", "riverside", "shoppingArcade", "dailyDrugstoreAisle", "dailyPublicBench"], outfits: ["cardiganFloralDress", "whiteLaceDenim", "cafeCasual", "miniRibbonCardigan", "cuteGinghamDress", "cuteRoseSkirt"], poses: ["drinkOffer", "shareEarphone", "seatNextTap", "jacketAdjust"], expressions: ["softEyeContact", "missedYou", "onlyYouSmile", "bigsmile", "cuteNoseCrinkle", "cuteSecretGiggle"], compositions: ["waist", "influencerCafeTable", "influencerThreeQuarter", "creativeThroughShelf"], lights: ["cafe", "morning", "golden"] },
+  { id: "littleDevil", label: "清楚×小悪魔", locations: ["studioDaylight", "homeVanity", "pianoBar", "rooftop", "dailyOfficePantry"], outfits: ["pinkTweedDress", "satinBowBlouse", "miniMonotone", "miniOffShoulder", "cutePastelTweed"], poses: ["ribbonAdjust", "chairSideTurn", "tiptoeWhisper", "bagBehindBack"], expressions: ["secretSmile", "playfulBrow", "upward", "halfLiddedSmile", "tsunHiddenSmile", "tsunArchedBrow"], compositions: ["editorial", "influencerLowDiagonal", "influencerMirrorSide", "creativeGlassRefraction"], lights: ["warm", "bar", "neon"] },
   { id: "walkHome", label: "一緒に帰りたい", locations: ["ticketGateNight", "stationPlatformNight", "riversideNightWalk", "winterStreetLights"], outfits: ["lastTrainCoat", "gateDateJacket", "miniTurtleneckBoots", "umbrellaTrench"], poses: ["gateTurnBack", "watchLastTrain", "handAlmostTouch", "coatPocketLean"], expressions: ["lastTrainHope", "gateFarewell", "goodbyePause", "expectantGaze"], compositions: ["influencerWalkTracking", "influencerLeadingLines", "influencerEnvironmentalWide"], lights: ["blue", "neon", "warm"] },
   { id: "compliment", label: "褒めたくなる", locations: ["studioPastel", "museum", "bookstore", "homeLiving"], outfits: ["pinkTweedDress", "navyPoloMini", "miniTweedSet", "softBlueShirtDress"], poses: ["jacketOnShoulder", "hairTouch", "fingerHeartNearFace", "stepTowardCamera"], expressions: ["praiseShy", "sunlitSquint", "coveredLaugh", "curiousTilt"], compositions: ["influencerCenteredSymmetry", "influencerProfileRim", "thigh"], lights: ["morning", "cloudy", "golden"] },
   { id: "conversation", label: "コメントしたくなる", locations: ["cafe", "laundromat", "supermarketAisle", "homeSofa"], outfits: ["cafeCasual", "homeHoodie", "miniShirtKnit", "whiteLaceDenim"], poses: ["cheekHands", "cupHold", "seatNextTap", "drinkOffer"], expressions: ["curiousTilt", "gentlePout", "wink", "surpriseSmile"], compositions: ["bust", "influencerForegroundBlur", "influencerCafeTable"], lights: ["cafe", "cloudy", "warm"] },
@@ -3835,7 +3901,7 @@ function recommendHanakoThreads() {
   const poses = valid("snsPosePreset", hanakoThreadsPoses);
   if (!locations.length || !outfits.length || !poses.length) return;
   const pickOne = (items) => items[Math.floor(Math.random() * items.length)];
-  const weightedCompositions = ["face", "face", "bust", "bust", "waist", "editorial", "influencerThreeQuarter", "influencerHighDiagonal", "influencerLowDiagonal", "influencerShoulderBack", "influencerForegroundBlur", "influencerDoorFrame", "influencerMirrorSide", "influencerWindowReflection", "influencerWalkTracking", "influencerCafeTable", "influencerSeatedAisle", "influencerLeadingLines", "influencerNegativeSpace", "influencerTeleCompression", "influencerFloorHigh", "influencerProfileRim", "influencerCenteredSymmetry", "influencerHandDetailLead", "influencerEnvironmentalWide", "influencerCandidTilt"];
+  const weightedCompositions = ["face", "face", "bust", "bust", "waist", "editorial", "influencerThreeQuarter", "influencerHighDiagonal", "influencerLowDiagonal", "influencerShoulderBack", "influencerForegroundBlur", "influencerDoorFrame", "influencerMirrorSide", "influencerWindowReflection", "influencerWalkTracking", "influencerCafeTable", "influencerSeatedAisle", "influencerLeadingLines", "influencerNegativeSpace", "influencerTeleCompression", "influencerFloorHigh", "influencerProfileRim", "influencerCenteredSymmetry", "influencerHandDetailLead", "influencerEnvironmentalWide", "influencerCandidTilt", "creativeThroughShelf", "creativeReflectionPuddle", "creativeCeilingCorner", "creativeHalfHiddenDoor", "creativeShadowDouble", "creativeEscalatorLayers", "creativeForegroundHands", "creativeGlassRefraction", "creativeTopDownSpiral", "creativeSplitDepth"];
   const recent = state.hanakoThreadsRecent || [];
   const choices = Array.from({ length: 30 }, () => ({ location: pickOne(locations), outfit: pickOne(outfits), pose: pickOne(poses), expression: pickOne(hanakoThreadsExpressions), composition: pickOne(weightedCompositions) }));
   const score = (item) => recent.reduce((total, previous, index) => total + (previous === JSON.stringify(item) ? 100 : 0) + (["location", "outfit", "pose", "expression"].reduce((sum, key) => sum + (JSON.parse(previous)[key] === item[key] ? 1 : 0), 0) * (recent.length - index)), 0);
@@ -3867,7 +3933,7 @@ function createHanakoBuzzKawaii() {
   const recentThemes = recent.slice(0, 4).map((item) => item.theme);
   const freshThemes = hanakoBuzzKawaiiThemes.filter((theme) => !recentThemes.includes(theme.id));
   const themePool = freshThemes.length ? freshThemes : hanakoBuzzKawaiiThemes;
-  const hairPool = valuesIn("snsHairPreset", ["straight", "wave", "looseWave", "lowpony", "highPony", "halfup", "ribbonHalfup", "looseBraid", "bob", "outerBob", "earTuck", "wind"]);
+  const hairPool = valuesIn("snsHairPreset", ["straight", "wave", "looseWave", "lowpony", "highPony", "halfup", "ribbonHalfup", "looseBraid", "bob", "outerBob", "earTuck", "wind", "cuteTwinBunsLoose", "cuteRibbonBraids", "cuteBubblePony", "cuteMiniBraids", "cuteSideBun", "cuteLayeredBob", "cuteHeartHalfUp", "cuteScarfPony", "cuteBraidedCrown", "cuteFlippedLob"]);
   const candidates = Array.from({ length: 40 }, () => {
     const theme = pick(themePool);
     const location = pick(valuesIn("snsLocationPreset", theme.locations));
@@ -13956,6 +14022,16 @@ function buildSocialCreativeDirective(context) {
   });
   Object.assign(labels.hair, {
     seeThroughBangBob: "シースルーバングの艶感ボブ", sidePonyRibbon: "小さなリボンを添えたサイドポニー", highPonyLoose: "後れ毛を少し残した高めポニー", lowTwinAdult: "幼く見えない低めツインテール", halfTwinRibbon: "細いリボンを添えた大人ハーフツイン", princessHalfUp: "上品な編み込み入りハーフアップ", oneSideBraid: "片側へ流すゆるい三つ編み", fluffyBob: "空気感のあるふんわりボブ", wetLookLong: "清潔感のあるウェット質感のロング", straightBangLong: "薄め前髪の艶ストレートロング", curtainBangWave: "カーテンバングの柔らかなウェーブ", lowBunLoose: "顔まわりに後れ毛を残した低めシニヨン", braidPony: "編み込みを混ぜたローポニー", ribbonLowPony: "ベルベットリボンの低めポニー", earTuckBob: "片耳かけの端正なボブ", softWolf: "毛先を軽く動かしたソフトウルフ", headbandWave: "細いカチューシャと艶ウェーブ", sidePartCurl: "深めサイドパートの大きなカール", tuckedLong: "両耳を軽く出した清楚なロング", messyPony: "計算された後れ毛のラフポニー", hanLinxinLongBraid: "艶のある黒髪を頭頂から一本にきっちり編み、腰より下まで届く非常に長い三つ編み。前髪と顔まわりは端正にまとめ、編み目を太く均一に保つ",
+    cuteTwinBunsLoose: "成人女性らしい低い位置の小さなツインお団子。顔まわりへ細い後れ毛を残し、左右を完全対称に固めず柔らかな空気感を出す",
+    cuteRibbonBraids: "細い淡色リボンを自然に編み込んだ低めのツイン三つ編み。幼く見せず、リボン、髪、耳の境界を明瞭にする",
+    cuteBubblePony: "高すぎないポニーテールを細いゴムで数か所まとめた軽やかなバブルポニー。小さなリボンを一つだけ添え、毛束の数を自然に保つ",
+    cuteMiniBraids: "ゆるく巻いたダウンヘアの顔まわりへ左右一本ずつ細いミニ三つ編みを加える。編み目を繊細にし、顔を隠さない",
+    cuteSideBun: "片耳の後ろへ寄せた小さなふんわりサイドお団子。反対側へ柔らかな後れ毛を残し、首元をすっきり見せる",
+    cuteLayeredBob: "あご下から肩上の丸みあるレイヤーボブ。薄め前髪と内外へ自然に動く毛先で、作り込みすぎない可愛さを出す",
+    cuteHeartHalfUp: "左右の細い毛束を後頭部でねじって小さなハート形に見せる上品なハーフアップ。飾りを増やさず髪だけで形を作る",
+    cuteScarfPony: "低めのポニーテールへ細い淡色スカーフを一度だけ結ぶ。スカーフの端を短めにして髪と布が融合しないようにする",
+    cuteBraidedCrown: "頭頂を一周させず、前髪の後ろへ細い編み込みをカチューシャ状に添える。残りの髪は柔らかく下ろし、上品で軽い印象にする",
+    cuteFlippedLob: "肩に触れる長さのロブを毛先だけ軽く外ハネにし、薄い前髪と艶を保つ。左右の毛先へ自然なばらつきを出す",
   });
   Object.assign(labels.pose, {
     fingerHeartNearFace: "成人女性が顔の横で片手の親指と人差し指を使って小さな指ハートを作り、自然に微笑む。指は5本で関節と重なりを写実的にする",
@@ -14046,6 +14122,16 @@ function buildSocialCreativeDirective(context) {
     influencerHandDetailLead: "バッグ、カップ、襟元などの手元を手前へ置き、斜め奥の顔まで視線が流れる構図。手を大きく誇張せず、指を自然な5本にする",
     influencerEnvironmentalWide: "人物を画面の3分の1程度に収め、場所の光、奥行き、空気感を広く見せる斜め引き構図。人物の顔は判別できる大きさを保つ",
     influencerCandidTilt: "カメラの水平を1〜3度だけ外した手持ちスナップ風。建物が倒れて見えるほど傾けず、人物の自然な笑顔や動作の一瞬を捉える",
+    creativeThroughShelf: "棚や仕切りの安全なすき間を前景に使い、その奥の人物の瞳へピントを合わせる。棚板で顔を分断せず、前景・人物・背景の奥行きを作る",
+    creativeReflectionPuddle: "浅い水たまりの反射を画面下半分へ入れ、上半分には安全な歩道上の本人を配置する。上下を完全対称にせず、顔は本人側で明瞭に見せる",
+    creativeCeilingCorner: "壁と天井が交わる斜線を対角線として使い、人物を画面下側の三分割点へ置く。広角歪みを抑え、建築線と姿勢をまっすぐ保つ",
+    creativeHalfHiddenDoor: "開いたドアや壁の端を前景にし、人物が上半身を半分だけ覗かせる瞬間を撮る。片目や顔全体を隠さず、手と扉の接触を自然にする",
+    creativeShadowDouble: "夕方または人工照明で生まれる本人の長い影を画面の反対側へ伸ばし、本人と影を二つの主役として配置する。影に余分な手足を作らない",
+    creativeEscalatorLayers: "停止中または安全に利用中のエスカレーターの平行線を背景に使い、人物を中央から少しずらす。段差と足の接地を正しくし、他の利用者を写さない",
+    creativeForegroundHands: "バッグ、カップ、服の袖へ触れる本人の手元を画面手前へ控えめに置き、奥の表情へ視線を導く。手を巨大化せず、各手の指を自然な5本にする",
+    creativeGlassRefraction: "透明なガラスの端やプリズム越しに色の屈折を画面端だけへ重ねる。顔を二重化せず、両目と輪郭を明瞭に残す",
+    creativeTopDownSpiral: "安全な床や広いベンチに座る人物を真上寄りから撮り、スカート裾、バッグ、床模様で緩い渦状の流れを作る。胸元を覗き込まず身体比率を自然にする",
+    creativeSplitDepth: "ぼけた小物の前景、鮮明な人物の中景、生活感のある背景を三層に分ける。各層を重ねすぎず、顔と服の主要部分を隠さない",
   });
   Object.assign(labels.location, {
     stationPlatformNight: "終電前でも照明が明るく人目のある安全な駅ホーム。架空の駅で、実在駅名や路線ロゴを出さず、黄色い線から十分離れる",
