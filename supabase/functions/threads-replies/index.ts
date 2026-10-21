@@ -1,5 +1,6 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
 import {instagramReplies} from './instagram.ts';
+import {reduceAhiOpening} from '../../../reply-rules.mjs';
 import { isDailyActivityQuestion, dailyActivityReply, cosplayUpdate, outdatedCosplayReply } from '../../../daily-activity.mjs';
 import { mergeFanProfile, fanReplyContext, profileNickname, safeNickname } from '../../../fan-profile.mjs';
 import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting, isEmojiOnly, emojiReply, replyLanguageHint, wrongReplyLanguage, tooSimilarReply, hasNotePromotion, wrongNoteReply, repeatedEnding, specialCodeReply, hasInstagramPromotion, wrongInstagramReply } from '../../../reply-rules.mjs';
@@ -128,7 +129,7 @@ ${INSTAGRAM_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名
     const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':await geminiKey(s),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
     const candidate=response.candidates?.[0];
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
-    const text=(candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim();
+    const text=reduceAhiOpening((candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim(),c.comment_id);
     if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,dailyActivity?.day_jst)||wrongInstagramReply(text,instagramAllowed)) {
       if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258/n/n5ec014ec2673 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。直近の長い返信と同じ表現を繰り返さず、今回の内容に合う短く自然な別の言い方にする。'},c,1);
       throw new Error('返信形式・言語・直近の返信の繰り返しを確認してください');
@@ -141,7 +142,7 @@ ${INSTAGRAM_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名
     input
   })},'AI返信生成');
   if(response.status!=='completed') throw new Error('AIの生成が未完了です');
-  const text=(response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim();
+  const text=reduceAhiOpening((response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim(),c.comment_id);
   if((invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,dailyActivity?.day_jst)||wrongInstagramReply(text,instagramAllowed))&&!attempt)return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶・表現の繰り返しの規則に合わないため破棄。直近の返信とは冒頭・語尾・話題を変えて短く自然に返す。Noteの案内可否を必ず守る。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。直近の長い返信とは別の言い方で、短く自然に返す。'},c,1);
   if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,dailyActivity?.day_jst)||wrongInstagramReply(text,instagramAllowed)) throw new Error('返信形式・言語・時間帯・直近の返信の繰り返しを確認してください');
   return text;

@@ -123,3 +123,12 @@ export function wrongGreeting(text,now=new Date()) {
 
 
 
+
+export function reduceAhiOpening(text,commentId){
+ const value=String(text||'');
+ if(!/^あひ[っッ]/u.test(value))return value;
+ let hash=2166136261;
+ for(const char of String(commentId||'')){hash=Math.imul(hash^char.codePointAt(0),16777619)>>>0;}
+ if(hash%4===0)return value;
+ return value.replace(/^あひ[っッ][\p{P}\p{S}\p{M}\s\u200d]*/u,'').trimStart()||'💕';
+}
