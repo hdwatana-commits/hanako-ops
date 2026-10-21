@@ -49,6 +49,15 @@ test("Instagram creates only the selected shot per request", () => {
   assert.doesNotMatch(prompt, /1枚目｜1枚カット/);
 });
 
+test("Instagram indoor buzz mode creates a safe fourth story shot", () => {
+  const prompt = makePrompt({ hanakoInstagramMode: true, hanakoInstagramBuzzKawaiiMode: true, locationPreset: "homeWindow", posePreset: "pose1", hanakoExpression: "smile", compositionPreset: "face" }, 3);
+  assert.match(prompt, /全4枚のうち、今回は4枚目/);
+  assert.match(prompt, /室内バズかわハプニング/);
+  assert.match(prompt, /続きを想像したくなる静かな一枚/);
+  assert.match(prompt, /下着、胸元、透け、着替え、衣服のずれ、転倒、拘束、盗撮を描かない/);
+  assert.match(prompt, /第4カットの画像ファイル1個だけ/);
+});
+
 test("Threads two-image mode makes two separate calls", () => {
   const profile = { hanakoThreadsMode: true, threadsImageCount: 2, locationPreset: "homeWindow", hanakoExpression: "smile", compositionPreset: "face" };
   assert.match(makePrompt(profile, 0), /全2枚のうち、今回は1枚目/);
