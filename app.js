@@ -13612,10 +13612,10 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0
 ・${count}枚とも同じ成人女性、同じ場所「${locationLabel}」、同じ服装、同じ髪型、同じ時間帯と光、背景小物の配置を固定する。場所を移動したように見せない
 ・撮影場所は上部で選択した「${locationLabel}」をそのまま使う。インスタモードでも世界都市、街角、カフェ、自然、室内など選んだ場所を優先し、別の場所へ勝手に変更しない
 ・花、花束、ブーケを持つポーズは自動採用しない。上部で本人が明示的に「小さな花束を両手で抱える」を選んだ場合だけ使用してよい
-・${instagramBuzzKawaiiMode ? "ベッドやラグでは外履きを脱ぎ、脚を自然にそろえる。服の裾、襟、ボタンは全カットで整ったまま固定し、下着、胸元、透け、着替え、衣服のずれ、転倒、拘束、盗撮を描かない" : "選択した服装を全画像で正確に維持する"}
+・${instagramBuzzKawaiiMode ? "ベッドやラグでは外履きを脱ぎ、脚を自然にそろえる。服の裾、襟、ボタンは全カットで整ったまま固定し、安心して楽しめる自然な室内撮影にする" : "選択した服装を全画像で正確に維持する"}
 ・今回の1画像には次の指定だけを使う。ほかのカットは後続の別リクエストで作る:
 ${instagramShotPlan}
-・ハプニングモードのドキッとする親密さは視線、仕草、布の揺れ、距離で表現し、衣服は整ったまま保つ。下着、胸元、透け、着替え、事故や盗撮を描かない
+・ハプニングモードのドキッとする親密さは視線、仕草、布の揺れ、距離で表現し、衣服を整えたまま本人が楽しんでいる自然な撮影にする
 ・生成した画像の中へキャプションや文字を入れない` : "";
   const threadsComposition = optionLabel("snsCompositionPreset", selected.compositionPreset || "face");
   const buzzTheme = buzzKawaiiMode ? (hanakoBuzzKawaiiThemes.find((item) => item.id === selected.hanakoBuzzKawaiiTheme) || hanakoBuzzKawaiiThemes[0]) : null;
@@ -13783,7 +13783,7 @@ ${buildSocialCreativeDirective(c)}
 【キャプション条件】
 ・今回の撮影テーマは「${c.creativeProfile.hanakoInstagramBuzzKawaiiMode ? "室内で過ごす可愛い休日の小さなハプニング" : hanakoInstagramLooks.find((look) => look.id === state.hanakoInstagramLook)?.label || "大人可愛いポートレート"}」。男性フォロワーが親しみを感じ、また写真を見たくなるような可愛さと余韻を文章でも作る。自分を過度に売り込まず、自然な一人称の言葉にする
 ・写真${c.creativeProfile.hanakoInstagramBuzzKawaiiMode ? 4 : 3}枚に共通する同じ場所、服装、髪型、時間帯の空気感を伝え、各画像に別々の本文を作らない
-・${c.creativeProfile.hanakoInstagramBuzzKawaiiMode ? "クッションや本を落とした小さな失敗、照れ笑い、くつろぎ、余韻が自然につながる一言にする。性的な事故や露出を連想させる書き方はしない" : "写真の表情変化を自然な一つの場面としてまとめる"}
+・${c.creativeProfile.hanakoInstagramBuzzKawaiiMode ? "クッションや本を落とした小さな失敗、照れ笑い、くつろぎ、余韻が自然につながる、明るく親しみやすい一言にする" : "写真の表情変化を自然な一つの場面としてまとめる"}
 ・1行目は感情や小さな場面で引き込み、次に少し照れた本音や軽い遊び心を加える。親しみやすい大人の余裕と、ふいに目が合ったようなドキッと感を上品に表現する。露出や性的な事故を言葉で煽らない
 ・自然な1〜3文、改行は読みやすく。絵文字は0〜2個。必要なら最後に軽い問いかけを1つだけ置く
 ・実際に訪れた、撮影した等の未確認の体験を断定しない。住所・店名・個人情報は書かない

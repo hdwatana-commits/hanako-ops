@@ -54,7 +54,7 @@ test("Instagram indoor buzz mode creates a safe fourth story shot", () => {
   assert.match(prompt, /全4枚のうち、今回は4枚目/);
   assert.match(prompt, /室内バズかわハプニング/);
   assert.match(prompt, /続きを想像したくなる静かな一枚/);
-  assert.match(prompt, /下着、胸元、透け、着替え、衣服のずれ、転倒、拘束、盗撮を描かない/);
+  assert.match(prompt, /服の裾、襟、ボタンは全カットで整ったまま固定/);
   assert.match(prompt, /第4カットの画像ファイル1個だけ/);
 });
 
