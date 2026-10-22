@@ -7863,7 +7863,7 @@ function shortCoordinateProductName(name) {
   const characters = typeof Intl.Segmenter === "function"
     ? Array.from(new Intl.Segmenter("ja", { granularity: "grapheme" }).segment(text), (part) => part.segment)
     : Array.from(text);
-  return characters.slice(0, 20).join("");
+  return characters.slice(0, 30).join("");
 }
 
 function renderCoordinateProductNameCopies(coordinate) {
@@ -7885,7 +7885,7 @@ function renderCoordinateProductNameCopies(coordinate) {
     detail.append(category, preview);
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = "商品名を20文字コピー";
+    button.textContent = "商品名を30文字コピー";
     button.setAttribute("aria-label", `${product.category || "商品"}：${name}をコピー`);
     button.addEventListener("click", () => copyText(name));
     row.append(detail, button);
