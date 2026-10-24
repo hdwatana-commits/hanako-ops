@@ -1,3 +1,4 @@
+import {stopChoiceReprompt} from './reply-rules.mjs';
 export function answeredQuestions(turns){
  const results=[];
  for(let i=0;i<turns.length-1;i++){
@@ -25,6 +26,9 @@ export async function loadThreadContext(db,ownerId,c,enabled){
  }
  const current={comment_id:c.comment_id,parent_id:c.parent_id,comment_text:c.comment_text,is_owner:false};
  const pairs=[...answeredQuestions([...ancestors,current])];
+ if(/白|🤍|white/i.test(c.post_text||'')&&/黒|🖤|black/i.test(c.post_text||'')){
+  for(const answer of [...history,current])if(/白|黒|両方|どっちも|グレー|選べない|選ばない|🤍|🖤/.test(answer.comment_text||'')&&!/[?？]|どっちが|どちらが/.test(answer.comment_text||''))pairs.push({question:'白と黒、どっちが好き？',answer:answer.comment_text,answer_id:answer.comment_id});
+ }
  for(const h of history){
   if(h.status!=='published'||!h.reply_id||!h.reply_text)continue;
   const answers=[...history,current].filter(a=>a.parent_id===h.reply_id);
@@ -33,6 +37,7 @@ export async function loadThreadContext(db,ownerId,c,enabled){
  return {same_post_history:history,thread_ancestors:ancestors,answered_questions:[...new Map(pairs.map(p=>[p.question+'|'+p.answer_id,p])).values()],context_enabled:true};
 }
 export function avoidAnsweredQuestions(text,answered=[]){
+ if(answered.some(a=>/白|🤍|white/i.test(a.question)&&/黒|🖤|black/i.test(a.question)))text=stopChoiceReprompt(text);
  const clean=s=>String(s||'').toLowerCase().replace(/[\p{P}\p{S}\p{M}\s]/gu,'');
  const grams=s=>new Set(Array.from({length:Math.max(0,s.length-1)},(_,i)=>s.slice(i,i+2)));
  const matches=(a,b)=>{a=clean(a);b=clean(b);if(a===b)return true;if(a.length<6||b.length<6)return false;const x=grams(a),y=grams(b);const overlap=[...x].filter(v=>y.has(v)).length;return overlap/Math.max(x.size,y.size)>=0.72;};

@@ -24,3 +24,11 @@ test('回答済みの一般質問も除去し、別の質問と本文を残す',
  assert.equal(avoidAnsweredQuestions('教えてくれてありがとう。好きなアニメは？',answered),'教えてくれてありがとう。');
  assert.equal(avoidAnsweredQuestions('推しの子が好きなんだね。どの場面が好き？',answered),'推しの子が好きなんだね。どの場面が好き？');
 });
+test('別の投稿の選択は持ち越さず、同じ投稿で答えた場合だけ再質問を止める',async()=>{
+ const c={post_id:'new-post',post_text:'🤍白か🖤黒、どっちが好き？',username:'guest',comment_id:'current',comment_text:'こんにちは'};
+ const db=async()=>[];
+ const fresh=await loadThreadContext(db,'owner',c,true);
+ assert.equal(avoidAnsweredQuestions('白と黒、どっちが好き？',fresh.answered_questions),'白と黒、どっちが好き？');
+ const answered=await loadThreadContext(db,'owner',{...c,comment_text:'黒が好き'},true);
+ assert.equal(avoidAnsweredQuestions('ありがとう。白と黒、どちらが好み？',answered.answered_questions),'ありがとう。');
+});

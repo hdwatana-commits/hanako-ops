@@ -7,5 +7,5 @@ test('実際に発生した白黒の催促・再確認を除去する',()=>{
 });
 test('回答の受け止めや別の話題の質問は残す',()=>{
  for(const text of ['黒の私を選んでくれたのね🖤','どっちも好きなんだね🤍🖤','黒が好きって教えてくれてありがとう☺️','好きな映画は？'])assert.equal(stopChoiceReprompt(text),text);
- assert.equal(normalizeReplyLayout('ありがとう\\n白と黒、どっちが好き？'),'ありがとう');
+ assert.equal(normalizeReplyLayout('ありがとう\\n白と黒、どっちが好き？'),'ありがとう\n白と黒、どっちが好き？');
 });
