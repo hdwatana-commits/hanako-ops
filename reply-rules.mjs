@@ -124,6 +124,9 @@ export function wrongGreeting(text,now=new Date()) {
 
 
 
+export function normalizeReplyLayout(text){
+ return String(text||'').replace(/\\r\\n|\\n|\\r/g,'\n').replace(/\r\n?/g,'\n').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
 export function reduceAhiOpening(text,commentId){
  const value=String(text||'');
  if(!/^あひ[っッ]/u.test(value))return value;
