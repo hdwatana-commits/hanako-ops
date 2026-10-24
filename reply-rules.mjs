@@ -125,7 +125,12 @@ export function wrongGreeting(text,now=new Date()) {
 
 
 export function normalizeReplyLayout(text){
- return String(text||'').replace(/\\r\\n|\\n|\\r/g,'\n').replace(/\r\n?/g,'\n').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+ return stopChoiceReprompt(String(text||'').replace(/\\r\\n|\\n|\\r/g,'\n').replace(/\r\n?/g,'\n').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim());
+}
+export function stopChoiceReprompt(text){
+ const parts=String(text||'').split(/(?<=[。！？!?])|(?=\n)|(?<=\n)/u);
+ const kept=parts.filter(part=>!(/白|黒|🤍|🖤|\bwhite\b|\bblack\b/iu.test(part)&&/どっち(?:が|の|を|派|[?？])|どちら(?:が|の|を|派|[?？])|which|教えて(?:ね|ほ|欲|[。！!?？]|$)|選んで(?:ね|ほ|欲|[。！!?？]|$)|選んでもら|[?？]/iu.test(part)));
+ return kept.join('').replace(/\n{3,}/g,'\n\n').trim()||'ありがとう☺️';
 }
 export function reduceAhiOpening(text,commentId){
  const value=String(text||'');
@@ -135,3 +140,7 @@ export function reduceAhiOpening(text,commentId){
  if(hash%4===0)return value;
  return value.replace(/^あひ[っッ][\p{P}\p{S}\p{M}\s\u200d]*/u,'').trimStart()||'💕';
 }
+export const INSTAGRAM_URL='https://www.instagram.com/hanako47258/';
+export function hasInstagramPromotion(text){return /instagram|インスタ|hanako47258\s*(?:の)?\s*(?:IG|ig)|\bIG\b/iu.test(String(text||''));}
+export function wrongInstagramReply(text,allowed){const value=String(text||'');return hasInstagramPromotion(value)&&(!allowed||!value.includes(INSTAGRAM_URL)||[...value.matchAll(/https?:\/\/[^\s♡♥💕☺️😊🥰。！!]+/gu)].some(m=>m[0]!==INSTAGRAM_URL));}
+

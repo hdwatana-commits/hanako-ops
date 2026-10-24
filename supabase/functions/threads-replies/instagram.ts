@@ -1,3 +1,4 @@
+import {normalizeReplyLayout} from '../../../reply-rules.mjs';
 import {firstInstagramComments,instagramPairFilter} from '../../../instagram-reply-rules.mjs';
 export async function instagramReplyMemory(db:any,ownerId:string,authorId:string,commentId:string){
  const base=`hanako_ig_reply_queue?user_id=eq.${encodeURIComponent(ownerId)}&status=eq.published&comment_id=neq.${encodeURIComponent(commentId)}`;
@@ -57,7 +58,7 @@ export function instagramReplies(deps:any){
    if(hasNotePromotion(text)&&!await db('rpc/hanako_note_claim','POST',{owner_id:owner(),fan_username:`ig_${c.author_id}`,target_comment_id:c.comment_id})){
     text=await generate({...s,use_history:false,custom_prompt:s.custom_prompt+instagramTone+'\nInstagram初回への短い返答だけ。Note案内は本日済みのため禁止。質問やInstagram案内も書かない。'},input);if(hasNotePromotion(text)||hasInstagramPromotion(text)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text))throw Error('案内なしの返信を確認できませんでした');await patch(c,{reply_text:text});
    }
-   await patch(c,{status:'publishing'});
+   text=normalizeReplyLayout(text);await patch(c,{status:'publishing',reply_text:text});
    try{const result=await graph(`${c.comment_id}/replies`,{message:text},'POST');if(!result.id)throw Error('返信結果IDを確認できません');await patch(c,{status:'published',reply_id:result.id,error:''});}
    catch(e){await patch(c,{status:'uncertain',error:'Instagramの投稿結果を確認してください。自動再送しません'});throw e;}
    await update({last_run:new Date().toISOString(),last_error:''});return {status:'published',comment_id:c.comment_id};
