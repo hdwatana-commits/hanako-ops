@@ -1,16 +1,16 @@
-import { analyze, timeline, styles, createEditPlan } from './reel-engine.mjs?v=4';
-import { drawPhotoScene } from './reel-style-renderer.mjs?v=4';
-import { mountEditStyles } from './reel-edit-styles.mjs?v=4';
+import { analyze, timeline, styles, createEditPlan } from './reel-engine.mjs?v=5';
+import { drawPhotoScene } from './reel-style-renderer.mjs?v=5';
+import { mountEditStyles } from './reel-edit-styles.mjs?v=5';
 import { mountInstagramMusic } from './reel-music.mjs?v=4';
-import { drawCaption } from './reel-captions.mjs?v=1';
-import { mountCaptionEditor } from './reel-caption-editor.mjs?v=3';
+import { drawCaption } from './reel-captions.mjs?v=2';
+import { mountCaptionEditor } from './reel-caption-editor.mjs?v=4';
 import {decodeSource,validateSource,audioClipWav,isVideoSource} from './reel-source.mjs?v=1';
 const root = document.querySelector('#reels');
 root.innerHTML = `
   <div class="reel-wrap"><p class="eyebrow">Instagram → リール自動制作</p><h2>写真に、かわいいリズムを。</h2>
   <p>写真はそのまま。音楽に合わせてハートや光を重ねます。動画制作は端末内で処理します。Instagramへの投稿準備時だけ動画をサーバーへ送ります。</p>
   <fieldset id="reelInputs"><legend>リールの素材とスタイル</legend>
-  <label>① 写真を4〜12枚選択 <input id="reelPhotos" type="file" accept="image/jpeg,image/png,image/heic,image/heif" multiple></label>
+  <label>① 写真を4〜14枚選択 <input id="reelPhotos" type="file" accept="image/jpeg,image/png,image/heic,image/heif" multiple></label>
   <p class="reel-note">写真全体を表示し、余白は背景ぼかしで補完します。HEICを読めない端末ではJPGに変換してください。</p>
   <div id="reelPhotoList" class="reel-photos"></div>
   <label>② 音楽 <select id="reelMode"><option value="file">利用権のある音楽ファイル</option><option value="silent">Instagramで音楽を後付け（無音）</option></select></label>
@@ -18,11 +18,11 @@ root.innerHTML = `
   <p id="reelSourceStatus" class="reel-note">iPhoneの画面収録（MP4/MOV）も選べます。映像は素材にせず、音声だけ使用します。音楽40MB・動画150MBまで。録画は必要な部分だけ短くしてください。</p>
   <label><input id="reelRights" type="checkbox"> この音楽を動画で使用する権利を持っています</label>
   <label>音楽の開始位置（秒）<input id="reelStart" type="number" value="0" min="0" step="0.1"></label>
-  <label><input id="reelTranscribeConsent" type="checkbox"> 使用区間の音声（最大30秒）をSupabase経由でOpenAIに送り、歌詞・字幕の下書きを作ることに同意します（API利用料がかかります）</label>
+  <label><input id="reelTranscribeConsent" type="checkbox"> 使用区間の音声（最大60秒、30秒ずつ分割）をSupabase経由でOpenAIに送り、歌詞・字幕の下書きを作ることに同意します（API利用料がかかります）</label>
   <button id="reelTranscribe" type="button">この区間の歌詞・字幕を自動で下書き</button><button id="reelTranscribeCheck" type="button">文字起こしの接続を確認</button><p id="reelTranscribeStatus" role="status" aria-live="polite"></p><p class="reel-note">歌声・伴奏は誤認識や抜けが生じます。結果と時刻を必ず確認・修正してください。動画の映像と選択区間以外の音声は送信しません。</p></div>
   <p id="reelMusicNotice" class="reel-note">Instagram公式音楽の検索・選択にも対応しています。音楽の選択方法を切り替えてください。</p>
   <div class="reel-row"><label>③ 編集スタイル<select id="reelStyle"><option value="hana">おまかせ（ハナ・かわいい系）</option><option value="cinema">おしゃれ・シネマ系</option><option value="pop">ポップ・テンポ系</option></select></label>
-  <label>長さ<select id="reelDuration"><option>15</option><option>20</option><option>30</option></select>秒</label></div>
+  <label>長さ<select id="reelDuration"><option>15</option><option>20</option><option>30</option><option>60</option></select>秒</label></div>
   <details><summary>テキスト・リズムを調整</summary><p>権利上問題のない文章を入力してください。改行できます。</p>
   <label>テキスト<textarea id="reelText" rows="3" maxlength="160" placeholder="今日のかわいいを、ひとつ。"></textarea></label>
   <div class="reel-row"><label>表示開始（秒）<input id="reelTextStart" type="number" min="0" value="0" step="0.1"></label><label>表示終了（秒）<input id="reelTextEnd" type="number" min="0" value="15" step="0.1"></label></div>
@@ -30,7 +30,7 @@ root.innerHTML = `
   <label>BPMを手動指定（空欄で自動解析）<input id="reelBpm" type="number" min="50" max="200" placeholder="例：120"></label>
   <label>ビート位置の補正（秒）<input id="reelOffset" type="number" min="-1" max="1" step="0.02" value="0"></label></details>
   </fieldset>
-  <p class="reel-note">1080×1920・MP4。30fpsを要求して録画します。制作中はこの画面を開いたままにしてください。</p>
+  <p class="reel-note">1080×1920・MP4。30fpsを要求して録画します。制作中はこの画面を開いたままにしてください。60秒の動画は制作にも約60秒かかります。</p>
   <button id="reelGenerate" class="primary-button" type="button">リールを自動制作</button><button id="reelCancel" type="button" hidden>制作を中止</button>
   <p id="reelStatus" role="status" aria-live="polite"></p><progress id="reelProgress" max="100" value="0" aria-label="制作の進捗"></progress>
   <div id="reelResult" hidden><video id="reelPreview" controls playsinline preload="metadata"></video>
@@ -125,9 +125,9 @@ $('Photos').onchange = async event => {
   $('Inputs').disabled = true;
   $('Generate').disabled = true;
   try {
-    if (files.length + photos.length > 12) throw Error('写真は12枚までです。差し替える写真を先に削除してください。');
+    if (files.length + photos.length > 14) throw Error('写真は14枚までです。差し替える写真を先に削除してください。');
     for (const file of files) photos.push(await loadPhoto(file));
-    status(`${photos.length}/12枚を選択しました。`);
+    status(`${photos.length}/14枚を選択しました。`);
   } catch (e) { status(e.message); }
   finally { photoList(); captionEditor.render(); event.target.value = ''; $('Inputs').disabled = false; $('Generate').disabled = false; }
 };
@@ -150,10 +150,16 @@ $('Transcribe').onclick=async()=>{
     const cloud=new window.HanakoCloudSync(window.HANAKO_CLOUD_CONFIG||{});if(!cloud.signedIn)throw Error('画面上部の同期設定からOPSにログインしてください。');
     const file=audioFile,start=Number($('Start').value),duration=Number($('Duration').value),previousLyrics=$('LyricsText').value;
     transcribing=true;$('Transcribe').disabled=true;$('Generate').disabled=true;root.dispatchEvent(new Event('reel-preview-stop'));captionEditor.pause();$('AudioPreview').pause();$('TranscribeStatus').textContent='選択区間の音声を取り出しています…';
-    context=new (window.AudioContext||window.webkitAudioContext)();await context.resume();const buffer=await decodeSource(context,file),clip=audioClipWav(buffer,start,duration);await context.close();context=null;
-    const token=await cloud.getAccessToken(),form=new FormData();form.set('file',clip,'reel-clip.wav');form.set('consent','true');
-    $('TranscribeStatus').textContent='歌声・音声を認識しています…';
-    const response=await fetch(`${cloud.url}/functions/v1/reel-transcribe`,{method:'POST',headers:{apikey:cloud.key,Authorization:`Bearer ${token}`},body:form,signal:AbortSignal.timeout(90000)}),data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||'音声認識に失敗しました。時間をおいて再試行してください。');
+    context=new (window.AudioContext||window.webkitAudioContext)();await context.resume();const buffer=await decodeSource(context,file);
+    if(start+duration>buffer.duration+.001)throw Error('音楽の開始位置と動画の長さを確認してください。');
+    const clips=[];for(let offset=0;offset<duration;offset+=30)clips.push({offset,clip:audioClipWav(buffer,start+offset,Math.min(30,duration-offset))});await context.close();context=null;
+    const token=await cloud.getAccessToken(),data={cues:[]};
+    for(const [i,{offset,clip}] of clips.entries()){
+      const form=new FormData();form.set('file',clip,'reel-clip.wav');form.set('consent','true');
+      $('TranscribeStatus').textContent=`歌声・音声を認識しています…（${i+1}/${clips.length}）`;
+      const response=await fetch(`${cloud.url}/functions/v1/reel-transcribe`,{method:'POST',headers:{apikey:cloud.key,Authorization:`Bearer ${token}`},body:form,signal:AbortSignal.timeout(90000)}),part=await response.json().catch(()=>({}));if(!response.ok)throw Error(part.error||'音声認識に失敗しました。時間をおいて再試行してください。');
+      data.cues.push(...(part.cues||[]).map(cue=>({...cue,start:cue.start+offset,end:cue.end+offset})));
+    }
     if(file!==audioFile||start!==Number($('Start').value)||duration!==Number($('Duration').value)||$('Mode').value!=='file'||previousLyrics!==$('LyricsText').value)throw Error('素材・区間・歌詞が変わったため認識結果を反映しませんでした。もう一度実行してください。');
     captionEditor.importTranscript(data.cues);$('TranscribeStatus').textContent='歌詞・字幕の下書きを登録しました。下の字幕欄で内容・時刻・利用権を確認してください。';
   }catch(e){$('TranscribeStatus').textContent=e.message||'音声認識を開始できませんでした。';}finally{await context?.close();transcribing=false;$('Transcribe').disabled=false;$('Generate').disabled=busy;}
@@ -183,11 +189,11 @@ $('Generate').onclick = async () => {
   if (busy) return;
   let context, stream, source, recorder, timer, animation, wake;
   try {
-    if (photos.length < 4) throw Error('写真を4〜12枚選択してください。');
+    if (photos.length < 4) throw Error('写真を4〜14枚選択してください。');
     const instagramChoice = instagramMusic.captureChoice();
     const mime = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2'].find(type => globalThis.MediaRecorder?.isTypeSupported(type));
     if (!mime || !HTMLCanvasElement.prototype.captureStream) throw Error('このブラウザではH.264/AACのMP4制作に対応していません。最新のiPhone Safariでお試しください。');
-    const duration = number('Duration', 15, 30), start = number('Start', 0, 86400);
+    const duration = number('Duration', 15, 60), start = number('Start', 0, 86400);
     const manual = $('Bpm').value ? number('Bpm', 50, 200) : 0, offset = number('Offset', -1, 1);
     const text = { value: $('Text').value, start: number('TextStart', 0, duration), end: number('TextEnd', 0, duration), color: $('Color').value, y: Number($('Position').value) };
     if (text.end <= text.start) throw Error('テキストの終了時刻は開始より後にしてください。');
@@ -227,7 +233,7 @@ $('Generate').onclick = async () => {
       destination.stream.getAudioTracks().forEach(track => stream.addTrack(track));
     }
     const chunks = [];
-    recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6500000, audioBitsPerSecond: 192000 });
+    recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: duration>30?4500000:6500000, audioBitsPerSecond: 192000 });
     const done = new Promise((resolve, reject) => {
       recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
       recorder.onerror = () => reject(Error('動画の録画に失敗しました。ほかのアプリを閉じて再試行してください。'));

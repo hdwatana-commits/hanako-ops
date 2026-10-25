@@ -61,7 +61,7 @@ export function chooseStyle(requested,analysis,manualBpm=0){
   return 'editorial';
 }
 export function createEditPlan(duration,requested,analysis,{offset=0,manualBpm=0,manualSource='manual',photoCount=4}={}){
-  photoCount=Number.isInteger(photoCount)&&photoCount>=4&&photoCount<=12?photoCount:4;
+  photoCount=Number.isInteger(photoCount)&&photoCount>=4&&photoCount<=14?photoCount:4;
   const style=chooseStyle(requested,analysis,manualBpm),profile=styles[style],cuts=[0];
   const actual=Boolean(analysis?.reliable),bpm=manualBpm||(actual?analysis.bpm:0);
   let beats=manualBpm?Array.from({length:Math.ceil((duration+2)*manualBpm/60)},(_,i)=>({time:i*60/manualBpm+offset,strength:.5})):(actual?(analysis.beats?.length?analysis.beats:analysis.peaks).map(p=>({time:p.time+offset,strength:p.strength||.5})):[]);

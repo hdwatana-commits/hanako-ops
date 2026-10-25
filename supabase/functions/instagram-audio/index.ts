@@ -144,7 +144,7 @@ Deno.serve(async (request: Request) => {
     if (body.action === 'prepare') {
       const audio = await metadata(id(body.audio_id), connection);
       if (!Number.isInteger(body.size) || body.size < 100 || body.size > maxBytes) throw new ApiError('動画は40MB以下のMP4が必要です。');
-      if (![15,20,30].includes(body.duration)) throw new ApiError('動画の長さが不正です。');
+      if (![15,20,30,60].includes(body.duration)) throw new ApiError('動画の長さが不正です。');
       if (audio.duration_ms && audio.duration_ms < body.duration * 1000) throw new ApiError('選択した音源が動画より短いため別の音源を選択してください。');
       await ensureBucket(); await cleanup(user);
       const job = `${Date.now()}-${crypto.randomUUID()}`, prefix = jobPrefix(user,job);

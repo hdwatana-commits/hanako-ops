@@ -34,3 +34,7 @@ test('overlaps, bad timestamps, excess lines and unsafe ranges are rejected',()=
  assert.throws(()=>buildCaptionPlan('test',{duration:15,offset:-1}),/動画の外/);
  assert.throws(()=>buildCaptionPlan('[offset:1000]\n[00:01]a',{duration:15}),/offset/);
 });
+
+test('60-second reels retain captions throughout both halves',()=>{
+ const cues=Array.from({length:60},(_,i)=>({text:'字幕',start:i,end:i+1}));assert.equal(validateCaptionCues(cues,60).length,60);assert.equal(buildCaptionPlan('前半\n後半',{duration:60}).cues.at(-1).end,60);
+});

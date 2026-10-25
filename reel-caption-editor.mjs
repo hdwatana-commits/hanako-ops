@@ -1,4 +1,4 @@
-import {buildCaptionPlan,validateCaptionCues,drawCaption} from './reel-captions.mjs?v=1';
+import {buildCaptionPlan,validateCaptionCues,drawCaption} from './reel-captions.mjs?v=2';
 export function mountCaptionEditor(root,{getAnalysis,getAudio,drawFrame,onPreviewStart=()=>{}}){
   const $=name=>root.querySelector('#reel'+name);
   $('Inputs').querySelector(':scope > details').insertAdjacentHTML('beforebegin',`<section class="reel-caption-editor" aria-label="歌詞字幕">

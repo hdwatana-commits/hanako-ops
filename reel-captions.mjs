@@ -3,7 +3,7 @@ const count = text => Array.from(text).length;
 export const captionStyles = { pink:'ふわふわピンク', sparkle:'キラキラホワイト', karaoke:'カラオケ風ポップ' };
 export function validateCaptionCues(cues, duration) {
   if (!Array.isArray(cues) || !cues.length) throw Error('字幕に使う歌詞を1行以上入力してください。');
-  if (cues.length > 30) throw Error('字幕は30行までです。動画に使う部分だけを入力してください。');
+  if (cues.length > (duration>30?60:30)) throw Error(`字幕は${duration>30?60:30}行までです。動画に使う部分だけを入力してください。`);
   let previousEnd=0;
   return cues.map((cue,index)=>{
     const text=String(cue.text||'').trim(),start=Number(cue.start),end=Number(cue.end);
@@ -38,7 +38,7 @@ export function buildCaptionPlan(value,{duration,start=0,end=duration,offset=0,t
     return {cues:validateCaptionCues(cues,duration),basis:'lrc',message:'LRCの指定時刻で字幕を表示します。'};
   }
   const lines=text.split('\n').map(line=>line.trim()).filter(Boolean);
-  if(lines.length>30)throw Error('字幕は30行までです。');
+  if(lines.length>(duration>30?60:30))throw Error(`字幕は${duration>30?60:30}行までです。`);
   const from=start+offset,to=end+offset;
   if(from<0||to>duration)throw Error('字幕のずらし量を適用すると動画の外に出ます。表示範囲を調整してください。');
   const minimum=.25;

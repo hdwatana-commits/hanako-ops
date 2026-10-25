@@ -96,3 +96,7 @@ test('failed music validation and active comment connections are never overwritt
  const denied=worker({noSecrets:true,metaError:true,candidateToken:token});assert.equal((await denied.request({action:'connect',account_id:'55555',token})).status,400);assert.equal(denied.calls.some(c=>c.url.includes('hanako_ig_token_save')),false);
  const active=worker({savedConfig:{enabled:true,account_id:'55555',api_host:'graph.facebook.com'},savedToken:token});assert.equal((await active.request({action:'connect',account_id:'55555',token})).data.code,'CONNECTION_IN_USE');assert.equal(active.calls.some(c=>c.url.includes('hanako_ig_token_save')),false);
 });
+
+test('60-second reels can prepare an official music upload',async()=>{
+ const w=worker();const result=await w.request({action:'prepare',audio_id:'1234',size:2000,duration:60});assert.equal(result.status,200);assert.ok(result.data.job_id);
+});

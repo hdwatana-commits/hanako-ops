@@ -1,5 +1,5 @@
 import {sceneLayout,drawThemeStage} from './reel-theme-stage.mjs?v=1';
-import {styles,beatPulse} from './reel-engine.mjs?v=4';
+import {styles,beatPulse} from './reel-engine.mjs?v=5';
 const clamp=x=>Math.max(0,Math.min(1,x)),ease=x=>1-Math.pow(1-clamp(x),3);
 // Uniform transforms preserve faces, clothing and the entire input photo.
 export function sceneMotion(family,phase,pulse,index,level=1){
