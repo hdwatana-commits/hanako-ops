@@ -16,7 +16,7 @@ export async function loadThreadContext(db,ownerId,c,enabled){
  const fields='comment_id,parent_id,comment_text,reply_text,post_text,commented_at,status,reply_id,reply_published_at';
  const recent=await db(`${base}&order=commented_at.desc&limit=40&select=${fields}`);
  const first=await db(`${base}&order=commented_at.asc&limit=10&select=${fields}`);
- const history=[...new Map([...first,...recent].map(x=>[x.comment_id,x])).values()].sort((a,b)=>Date.parse(a.commented_at)-Date.parse(b.commented_at));
+ const history=[...new Map([...first,...recent].map(x=>[x.comment_id,x])).values()].sort((a,b)=>Date.parse(a.commented_at)-Date.parse(b.commented_at)).map(h=>({...h,reply_text:h.status==='published'?h.reply_text:null}));
  const ancestors=[],seen=new Set([c.comment_id]);let parent=c.parent_id;
  for(let depth=0;parent&&depth<12&&!seen.has(parent);depth++){
   seen.add(parent);

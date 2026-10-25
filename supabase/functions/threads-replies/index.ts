@@ -133,7 +133,7 @@ ${INSTAGRAM_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
     const text=avoidAnsweredQuestions(reduceAhiOpening(normalizeReplyLayout((candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim()),c.comment_id),threadContext.answered_questions);
     if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,dailyActivity?.day_jst)||wrongInstagramReply(text,instagramAllowed)) {
-      if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258/n/n5ec014ec2673 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。直近の長い返信と同じ表現を繰り返さず、今回の内容に合う短く自然な別の言い方にする。'},c,1);
+      if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258/n/nfb9ed2b59f42 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。直近の長い返信と同じ表現を繰り返さず、今回の内容に合う短く自然な別の言い方にする。'},c,1);
       throw new Error('返信形式・言語・直近の返信の繰り返しを確認してください');
     }
     return text;
