@@ -70,7 +70,7 @@ test("Instagram outing buzz mode creates a mini outfit fourth story shot", () =>
   assert.match(prompt, /待ち合わせで見つけた瞬間/);
   assert.match(prompt, /肩越しに振り返る余韻/);
   assert.match(prompt, /ミニ丈の裾と衣服は全カットで自然に整える/);
-  assert.match(prompt, /ローアングル、下着が見えそうな構図/);
+  assert.match(prompt, /ローアングルも使ってよい/);
   assert.match(prompt, /第4カットの画像ファイル1個だけ/);
 });
 
