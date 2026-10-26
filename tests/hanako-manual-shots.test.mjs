@@ -27,6 +27,7 @@ function makePrompt(profile, shotIndex) {
     getHanakoThreadsAbOptions: () => [{ value: "pose2", textContent: "pose2" }],
     hanakoInstagramLooks: [{ id: "look", label: "自然光", direction: "自然な写真", poses: ["pose1", "pose2", "pose3"], expressions: ["smile", "soft", "bashful"], compositions: ["face", "bust", "waist"] }],
     hanakoInstagramBuzzStories: [{ id: "lazyMorning", label: "休日の寝起き", direction: "恋人だけが知っている柔らかな朝", shots: ["目が合う朝", "身支度", "隣へ誘う", "続きを想像したくなる静かな一枚"] }],
+    hanakoInstagramOutingStories: [{ id: "stationMeet", label: "待ち合わせで見つけた瞬間", direction: "待ち合わせから歩き出す彼女感", shots: ["見つけた笑顔", "ミニ丈コーデの全身", "半歩近づいて目を合わせる", "肩越しに振り返る余韻"] }],
     hanakoInstagramPoses: ["pose1", "pose2", "pose3"],
     hanakoInstagramLocations: ["homeWindow"],
     hanakoThreadsLocations: ["homeWindow", "grocer"],
@@ -60,6 +61,17 @@ test("Instagram indoor buzz mode creates a safe fourth story shot", () => {
   assert.match(prompt, /服の裾、襟、ボタンは全カットで整ったまま固定/);
   assert.match(prompt, /第4カットの画像ファイル1個だけ/);
   assert.doesNotMatch(prompt, /小さな失敗→照れ笑い→くつろぎ/);
+});
+
+test("Instagram outing buzz mode creates a mini outfit fourth story shot", () => {
+  const prompt = makePrompt({ hanakoInstagramMode: true, hanakoInstagramOutingBuzzMode: true, hanakoInstagramOutingBuzzStory: "stationMeet", locationPreset: "homeWindow", posePreset: "pose1", hanakoExpression: "smile", compositionPreset: "face" }, 3);
+  assert.match(prompt, /全4枚のうち、今回は4枚目/);
+  assert.match(prompt, /お出かけバズかわ/);
+  assert.match(prompt, /待ち合わせで見つけた瞬間/);
+  assert.match(prompt, /肩越しに振り返る余韻/);
+  assert.match(prompt, /ミニ丈の裾と衣服は全カットで自然に整える/);
+  assert.match(prompt, /ローアングル、下着が見えそうな構図/);
+  assert.match(prompt, /第4カットの画像ファイル1個だけ/);
 });
 
 test("Threads two-image mode makes two separate calls", () => {
