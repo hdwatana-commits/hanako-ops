@@ -13,7 +13,7 @@ const functionSource = `${source.slice(helperStart, helperEnd)}\n${source.slice(
 
 function makePrompt(profile, shotIndex) {
   const options = {
-    snsLocationPreset: [{ value: "homeWindow", textContent: "自宅の窓辺" }],
+    snsLocationPreset: [{ value: "homeWindow", textContent: "自宅の窓辺" }, { value: "grocer", textContent: "店名を見せない八百屋の作業場" }],
     snsPosePreset: ["pose1", "pose2", "pose3"].map((value) => ({ value, textContent: value })),
     snsCompositionPreset: ["face", "bust", "waist", "full", "thigh"].map((value) => ({ value, textContent: value })),
     snsHairPreset: [{ value: "hair", textContent: "ロングヘア" }],
@@ -29,10 +29,11 @@ function makePrompt(profile, shotIndex) {
     hanakoInstagramBuzzStories: [{ id: "lazyMorning", label: "休日の寝起き", direction: "恋人だけが知っている柔らかな朝", shots: ["目が合う朝", "身支度", "隣へ誘う", "続きを想像したくなる静かな一枚"] }],
     hanakoInstagramPoses: ["pose1", "pose2", "pose3"],
     hanakoInstagramLocations: ["homeWindow"],
-    hanakoThreadsLocations: ["homeWindow"],
+    hanakoThreadsLocations: ["homeWindow", "grocer"],
     hanakoExtraLocations: [{ items: [] }],
     hanakoThreadsExpressions: ["smile", "soft", "bashful"],
     hanakoBuzzKawaiiThemes: [{ id: "protect", label: "守ってあげたい", expressions: ["smile", "soft", "bashful", "smile"] }],
+    hanakoGrocerStories: [{ id: "tomatoChoice", label: "今日のトマト、どっち？", hook: "トマトを選ぶ物語", question: "どっちが好き？", shots: ["箱を開ける", "野菜を並べる", "二つを見比べる", "好みを尋ねる", "一つを選ぶ", "紙袋へ入れる", "おすすめを差し出す", "答えを待ちながら振り返る"] }],
     hanakoExpressionOptions: { smile: { label: "笑顔" }, soft: { label: "やさしい笑顔" }, bashful: { label: "はにかみ" } },
     hanakoThreadsAbFields: { outfit: { source: "snsOutfitPreset", label: "服装" }, pose: { source: "snsPosePreset", label: "ポーズ" } },
     hanakoThreadsAbLooks: [],
@@ -76,6 +77,17 @@ test("Buzz kawaii mode creates a distinct fourth story shot", () => {
   assert.match(prompt, /続きを想像したくなる静かな一枚/);
   assert.match(prompt, /第4カットの画像ファイル1個だけ/);
   assert.doesNotMatch(prompt, /4枚とも構図とカメラ位置を固定/);
+});
+
+test("Threads grocer story creates an independent eighth shot", () => {
+  const profile = { hanakoThreadsMode: true, hanakoGrocerStoryMode: true, hanakoGrocerStory: "tomatoChoice", threadsImageCount: 8, locationPreset: "grocer", posePreset: "vegetable", hanakoExpression: "smile", compositionPreset: "editorial" };
+  const prompt = makePrompt(profile, 7);
+  assert.match(prompt, /全8枚のうち、今回は8枚目/);
+  assert.match(prompt, /今日のトマト、どっち？/);
+  assert.match(prompt, /答えを待ちながら振り返る/);
+  assert.match(prompt, /同じ場所「店名を見せない八百屋の作業場」/);
+  assert.match(prompt, /第8カットの画像ファイル1個だけ/);
+  assert.match(prompt, /海外都市や世界都市くじには切り替えない/);
 });
 
 test("extra instructions override the location preset in Threads mode", () => {

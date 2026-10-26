@@ -3349,6 +3349,8 @@ const socialCreativeDefaults = {
   hanakoThreadsMode: false,
   hanakoBuzzKawaiiMode: false,
   hanakoBuzzKawaiiTheme: "",
+  hanakoGrocerStoryMode: false,
+  hanakoGrocerStory: "",
   hanakoThreadsAbMode: false,
   hanakoThreadsAbAxis: "outfit",
   hanakoThreadsAbB: "",
@@ -3859,6 +3861,14 @@ const hanakoBuzzKawaiiThemes = [
   { id: "conversation", label: "コメントしたくなる", locations: ["cafe", "laundromat", "supermarketAisle", "homeSofa"], outfits: ["cafeCasual", "homeHoodie", "miniShirtKnit", "whiteLaceDenim"], poses: ["cheekHands", "cupHold", "seatNextTap", "drinkOffer"], expressions: ["curiousTilt", "gentlePout", "wink", "surpriseSmile", "coyBlink", "coyPleaseEyes", "coyCheekPuff"], compositions: ["bust", "influencerForegroundBlur", "influencerCafeTable"], lights: ["cafe", "cloudy", "warm"] },
   { id: "cinema", label: "映画のワンシーン", locations: ["stationCanopyRain", "pedestrianBridge", "pianoBar", "rooftop"], outfits: ["umbrellaTrench", "blackRibbonKnit", "miniBlazer", "gateDateJacket"], poses: ["shareUmbrellaLean", "lookback", "gateTurnBack", "scarfAdjustGaze"], expressions: ["rainCloseSmile", "dontWantToLeave", "comeCloserEyes", "onlyYouSmile"], compositions: ["influencerDoorFrame", "influencerWindowReflection", "influencerNegativeSpace"], lights: ["blue", "neon", "bar"] },
 ];
+const hanakoGrocerStories = [
+  { id: "tomatoChoice", label: "今日のトマト、どっち？", hook: "色も形も違うトマトからお気に入りを探す、答えたくなる八百屋時間", question: "丸い子と細長い子、今日はどっちを連れて帰りたい？", shots: ["朝の野菜箱を開け、つやのあるトマトを見つけて瞳が明るくなる表情アップ", "赤や黄色のトマトを丁寧に並べる手元と横顔。清潔な作業風景を見せる", "形の違うトマトを左右の手に一つずつ持ち、真剣に見比べる膝上カット", "カメラへ気づき、どちらが好きか尋ねるように首を傾ける親密な中距離", "選んだ一つを頬の近くに置き、少し得意げに笑う明るい表情アップ", "紙袋へ野菜を入れながら、相手の答えを待つ自然な作業カット", "おすすめの一つをカメラ側へそっと差し出し、受け取ってほしそうに微笑む", "店先へ戻る途中で肩越しに振り返り、答えを待つ余韻を残す"] },
+  { id: "carrotRescue", label: "ちょっと個性的なにんじん", hook: "形が不揃いでも可愛い一本を見つけ、見る人も応援したくなる小さな発見", question: "見た目が個性的な野菜、むしろ選びたくなる？", shots: ["野菜箱をのぞき込み、少し変わった形のにんじんを見つけて驚く表情アップ", "にんじんを両手で傷つけないよう持ち上げ、形を確かめる腰上カット", "隣の整ったにんじんと並べ、違いを楽しそうに見比べる手元中心の写真", "個性的な一本をカメラへ見せ、可愛くない？と目で尋ねる中距離", "その一本を選ぶと決め、嬉しそうに小さくうなずく自然な笑顔", "葉や土を丁寧に整え、商品として大切に扱う作業中の横顔", "紙袋へそっと入れ、見守っていた相手へ安心した笑顔を向ける", "作業台を離れる前に振り返り、この子で正解だよねと問いかける余韻"] },
+  { id: "seasonColor", label: "旬の色を集める朝", hook: "色のきれいな旬野菜を集めながら、最後に今日の推し色を聞く鮮やかな物語", question: "今日いちばん元気をもらえる野菜の色は何色？", shots: ["朝の柔らかな光の中、色鮮やかな野菜棚を見て思わず微笑む表情アップ", "赤・黄・緑の野菜を順番に整える全身寄りの作業カット", "黄色い野菜を手に取り、光へかざさず自然な高さで色を確かめる横顔", "緑の野菜越しに顔をのぞかせ、カメラと目が合って笑う可愛い中距離", "赤い野菜を加えて三色を見比べ、迷って頬を少し緩める膝上カット", "選んだ色の野菜を小さなかごへまとめる手元と服装のディテール", "完成した色のかごをこちらへ見せ、今日の推し色を尋ねる明るい笑顔", "色の並ぶ棚の奥へ戻りながら、もう一度カメラへ目線を返す余韻"] },
+  { id: "mysteryVegetable", label: "この野菜、名前わかる？", hook: "少し珍しい野菜をきっかけに、知っている人が思わず教えたくなる8枚", question: "この野菜、見かけたらどうやって食べてみたい？", shots: ["少し珍しい形の野菜を見つけ、これは何だろうと好奇心を見せる表情アップ", "野菜を両手で丁寧に持ち、全体の形が分かる自然な腰上カット", "表面の模様や葉を近くで観察する横顔と手元のディテール", "カメラへ向き直り、名前が分かる？と目で尋ねる首かしげの中距離", "思いついたように目を輝かせ、調理法を想像する柔らかな笑顔", "ほかの旬野菜と合わせ、食卓の組み合わせを考える作業カット", "おすすめの組み合わせを二つ並べ、どちらが気になるか問いかける膝上", "珍しい野菜を棚へ戻し、答えを楽しみにする肩越しの余韻"] },
+  { id: "paperBagGift", label: "野菜の小さな贈りもの", hook: "おすすめを選び紙袋へ詰める工程を、もらった気分になる恋人目線で描く", question: "紙袋にあと一つ入れるなら、何を選ぶ？", shots: ["空の紙袋を広げ、何を入れようか楽しそうに考える表情アップ", "旬の野菜棚から最初の一つを選ぶ自然な全身カット", "色や大きさを確かめながら、二つ目の野菜を丁寧に選ぶ手元", "カメラへおすすめを見せ、これ好き？と反応を待つ親密な中距離", "選んだ野菜を紙袋へそっと入れる横顔とエプロン姿", "袋の中を確認し、もう一つ足そうか迷う可愛い頬の緩み", "完成した紙袋を両手でこちらへ差し出し、受け取ってと微笑む", "渡した後の空いた両手をエプロン前で重ね、嬉しそうに見送る余韻"] },
+  { id: "tinyMistake", label: "ころんと転がった一個", hook: "安全な小さなハプニングから笑顔へつながる、親近感のある八百屋の一幕", question: "転がった野菜、拾うの手伝ってくれる？", shots: ["野菜を並べる途中、一つが作業台の上でころんと動いて驚く表情アップ", "床へ落とさず両手で受け止め、ほっとした瞬間の膝上カット", "受け止めた野菜を見て、思わず照れ笑いする自然な横顔", "カメラへ大丈夫だったよと見せる、野菜を胸より低く持った中距離", "今度は慎重に箱へ戻し、真剣な横顔の作業カット", "きれいに並んだ列を見て満足そうに小さくうなずく全身寄り", "一番きれいな一つをこちらへ見せ、手伝ってくれたお礼のように微笑む", "次の箱へ向かう前に肩越しで振り返り、一緒に続ける？と余韻を残す"] },
+];
 hanakoInstagramLocations.push(...hanakoExtraLocations[0].items.map((item) => item.id));
 hanakoInstagramLocations.push(...hanakoExtraLocations.slice(1).flatMap((group) => group.items.map((item) => item.id)));
 hanakoInstagramOutfits.push(...hanakoExtraOutfits[0].items.map((item) => item.id), ...hanakoExtraOutfits[3].items.map((item) => item.id));
@@ -3948,12 +3958,17 @@ function renderHanakoThreadsSettings() {
   if (settings) settings.hidden = !enabled;
   renderHanakoShotControl(profile);
   const countSelect = document.querySelector("#snsHanakoThreadsCount");
-  if (countSelect) { countSelect.value = String([2, 3, 4].includes(profile.threadsImageCount) ? profile.threadsImageCount : 3); countSelect.disabled = Boolean(profile.hanakoThreadsAbMode); }
+  if (countSelect) { countSelect.value = String([2, 3, 4, 8].includes(profile.threadsImageCount) ? profile.threadsImageCount : 3); countSelect.disabled = Boolean(profile.hanakoThreadsAbMode || profile.hanakoGrocerStoryMode); }
   const buzzStatus = document.querySelector("#snsHanakoBuzzKawaiiStatus");
   const buzzTheme = hanakoBuzzKawaiiThemes.find((item) => item.id === profile.hanakoBuzzKawaiiTheme);
   if (buzzStatus) buzzStatus.textContent = profile.hanakoBuzzKawaiiMode && buzzTheme
     ? `選択中：${buzzTheme.label}｜目が合う→一緒に歩きたい→自分への仕草→別れ際の余韻で4枚を構成します。`
     : "清潔感と恋人目線を軸に、場所・服装・髪型・表情・ポーズ・構図・光をまとめて選びます。";
+  const grocerStatus = document.querySelector("#snsHanakoGrocerStoryStatus");
+  const grocerStory = hanakoGrocerStories.find((item) => item.id === profile.hanakoGrocerStory);
+  if (grocerStatus) grocerStatus.textContent = profile.hanakoGrocerStoryMode && grocerStory
+    ? `選択中：${grocerStory.label}｜八百屋での出来事を8枚の可愛い物語にします。`
+    : "八百屋で起きる小さな物語を毎回選び、コメントしたくなる8枚へつなげます。";
   renderHanakoThreadsAbSettings();
   for (const id of ["snsLocationPreset", "hanakoGasLocation"]) {
     const select = document.querySelector(`#${id}`);
@@ -3986,7 +4001,7 @@ function recommendHanakoThreads() {
   set("snsThreadsImageCount", abEnabled ? "2" : String(getSocialCreativeProfile().threadsImageCount === 2 ? 2 : 3));
   set("snsHanakoSensualLevel", "off");
   for (const id of ["snsVisualLocation", "snsOutfit", "snsPose", "snsComposition"]) set(id, "");
-  state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoBuzzKawaiiMode: false, hanakoBuzzKawaiiTheme: "" };
+  state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoBuzzKawaiiMode: false, hanakoBuzzKawaiiTheme: "", hanakoGrocerStoryMode: false, hanakoGrocerStory: "" };
   saveSocialCreativeProfile();
   renderHanakoGasSettings();
 }
@@ -4037,7 +4052,7 @@ function createHanakoBuzzKawaii() {
   set("snsHanakoSensualLevel", "off");
   for (const id of ["snsVisualLocation", "snsOutfit", "snsHairStyle", "snsPose", "snsComposition", "snsLighting"]) set(id, "");
   state.hanakoBuzzKawaiiRecent = [chosen, ...recent].slice(0, 30);
-  state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoBuzzKawaiiMode: true, hanakoBuzzKawaiiTheme: chosen.theme };
+  state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoBuzzKawaiiMode: true, hanakoBuzzKawaiiTheme: chosen.theme, hanakoGrocerStoryMode: false, hanakoGrocerStory: "" };
   saveSocialCreativeProfile();
   renderHanakoPhotobookSettings();
   renderHanakoInstagramSettings();
@@ -4046,6 +4061,51 @@ function createHanakoBuzzKawaii() {
   renderSocialConcepts();
   const theme = hanakoBuzzKawaiiThemes.find((item) => item.id === chosen.theme);
   showToast(`「${theme?.label || "バズかわ"}」で4枚の設定を作りました`);
+}
+
+function createHanakoGrocerStory() {
+  const pick = (items) => items[Math.floor(Math.random() * items.length)];
+  const available = (id, values) => {
+    const options = new Set([...(document.querySelector(`#${id}`)?.options || [])].map((option) => option.value));
+    return values.filter((value) => options.has(value));
+  };
+  const recent = state.hanakoGrocerStoryRecent || [];
+  const freshStories = hanakoGrocerStories.filter((story) => !recent.slice(0, 3).includes(story.id));
+  const story = pick(freshStories.length ? freshStories : hanakoGrocerStories);
+  const outfits = available("snsOutfitPreset", ["grocer", "grocerKnit", "grocerRibbonApron", "grocerCardiganDenim", "grocerPoloApron"]);
+  const hairs = available("snsHairPreset", ["lowpony", "highPony", "halfup", "ribbonHalfup", "looseBraid", "earTuck", "cuteScarfPony", "cuteSideBun", "cuteBraidedCrown"]);
+  const expressions = available("snsHanakoExpression", ["grocerPeekSmile", "grocerTasteQuestion", "grocerProudSmile", "bigsmile", "curiousTilt", "surpriseSmile", "softEyeContact", "coveredLaugh"]);
+  if (!outfits.length || !hairs.length || !expressions.length) return showToast("八百屋ストーリーの候補を作れませんでした");
+  const set = (id, value) => { const input = document.querySelector(`#${id}`); if (input) input.value = value; };
+  document.querySelector("#snsHanakoMode").checked = true;
+  document.querySelector("#snsHanakoThreadsMode").checked = true;
+  document.querySelector("#snsHanakoInstagramMode").checked = false;
+  document.querySelector("#snsHanakoPhotobookMode").checked = false;
+  document.querySelector("#snsHanakoThreadsAbMode").checked = false;
+  activePlatform = "Threads";
+  document.querySelectorAll("#platformTabs button").forEach((button) => button.classList.toggle("active", button.dataset.platform === "Threads"));
+  set("snsScenePreset", "vegetableMorning");
+  set("snsLocationPreset", "grocer");
+  set("snsOutfitPreset", pick(outfits));
+  set("snsHairPreset", pick(hairs));
+  set("snsPosePreset", "vegetable");
+  set("snsHanakoExpression", pick(expressions));
+  set("snsCompositionPreset", "editorial");
+  set("snsLightingPreset", "produce");
+  set("snsCarouselPreset", "story");
+  set("snsHanakoThreadsCount", "8");
+  set("snsThreadsImageCount", "8");
+  set("snsHanakoSensualLevel", "off");
+  for (const id of ["snsVisualLocation", "snsOutfit", "snsHairStyle", "snsPose", "snsComposition", "snsLighting"]) set(id, "");
+  state.hanakoGrocerStoryRecent = [story.id, ...recent].slice(0, 12);
+  state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoThreadsMode: true, hanakoThreadsAbMode: false, hanakoBuzzKawaiiMode: false, hanakoBuzzKawaiiTheme: "", hanakoGrocerStoryMode: true, hanakoGrocerStory: story.id, threadsImageCount: 8 };
+  saveSocialCreativeProfile();
+  renderHanakoPhotobookSettings();
+  renderHanakoInstagramSettings();
+  renderHanakoThreadsSettings();
+  renderHanakoGasSettings();
+  renderSocialConcepts();
+  showToast(`「${story.label}」で八百屋ストーリー8枚を設定しました`);
 }
 
 function recommendHanakoThreadsAb({ rerollA = false } = {}) {
@@ -4474,12 +4534,13 @@ function saveSocialCreativeProfile() {
   const instagramBuzzKawaiiMode = instagramMode && Boolean(getSocialCreativeProfile().hanakoInstagramBuzzKawaiiMode);
   const threadsMode = Boolean(document.querySelector("#snsHanakoThreadsMode")?.checked);
   const threadsAbMode = threadsMode && Boolean(document.querySelector("#snsHanakoThreadsAbMode")?.checked);
+  const grocerStoryMode = threadsMode && !threadsAbMode && Boolean(getSocialCreativeProfile().hanakoGrocerStoryMode);
   if (instagramMode || threadsMode) {
     const location = document.querySelector("#snsLocationPreset");
     if (threadsMode && location && !hanakoThreadsLocations.includes(location.value)) location.value = "studioDaylight";
     const abLayout = getHanakoThreadsAbLayout(value("snsHanakoThreadsAbAxis") || "outfit", value("snsHanakoThreadsAbLayout") || "auto");
-    const selectedThreadsCount = [2, 3, 4].includes(Number(value("snsHanakoThreadsCount"))) ? Number(value("snsHanakoThreadsCount")) : 3;
-    for (const [id, fixed] of [["snsThreadsImageCount", threadsAbMode ? "2" : instagramMode ? (instagramBuzzKawaiiMode ? "4" : "3") : String(selectedThreadsCount)], ["snsHanakoSensualLevel", instagramMode ? "mishap" : "off"]]) {
+    const selectedThreadsCount = [2, 3, 4, 8].includes(Number(value("snsHanakoThreadsCount"))) ? Number(value("snsHanakoThreadsCount")) : 3;
+    for (const [id, fixed] of [["snsThreadsImageCount", threadsAbMode ? "2" : instagramMode ? (instagramBuzzKawaiiMode ? "4" : "3") : grocerStoryMode ? "8" : String(selectedThreadsCount)], ["snsHanakoSensualLevel", instagramMode ? "mishap" : "off"]]) {
       const input = document.querySelector(`#${id}`);
       if (input) input.value = fixed;
     }
@@ -4518,6 +4579,8 @@ function saveSocialCreativeProfile() {
     hanakoThreadsMode: threadsMode,
     hanakoBuzzKawaiiMode: threadsMode && !threadsAbMode && Boolean(getSocialCreativeProfile().hanakoBuzzKawaiiMode),
     hanakoBuzzKawaiiTheme: threadsMode && !threadsAbMode ? getSocialCreativeProfile().hanakoBuzzKawaiiTheme : "",
+    hanakoGrocerStoryMode: grocerStoryMode,
+    hanakoGrocerStory: grocerStoryMode ? getSocialCreativeProfile().hanakoGrocerStory : "",
     hanakoThreadsAbMode: threadsAbMode,
     hanakoThreadsAbAxis: value("snsHanakoThreadsAbAxis") || "outfit",
     hanakoThreadsAbB: value("snsHanakoThreadsAbB"),
@@ -4714,6 +4777,7 @@ function bindSocialPatternStudio() {
     else recommendHanakoThreads();
   });
   document.querySelector("#createHanakoBuzzKawaii")?.addEventListener("click", createHanakoBuzzKawaii);
+  document.querySelector("#createHanakoGrocerStory")?.addEventListener("click", createHanakoGrocerStory);
   document.querySelector("#snsHanakoThreadsAbMode")?.addEventListener("change", (event) => {
     saveSocialCreativeProfile();
     if (event.currentTarget.checked) recommendHanakoThreadsAb({ rerollA: true });
@@ -4723,9 +4787,8 @@ function bindSocialPatternStudio() {
   document.querySelector("#snsHanakoThreadsAbB")?.addEventListener("change", saveSocialCreativeProfile);
   document.querySelector("#snsHanakoThreadsCount")?.addEventListener("change", (event) => {
     document.querySelector("#snsThreadsImageCount").value = event.currentTarget.value;
-    if (Number(event.currentTarget.value) !== 4) {
-      state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoBuzzKawaiiMode: false, hanakoBuzzKawaiiTheme: "" };
-    }
+    if (Number(event.currentTarget.value) !== 4) state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoBuzzKawaiiMode: false, hanakoBuzzKawaiiTheme: "" };
+    if (Number(event.currentTarget.value) !== 8) state.socialCreativeProfile = { ...getSocialCreativeProfile(), hanakoGrocerStoryMode: false, hanakoGrocerStory: "" };
     saveSocialCreativeProfile();
     renderHanakoThreadsSettings();
   });
@@ -13187,7 +13250,7 @@ function generateHanakoLifestyleCopy(context, variant = 0) {
 
 function getHanakoDedicatedShotCount(profile = getSocialCreativeProfile()) {
   if (profile.hanakoInstagramMode) return profile.hanakoInstagramBuzzKawaiiMode ? 4 : 3;
-  if (profile.hanakoThreadsMode) return profile.hanakoThreadsAbMode ? 2 : [2, 3, 4].includes(profile.threadsImageCount) ? profile.threadsImageCount : 3;
+  if (profile.hanakoThreadsMode) return profile.hanakoThreadsAbMode ? 2 : profile.hanakoGrocerStoryMode ? 8 : [2, 3, 4].includes(profile.threadsImageCount) ? profile.threadsImageCount : 3;
   return 0;
 }
 
@@ -13595,7 +13658,8 @@ function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0
   const abLayout = getHanakoThreadsAbLayout(c.creativeProfile?.hanakoThreadsAbAxis || "outfit", c.creativeProfile?.hanakoThreadsAbLayout || "auto");
   const abSideBySide = threadsAbMode && abLayout === "sideBySide";
   const buzzKawaiiMode = threadsMode && !threadsAbMode && Boolean(c.creativeProfile?.hanakoBuzzKawaiiMode);
-  const count = threadsAbMode ? 2 : instagramMode ? (instagramBuzzKawaiiMode ? 4 : 3) : threadsMode ? ([2, 3, 4].includes(Number(c.creativeProfile?.threadsImageCount)) ? Number(c.creativeProfile.threadsImageCount) : 3) : photobookMode ? photobookCount : Math.max(1, Math.min(7, Number(c.creativeProfile?.threadsImageCount || 4)));
+  const grocerStoryMode = threadsMode && !threadsAbMode && Boolean(c.creativeProfile?.hanakoGrocerStoryMode);
+  const count = threadsAbMode ? 2 : instagramMode ? (instagramBuzzKawaiiMode ? 4 : 3) : threadsMode ? (grocerStoryMode ? 8 : [2, 3, 4].includes(Number(c.creativeProfile?.threadsImageCount)) ? Number(c.creativeProfile.threadsImageCount) : 3) : photobookMode ? photobookCount : Math.max(1, Math.min(8, Number(c.creativeProfile?.threadsImageCount || 4)));
   const oneImagePerRequest = instagramMode || threadsMode;
   const shotIndex = Math.max(0, Math.min(count - 1, Number(requestedShotIndex) || 0));
   const selected = c.creativeProfile || {};
@@ -13633,6 +13697,7 @@ ${instagramShotPlan}
 ・生成した画像の中へキャプションや文字を入れない` : "";
   const threadsComposition = optionLabel("snsCompositionPreset", selected.compositionPreset || "face");
   const buzzTheme = buzzKawaiiMode ? (hanakoBuzzKawaiiThemes.find((item) => item.id === selected.hanakoBuzzKawaiiTheme) || hanakoBuzzKawaiiThemes[0]) : null;
+  const grocerStory = grocerStoryMode ? (hanakoGrocerStories.find((item) => item.id === selected.hanakoGrocerStory) || hanakoGrocerStories[0]) : null;
   const threadsExpressions = buzzKawaiiMode
     ? [selected.hanakoExpression || buzzTheme.expressions[0], ...buzzTheme.expressions.filter((expression) => expression !== selected.hanakoExpression)].slice(0, 4)
     : [selected.hanakoExpression || "bashful", ...hanakoThreadsExpressions.filter((expression) => expression !== selected.hanakoExpression).slice(0, 3)];
@@ -13653,7 +13718,7 @@ ${instagramShotPlan}
     `自分に向けられたと感じる親密な中距離。${buzzStory[2]}。カメラを信頼する相手の目線として扱い、合意ある自然な距離感を作る`,
     `もう一度見返したくなる余韻。${buzzStory[3]}。視線を一度外してから戻す途中を捉え、続きを想像したくなる静かな一枚として進行方向へ空間を残す`,
   ];
-  const threadsShotPlan = threadsMode ? `${shotIndex + 1}枚目｜${buzzKawaiiMode ? buzzShotRoles[shotIndex] : shotIndex === 0 ? "上部で選んだポーズと表情を主役にする" : shotIndex === 1 ? "同じ位置・同じ画角のまま、少し照れた笑顔や手元の仕草を変える" : "同じ位置・同じ画角のまま、目線をカメラへ戻して余韻を作る"}。表情: ${hanakoExpressionOptions[threadsExpressions[shotIndex]]?.label || "自然な笑顔"}。${buzzKawaiiMode ? "このカットでは上部のポーズ・構図を参考にしつつ、この枚数固有の役割を優先する。4枚のカメラ距離と角度は重複させない。" : `構図は全画像で「${threadsComposition}」に固定。`}` : "";
+  const threadsShotPlan = threadsMode ? `${shotIndex + 1}枚目｜${grocerStoryMode ? grocerStory.shots[shotIndex] : buzzKawaiiMode ? buzzShotRoles[shotIndex] : shotIndex === 0 ? "上部で選んだポーズと表情を主役にする" : shotIndex === 1 ? "同じ位置・同じ画角のまま、少し照れた笑顔や手元の仕草を変える" : "同じ位置・同じ画角のまま、目線をカメラへ戻して余韻を作る"}。表情: ${hanakoExpressionOptions[threadsExpressions[shotIndex % threadsExpressions.length]]?.label || "自然な笑顔"}。${grocerStoryMode ? "このカット固有の出来事を優先し、前後のカットと視線・手元・カメラ距離を変える。野菜の種類、服、髪、作業台の配置は連続させる。" : buzzKawaiiMode ? "このカットでは上部のポーズ・構図を参考にしつつ、この枚数固有の役割を優先する。4枚のカメラ距離と角度は重複させない。" : `構図は全画像で「${threadsComposition}」に固定。`}` : "";
   const abAxis = hanakoThreadsAbFields[selected.hanakoThreadsAbAxis] ? selected.hanakoThreadsAbAxis : "outfit";
   const abField = hanakoThreadsAbFields[abAxis];
   const abAKey = document.querySelector(`#${abField.source}`)?.value || "";
@@ -13676,10 +13741,10 @@ ${instagramShotPlan}
   const threadsDirective = threadsMode && !threadsAbMode ? `【スレッズモード｜可愛さ重視の${count}枚組】
 ・Threads投稿用の全${count}枚のうち、今回は${shotIndex + 1}枚目の独立写真1枚だけを作る。共通キャプションは別依頼で作る。男性にも女性にも親しみやすい、自然な可愛さと清潔感を最優先する
 ・全画像で同じ成人女性、同じ場所「${locationLabel}」、同じ服装、同じ髪型、同じ光・時間帯を固定する。海外都市や世界都市くじには切り替えない
-・${buzzKawaiiMode ? `今回の感情テーマは「${buzzTheme.label}」。4枚を「目が合う→一緒に歩きたい→自分に向けた仕草→別れ際の余韻」という感情の流れでつなぎ、男性視聴者が自分と同じ場面にいるように感じる自然な恋人目線を作る` : `全画像で構図「${threadsComposition}」を厳密に固定する。カメラの高さ、角度、レンズ感、人物までの距離、顔と肩の大きさ、余白、縦4:5の切り取りを揃える`}
-・${buzzKawaiiMode ? "魅力は露出や身体の強調ではなく、清潔感、目線、照れ、反応を待つ間、日常の親近感で作る。35〜85mm相当の自然なポートレート域で、アップ・全身・中距離・斜めの余韻を使い分ける" : "変化をつけるのは表情、視線、手元、首の傾きなどの小さな仕草だけ。別人や別の撮影に見せない"}
-・${buzzKawaiiMode ? "4枚を並べた時に、1枚目と3枚目はカメラ目線、2枚目は自然な視線外し、4枚目は肩越しまたは横顔から目線を戻す途中にする。同じ笑顔、同じ手の位置、同じ身体の向きを繰り返さない" : "顔アップまたはバストアップを選択した回は、顔立ちと自然な笑顔を主役にして、胸部ではなく表情へ視線を導く"}
-・${buzzKawaiiMode ? "本人画像の魅力と選択した服を忠実に保ち、花束、意味のない装飾、過剰なハート、文字、作り物めいたピンク一色の背景を勝手に加えない" : "選択した場所、衣装、髪型、表情を自然な一場面としてまとめる"}
+・${grocerStoryMode ? `今回の八百屋ストーリーは「${grocerStory.label}」。${grocerStory.hook}。8枚を一つの連続した出来事として進め、各写真だけでも可愛く、順番に見ると感情が深まる構成にする` : buzzKawaiiMode ? `今回の感情テーマは「${buzzTheme.label}」。4枚を「目が合う→一緒に歩きたい→自分に向けた仕草→別れ際の余韻」という感情の流れでつなぎ、男性視聴者が自分と同じ場面にいるように感じる自然な恋人目線を作る` : `全画像で構図「${threadsComposition}」を厳密に固定する。カメラの高さ、角度、レンズ感、人物までの距離、顔と肩の大きさ、余白、縦4:5の切り取りを揃える`}
+・${grocerStoryMode ? "清潔な八百屋の作業場、実在店を特定できない背景、瑞々しく自然な野菜、衛生的なエプロン姿を守る。店名、値札の文字、ブランド、客の顔は出さない" : buzzKawaiiMode ? "魅力は露出や身体の強調ではなく、清潔感、目線、照れ、反応を待つ間、日常の親近感で作る。35〜85mm相当の自然なポートレート域で、アップ・全身・中距離・斜めの余韻を使い分ける" : "変化をつけるのは表情、視線、手元、首の傾きなどの小さな仕草だけ。別人や別の撮影に見せない"}
+・${grocerStoryMode ? "表情アップ、作業の全身、野菜のディテール、恋人目線の中距離、横顔、差し出す仕草、振り返りを使い分ける。同じ笑顔、同じ野菜の持ち方、同じ画角を繰り返さない" : buzzKawaiiMode ? "4枚を並べた時に、1枚目と3枚目はカメラ目線、2枚目は自然な視線外し、4枚目は肩越しまたは横顔から目線を戻す途中にする。同じ笑顔、同じ手の位置、同じ身体の向きを繰り返さない" : "顔アップまたはバストアップを選択した回は、顔立ちと自然な笑顔を主役にして、胸部ではなく表情へ視線を導く"}
+・${grocerStoryMode ? "野菜を顔や身体の不自然な位置へ置かない。食材を丁寧に扱い、転倒、破損、汚れ、過剰な演技を避け、本人の自然な愛嬌と反応を主役にする" : buzzKawaiiMode ? "本人画像の魅力と選択した服を忠実に保ち、花束、意味のない装飾、過剰なハート、文字、作り物めいたピンク一色の背景を勝手に加えない" : "選択した場所、衣装、髪型、表情を自然な一場面としてまとめる"}
 ・顔アップまたはバストアップを選択した回は、顔立ちと自然な笑顔を主役にして、胸部ではなく表情へ視線を導く
 ${threadsShotPlan}
 ・画像内に文字やキャプションは入れない` : "";
@@ -13730,7 +13795,7 @@ ${imageRoles}
 ・${oneImagePerRequest ? "今回の出力は単一場面の写真1枚だけ。残りは別リクエストで作る" : "コラージュではなく、個別保存できる独立画像を指定枚数作る"}
 ・${oneImagePerRequest ? "この1枚は必ず幅1080×高さ1350pxの縦4:5" : `全${count}枚を1枚ずつ独立した縦画像として作る。各画像は必ず幅1080×高さ1350px、縦4:5。1枚でも横型や寸法違いにしない`}
 ・顔、手、靴、小物を四辺から十分に離し、頭頂、指先、足先を不自然に切らない
-・${threadsAbMode ? "A/Bの2枚は構図とカメラ位置を固定し、比較項目だけを変える" : buzzKawaiiMode ? "4枚は表情アップ→全身→親密な仕草→余韻の順で、カメラ距離・角度・視線を明確に変え、同じ構図を複製しない" : threadsMode ? `${count}枚とも構図とカメラ位置を固定し、表情・視線・小さな仕草だけを変える` : "アップ→引き→中距離→寄り→動き→環境→余韻とカメラ距離・角度・視線を変え、同じ構図を複製しない"}
+・${threadsAbMode ? "A/Bの2枚は構図とカメラ位置を固定し、比較項目だけを変える" : grocerStoryMode ? "8枚は導入→発見→迷い→問いかけ→決定→作業→交流→余韻へ進め、寄り・引き・手元・横顔・恋人目線を重複なく使う" : buzzKawaiiMode ? "4枚は表情アップ→全身→親密な仕草→余韻の順で、カメラ距離・角度・視線を明確に変え、同じ構図を複製しない" : threadsMode ? `${count}枚とも構図とカメラ位置を固定し、表情・視線・小さな仕草だけを変える` : "アップ→引き→中距離→寄り→動き→環境→余韻とカメラ距離・角度・視線を変え、同じ構図を複製しない"}
 ・${abSideBySide ? "左右のパネルで色温度・光・背景の余白をそろえる。A/B以外のコラージュや追加パネルは作らない" : "誌面のように色、光、人物の位置、背景の余白にリズムを作る。ただし複数枚を1枚へレイアウトしない"}
 ・${threadsAbMode ? "同じ成人女性、同じ場所、同じ色調を保ち、A/Bで指定した比較項目以外を変えない" : "同じ成人女性、同じ服装、同じ場所、同じ色調を保つ"}
 ・${abSideBySide ? "画像内の文字は左右パネル下隅の小さなA/B印だけ。それ以外の場所名、本文、見出し、キャプション、ハッシュタグ、商品名、価格、ロゴ、透かし、宣伝文句を描かない" : "画像内には文字を一切入れない。場所名、都市名、ランドマーク名、投稿本文、見出し、キャプション、ハッシュタグ、商品名、価格、ロゴ、透かし、宣伝文句を描かない"}
@@ -13774,6 +13839,23 @@ ${buildSocialCreativeDirective(c)}
 ・「A」「B」は本文で明確に対応させる。${sideBySide ? "左A→右Bの順" : "画像A→画像Bの順"}。決めつけや過剰な煽り、投票を強制する言い方、毎回同じ定型文は避ける。参考投稿の文言はコピーしない
 ・服や見た目を評価させるのではなく、どちらの雰囲気が好きかを気楽に聞く。男性にも女性にも返信しやすい、可愛く自然なハナの語り口にする
 ・絵文字は0〜2個。未確認の出来事・場所・購入体験を事実として書かない。ハッシュタグ、商品名、ROOM誘導、購入CTAは入れない
+
+完成キャプション1つだけを出力してください。解説、別案、画像ごとの本文は不要です。`;
+  }
+  if (c.creativeProfile?.hanakoThreadsMode && c.creativeProfile?.hanakoGrocerStoryMode) {
+    const story = hanakoGrocerStories.find((item) => item.id === c.creativeProfile.hanakoGrocerStory) || hanakoGrocerStories[0];
+    return `ハナのThreads投稿用に、八百屋での写真8枚を一つの可愛い物語としてまとめるキャプションを日本語で1つだけ作ってください。楽天商品紹介や購入誘導ではありません。
+
+${buildSocialCreativeDirective(c)}
+
+【八百屋8枚ストーリー】
+・今回のテーマは「${story.label}」。${story.hook}
+・8枚を順番に説明する文章にはせず、その場に一緒にいたように感じる短い出来事としてまとめる
+・冒頭は野菜、色、形、朝の空気、小さなハプニングのいずれかで一瞬で場面が浮かぶフックにする
+・本文は可愛く自然なハナの一人称で45〜90文字、2〜4行。野菜や仕事を雑に扱わず、八百屋らしい親近感を出す
+・最後は「${story.question}」の意味を生かし、知識自慢でなくても一言で答えられる自然な問いかけにする。文言は毎回そのままコピーせず言い換える
+・二択だけに偏らず、好きな野菜、色、食べ方、手伝うか、思い出などテーマに合うコメントの入口を一つだけ作る
+・絵文字は0〜2個。店名、住所、価格、未確認の来店体験、商品名、ROOM誘導、購入CTA、ハッシュタグは入れない
 
 完成キャプション1つだけを出力してください。解説、別案、画像ごとの本文は不要です。`;
   }
@@ -14333,12 +14415,12 @@ ${extraLocation ? `・追加指定から読み取った撮影場所は「${extra
 ・絵文字は平均1個を目安に0〜2個。ハッシュタグ、長い前置き、説明過多、広告調のCTAは避ける
 ・返信を増やす時は「今日は何して過ごす？」「どっちが好き？」のように、1秒で答えられる質問を最後に一つだけ置く。毎投稿を二択にはしない
 ・${profile.hanakoInstagramMode || profile.hanakoThreadsMode ? "この専用モードでは商品名、ROOM誘導、購入案内を入れない" : "商品名やROOM誘導は本文の主役にせず、必要な時だけ最後に「愛用品はROOMにそっと」の距離感で添える"}
-・${profile.hanakoThreadsAbMode ? "A/B比較では同じ構図で2枚。比較項目だけ変え、ほかの条件を揃える" : profile.hanakoBuzzKawaiiMode ? "バズかわ4枚では、表情アップ→全身→親密な仕草→余韻の順で、同じ人物・服・場所を保ちながら構図と感情を進める" : profile.hanakoThreadsMode ? `画像は自然なスナップ写真の空気。${getHanakoDedicatedShotCount(profile)}枚は同じ構図を保ち、表情と小さな仕草だけ変える` : "画像は自然なスナップ写真の空気。本人・コーデ・手元・風景の順で変化をつけ、同じ構図を複製しない"}
+・${profile.hanakoThreadsAbMode ? "A/B比較では同じ構図で2枚。比較項目だけ変え、ほかの条件を揃える" : profile.hanakoGrocerStoryMode ? "八百屋8枚ストーリーでは、導入→発見→迷い→問いかけ→決定→作業→交流→余韻へ進め、野菜・人物・手元・場所の見せ方を変える" : profile.hanakoBuzzKawaiiMode ? "バズかわ4枚では、表情アップ→全身→親密な仕草→余韻の順で、同じ人物・服・場所を保ちながら構図と感情を進める" : profile.hanakoThreadsMode ? `画像は自然なスナップ写真の空気。${getHanakoDedicatedShotCount(profile)}枚は同じ構図を保ち、表情と小さな仕草だけ変える` : "画像は自然なスナップ写真の空気。本人・コーデ・手元・風景の順で変化をつけ、同じ構図を複製しない"}
 ・ビジュアル方針: ${hanakoThreadsProfile.visualStyle}
 ・選択した表情: ${hanakoExpression.label}。${hanakoExpression.prompt}
 ・${profile.hanakoThreadsAbMode ? (profile.hanakoThreadsAbAxis === "expression" ? "A/Bで指定した表情だけを変え、顔立ち・構図・光を揃える" : "A/Bでは表情と視線を揃え、比較項目以外に差を作らない") : "選択した表情は人物が主役のカットで最も明確に見せる。全画像を同じ顔に固定せず、ほかのカットはその感情につながる自然な表情変化にする"}
 ・甘めきれいめ、柔らかい自然光、生活の途中を切り取った表情。過度な広告バナー、情報カード、派手な比較レイアウトは使わない
-・${profile.hanakoInstagramMode ? profile.hanakoInstagramBuzzKawaiiMode ? "Instagram室内バズかわでは独立した写真4枚だけ。同じ室内・衣装・髪型・光を固定し、毎回選ばれる彼女感ストーリーに沿って感情を進める" : "Instagramでは独立した写真を3枚だけ。同じ場所・衣装・髪型で、ポーズ・表情・構図を変える" : profile.hanakoThreadsAbMode ? "Threads A/B比較では写真2枚だけ。1枚目A、2枚目B。比較項目以外を固定する" : profile.hanakoBuzzKawaiiMode ? "バズかわでは独立した写真4枚だけ。同じ場所・衣装・髪型・光を固定し、アップ、全身、中距離、余韻の4構図を使い分ける" : profile.hanakoThreadsMode ? `Threads専用モードでは独立した写真${getHanakoDedicatedShotCount(profile)}枚だけ。同じ場所・衣装・髪型・構図で、可愛さと返信しやすさを優先する` : "Threadsは4枚を基本に、1枚目は感情が伝わる主役写真、2枚目は全身または場面、3枚目は小物や手元、4枚目は余韻のある風景にする"}
+・${profile.hanakoInstagramMode ? profile.hanakoInstagramBuzzKawaiiMode ? "Instagram室内バズかわでは独立した写真4枚だけ。同じ室内・衣装・髪型・光を固定し、毎回選ばれる彼女感ストーリーに沿って感情を進める" : "Instagramでは独立した写真を3枚だけ。同じ場所・衣装・髪型で、ポーズ・表情・構図を変える" : profile.hanakoThreadsAbMode ? "Threads A/B比較では写真2枚だけ。1枚目A、2枚目B。比較項目以外を固定する" : profile.hanakoGrocerStoryMode ? "八百屋ストーリーでは独立した写真8枚だけ。同じ八百屋・衣装・髪型・光を保ち、小さな出来事と感情を連続させる" : profile.hanakoBuzzKawaiiMode ? "バズかわでは独立した写真4枚だけ。同じ場所・衣装・髪型・光を固定し、アップ、全身、中距離、余韻の4構図を使い分ける" : profile.hanakoThreadsMode ? `Threads専用モードでは独立した写真${getHanakoDedicatedShotCount(profile)}枚だけ。同じ場所・衣装・髪型・構図で、可愛さと返信しやすさを優先する` : "Threadsは4枚を基本に、1枚目は感情が伝わる主役写真、2枚目は全身または場面、3枚目は小物や手元、4枚目は余韻のある風景にする"}
 ・スプレッドシートの分析${hanakoThreadsProfile.sheetSampleSize}件と、最新20件CSVを取り込んだ場合はその新しい統計を優先する。既存投稿の文章をコピーせず、世界観と構造だけを再現する` : "";
   return `${extraPriority ? `${extraPriority}\n\n` : ""}【発信キャラクターと制作設計】
 ・公開上の役割: ${profile.characterRole}
