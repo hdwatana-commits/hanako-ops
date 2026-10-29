@@ -9,7 +9,7 @@ const end = source.indexOf("const hanakoIdeaCatalog = [", start);
 const catalogs = vm.runInNewContext(`${source.slice(start, end)}\n({ outfits: hanakoExtraOutfits, expressions: hanakoExtraExpressions, poses: hanakoExtraPoses, locations: hanakoExtraLocations })`);
 
 test("Hanako catalogs have the requested counts, unique IDs and image directions", () => {
-  assert.deepEqual(Array.from(catalogs.outfits, (group) => group.items.length), [10, 10, 5, 10]);
+  assert.deepEqual(Array.from(catalogs.outfits.slice(0, 4), (group) => group.items.length), [10, 10, 5, 10]);
   assert.equal(catalogs.expressions[0].items.length, 20);
   assert.equal(catalogs.poses[0].items.length, 20);
   assert.equal(catalogs.locations[0].items.length, 10);
@@ -28,4 +28,23 @@ test("new selections are connected to the image prompt and searchable picker", (
   assert.match(source, /Object\.assign\(labels\.location, \.\.\.hanakoExtraLocations/);
   assert.match(source, /Object\.assign\(hanakoExpressionOptions, Object\.fromEntries\(hanakoExtraExpressions/);
   assert.match(source, /installHanakoPickers\(\)/);
+});
+
+test("Doronjo costume, expressions and poses are available in SNS modes", () => {
+  const ids = (groups) => groups.flatMap((group) => group.items.map((item) => item.id));
+  assert.ok(ids(catalogs.outfits).includes("cosDoronjo"));
+  assert.ok(ids(catalogs.expressions).includes("doronjoConfidentSmile"));
+  assert.ok(ids(catalogs.poses).includes("poseDoronjoCape"));
+  assert.match(source, /hanakoInstagramOutfits\.push\(\.\.\.hanakoExtraOutfits\.slice\(4\)/);
+  assert.match(source, /hanakoThreadsExpressions\.push\(\.\.\.hanakoExtraExpressions\.slice\(1\)/);
+});
+
+test("adult kindergarten costume uses a nonsexual image and caption path", () => {
+  const costume = catalogs.outfits.flatMap((group) => group.items).find((item) => item.id === "cosKindergarten");
+  assert.ok(costume);
+  assert.match(costume.prompt, /成人女性/);
+  assert.ok(catalogs.expressions.flatMap((group) => group.items).some((item) => item.id === "costumeWarmSmile"));
+  assert.ok(catalogs.poses.flatMap((group) => group.items).some((item) => item.id === "poseCostumeWave"));
+  assert.match(source, /function buildHanakoLifestyleImagePrompt[\s\S]*?outfitPreset === "cosKindergarten"[\s\S]*?色気、恋人目線、ハプニング/);
+  assert.match(source, /function buildHanakoLifestyleCopyPrompt[\s\S]*?outfitPreset === "cosKindergarten"/);
 });

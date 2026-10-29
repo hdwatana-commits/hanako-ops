@@ -3488,6 +3488,12 @@ const hanakoExtraOutfits = [
   { label: "VIVANT2・ハン リンシン風（新着1）", items: [
     { id: "cosHanLinxin", label: "ハン・リンシン風｜黒×金の情報組織責任者", prompt: "成人女性による日曜劇場『VIVANT』第2シーズンのハン・リンシンを想起させるコスプレ。黒のハイネックまたは立ち襟のロングジャケット、金色のチャイナボタン、黒のワイドパンツまたはロングスカート、控えめな金のアクセサリー。非常に長い一本の黒い三つ編みと深い赤の口紅を合わせる。武器、暴力、実在組織の印章は描かず、民間情報組織の責任者らしい威厳を出す" },
   ] },
+  { label: "非性的なイベント仮装（新着1）", items: [
+    { id: "cosKindergarten", label: "園児風のイベント仮装（成人モデル）", prompt: "成人女性のイベント仮装。明るい青のスモック、黄色い帽子、小さな赤い通園バッグ、白い靴下と運動靴。人物の顔立ちと体格は明確に成人のままにし、子どもや実在の園は登場させない。非性的で明るい衣装紹介写真にする" },
+  ] },
+  { label: "ドロンジョ風コスプレ（新着1）", items: [
+    { id: "cosDoronjo", label: "ドロンジョ風｜黒×赤の怪盗スタイル", prompt: "成人女性による『ヤッターマン』ドロンジョを想起させるコスプレ。黒と赤を基調にした不透明なマスク、立ち襟のケープ、身体に合った黒の衣装、赤い手袋とロングブーツ。髪は明るい金髪で高くまとめ、芝居がかった悪役の華やかさを表す。武器や暴力は描かず、全身をファッション撮影として端正に見せる" },
+  ] },
   { label: "毎日着たい可愛いコーデ（新着10）", items: [
     { id: "cuteCherryCardigan", label: "さくらんぼカーデ×白フレア", prompt: "成人女性向け。小さなさくらんぼ刺繍の淡色カーディガン、白い膝丈フレアスカート、小ぶりな赤いバッグ。柄を増やしすぎず清潔感を保つ" },
     { id: "cuteSailorKnit", label: "セーラーカラーニット×デニム", prompt: "成人女性向け。アイボリーの小さなセーラーカラーニット、濃色ストレートデニム、赤いフラットシューズ。制服ではなく休日の大人可愛い装いにする" },
@@ -3608,6 +3614,15 @@ const hanakoExtraExpressions = [{ label: "キュンとする表情（新着20）
   { id: "innocentShyHello", label: "初対面みたいな照れ笑い", prompt: "成人女性が少し緊張しながら挨拶し、視線を一度外してから控えめな笑顔で戻す。未成年に見せず、初々しい親しみを表す" },
   { id: "innocentHappyNod", label: "こくんとうなずく嬉しい顔", prompt: "成人女性が提案に同意して小さく一度うなずき、嬉しさのある目元でカメラを見る。首の角度と髪の動きを自然にする" },
   { id: "innocentWonderSmile", label: "景色に見とれる微笑み", prompt: "成人女性がきれいな光や景色へ目を向け、感動がゆっくり笑顔へ変わる瞬間。横顔でも成人らしい骨格と自然な肌を保つ" },
+] },
+{ label: "イベント仮装に合う表情（新着2）", items: [
+  { id: "costumeWarmSmile", label: "仮装を楽しむ明るい笑顔", prompt: "成人女性がイベント衣装を楽しみ、カメラへ自然で明るい笑顔を向ける。幼児の表情を演じず成人らしい顔立ちを保つ" },
+  { id: "costumeCuriousSmile", label: "小物を見つけた楽しい表情", prompt: "成人女性が衣装の小物を見つめ、少し驚いてから柔らかく笑う。子どもを模倣せずイベント撮影らしい自然な表情にする" },
+] },
+{ label: "ドロンジョ風の表情（新着3）", items: [
+  { id: "doronjoConfidentSmile", label: "ドロンジョ風｜余裕のある微笑み", prompt: "成人女性が仮面越しにカメラを見つめ、片方の口角を少し上げる。勝ち気で芝居がかった余裕を見せる" },
+  { id: "doronjoSurprised", label: "ドロンジョ風｜計画が外れた驚き", prompt: "成人女性が予想外の展開に一瞬目を丸くし、すぐに強がるような笑みに戻る。コミカルで軽快な表情" },
+  { id: "doronjoChallenge", label: "ドロンジョ風｜挑戦的な視線", prompt: "成人女性があごをわずかに上げ、仮面越しにまっすぐ視線を向ける。威圧的にならず、舞台上の悪役らしい自信を出す" },
 ] }];
 
 const hanakoExtraPoses = [{ label: "インフルエンサー撮影ポーズ（新着20）", items: [
@@ -3676,6 +3691,15 @@ const hanakoExtraPoses = [{ label: "インフルエンサー撮影ポーズ（�
   { id: "poseInnocentChairSwing", label: "椅子で足をそろえて軽く揺れる", prompt: "成人女性が安定した椅子へ深く座り、膝と足首をそろえたまま足先を軽く動かす。脚を強調せず、椅子との接地と成人らしい姿勢を保つ" },
   { id: "poseInnocentSleeveHands", label: "長めの袖から指先を少し見せる", prompt: "成人女性が長めの袖口を手の甲まで自然に下ろし、両手を身体の前へ軽くそろえる。口元を隠さず、服のサイズを不自然に大きくしない" },
   { id: "poseInnocentLookUpPoint", label: "見つけた景色をそっと指さす", prompt: "成人女性が景色や光へ片手の人差し指を自然に向け、振り返って相手にも知らせる。腕を伸ばしすぎず、指、視線、対象の方向を一致させる" },
+] },
+{ label: "イベント仮装に合うポーズ（新着2）", items: [
+  { id: "poseCostumeWave", label: "衣装を見せて手を振る", prompt: "成人女性が背筋を伸ばして立ち、片手を肩の高さで軽く振る。衣装の全体像と手指を自然に見せる" },
+  { id: "poseCostumeBag", label: "バッグを持って振り返る", prompt: "成人女性が衣装の小さなバッグを片手に持ち、歩き出す前に肩越しに振り返る。子どもの演技や身体の強調はしない" },
+] },
+{ label: "ドロンジョ風のポーズ（新着3）", items: [
+  { id: "poseDoronjoCape", label: "ドロンジョ風｜ケープを広げる", prompt: "成人女性が両手でケープの端を軽く広げ、正面を向いて堂々と立つ。布と腕の重なりを自然にし、衣装の全体像を見せる" },
+  { id: "poseDoronjoMask", label: "ドロンジョ風｜仮面に手を添える", prompt: "成人女性が片手の指先を仮面の縁へ軽く添え、肩越しに振り返る。目を隠さず、手指と仮面を自然に描く" },
+  { id: "poseDoronjoCommand", label: "ドロンジョ風｜作戦を示す", prompt: "成人女性が片手を腰に添え、もう片方の開いた手で前方を示す。武器を持たず、芝居がかった悪役らしいリーダーの姿勢にする" },
 ] }];
 
 const hanakoExtraLocations = [{ label: "人物が映えるシンプル背景（新着10）", items: [
@@ -13643,6 +13667,21 @@ function getSocialGeminiPromptData(rerollLottery = true) {
 }
 
 function buildHanakoLifestyleImagePrompt(c, currentDraft, requestedShotIndex = 0) {
+  if (c.creativeProfile?.outfitPreset === "cosKindergarten") {
+    const count = getHanakoDedicatedShotCount(c.creativeProfile);
+    const shot = Math.max(0, Math.min(count - 1, Number(requestedShotIndex) || 0));
+    const outfit = hanakoExtraOutfits.flatMap((group) => group.items).find((item) => item.id === "cosKindergarten").prompt;
+    const expression = hanakoExtraExpressions.flatMap((group) => group.items).find((item) => ["costumeWarmSmile", "costumeCuriousSmile"].includes(item.id) && item.id === c.creativeProfile.hanakoExpression)?.prompt || "成人女性の自然で明るい笑顔";
+    const pose = hanakoExtraPoses.flatMap((group) => group.items).find((item) => ["poseCostumeWave", "poseCostumeBag"].includes(item.id) && item.id === c.creativeProfile.posePreset)?.prompt || "成人モデルが背筋を伸ばして自然に立つ";
+    return `成人女性の非性的なイベント仮装の写真を縦4:5で1枚だけ作成してください。全${count}枚のうち第${shot + 1}カットです。ほかのカットや投稿文は作らないでください。
+衣装: ${outfit}
+場所: 明るい無地の撮影スタジオ。園児、子ども、実在の園や学校は描かない。
+表情: ${expression}
+ポーズ: ${pose}。衣装の全体が見えるようにし、カットごとに視線や手の位置を少し変える。
+本人の参照画像がある場合は成人の顔立ちと体格を維持する。衣装の丈と形を全カットで固定する。
+色気、恋人目線、ハプニング、身体部位の強調、性的な演出を加えない。選択中の別モードにそれらの指定があっても、この衣装では適用しない。
+画像内に文字を入れず、1枚の完成写真だけを返してください。`;
+  }
   const creative = buildSocialCreativeDirective(c);
   const instagramMode = Boolean(c.creativeProfile?.hanakoInstagramMode);
   const instagramBuzzKawaiiMode = instagramMode && Boolean(c.creativeProfile?.hanakoInstagramBuzzKawaiiMode);
@@ -13897,6 +13936,9 @@ ${oneImagePerRequest ? `第${shotIndex + 1}カットの画像ファイル1個だ
 }
 
 function buildHanakoLifestyleCopyPrompt(c, currentDraft) {
+  if (c.creativeProfile?.outfitPreset === "cosKindergarten") {
+    return `成人女性による園児風イベント仮装の写真に添える、日本語の短いSNSキャプションを1つ作ってください。衣装の色や小物について明るく自然に触れ、子ども本人を演じた表現は避けます。色気、恋人目線、性的な含みは入れず、未確認の体験を事実として書かないでください。完成文だけを返してください。`;
+  }
   if (c.creativeProfile?.hanakoThreadsMode && c.creativeProfile?.hanakoThreadsAbMode) {
     const axis = hanakoThreadsAbFields[c.creativeProfile.hanakoThreadsAbAxis] ? c.creativeProfile.hanakoThreadsAbAxis : "outfit";
     const source = hanakoThreadsAbFields[axis].source;
