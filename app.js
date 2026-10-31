@@ -788,79 +788,168 @@ function appendHanakoCatalogOptions(selector, groups) {
 }
 
 function installHanakoPickers() {
-  const ids = ["snsOutfitPreset", "snsPosePreset", "snsLocationPreset", "snsHanakoExpression", "hanakoGasOutfit", "hanakoGasPose", "hanakoGasLocation"];
+  const ids = ["snsScenePreset", "snsOutfitPreset", "snsHairPreset", "snsPosePreset", "snsCompositionPreset", "snsLightingPreset", "snsLocationPreset", "snsHanakoExpression", "snsThreadsImageCount", "snsCarouselPreset", "snsHanakoPhotobookTheme", "snsHanakoPhotobookCount", "snsHanakoThreadsCount", "snsHanakoThreadsAbAxis", "snsHanakoThreadsAbB", ...Object.keys(hanakoGasFieldMap)];
   for (const id of ids) {
     const select = document.getElementById(id);
-    if (!select || select.previousElementSibling?.dataset?.hanakoPicker === id) continue;
+    if (select?.tagName !== "SELECT" || document.querySelector('[data-hanako-picker="' + id + '"]')) continue;
+    const source = document.getElementById(hanakoGasFieldMap[id]) || select;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "hanako-picker-open";
     button.dataset.hanakoPicker = id;
-    button.textContent = "🔎 キーワード・カテゴリから探す";
+    button.setAttribute("aria-haspopup", "dialog");
+    button.setAttribute("aria-controls", "hanakoChoiceDialog");
+    button.setAttribute("aria-expanded", "false");
+    const update = () => {
+      const available = [...source.options].filter((option) => !option.disabled && !option.hidden && !option.parentElement?.disabled && !option.parentElement?.hidden).length;
+      button.disabled = select.disabled || source.disabled || select.matches(":disabled") || source.matches(":disabled");
+      button.textContent = button.disabled ? "この投稿形式では固定されています" : "🔎 名前・カテゴリから探す（" + available + "件）";
+    };
+    update();
     select.before(button);
+    select.addEventListener("change", update);
+    source.addEventListener("change", update);
+    if (typeof MutationObserver !== "undefined") {
+      const observer = new MutationObserver(update);
+      observer.observe(source, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled", "hidden"] });
+      if (source !== select) observer.observe(select, { attributes: true, attributeFilter: ["disabled", "hidden"] });
+    }
     button.addEventListener("click", () => openHanakoPicker(select));
   }
 }
 
 function openHanakoPicker(select) {
+  const source = document.getElementById(hanakoGasFieldMap[select.id]) || select;
+  const controlDisabled = () => select.disabled || source.disabled || select.matches(":disabled") || source.matches(":disabled");
+  if (controlDisabled()) return;
+  const unavailable = (option) => !option || option.disabled || option.hidden || option.parentElement?.disabled || option.parentElement?.hidden;
+  const titles = { snsScenePreset: "投稿シーン", snsOutfitPreset: "服装", snsHairPreset: "髪型", snsPosePreset: "ポーズ", snsCompositionPreset: "構図・視点", snsLightingPreset: "光・時間帯", snsLocationPreset: "場所", snsHanakoExpression: "表情", snsThreadsImageCount: "画像枚数", snsCarouselPreset: "複数枚の見せ方", snsHanakoPhotobookTheme: "写真集テーマ", snsHanakoPhotobookCount: "写真集枚数", snsHanakoThreadsCount: "投稿する画像枚数", snsHanakoThreadsAbAxis: "比べる項目", snsHanakoThreadsAbB: "B案" };
+  const title = titles[source.id] || document.querySelector('label[for="' + select.id + '"]')?.textContent?.trim().slice(0, 60) || "選択肢";
   let dialog = document.getElementById("hanakoChoiceDialog");
   if (!dialog) {
     dialog = document.createElement("dialog");
     dialog.id = "hanakoChoiceDialog";
     dialog.className = "hanako-choice-dialog";
-    dialog.innerHTML = '<div class="hanako-choice-head"><strong id="hanakoChoiceTitle"></strong><button type="button" id="hanakoChoiceClose" aria-label="閉じる">×</button></div><input id="hanakoChoiceSearch" type="search" placeholder="名前やカテゴリで検索" aria-label="選択肢を検索"><div id="hanakoChoiceCategories" class="hanako-choice-categories"></div><div id="hanakoChoiceResults" class="hanako-choice-results"></div>';
+    dialog.setAttribute("aria-labelledby", "hanakoChoiceTitle");
+    dialog.setAttribute("aria-describedby", "hanakoChoiceMeta");
+    dialog.innerHTML = '<div class="hanako-choice-head"><strong id="hanakoChoiceTitle"></strong><button type="button" id="hanakoChoiceClose" aria-label="選択画面を閉じる">×</button></div><p id="hanakoChoiceCurrent" class="hanako-choice-current"></p><input id="hanakoChoiceSearch" type="search" placeholder="名前やカテゴリで検索" aria-label="選択肢を検索"><div id="hanakoChoiceTools" class="hanako-choice-tools" role="group" aria-label="選択肢の絞り込み"></div><div id="hanakoChoiceCategories" class="hanako-choice-categories" role="group" aria-label="カテゴリ"></div><p id="hanakoChoiceMeta" class="hanako-choice-meta" role="status" aria-live="polite"></p><div id="hanakoChoiceResults" class="hanako-choice-results"></div>';
     document.body.appendChild(dialog);
     dialog.querySelector("#hanakoChoiceClose").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("cancel", (event) => { event.preventDefault(); dialog.close(); });
+    dialog.addEventListener("click", (event) => {
+      if (event.target !== dialog) return;
+      const rect = dialog.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
+    });
+    dialog.addEventListener("close", () => {
+      const opener = dialog.hanakoPickerOpener;
+      if (opener?.dataset?.hanakoPicker) opener.setAttribute("aria-expanded", "false");
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+      dialog.hanakoPickerOpener = null;
+    });
   }
-  const source = select.id.startsWith("hanakoGas") ? document.getElementById(hanakoGasFieldMap[select.id]) || select : select;
-  const groups = [];
-  for (const child of source.children) {
-    const options = child.tagName === "OPTGROUP" ? [...child.children] : [child];
-    const label = child.tagName === "OPTGROUP" ? child.label : "基本・自動";
-    const existing = groups.find((group) => group.label === label);
-    if (existing) existing.options.push(...options);
-    else groups.push({ label, options: [...options] });
-  }
-  const title = select.closest("div")?.querySelector("label")?.textContent?.trim() || "選択肢";
-  dialog.querySelector("#hanakoChoiceTitle").textContent = `${title}を選ぶ`;
+  if (dialog.open) dialog.close();
+  const opener = document.activeElement;
+  dialog.hanakoPickerOpener = opener?.closest?.("dialog") ? select : opener;
+  if (dialog.hanakoPickerOpener?.dataset?.hanakoPicker) dialog.hanakoPickerOpener.setAttribute("aria-expanded", "true");
+  dialog.querySelector("#hanakoChoiceTitle").textContent = title + "を選ぶ";
+  const current = dialog.querySelector("#hanakoChoiceCurrent");
   const search = dialog.querySelector("#hanakoChoiceSearch");
+  const tools = dialog.querySelector("#hanakoChoiceTools");
   const categories = dialog.querySelector("#hanakoChoiceCategories");
+  const meta = dialog.querySelector("#hanakoChoiceMeta");
   const results = dialog.querySelector("#hanakoChoiceResults");
-  let activeCategory = "すべて";
+  const historyKey = "hanako-option-picker-v1";
+  let saved = openHanakoPicker.uiHistory || {};
+  try { const raw = localStorage.getItem(historyKey); if (raw && raw.length <= 80000) saved = JSON.parse(raw); } catch {}
+  const history = { favorites: {}, recent: {} };
+  for (const kind of ["favorites", "recent"]) for (const id of Object.keys(titles)) {
+    const list = saved?.[kind]?.[id];
+    history[kind][id] = Array.isArray(list) ? [...new Set(list.filter((value) => typeof value === "string" && value.length <= 120))].slice(0, kind === "favorites" ? 30 : 12) : [];
+  }
+  const key = source.id;
+  history.favorites[key] ||= [];
+  history.recent[key] ||= [];
+  const remember = () => { openHanakoPicker.uiHistory = history; try { localStorage.setItem(historyKey, JSON.stringify(history)); } catch {} };
+  const fold = (value) => String(value).normalize("NFKC").toLocaleLowerCase("ja-JP").replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
+  let activeCategory = "すべて", scope = "all";
   search.value = "";
+  search.placeholder = title + "の名前・カテゴリで検索";
   const render = () => {
-    const query = search.value.trim().toLocaleLowerCase();
+    // Read live canonical options: mode changes and cloud restores may replace them while the dialog is open.
+    const groups = [];
+    for (const child of source.children) {
+      if (child.hidden) continue;
+      const options = (child.tagName === "OPTGROUP" ? [...child.children] : [child]).filter((option) => option.tagName === "OPTION" && !option.hidden);
+      const label = child.tagName === "OPTGROUP" ? child.label : "基本・自動";
+      const existing = groups.find((group) => group.label === label);
+      if (existing) existing.options.push(...options); else if (options.length) groups.push({ label, options });
+    }
+    const options = groups.flatMap((group) => group.options), values = new Set(options.map((option) => option.value));
+    history.favorites[key] = history.favorites[key].filter((value) => values.has(value));
+    history.recent[key] = history.recent[key].filter((value) => values.has(value));
+    const favorites = history.favorites[key], recent = history.recent[key];
+    const selected = [...source.options].find((option) => option.value === select.value);
+    current.textContent = "選択中：" + (selected?.textContent?.trim() || "未選択");
+    const words = fold(search.value).trim().split(/\s+/).filter(Boolean);
+    const matches = (group, option) => words.every((word) => fold(group.label + " " + option.textContent).includes(word)) && (scope === "all" || (scope === "favorites" ? favorites : recent).includes(option.value));
+    const matchingGroups = groups.filter((group) => group.options.some((option) => matches(group, option)));
+    if (activeCategory !== "すべて" && !matchingGroups.some((group) => group.label === activeCategory)) activeCategory = "すべて";
+    tools.replaceChildren();
+    for (const [value, label] of [["all", "すべて"], ["favorites", "お気に入り " + favorites.length], ["recent", "最近使った " + recent.length]]) {
+      const button = document.createElement("button"); button.type = "button"; button.textContent = label; button.dataset.scope = value;
+      button.classList.toggle("active", scope === value); button.setAttribute("aria-pressed", String(scope === value));
+      button.addEventListener("click", () => { scope = value; activeCategory = "すべて"; render(); [...tools.children].find((item) => item.dataset.scope === value)?.focus(); });
+      tools.appendChild(button);
+    }
     categories.replaceChildren();
-    for (const label of ["すべて", ...groups.map((group) => group.label)]) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = label;
-      button.classList.toggle("active", label === activeCategory);
-      button.addEventListener("click", () => { activeCategory = label; render(); });
+    for (const label of ["すべて", ...matchingGroups.map((group) => group.label)]) {
+      const button = document.createElement("button"); button.type = "button"; button.textContent = label; button.dataset.category = label;
+      button.classList.toggle("active", label === activeCategory); button.setAttribute("aria-pressed", String(label === activeCategory));
+      button.addEventListener("click", () => { activeCategory = label; render(); [...categories.children].find((item) => item.dataset.category === label)?.focus(); });
       categories.appendChild(button);
     }
     results.replaceChildren();
-    for (const group of groups) {
+    let count = 0, restricted = 0;
+    for (const group of matchingGroups) {
       if (activeCategory !== "すべて" && activeCategory !== group.label) continue;
-      const matches = group.options.filter((option) => `${group.label} ${option.textContent}`.toLocaleLowerCase().includes(query));
-      if (!matches.length) continue;
-      const heading = document.createElement("h4");
-      heading.textContent = group.label;
-      results.appendChild(heading);
-      for (const option of matches) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.textContent = option.textContent;
-        button.classList.toggle("selected", option.value === source.value);
+      let filtered = group.options.filter((option) => matches(group, option));
+      if (scope === "recent") filtered = filtered.sort((a, b) => recent.indexOf(a.value) - recent.indexOf(b.value));
+      const heading = document.createElement("h4"); heading.textContent = group.label; results.appendChild(heading);
+      for (const option of filtered) {
+        count++;
+        const disabled = controlDisabled() || unavailable(option); if (disabled) restricted++;
+        const row = document.createElement("div"); row.className = "hanako-choice-result-row";
+        const button = document.createElement("button"); button.type = "button"; button.className = "hanako-choice-option";
+        button.dataset.choiceValue = option.value; button.disabled = disabled;
+        const selected = option.value === select.value;
+        button.classList.toggle("selected", selected); button.setAttribute("aria-pressed", String(selected));
+        const name = document.createElement("span"); name.textContent = option.textContent.trim(); button.appendChild(name);
+        if (selected || disabled) { const status = document.createElement("small"); status.textContent = disabled ? "この設定では選択できません" : "✓ 選択中"; button.appendChild(status); }
         button.addEventListener("click", () => {
+          const latest = [...source.options].find((item) => item.value === option.value);
+          const target = [...select.options].find((item) => item.value === option.value);
+          if (controlDisabled() || unavailable(latest) || unavailable(target)) { render(); meta.textContent = "設定が更新されました。選択できる項目を選び直してください。"; return; }
           select.value = option.value;
           select.dispatchEvent(new Event("change", { bubbles: true }));
+          // Existing mode handlers may normalize a requested choice; remember only the applied value.
+          if (select.value === option.value) { history.recent[key] = [option.value, ...history.recent[key].filter((value) => value !== option.value)].slice(0, 12); remember(); }
           dialog.close();
         });
-        results.appendChild(button);
+        const favorite = document.createElement("button"); favorite.type = "button"; favorite.className = "hanako-choice-favorite"; favorite.dataset.choiceFavorite = option.value;
+        const liked = favorites.includes(option.value); favorite.textContent = liked ? "★" : "☆"; favorite.setAttribute("aria-pressed", String(liked));
+        favorite.setAttribute("aria-label", option.textContent.trim() + (liked ? "をお気に入りから外す" : "をお気に入りに登録"));
+        favorite.addEventListener("click", () => {
+          const list = history.favorites[key], exists = list.includes(option.value);
+          if (!exists && list.length >= 30) { meta.textContent = "お気に入りは項目ごとに30件までです。不要な★を外してから登録してください。"; return; }
+          history.favorites[key] = exists ? list.filter((value) => value !== option.value) : [...list, option.value]; remember(); render();
+          [...results.querySelectorAll("[data-choice-favorite]")].find((item) => item.dataset.choiceFavorite === option.value)?.focus();
+        });
+        row.append(button, favorite); results.appendChild(row);
       }
     }
-    if (!results.children.length) results.textContent = "該当する選択肢がありません";
+    meta.textContent = count + "件を表示" + (restricted ? " ／ " + restricted + "件は現在の設定で選択不可" : "") + "。★と履歴はこの端末だけに保存します。";
+    if (!count) { const empty = document.createElement("p"); empty.className = "hanako-choice-empty"; empty.textContent = scope === "favorites" ? "お気に入りがありません。すべてから☆を押して登録できます。" : scope === "recent" ? "最近使った項目がありません。すべてから選んでください。" : "該当する選択肢がありません。キーワードを短くするか、すべてのカテゴリで探してください。"; results.appendChild(empty); }
   };
   search.oninput = render;
   render();
@@ -3953,6 +4042,7 @@ function renderHanakoGasSettings() {
   });
   renderHanakoInstagramSettings();
   renderHanakoThreadsSettings();
+  document.dispatchEvent(new Event('hanako-sns-ui-change'));
 }
 
 function renderHanakoPhotobookSettings() {
@@ -6181,6 +6271,7 @@ function applyCloudState(payload) {
   renderAiLearningDashboard();
   renderHome();
   suppressCloudSave = false;
+  document.dispatchEvent(new Event('hanako-sns-ui-change'));
 }
 
 function cloneState() {
@@ -6571,6 +6662,7 @@ function restoreGeneratorPreferences() {
   const angleSelect = document.querySelector("#angleSelect");
   if ([...angleSelect.options].some((option) => option.value === values.angleSelect)) angleSelect.value = values.angleSelect;
   renderSocialGeminiProductPreview();
+  document.dispatchEvent(new Event('hanako-sns-ui-change'));
 }
 
 function renderSocialGeminiProductPreview() {

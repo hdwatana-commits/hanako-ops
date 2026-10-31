@@ -1,6 +1,7 @@
-const CACHE_NAME = "hanako-room-ops-v389";
+const CACHE_NAME = "hanako-room-ops-v390";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
+  "./sns-studio.mjs?v=2", "./sns-studio.css?v=2",
   "./muse-instagram-observations.mjs?v=1",
   "./muse-song-youtube.mjs?v=1", "./muse-song-dance.mjs?v=2", "./muse-song-dance.css?v=2", "./muse-song-catalog.mjs?v=1", "./muse-song-library.mjs?v=1", "./muse-song-analysis.mjs?v=1", "./muse-song-choreography.mjs?v=2",
   "./muse-reel-maker.mjs?v=5", "./muse-reel-engine.mjs?v=2", "./muse-reel-presets.mjs?v=1", "./muse-reel-maker.css?v=1",
@@ -18,7 +19,7 @@ const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=371",
-  "./app.js?v=389",
+  "./app.js?v=390",
   "./cloud-sync.js?v=307",
   "./ops-engine.js?v=222",
   "./ops-phase2-engine.js?v=222",
@@ -424,7 +425,7 @@ const CORE_SHELL = [
   "./",
   "./index.html",
     "./styles.css?v=371",
-    "./app.js?v=389",
+    "./app.js?v=390",
     "./cloud-sync.js?v=307",
     "./ops-engine.js?v=222",
     "./ops-phase2-engine.js?v=222",
@@ -470,6 +471,8 @@ self.addEventListener("fetch", (event) => {
     || url.pathname.endsWith("/index.html")
     || url.pathname.endsWith("/app.js")
     || url.pathname.endsWith("/styles.css")
+    || url.pathname.endsWith("/sns-studio.mjs")
+    || url.pathname.endsWith("/sns-studio.css")
     || url.pathname.endsWith("/cloud-sync.js")
     || url.pathname.endsWith("/ops-engine.js")
     || url.pathname.endsWith("/ops-phase2-engine.js")
