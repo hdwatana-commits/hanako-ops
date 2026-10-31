@@ -1,13 +1,14 @@
-const CACHE_NAME = "hanako-room-ops-v386";
+const CACHE_NAME = "hanako-room-ops-v387";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
-  "./muse-reel-maker.mjs?v=2", "./muse-reel-engine.mjs?v=1", "./muse-reel-presets.mjs?v=1", "./muse-reel-maker.css?v=1",
+  "./muse-song-youtube.mjs?v=1", "./muse-song-dance.mjs?v=1", "./muse-song-dance.css?v=1", "./muse-song-catalog.mjs?v=1", "./muse-song-library.mjs?v=1", "./muse-song-analysis.mjs?v=1", "./muse-song-choreography.mjs?v=1",
+  "./muse-reel-maker.mjs?v=3", "./muse-reel-engine.mjs?v=1", "./muse-reel-presets.mjs?v=1", "./muse-reel-maker.css?v=1",
   "./reel-theme-stage.mjs?v=1",
   "./reel-source.mjs?v=1",
   "./reel-style-renderer.mjs?v=5", "./reel-edit-styles.mjs?v=5", "./reel-engine.mjs?v=5",
   "./reel-captions.mjs?v=2", "./reel-caption-editor.mjs?v=4",
   "./reel-music.mjs?v=4",
-  "./reel-maker.mjs?v=13", "./reel-engine.mjs", "./reel-maker.css?v=8",
+  "./reel-maker.mjs?v=14", "./reel-engine.mjs", "./reel-maker.css?v=8",
   "./threads-replies.js?v=36",
   "./reply-analytics.mjs?v=1",
   "./fan-profile.mjs?v=3",
@@ -16,7 +17,7 @@ const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=371",
-  "./app.js?v=385",
+  "./app.js?v=387",
   "./cloud-sync.js?v=307",
   "./ops-engine.js?v=222",
   "./ops-phase2-engine.js?v=222",
@@ -422,7 +423,7 @@ const CORE_SHELL = [
   "./",
   "./index.html",
     "./styles.css?v=371",
-    "./app.js?v=385",
+    "./app.js?v=387",
     "./cloud-sync.js?v=307",
     "./ops-engine.js?v=222",
     "./ops-phase2-engine.js?v=222",
@@ -481,6 +482,13 @@ self.addEventListener("fetch", (event) => {
     || url.pathname.endsWith("/reel-theme-stage.mjs")
     || url.pathname.endsWith("/reel-style-renderer.mjs")
     || url.pathname.endsWith("/reel-edit-styles.mjs")
+    || url.pathname.endsWith("/muse-song-youtube.mjs")
+    || url.pathname.endsWith("/muse-song-dance.mjs")
+    || url.pathname.endsWith("/muse-song-dance.css")
+    || url.pathname.endsWith("/muse-song-catalog.mjs")
+    || url.pathname.endsWith("/muse-song-library.mjs")
+    || url.pathname.endsWith("/muse-song-analysis.mjs")
+    || url.pathname.endsWith("/muse-song-choreography.mjs")
     || url.pathname.endsWith("/muse-reel-maker.mjs")
     || url.pathname.endsWith("/muse-reel-engine.mjs")
     || url.pathname.endsWith("/muse-reel-presets.mjs")

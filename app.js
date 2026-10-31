@@ -18452,3 +18452,9 @@ window.HanakoMuseSnsBridge = {
     };
   },
 };
+
+// Metadata-only store: inherits OPS backup, authentication and cloud sync. Never accepts audio/files.
+window.HanakoMuseSongLibraryBridge={
+ read(){return JSON.parse(JSON.stringify(state.museSongLibrary||{}));},
+ write(value){const serialized=JSON.stringify(value);if(serialized.length>1500000)throw Error('楽曲の解析情報が保存上限に達しました。不要なバージョンを削除してください。');state.museSongLibrary=JSON.parse(serialized);saveState();}
+};

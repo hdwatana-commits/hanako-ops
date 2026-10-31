@@ -1,0 +1,23 @@
+import {youtubeSongId} from './muse-song-youtube.mjs?v=1';
+// Analysis metadata uses the existing OPS JSON state and cloud sync. Audio never enters this store.
+const plain=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+const str=(v,n=500)=>String(v??'').trim().slice(0,n);
+const num=(v,min=0,max=600)=>v===null||v===undefined||v===''?null:Number.isFinite(Number(v))&&Number(v)>=min&&Number(v)<=max?Number(v):null;
+const status=v=>['unverified','auto-review','verified'].includes(v)?v:'unverified';
+export function safeSongSource(value){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password?u.href:'';}catch{return '';}}
+export function normalizeSongVersion(value={}){
+ const v=plain(value),duration=num(v.duration,.1),start=num(v.chorusStart),end=num(v.chorusEnd),valid=start!==null&&end!==null&&end>start&&(duration===null||end<=duration+.001),fingerprint=/^[a-f0-9]{64}$/.test(v.audioFingerprint||v.fingerprint||'')?v.audioFingerprint||v.fingerprint:null;
+ const events=rows=>(Array.isArray(rows)?rows:[]).slice(0,2400).map(r=>({time:num(r.time),strength:num(r.strength,0,1)??.5,inferred:!!r.inferred})).filter(r=>r.time!==null&&(duration===null||r.time<=duration)).sort((a,b)=>a.time-b.time);
+ const youtubeId=youtubeSongId(v.sourceUrl),sourceKind=v.sourceKind==='youtube'&&youtubeId===v.youtubeVideoId?'youtube':'upload';
+ const verified=valid&&duration!==null&&(fingerprint||sourceKind==='youtube')&&v.verifiedAt;
+ const recommendedClips={};if(valid&&duration!==null)for(const d of[10,15,20,30])if(start+d<=Math.min(end,duration)+.001)recommendedClips[d]={start,end:start+d,status:verified&&v.chorusStatus==='verified'?'verified':'auto-review'};
+ return{id:str(v.id||'reference',90),label:str(v.label||v.versionLabel||'原曲候補・音源未照合',180),duration,bpm:num(v.bpm,40,240),beats:events(v.beats),accents:events(v.accents),chorusStart:valid?start:null,chorusEnd:valid?end:null,chorusCandidates:(Array.isArray(v.chorusCandidates)?v.chorusCandidates:[]).slice(0,5).map(r=>({start:num(r.start),end:num(r.end),confidence:num(r.confidence,0,1),reason:str(r.reason,300)})).filter(r=>r.start!==null&&r.end!==null&&r.end>r.start&&(duration===null||r.end<=duration)),analysisStatus:status(v.analysisStatus)==='verified'?'auto-review':status(v.analysisStatus),chorusStatus:v.chorusStatus==='verified'?(verified?'verified':'unverified'):status(v.chorusStatus),rhythmStatus:status(v.rhythmStatus)==='verified'?'auto-review':status(v.rhythmStatus),downbeatStatus:'unverified',confidence:num(v.confidence,0,1),beatConfidence:num(v.beatConfidence,0,1),analysisMethod:str(v.analysisMethod,500)||null,analyzedAt:str(v.analyzedAt,60)||null,verifiedAt:verified?str(v.verifiedAt,60):null,audioFingerprint:fingerprint,sourceKind,youtubeVideoId:sourceKind==='youtube'?youtubeId:null,sourceUrl:safeSongSource(v.sourceUrl),recommendedClips,notes:str(v.notes,1200),updatedAt:str(v.updatedAt||new Date().toISOString(),60)};
+}
+export function normalizeSongLibrary(value={}){
+ const v=plain(value),custom=(Array.isArray(v.customSongs)?v.customSongs:[]).slice(0,60).map(s=>({id:str(s.id,90),title:str(s.title,200),artist:str(s.artist,200),versionLabel:'ユーザー追加・音源未照合',officialUrl:safeSongSource(s.officialUrl),metadataStatus:'unverified',movementFamily:['cute','bouncy','groove','sharp','airy','confident'].includes(s.movementFamily)?s.movementFamily:'cute',sources:[],character:'ユーザーが追加した曲。曲調は未確認。',danceStyle:'オリジナル振付の提案'})).filter(s=>s.id.startsWith('custom-')&&s.title&&s.artist);
+ const versions={};for(const [id,rows]of Object.entries(plain(v.versions)).slice(0,80))if(Array.isArray(rows)&&!['__proto__','constructor','prototype'].includes(id))versions[id]=rows.slice(0,6).map(normalizeSongVersion);
+ return{schemaVersion:1,customSongs:custom,hiddenIds:(Array.isArray(v.hiddenIds)?v.hiddenIds:[]).map(x=>str(x,90)).slice(0,80),versions};
+}
+export function songLibraryView(seeds,stored){const state=normalizeSongLibrary(stored);return [...seeds,...state.customSongs].filter(s=>!state.hiddenIds.includes(s.id)).map(song=>({...song,versions:[normalizeSongVersion({...song,id:'reference',label:song.versionLabel}),...(state.versions[song.id]||[])]}));}
+export function saveSongVersion(stored,songId,value){const state=normalizeSongLibrary(stored),version=normalizeSongVersion(value),versions=state.versions[songId]||[];if(!versions.some(v=>v.id===version.id)&&versions.length>=6)throw Error('1曲に保存できる解析バージョンは6件までです。不要な版を削除してから追加してください。');state.versions[songId]=[...versions.filter(v=>v.id!==version.id),version];return state;}
+export function songVerificationLabel(v){return v.chorusStatus==='verified'?(v.rhythmStatus==='auto-review'?'サビ検証済み（拍は推定）':'サビ位置確認済み（拍未確認）'):v.chorusStart!==null&&v.chorusEnd!==null?'自動解析・手動設定／要確認':'サビ未確認';}

@@ -1,3 +1,4 @@
+import {mountMuseSongDance} from './muse-song-dance.mjs?v=1';
 import {buildMuseReelPackage,normalizeMuseReferenceUrl} from './muse-reel-engine.mjs?v=1';
 import {museReferences,museThemes} from './muse-reel-presets.mjs?v=1';
 const draftKey='hanako-muse-reel-draft-v1';
@@ -38,7 +39,7 @@ export function mountMuseReelMaker(root){
  const say=text=>$('Status').textContent=text;
  for(const theme of museThemes){const opt=document.createElement('option');opt.value=theme.id;opt.textContent=theme.label;$('Theme').append(opt);const button=document.createElement('button');button.type='button';button.dataset.theme=theme.id;button.style.setProperty('--muse-swatch',theme.color);const mark=document.createElement('span');mark.className='muse-theme-mark';mark.textContent={dance:'♫',bench:'✿',ribbon:'♡',cafe:'☕',city:'↗',gallery:'▱',terrace:'☀',night:'✦'}[theme.id];const name=document.createElement('strong');name.textContent=theme.label;button.append(mark,name);button.onclick=()=>{$('Theme').value=theme.id;applyTheme();changed();};$('ThemeGrid').append(button);}
  for(const ref of museReferences){const opt=document.createElement('option');opt.value=ref.url;opt.textContent=ref.label;$('Reference').append(opt);}
- function changed(){revision++;dirty=true;if(output)say('設定が変わりました。「画像準備と動画指示を作る」で出力を更新してください。');}
+ function changed(){revision++;dirty=true;section.dispatchEvent(new Event('muse-styling-change'));if(output)say('設定が変わりました。「画像準備と動画指示を作る」で出力を更新してください。');}
  function updateMode(){$('Detail').hidden=$('Mode').value!=='detail';}
  function applyTheme(){const theme=museThemes.find(t=>t.id===$('Theme').value)||museThemes[0];for(const key of ['Hair','Outfit','Location','Composition','Motion'])$(key).value=theme[key.toLowerCase()];$('Direction').textContent=theme.direction;section.querySelectorAll('[data-theme]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.theme===theme.id)));}
  function referenceLinks(){const box=$('ReferenceLinks');box.replaceChildren();for(const line of $('Urls').value.split('\n').map(s=>s.trim()).filter(Boolean)){try{const u=new URL(normalizeMuseReferenceUrl(line));const a=document.createElement('a');a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';a.textContent='参考を見る ↗ '+u.pathname.split('/')[2];box.append(a);}catch{}}}
@@ -64,5 +65,6 @@ export function mountMuseReelMaker(root){
  $('Save').onclick=async()=>{try{const draft=Object.fromEntries(fields.map(key=>[key,$(key).value]));await assetStore('replaceAll',assets.map((a,order)=>({...a,order})));localStorage.setItem(draftKey,JSON.stringify(draft));say('この端末に設定と写真を保存しました。参照動画は保存されません。PC・iPhone間の同期には対応していません。');}catch(err){say('下書きを保存できませんでした。端末の空き容量を確認し、必要な画像は保存ボタンで手元へ残してください。');}};
  $('DeleteDraft').onclick=async()=>{try{await assetStore('clear');localStorage.removeItem(draftKey);say('保存した下書きを削除しました。画面上の編集中データは残っています。');}catch(err){say('下書きを削除できませんでした。');}};
  applyTheme();updateMode();(async()=>{try{const raw=localStorage.getItem(draftKey);if(!raw)return;const draft=JSON.parse(raw);for(const key of fields)if(typeof draft[key]==='string'&&draft[key].length<=12000)$(key).value=draft[key];assets=(await assetStore('getAll')).filter(a=>roles[a.role]&&a.blob instanceof Blob).sort((a,b)=>(a.order||0)-(b.order||0)).slice(0,10);renderAssets();updateMode();referenceLinks();section.querySelectorAll('[data-theme]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.theme===$('Theme').value)));$('Direction').textContent=museThemes.find(t=>t.id===$('Theme').value)?.direction||'';say('この端末の下書きを読み込みました。出力を作り直してからご利用ください。');}catch{say('下書きを読み込めませんでした。新しく素材を登録してください。');}})();
+ mountMuseSongDance(section,{getStyling:()=>({hair:$('Hair').value,outfit:$('Outfit').value,location:$('Location').value,composition:$('Composition').value,identityNames:assets.flatMap((a,i)=>a.role==='identity'?[`hanako-${a.role}-${i+1}.jpg`]:[])})});
  return{open(){$('Panel').open=true;section.scrollIntoView({behavior:'smooth',block:'start'});}};
 }
