@@ -65,7 +65,7 @@ export function inWindow(settings, now = new Date()) {
   if (start > end) return time >= start ? settings.weekdays.includes(weekday) : time < end && settings.weekdays.includes((weekday+6)%7);
   return settings.weekdays.includes(weekday) && (start === end || (time >= start && time < end));
 }
-export const NOTE_ARTICLE_URL='https://note.com/hanako47258/n/nfb9ed2b59f42';
+export const NOTE_ARTICLE_URL='https://note.com/hanako47258/n/n94503654ef15';
 export function specialCodeReply(value){
  const text=String(value||'').normalize('NFKC');
  if(/[?？]|(?:もし|例えば|買わない|買いません|言ってない|言っていない|と言えば|って言えば|と言ったら|って言ったら|どういう意味)/.test(text))return '';
@@ -73,7 +73,7 @@ export function specialCodeReply(value){
  return 'その暗号、受け取ったよ♡ あとで連絡するね☺️';
 }
 export function hasNotePromotion(text){return /note\.com|\bnote\b|ノート|記事.{0,24}(?:買|購入)|(?:買|購入).{0,24}記事/iu.test(String(text||''));}
-export function wrongNoteReply(text,allowed){const value=String(text||'');return (!allowed&&hasNotePromotion(value))||/https?:\/\/note\.com\/(?!hanako47258\/n\/nfb9ed2b59f42(?:[\s♡♥💕☺️😊🥰。！!]|$))\S*/iu.test(value);}
+export function wrongNoteReply(text,allowed){const value=String(text||'');return (!allowed&&hasNotePromotion(value))||/https?:\/\/note\.com\/(?!hanako47258\/n\/n94503654ef15(?:[\s♡♥💕☺️😊🥰。！!]|$))\S*/iu.test(value);}
 export function repeatedEnding(text,recent=[]){
  const ending=value=>String(value||'').replace(/https?:\/\/\S+/g,'').replace(/[\p{P}\p{S}\p{M}\s]+$/gu,'').match(/(?:嬉しいな|うれしいな|嬉しいよ|ドキドキしちゃう|しちゃう|だよね|だよ|だね|だな|だもん|ちゃう|かな|かもね|かも|ですね|ですよ|です|ます|なの|ね)$/u)?.[0];
  const current=ending(text);return Boolean(current&&recent.length>=2&&recent.slice(-2).every(old=>ending(old)===current));
