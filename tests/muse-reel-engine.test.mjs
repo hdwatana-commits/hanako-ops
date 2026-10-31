@@ -17,7 +17,7 @@ test('observed status requires explicit user observations rather than trusting a
  assert.match(p.musePrompt,/OPSによる動画確認・解析ではない/);assert.match(p.musePrompt,/ユーザー確認メモ・時間別の動きを最優先/);
 });
 test('short and long plans are contiguous, bounded and preserve full requested duration',()=>{
- for(const duration of[8,15,30,60])for(const bpm of[null,40,93,120,240]){
+ for(const duration of[8,15,20,30,60])for(const bpm of[null,40,93,120,240]){
   const p=buildMuseReelPackage({duration,bpm});assert.equal(p.shots[0].start,0);assert.equal(p.shots.at(-1).end,duration);
   const files=new Set();for(let i=0;i<p.shots.length;i++){const s=p.shots[i];assert.ok(s.duration>0&&s.duration<=8.001);assert.ok(Math.abs(s.end-s.start-s.duration)<.0011);if(i)assert.equal(s.start,p.shots[i-1].end);assert.ok(!files.has(s.startFrame));files.add(s.startFrame);}
   assert.equal(p.manifest.filter(m=>m.role.startsWith('keyframe-')).length,p.shots.length*2);

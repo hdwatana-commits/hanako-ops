@@ -1,15 +1,15 @@
-const CACHE_NAME = "hanako-room-ops-v388";
+const CACHE_NAME = "hanako-room-ops-v389";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./muse-instagram-observations.mjs?v=1",
   "./muse-song-youtube.mjs?v=1", "./muse-song-dance.mjs?v=2", "./muse-song-dance.css?v=2", "./muse-song-catalog.mjs?v=1", "./muse-song-library.mjs?v=1", "./muse-song-analysis.mjs?v=1", "./muse-song-choreography.mjs?v=2",
-  "./muse-reel-maker.mjs?v=4", "./muse-reel-engine.mjs?v=1", "./muse-reel-presets.mjs?v=1", "./muse-reel-maker.css?v=1",
+  "./muse-reel-maker.mjs?v=5", "./muse-reel-engine.mjs?v=2", "./muse-reel-presets.mjs?v=1", "./muse-reel-maker.css?v=1",
   "./reel-theme-stage.mjs?v=1",
   "./reel-source.mjs?v=1",
   "./reel-style-renderer.mjs?v=5", "./reel-edit-styles.mjs?v=5", "./reel-engine.mjs?v=5",
   "./reel-captions.mjs?v=2", "./reel-caption-editor.mjs?v=4",
   "./reel-music.mjs?v=4",
-  "./reel-maker.mjs?v=15", "./reel-engine.mjs", "./reel-maker.css?v=8",
+  "./reel-maker.mjs?v=16", "./reel-engine.mjs", "./reel-maker.css?v=8",
   "./threads-replies.js?v=36",
   "./reply-analytics.mjs?v=1",
   "./fan-profile.mjs?v=3",
@@ -18,7 +18,7 @@ const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=371",
-  "./app.js?v=388",
+  "./app.js?v=389",
   "./cloud-sync.js?v=307",
   "./ops-engine.js?v=222",
   "./ops-phase2-engine.js?v=222",
@@ -424,7 +424,7 @@ const CORE_SHELL = [
   "./",
   "./index.html",
     "./styles.css?v=371",
-    "./app.js?v=388",
+    "./app.js?v=389",
     "./cloud-sync.js?v=307",
     "./ops-engine.js?v=222",
     "./ops-phase2-engine.js?v=222",

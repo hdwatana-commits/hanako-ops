@@ -1,5 +1,5 @@
 import {mountMuseSongDance} from './muse-song-dance.mjs?v=2';
-import {buildMuseReelPackage,normalizeMuseReferenceUrl} from './muse-reel-engine.mjs?v=1';
+import {buildMuseReelPackage,normalizeMuseReferenceUrl} from './muse-reel-engine.mjs?v=2';
 import {museReferences,museThemes} from './muse-reel-presets.mjs?v=1';
 const draftKey='hanako-muse-reel-draft-v1';
 const fields=['Mode','Theme','Hair','Outfit','Location','Composition','Duration','Bpm','Energy','Urls','Observations','Motion','ChatgptResult'];
@@ -18,7 +18,7 @@ export function mountMuseReelMaker(root){
  <ol class="muse-steps"><li>素材と参考を登録</li><li>ChatGPTで画像・構成を整える</li><li>MUSEでカットごとに動画化</li></ol>
  <p class="muse-note">この機能は指示書と参照ボードを作ります。人物を動かす動画生成はMeta側で行います。本人写真や下書きは、この端末のブラウザだけに保存。外部AIへ自動送信しません。</p>
  <div class="muse-toolbar"><button type="button" id="museImportSns">SNSの髪型・服・場所・本人画像を取り込む</button><a href="https://www.meta.ai/" target="_blank" rel="noopener noreferrer">Meta AIを開く ↗</a></div>
- <div class="muse-two"><label>選び方<select id="museMode"><option value="easy">かんたん：テーマから選ぶ</option><option value="detail">こだわり：細かく調整する</option></select></label><label>仕上げたい長さ<select id="museDuration"><option value="8">8秒</option><option value="15" selected>15秒</option><option value="30">30秒</option><option value="60">60秒（分割して制作）</option></select></label></div>
+ <div class="muse-two"><label>選び方<select id="museMode"><option value="easy">かんたん：テーマから選ぶ</option><option value="detail">こだわり：細かく調整する</option></select></label><label>仕上げたい長さ<select id="museDuration"><option value="8">8秒</option><option value="15" selected>15秒</option><option value="20">20秒</option><option value="30">30秒</option><option value="60">60秒（分割して制作）</option></select></label></div>
  <h3>01 / リールの世界観</h3><label>テーマ<select id="museTheme"></select></label><div class="muse-theme-grid" id="museThemeGrid"></div><p class="muse-theme-direction" id="museDirection"></p><p class="muse-note">オリジナルの提案です。参考URLの映像を解析して再現したプリセットではありません。</p>
  <div class="muse-detail" id="museDetail"><div class="muse-two"><label>髪型<textarea id="museHair" maxlength="700" rows="2"></textarea></label><label>服装・靴・小物<textarea id="museOutfit" maxlength="900" rows="3"></textarea></label><label>場所・光<textarea id="museLocation" maxlength="900" rows="3"></textarea></label><label>構図・カメラ<textarea id="museComposition" maxlength="700" rows="3"></textarea></label></div></div>
  <h3>02 / 渡す写真を登録</h3><div class="muse-two"><label>写真の役割<select id="museAssetRole">${Object.entries(roles).map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select></label><label>写真を追加<input id="museFiles" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple></label></div><p class="muse-note">本人の顔が分かる1枚を基本に、髪型・服・場所の参考やChatGPTの開始画像を追加できます。最大10枚。開始画像は追加した順にカット1、2…へ割り当てます。写真全体を保ったまま最大1800pxに縮小します。</p><div class="muse-assets" id="museAssets"></div>

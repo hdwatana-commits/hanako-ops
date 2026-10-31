@@ -3,7 +3,7 @@
  * config: {mode, theme:string|{label,direction}, brief,hair,outfit,location,composition,
  * identityNames?:string[],identityName?:string,styleReferenceNames?:string[],referenceUrls?:string[],
  * referenceStatus?:'unverified'|'observed',observations?,motionNotes?,timelineNotes?,
- * referenceVideoName?,bpm?:number,duration?:8|15|30|60,energy?:'gentle'|'balanced'|'dynamic'}
+ * referenceVideoName?,bpm?:number,duration?:8|15|20|30|60,energy?:'gentle'|'balanced'|'dynamic'}
  * Labels are attachment names, never fetched URLs. Caller supplies the actual images separately.
  */
 const text=(value,max=1800)=>String(value??'').trim().slice(0,max);
@@ -25,7 +25,7 @@ export function normalizeMuseReferenceUrl(value){
 }
 function labels(value,max){if(!Array.isArray(value))return [];return value.map(v=>text(v,140)).filter(Boolean).slice(0,max);}
 function normalize(config){
- const duration=Number(config.duration??15);if(![8,15,30,60].includes(duration))throw Error('動画の長さは8・15・30・60秒から選んでください。');
+ const duration=Number(config.duration??15);if(![8,15,20,30,60].includes(duration))throw Error('動画の長さは8・15・20・30・60秒から選んでください。');
  const rawBpm=config.bpm,bpm=rawBpm===''||rawBpm==null?null:Number(rawBpm);if(bpm!==null&&(!Number.isFinite(bpm)||bpm<40||bpm>240))throw Error('BPMは40〜240の数値で指定してください。分からない場合は空欄にしてください。');
  if(config.referenceUrls!=null&&!Array.isArray(config.referenceUrls))throw Error('参考リールURLの形式を確認してください。');
  if((config.referenceUrls||[]).length>12)throw Error('参考リールURLは12件までです。');
