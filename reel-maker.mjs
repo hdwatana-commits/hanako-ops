@@ -1,4 +1,4 @@
-import {mountMuseReelMaker} from './muse-reel-maker.mjs?v=3';
+import {mountMuseReelMaker} from './muse-reel-maker.mjs?v=4';
 import { analyze, timeline, styles, createEditPlan } from './reel-engine.mjs?v=5';
 import { drawPhotoScene } from './reel-style-renderer.mjs?v=5';
 import { mountEditStyles } from './reel-edit-styles.mjs?v=5';
