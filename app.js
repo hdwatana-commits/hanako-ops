@@ -466,6 +466,39 @@ const coordinateSelectEnhancements = {
   ],
 };
 
+// Original styling options shared by SNS image prompts and the MUSE reel handoff.
+const museReelSnsPresets = {
+  outfit: [
+    ["reelRibbonPleat", "リボンニット＋シフォンプリーツ", "アイボリーの小さなリボン付き長袖ニット、くすみピンクの膝下シフォンプリーツ、バレエシューズ。回転や一歩の動きで裾が柔らかく広がり、服の色とプリーツ幅を全カットで固定する"],
+    ["reelCafeDenim", "フィットカーディガン＋ストレートデニム", "淡いブルーのコンパクトなカーディガンと濃紺ストレートデニム、小ぶりなレザーバッグ。身体へ無理なく沿うフィット、座っても自然な生地のしわ、袖口の編み目を保つ"],
+    ["reelSatinTerrace", "ミルクティーニット＋サテンミディ", "ミルクティー色の薄手長袖ニットとシャンパンベージュのサテンミディスカート、低いヒール。光沢を抑えた落ち感と歩く時の布の揺れで上品なコントラストを作る"],
+    ["reelGalleryTweed", "白ツイード＋黒フレアミディ", "白い短丈ツイードジャケット、黒い膝下フレアスカート、黒のバレエシューズ、小ぶりなゴールドアクセサリー。ツイードの織りと端正なシルエットを見せる大人のギャラリーコーデ"],
+    ["reelCityKnitDress", "チャコールのニットワンピ＋ショートコート", "不透明なチャコールの膝下ニットワンピース、淡いグレーのショートコート、歩きやすいブーツ。夜光で顔と服を暗くつぶさず、コートの前端と裾の動きを自然にそろえる"],
+    ["reelSoftBallet", "ボレロ＋チュールミディのバレエコア", "淡いラベンダーのニットボレロ、不透明な白いトップス、重ねたチュールの膝下スカート、細リボンのフラットシューズ。成人女性向けの落ち着いたバレエコアで、舞台衣装や幼い印象へ変えない"],
+    ["reelWeekendTrench", "ショートトレンチ＋白シャツ＋ワイドパンツ", "ベージュのショートトレンチ、端正な白シャツ、ネイビーのハイウエストワイドパンツ、ローファー。歩きやすい都会的なバランスで、コートとパンツの異なる揺れを丁寧に表す"],
+    ["reelCreamPleatedMini", "白ニット＋黒プリーツミニ", "クリーム色の長袖ニット、黒いプリーツミニスカート。正面の膝上または全身で編み目とプリーツの立体感を見せる成人女性向けの大人可愛いコーデ。適切な丈とインナーパンツで動いても衣服が自然に整った状態を保ち、胸元を開けない"],
+    ["reelNavySweatShorts", "ネイビースウェット＋黒ショートパンツ", "ネイビーの柔らかなスウェットトップスと黒いハイウエストショートパンツ。襟ぐりは広がりすぎず自然に留まり、座っても無理なく身体を覆う丈とフィットを保つ。リラックスした成人女性のカジュアルファッションとして布の厚みとしわを描く"],
+    ["reelCherryMonotone", "チェリーレッドカーディガン＋黒Aライン", "チェリーレッドの長袖カーディガン、黒い膝丈Aラインスカート、黒いタイツとメリージェーン。差し色を赤ひとつに絞り、ボタン、編み目、スカートの丈を全カットで一致させる"],
+  ],
+  location: [
+    ["reelCurtainStudio", "レースカーテンと花の窓光スタジオ", "大きな窓、薄いレースカーテン、アイボリーの塗り壁、小さな花瓶一つの自然光スタジオ。人物の周囲に動ける余白を残し、顔や髪をカーテンで隠さない。撮影機材は写さない"],
+    ["reelGlassCafe", "大きな窓と曲木椅子のカフェ", "架空のカフェの大きな拡散窓、丸い木のテーブル、曲木椅子。ガラスと木の色を整え、窓光を斜めから当てる。店名やメニューを判読できる文字は出さない"],
+    ["reelStoneTerrace", "石造りのアーチとテラス", "明るい石造りのアーチと平らなテラス。柔らかな午後光、少数の植栽、奥へ続く通路で立体感を作る。実在施設のロゴや看板は入れない"],
+    ["reelWhiteGallery", "白い回廊とアートのギャラリー", "白い壁と広い回廊、控えめな抽象作品を持つ架空のギャラリー。壁の垂直線を整え、肌と衣装へ柔らかな間接光を当てる。人物の立ち位置と通路の奥行きを全カットで統一する"],
+    ["reelWarmCityLane", "暖色イルミネーションの石畳歩道", "暖色の小さなイルミネーションと暗すぎない石畳の広い歩道。遠景は上品な玉ぼけにし、実在店舗名や住所は見せない。人物は車道へ出ず、足元に十分な照明を残す"],
+    ["reelWoodDoorRoom", "木製扉のある室内", "落ち着いた木製扉、淡い無地の壁、平らな床がある架空の室内。正面の人物へ柔らかな窓光を当て、扉の垂直線と木目を自然に保つ。家族写真、郵便物、住所や文字情報を写さない"],
+    ["reelCanopyBench", "屋根付き広場のベンチ", "明るい屋根付き広場の、安定した木のベンチ。背景に緑と柱の奥行きを控えめに入れ、顔が暗くならない拡散光を使う。店名やロゴを描かず、通行の妨げにならない広い場所で座る"],
+    ["reelPastelArch", "ピーチ色のアーチと段差のない撮影空間", "ピーチとクリーム色のアーチ壁、淡いマットな床、自然な影の撮影空間。小物を増やさず、人物の髪、服の揺れ、表情が映える広い余白を作る。撮影機材を写さない"],
+  ],
+  composition: [
+    ["reelFullBodyLoop", "リール用・全身とループ余白", "縦9:16の全身構図。頭上と足先へ十分な余白を残し、人物は中央から少し外す。手を伸ばす方向へ空間を設け、最後に同じ立ち位置へ戻れる床と背景を見せる"],
+    ["reelExpressionSpace", "リール用・表情と肩の動き", "縦9:16で胸から上のポートレート。両目、口元、両肩、髪先を自然に入れ、顔が画面端へ寄らない。視線と小さな首の傾きが読める近さにし、頭頂を切らない"],
+    ["reelWalkDepth", "リール用・斜め歩きと背景の奥行き", "縦9:16の膝下まで入る斜め前3/4構図。人物の進行方向に余白を取り、背景の通路を奥へ逃がす。脚や顔の広角歪みを避け、歩き出しを自然に予感させる"],
+    ["reelSeatedGesture", "リール用・座り姿と顔まわりの仕草", "縦9:16、正面寄りの膝上まで入る座り姿。目線に近い高さから撮り、両手を顔の横へ上げても指と頭が切れない余白を残す。表情、肩、手の仕草が読める距離で、脚と座面の接地を自然にし、下着が見える角度を避ける"],
+    ["reelFabricReveal", "リール用・全身と素材の見せ場", "縦9:16の全身を基準に、衣装の袖と裾、バッグが見える距離にする。顔と足元を同時に保ち、小さな体の向きの変化だけで素材の反射とシルエットを見せる。切り抜きや分割画像にしない"],
+  ],
+};
+
 function enhanceCoordinateSelectOptions() {
   Object.entries(coordinateSelectEnhancements).forEach(([id, values]) => {
     const select = document.querySelector(`#${id}`);
@@ -490,6 +523,10 @@ function enhanceCoordinateSelectOptions() {
     group.innerHTML = options.map(([value, text]) => `<option value="${value}">${text}</option>`).join("");
     select.appendChild(group);
   };
+  for (const [kind, select] of [["outfit", outfitSelect], ["location", locationSelect], ["composition", document.querySelector("#snsCompositionPreset")]]) {
+    const entries = museReelSnsPresets[kind];
+    appendOptionGroup(select, entries[0][0], "リール映え・MUSE制作向け", entries.map(([id, label]) => [id, label]));
+  }
   appendOptionGroup(outfitSelect, "miniRibbonCardigan", "好感度ミニ丈・大人可愛い", [
     ["miniRibbonCardigan", "リボンカーディガン＋台形ミニ"], ["miniTurtleneckBoots", "タートルニット＋チェックミニ＋ロングブーツ"],
     ["miniTweedSet", "淡色ツイードジャケット＋ミニ"], ["miniShirtKnit", "白シャツ＋短丈ニット＋プリーツミニ"],
@@ -14616,6 +14653,7 @@ function buildSocialCreativeDirective(context) {
   Object.assign(labels.lighting, {
     subwayFluorescent: "地下鉄の白い照明を肌が青白くならないよう柔らかく整える", rainReflection: "雨上がりの路面反射と店明かりを使った艶のある夜光", vendingGlow: "自動販売機の白い光と街灯を混ぜた自然な夜の光", lastTrainAmber: "終電前の暖かな駅照明と遠景の青い夜", convenienceSoft: "コンビニの明るさを拡散した清潔な夜光", sunsetBacklight: "夕焼けの縁取りが髪へ入る柔らかな逆光", streetLampWarm: "暖色の街灯が頬へ薄く当たる落ち着いた夜光", trainWindowBlue: "電車窓の青い反射と車内の暖色を混ぜた光", morningPlatform: "朝のホームへ斜めに差す透明感のある自然光", cityBokeh: "遠景の街明かりを細かな玉ぼけにした上品な夜光",
   });
+  for (const [kind, entries] of Object.entries(museReelSnsPresets)) Object.assign(labels[kind], Object.fromEntries(entries.map(([id, , prompt]) => [id, prompt])));
   const presetSelectIds = { scene: "snsScenePreset", outfit: "snsOutfitPreset", hair: "snsHairPreset", pose: "snsPosePreset", composition: "snsCompositionPreset", lighting: "snsLightingPreset", location: "snsLocationPreset", carousel: "snsCarouselPreset" };
   const preset = (group, key, fallback) => {
     if (labels[group]?.[key]) return labels[group][key];
@@ -18388,3 +18426,29 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
+// Read-only handoff; images stay in memory and are never included in prompt text here.
+window.HanakoMuseSnsBridge = {
+  getSnapshot() {
+    const field = (id) => document.querySelector('#' + id)?.value?.trim() || '';
+    const selected = (kind, selectId, customId) => {
+      const custom = field(customId);
+      if (custom) return custom;
+      const select = document.querySelector('#' + selectId);
+      const key = select?.value || '';
+      return museReelSnsPresets[kind]?.find(([id]) => id === key)?.[2]
+        || select?.selectedOptions?.[0]?.textContent?.trim() || '';
+    };
+    const photo = getSelectedCoordinatePhoto();
+    const src = photo ? getCoordinatePhotoDisplaySrc(photo) : '';
+    return {
+      hair: selected('hair', 'snsHairPreset', 'snsHairStyle'),
+      outfit: selected('outfit', 'snsOutfitPreset', 'snsOutfit'),
+      location: field('snsVisualLocation') || extractSocialExtraLocation(field('snsCreativeExtra')) || selected('location', 'snsLocationPreset', 'snsVisualLocation'),
+      composition: selected('composition', 'snsCompositionPreset', 'snsComposition'),
+      lighting: selected('lighting', 'snsLightingPreset', 'snsLighting'),
+      extra: field('snsCreativeExtra'),
+      identity: photo ? { name: photo.name || 'SNSで選択中の本人写真', src } : null,
+    };
+  },
+};

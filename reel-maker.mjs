@@ -1,3 +1,4 @@
+import {mountMuseReelMaker} from './muse-reel-maker.mjs?v=1';
 import { analyze, timeline, styles, createEditPlan } from './reel-engine.mjs?v=5';
 import { drawPhotoScene } from './reel-style-renderer.mjs?v=5';
 import { mountEditStyles } from './reel-edit-styles.mjs?v=5';
@@ -282,3 +283,7 @@ $('Share').onclick = async () => {
 if (new URL(location.href).searchParams.get('view') === 'reels') {
   document.querySelector('.nav-tab[data-view="reels"]')?.click();
 }
+
+const museStudio=mountMuseReelMaker(root);
+for(const entry of document.querySelectorAll('[data-open-muse]'))entry.addEventListener('click',()=>{document.querySelector('.nav-tab[data-view="reels"]')?.click();museStudio.open();});
+if(new URL(location.href).searchParams.get('tool')==='muse'){document.querySelector('.nav-tab[data-view="reels"]')?.click();museStudio.open();}
