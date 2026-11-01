@@ -23,6 +23,7 @@ Deno.serve(async (request) => {
 
     if (body.action === "publishDraft") return json(await publishDraft(String(body.draftId || ""), ownerId));
     if (body.action === "retryDraft") return json(await retryDraft(String(body.draftId || ""), ownerId));
+    if (body.action === "createDailyDrafts") return json(await createDailyDrafts(body.platforms, ownerId));
     if (body.action !== "publish") return json({ error: "操作が不正です" }, 400);
     const platform = String(body.platform || "");
     const text = String(body.text || "").trim();
@@ -79,10 +80,18 @@ async function publishDraft(id: string, ownerId: string) {
 async function retryDraft(id: string, ownerId: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("下書きIDが不正です");
   const updated = await serviceDb(`/rest/v1/hanako_auto_drafts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(ownerId)}&status=eq.failed`, "PATCH", {
-    status: "pending", error: "", lease_until: null, updated_at: new Date().toISOString(),
+    status: "pending", manual_requested: true, error: "", lease_until: null, updated_at: new Date().toISOString(),
   });
   if (!Array.isArray(updated) || !updated.length) throw new Error("再試行できる下書きがありません");
   return { status: "pending" };
+}
+
+async function createDailyDrafts(platforms: unknown, ownerId: string) {
+  if (!Array.isArray(platforms) || platforms.length < 1 || platforms.length > 2
+    || platforms.some((platform) => platform !== "Instagram" && platform !== "Threads")
+    || new Set(platforms).size !== platforms.length) throw new Error("作成先をInstagram・Threadsから選んでください");
+  // Queue only. Creation never calls any Meta publish endpoint.
+  return await serviceDb("/rest/v1/rpc/hanako_start_daily_drafts", "POST", { owner_id: ownerId, platforms });
 }
 
 async function signPrivatePhoto(path: string) {
@@ -107,7 +116,7 @@ async function serviceDb(path: string, method: string, body: unknown) {
 }
 
 async function publishInstagramCarousel(caption: string, urls: string[]) {
-  if (urls.length !== 3) throw new Error("Instagram用画像が3枚必要です");
+  if (urls.length !== 3 && urls.length !== 4) throw new Error("Instagram用画像は3枚または4枚必要です");
   const token = required("INSTAGRAM_ACCESS_TOKEN");
   const userId = required("INSTAGRAM_USER_ID");
   const base = `https://graph.facebook.com/${secret("META_GRAPH_VERSION") || "v23.0"}`;
@@ -145,7 +154,7 @@ async function waitInstagramContainer(base: string, id: string, token: string) {
 }
 
 async function publishThreadsCarousel(text: string, urls: string[]) {
-  if (urls.length !== 3) throw new Error("Threads用画像が3枚必要です");
+  if (urls.length !== 3 && urls.length !== 4) throw new Error("Threads用画像は3枚または4枚必要です");
   const token = required("THREADS_ACCESS_TOKEN");
   const userId = required("THREADS_USER_ID");
   const base = `https://graph.threads.net/${secret("META_GRAPH_VERSION") || "v23.0"}`;

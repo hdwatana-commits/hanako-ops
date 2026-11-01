@@ -170,7 +170,9 @@ HANAKO_OWNER_USER_ID
 
 ## ハナ投稿を毎日自動作成し、スマホで確認して公開する
 
-アプリの「SNS投稿」→「毎日自動作成・確認して公開」で、Instagram / ThreadsのON・OFFと日本時間の作成開始時刻を設定します。初期値は両方OFFです。写真送信への同意チェックも初期値OFFです。同意して有効化した場合だけ、選択中の本人写真1枚を画像生成の参照に使い、各SNS用の4:5縦画像3枚と本文を非公開下書きに保存します。初回設定と写真変更後は必ず「自動作成の設定を保存」を押してください。時刻は処理開始の目安で、本文と3枚の画像は1分ごとの処理で順番に作るため、完成までは数分以上かかることがあります。AI生成にはOpenAI APIの利用料金が発生します。
+アプリの「SNS投稿」→「毎日の下書き」で、Instagram / ThreadsそれぞれのON・OFF、日本時間の作成開始時刻、画像3枚／4枚を設定します。初期値は両方OFF、3枚です。写真送信への同意チェックも初期値OFFです。選択中の本人写真1枚を参照に、各SNS用の4:5縦画像と本文を非公開下書きに保存します。初回設定と写真変更後は必ず「自動作成の設定を保存」を押してください。4枚では「おまかせ・日替わり／カフェ気分／お出かけ・デート気分／コーデの見どころ／目が合って照れる」のテーマに沿い、表紙・発見・変化・余韻を独立した4画像と共通の本文にします。顔・服・髪・場所・光はそろえ、構図と仕草を変えます。
+
+「この設定で今すぐ作成」は、毎日作成がOFFでも利用できます。今の設定を保存した後、選んだ投稿先の今日の下書きをキューへ追加し、既存の非同期ワーカーを起動します。1日・1投稿先1下書きなので、連打しても既存の画像を作り直しません。設定変更は次の新規下書きから適用します。本文と各画像を1分ごとの処理で順番に作るため、完成までは数分以上かかります。画面は約20秒ごとに進捗を更新し、編集中の本文は維持します。AI生成にはOpenAI APIの利用料金が発生し、4枚なら画像4枚分が必要です。
 
 完成した下書きは、PCとスマホの同じ同期アカウントから閲覧できます。画像を開いて確認し、本文を修正して保存し、「確認して公開」を押したときだけInstagramまたはThreadsへ公開されます。自動公開はしません。公開APIの応答が不明な場合は二重投稿を防ぐため停止し、SNS側で結果を確認する表示になります。
 
@@ -181,6 +183,8 @@ HANAKO_OWNER_USER_ID
 3. Edge Function Secrets に `OPENAI_API_KEY`、`HANAKO_OWNER_USER_ID`、`HANAKO_CRON_SECRET` を設定します。任意で `OPENAI_TEXT_MODEL`（既定 `gpt-5.5`）と `OPENAI_IMAGE_MODEL`（既定 `gpt-image-2`）も指定できます。既存のInstagram / Threadsトークンも必要です。SecretはGitHubや `config.js` に書かないでください。
 4. Supabase Vaultに `hanako_daily_url`（`https://<project>.supabase.co/functions/v1/hanako-daily`）、`hanako_daily_cron_secret`（Edge Function Secretと同じ値）、`hanako_daily_anon_key`（プロジェクトのレガシーanon JWT）を登録します。[supabase-hanako-daily.sql](supabase-hanako-daily.sql) の末尾にある `cron.schedule` 例をSQL Editorで実行するか、同じSQLをCronジョブに登録します。1分ごとに起動しますが、写真利用の同意・参照写真・SNSの有効化が揃っていない間は関数を呼びません。
 5. スマホのPWAを最新版へ更新し、PCと同じクラウドアカウントでログインします。SNS投稿画面から時間を保存し、翌日の下書きを確認してください。
+
+v392へ既存環境を更新する際は、[supabase-hanako-daily-story.sql](supabase-hanako-daily-story.sql)を適用してから、`hanako-daily`と`social-publish`の両Edge Functionをデプロイします。既存の認証・写真バケット・Vault・毎分Cronを再利用し、新しいAPIキーは不要です。既存3枚下書きは3枚として扱い、新規下書きだけ設定枚数を固定します。
 
 本人写真は非公開Storageに保存されますが、自動生成時は有効期限つきURLを通して選択中の1枚をOpenAI画像生成APIへ送信します。生成した画像も非公開Storageに保存し、SNS公開時だけMetaが読み込むための有効期限つきURLを発行します。写真の外部送信に同意しない場合は両SNSの自動作成をOFFにしてください。投稿先のアカウント種別・公開権限・有効なトークンと、OpenAI APIの課金設定は別途必要です。
 # Phase 1 OPS運用

@@ -11,7 +11,7 @@
     <link id="appManifestLink" rel="manifest" href="manifest.webmanifest">
     <link id="appFavicon" rel="icon" href="icons/icon-192.png" type="image/png">
     <link id="appleTouchIcon" rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=371">
+    <link rel="stylesheet" href="styles.css?v=372">
     <script src="config.js?v=222"></script>
     <script src="cloud-sync.js?v=307"></script>
     <script src="ops-engine.js?v=222"></script>
@@ -829,15 +829,20 @@
                   </div>
                 </div>
                 <section class="sns-hanako-daily" id="hanakoDaily" aria-labelledby="hanakoDailyTitle">
-                  <div class="sns-hanako-daily-head"><div><p class="eyebrow">毎日自動作成・確認して公開</p><strong id="hanakoDailyTitle">スマホで投稿を確認</strong></div><button type="button" id="hanakoDailyRefresh">下書きを更新</button></div>
-                  <p>選択中の本人写真1枚を画像生成APIへ送り、毎日インスタとスレッズの3枚＋本文を非公開の下書きに保存します。公開は確認後にボタンを押した場合のみです。</p>
-                  <div class="generator-pair"><label class="sns-hanako-daily-switch"><input id="hanakoDailyInstagramEnabled" type="checkbox"> Instagramを毎日作成</label><label class="sns-hanako-daily-switch"><input id="hanakoDailyThreadsEnabled" type="checkbox"> Threadsを毎日作成</label></div>
-                  <div class="generator-pair"><div><label class="field-label" for="hanakoDailyInstagramTime">Instagram作成開始（日本時間）</label><input id="hanakoDailyInstagramTime" type="time" value="08:00"></div><div><label class="field-label" for="hanakoDailyThreadsTime">Threads作成開始（日本時間）</label><input id="hanakoDailyThreadsTime" type="time" value="18:00"></div></div>
+                  <div class="sns-hanako-daily-head"><div><p class="eyebrow">毎日自動作成・今すぐ作成</p><strong id="hanakoDailyTitle">可愛いストーリーを、ひとつの投稿に。</strong></div><button type="button" id="hanakoDailyRefresh">下書きを更新</button></div>
+                  <p>本人写真をもとに、Instagram・Threadsそれぞれの写真3枚／4枚と本文を作ります。4枚なら、思わず続きを見たくなるテーマのある連作に。顔・服装・髪・場所をそろえ、表情や構図に変化を付けます。</p>
+                  <div class="generator-pair sns-daily-platforms">
+                    <section><label class="sns-hanako-daily-switch"><input id="hanakoDailyInstagramEnabled" type="checkbox"> Instagramを毎日作成</label><label class="field-label" for="hanakoDailyInstagramCount">作る画像の枚数</label><select id="hanakoDailyInstagramCount"><option value="3">3枚</option><option value="4">4枚・ストーリー投稿</option></select><label class="field-label" for="hanakoDailyInstagramTime">作成開始（日本時間）</label><input id="hanakoDailyInstagramTime" type="time" value="08:00"></section>
+                    <section><label class="sns-hanako-daily-switch"><input id="hanakoDailyThreadsEnabled" type="checkbox"> Threadsを毎日作成</label><label class="field-label" for="hanakoDailyThreadsCount">作る画像の枚数</label><select id="hanakoDailyThreadsCount"><option value="3">3枚</option><option value="4">4枚・ストーリー投稿</option></select><label class="field-label" for="hanakoDailyThreadsTime">作成開始（日本時間）</label><input id="hanakoDailyThreadsTime" type="time" value="18:00"></section>
+                  </div>
+                  <label class="field-label" for="hanakoDailyStoryTheme">4枚投稿のテーマ</label><select id="hanakoDailyStoryTheme"><option value="auto">おまかせ・日替わり</option><option value="cafe">カフェ気分のひと休み</option><option value="date">お出かけ・デート気分</option><option value="outfit">今日のコーデの見どころ</option><option value="surprise">目が合って、ちょっと照れる</option></select>
+                  <ol id="hanakoDailyStoryPreview" class="sns-daily-story-preview" aria-label="4枚のストーリー構成" hidden></ol>
                   <label class="sns-hanako-daily-switch"><input id="hanakoDailyVariation" type="checkbox" checked> 服装・場所・髪型を日替わりでおすすめ（OFFなら上の選択を固定）</label>
                   <label class="sns-hanako-daily-switch"><input id="hanakoDailyPhotoConsent" type="checkbox"> 選択中の本人写真をOpenAI画像生成APIへ送信することに同意する</label>
-                  <small>1日あたり有効なSNSごとに画像3枚と本文を生成します。OpenAI APIの利用料金が発生します。写真を変更したら設定を保存し直してください。</small>
+                  <small>OpenAI APIの利用料金が発生します。4枚では画像4枚分を生成します。公開は下書きを確認して「確認して公開」を押したときだけです。写真を変更したら設定を保存し直してください。</small>
                   <small id="hanakoDailyPhoto">本人写真の設定を確認中…</small>
                   <div class="button-row"><button type="button" class="primary" id="hanakoDailySave">自動作成の設定を保存</button></div>
+                  <section class="sns-daily-quick" aria-labelledby="hanakoDailyQuickTitle"><h4 id="hanakoDailyQuickTitle">待たずに、今日の投稿を作る</h4><p>毎日作成がOFFでも使えます。今の設定を保存して作成を開始し、進み具合を下に表示します。本文と画像を順番に作るため、完成まで数分以上かかります。</p><label class="field-label" for="hanakoDailyNowPlatform">今すぐ作る投稿先</label><select id="hanakoDailyNowPlatform"><option value="Instagram">Instagram</option><option value="Threads">Threads</option><option value="both">InstagramとThreads</option></select><button type="button" class="primary" id="hanakoDailyCreateNow">この設定で今すぐ作成</button><small>1日1投稿先につき1つの下書きです。今日の分がすでにある場合は、その下書きを表示します。作成中・作成済みの下書きは上書きせず、設定の変更は次の新しい下書きに使います。</small></section>
                   <p class="sns-hanako-daily-status" id="hanakoDailyStatus" role="status">クラウドにログインすると設定と下書きを表示します。</p>
                   <div class="sns-hanako-draft-list" id="hanakoDailyDrafts" aria-live="polite"></div>
                 </section>
@@ -1995,7 +2000,7 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="room-review-generator.js?v=253"></script>
-    <script src="app.js?v=391"></script>
+    <script src="app.js?v=392"></script>
     <script type="module" src="sns-studio.mjs?v=2"></script>
     <script type="module" src="reel-maker.mjs?v=17"></script>
     <script type="module" src="threads-replies.js?v=36"></script>
