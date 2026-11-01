@@ -1,9 +1,9 @@
-import {mountSongHelp} from './muse-song-help.mjs?v=1';
+import {mountSongHelp} from './muse-song-help.mjs?v=2';
 import {createSongYoutubePlayer,youtubeSongId} from './muse-song-youtube.mjs?v=1';
 import {initialMuseSongs} from './muse-song-catalog.mjs?v=1';
 import {normalizeSongLibrary,normalizeSongVersion,songLibraryView,saveSongVersion,songVerificationLabel,safeSongSource} from './muse-song-library.mjs?v=1';
 import {analyzeSongAudio,chooseSongClip} from './muse-song-analysis.mjs?v=1';
-import {buildSongDancePackage} from './muse-song-choreography.mjs?v=2';
+import {buildSongDancePackage} from './muse-song-choreography.mjs?v=3';
 import {instagramObservationFor} from './muse-instagram-observations.mjs?v=1';
 import {decodeSource,validateSource,isVideoSource} from './reel-source.mjs?v=1';
 const n=value=>value===''||value===null||value===undefined?null:Number(value);

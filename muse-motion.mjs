@@ -1,5 +1,5 @@
 import {inspectMotionVideo,extractMotionFrames,analyzeMotionTempo,validateMotionClip} from './muse-motion-media.mjs?v=1';
-import {buildMuseMotionPackage} from './muse-motion-engine.mjs?v=2';
+import {buildMuseMotionPackage} from './muse-motion-engine.mjs?v=3';
 import {buildMotionSocialPackage} from './muse-motion-social.mjs?v=1';
 
 const movementFields=[['camera','画角・カメラ'],['body','体・腰・肩'],['leftHand','本人の左手・指'],['rightHand','本人の右手・指'],['feet','足・ステップ'],['face','顔の向き'],['gaze','目線'],['expression','表情'],['transition','加速・減速・終了姿勢']];
@@ -28,11 +28,11 @@ export function mountMuseMotion(root,{prepareIdentity,getIdentity=()=>null,getSt
  <details id="motionTempoDetails"><summary>BPM・拍位置を手動で補正する</summary><div class="muse-two"><label>BPM（分かるときだけ）<input id="motionBpm" type="number" min="40" max="240" step="0.1"></label><label>最初の拍の位置（区間内・秒）<input id="motionBeatOffset" type="number" min="0" max="30" step="0.01" value="0"></label></div><button id="motionApplyBpm" type="button">このBPMで拍の目安を作る</button><label>拍位置（区間内の秒をカンマ区切り）<textarea id="motionBeats" rows="3" maxlength="2000" placeholder="0.25, 0.75, 1.25, …"></textarea></label><p class="muse-note">自動解析・手動の拍は目安です。MUSEの実際の出力は、最後に音源と合わせて調整します。</p></details>
  <section id="motionTimelinePanel" hidden><h3>秒数別の動き（確認・修正）</h3><p id="motionAnalysisSummary" class="muse-note"></p><p class="muse-note">区間内0秒は「参考動画の開始位置」です。左右は踊る本人の左右。AIが見えないとした箇所はUNKNOWNです。英語欄はMUSEへそのまま渡すため、修正も英語で入力してください。</p><div id="motionTimeline" class="motion-timeline"></div><button type="button" id="motionAddRow">動きの区間を追加</button></section>
  <p id="motionStatus" class="muse-status" role="status" aria-live="polite">参考動画と本人画像を選んでください。</p><button type="button" class="muse-primary" id="motionBuild">♫ 0.5秒刻みのMUSE制作指示を作る</button>
- <section id="motionOutputs" hidden><h3>3 / 画像を準備 → CUTごとにMUSEへ</h3><p id="motionOutputSummary" class="muse-note"></p><p class="muse-note">最初に本人画像とキーフレーム指示をChatGPT等へ渡し、本人が各開始・終了姿勢をとる縦9:16画像を1枚ずつ準備します。その開始画像とCUTの英語指示をMUSEに貼り付けます。終了画像欄がなければ、Ending poseの文章を使います。</p>
+ <section id="motionOutputs" hidden><h3>3 / 画像を準備 → CUTごとにMUSEへ</h3><p id="motionOutputSummary" class="muse-note"></p><p class="muse-note">最初に本人画像とキーフレーム指示をChatGPT等へ渡し、本人が各開始・終了姿勢をとる縦9:16画像を1枚ずつ準備します。毎回、同じ元の本人画像と、元写真と顔が一致すると確認した開始画像を、CUTの英語指示と一緒にMUSEへ渡します。終了画像欄がなければ、Ending poseの文章を使います。</p>
  <details><summary>ChatGPTへ渡す画像準備・構成の指示</summary><textarea id="motionChatgptPrompt" readonly rows="8"></textarea><button type="button" id="motionCopyChatgpt">ChatGPT用をコピー</button><label>開始・終了キーフレームを作る指示<textarea id="motionKeyframePrompt" readonly rows="8"></textarea></label><button type="button" id="motionCopyKeyframes">キーフレーム指示をコピー</button></details>
  <div id="motionShots" class="muse-shot-list"></div><details><summary>MUSE用の指示書全体</summary><textarea id="motionMusePrompt" readonly rows="10"></textarea><button type="button" id="motionCopyAll">MUSE用をまとめてコピー</button></details><details><summary>動画の結合と音楽合わせ</summary><textarea id="motionEditing" readonly rows="7"></textarea></details>
  <div class="muse-toolbar"><button type="button" id="motionDownload">制作指示書を保存（テキスト）</button><button type="button" id="motionSaveIdentity">本人画像を保存</button><button type="button" id="motionShare">本人画像と指示を共有</button><a href="https://www.meta.ai/" target="_blank" rel="noopener noreferrer">Meta AIを開く ↗</a></div><p class="muse-note">画像・動画はコピーには含まれません。元の参考動画も必要に応じ手動で添付してください。CUT尺は編集用の計画です。対応する生成尺や画像入力欄はMUSEの利用画面で確認し、長い出力は編集アプリで切り出して結合します。</p></section></div>`;
- root.querySelector('.muse-hero').after(panel);
+ (root.querySelector('#museIdentityLockNote')||root.querySelector('.muse-hero')).after(panel);
  const $=id=>panel.querySelector('#motion'+id);let file=null,metadata=null,identity=null,identityUrl='',videoUrl='',frames=[],tempo=null,analysisStatus='unverified',rows=[],output=null,revision=0,preparedKey='',controller=null,working=false,identityRevision=0,social=null,captionVariant=0,captionOriginal='',overlayOriginal='',captionButtons=[];
  const say=text=>$('Status').textContent=text;
  $('OpenSocial').onclick=()=>$('SocialTitle').scrollIntoView({behavior:'smooth',block:'start'});

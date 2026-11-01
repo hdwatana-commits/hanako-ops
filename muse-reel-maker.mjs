@@ -1,7 +1,8 @@
-import {mountMuseSongDance} from './muse-song-dance.mjs?v=3';
-import {mountMuseMotion} from './muse-motion.mjs?v=2';
-import {buildMuseReelPackage,normalizeMuseReferenceUrl} from './muse-reel-engine.mjs?v=2';
+import {mountMuseSongDance} from './muse-song-dance.mjs?v=4';
+import {mountMuseMotion} from './muse-motion.mjs?v=3';
+import {buildMuseReelPackage,normalizeMuseReferenceUrl} from './muse-reel-engine.mjs?v=3';
 import {museReferences,museThemes} from './muse-reel-presets.mjs?v=1';
+import {museIdentityHelp} from './muse-identity-lock.mjs?v=1';
 const draftKey='hanako-muse-reel-draft-v1';
 const fields=['Mode','Theme','Hair','Outfit','Location','Composition','Duration','Bpm','Energy','Urls','Observations','Motion','ChatgptResult'];
 const roles={identity:'本人画像',hair:'髪型の参考',outfit:'服装の参考',location:'場所の参考',keyframe:'ChatGPTで作った開始画像'};
@@ -15,6 +16,7 @@ async function prepareAsset(file,role){
 export function mountMuseReelMaker(root){
  const section=document.createElement('section');section.className='muse-studio';section.id='museReelStudio';section.setAttribute('aria-label','MUSEリール制作プランナー');
  section.innerHTML=`<header class="muse-hero"><div><p class="muse-eyebrow">HANAKO × META MUSE</p><h2>写真から、私らしく動くリールへ。</h2><p>服・場所・表情を揃えた、動画の撮影指示をつくる。</p></div><span class="muse-hero-mark" aria-hidden="true">✦</span></header>
+ <aside class="muse-status" id="museIdentityLockNote"><strong>全カットで、元の本人画像を顔の基準に</strong><p>${museIdentityHelp}</p><p>笑顔・まばたき・顔の向きは自然に動かしながら、目鼻立ちと輪郭を保つ指示を各カットに入れます。</p></aside>
  <details class="muse-panel" id="musePanel"><summary>MUSEへ渡す画像とプロンプトを作る <span>NEW</span></summary><div class="muse-content">
  <ol class="muse-steps"><li>素材と参考を登録</li><li>ChatGPTで画像・構成を整える</li><li>MUSEでカットごとに動画化</li></ol>
  <p class="muse-note">この機能は指示書と参照ボードを作ります。人物を動かす動画生成はMeta側で行います。本人写真や下書きは、この端末のブラウザだけに保存。外部AIへ自動送信しません。</p>
