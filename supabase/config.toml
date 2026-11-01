@@ -15,3 +15,6 @@ verify_jwt = true
 
 [functions.reel-transcribe]
 verify_jwt = true
+
+[functions.muse-motion-analyze]
+verify_jwt = true
