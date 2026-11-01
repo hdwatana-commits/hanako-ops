@@ -9,11 +9,12 @@ const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAw
 const fields = ['camera', 'body', 'leftHand', 'rightHand', 'feet', 'face', 'gaze', 'expression', 'transition'];
 const row = (start = 0, end = 1.5) => ({ start, end, ...Object.fromEntries(fields.map(name => [name, name === 'feet' ? 'Not visible / unconfirmed' : 'Visible pose, gently turn toward the camera.'])), confidence: 'medium' });
 const input = () => ({ consent: true, duration: 2, referenceStart: 12, frames: [0, .5, 1, 1.5].map(time => ({ time, image })) });
-function worker({ other = false, key = true, result, providerStatus = 200, envExtra = {}, error = null } = {}) {
+function worker({ other = false, key = true, result, providerStatus = 200, envExtra = {}, error = null, intercept, timers } = {}) {
   let handler; const calls = [];
   const env = { SUPABASE_URL: 'https://db.test', SUPABASE_SERVICE_ROLE_KEY: 'service', HANAKO_OWNER_USER_ID: 'owner', ...envExtra };
-  vm.runInNewContext(source, { Deno: { env: { get: name => env[name] }, serve: fn => { handler = fn; } }, Response, Request, Uint8Array, DataView, TextDecoder, AbortSignal, atob, fetch: async (url, options) => {
+  vm.runInNewContext(source, { Deno: { env: { get: name => env[name] }, serve: fn => { handler = fn; } }, Response, Request, Uint8Array, DataView, TextDecoder, AbortSignal, AbortController, DOMException, setTimeout: timers?.setTimeout || setTimeout, clearTimeout: timers?.clearTimeout || clearTimeout, atob, fetch: async (url, options) => {
     calls.push({ url: String(url), options });
+    const intercepted = intercept?.(String(url), options); if (intercepted !== undefined) return intercepted;
     if (String(url).endsWith('/auth/v1/user')) return Response.json({ id: other ? 'other' : 'owner' });
     if (String(url).endsWith('/hanako_openai_key_read')) return Response.json(key ? 'sk-private-test' : null);
     assert.equal(url, 'https://api.openai.com/v1/responses');
@@ -22,8 +23,14 @@ function worker({ other = false, key = true, result, providerStatus = 200, envEx
   } });
   return { handler, calls };
 }
-function request(body = input(), headers = {}) { return new Request('https://function.test', { method: 'POST', headers: { Authorization: 'Bearer owner-session', 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) }); }
+function request(body = input(), headers = {}, signal) { return new Request('https://function.test', { method: 'POST', headers: { Authorization: 'Bearer owner-session', 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body), signal }); }
 const paid = w => w.calls.filter(call => call.url.includes('api.openai.com'));
+const batchInput = (start = 10, end = 15, duration = 20) => ({ consent: true, duration, referenceStart: 12, analysisStart: start, analysisEnd: end, frames: Array.from({ length: Math.floor((Math.min(end, duration - .5) - start) * 2) + 1 }, (_, i) => ({ time: start + i / 2, image })) });
+function clock() {
+ const pending = new Map(); let next = 0;
+ return { pending, setTimeout(fn, ms) { const id = ++next; pending.set(id, { fn, ms }); return id; }, clearTimeout(id) { pending.delete(id); }, fire(ms) { const found = [...pending].find(([, task]) => task.ms === ms); assert.ok(found, `pending deadline ${ms}`); pending.delete(found[0]); found[1].fn(); } };
+}
+async function until(predicate) { for (let i = 0; i < 20 && !predicate(); i++) await new Promise(resolve => setImmediate(resolve)); assert.ok(predicate(), 'expected processing stage was reached'); }
 
 test('motion analysis requires owner authentication before inspecting frames or reading the key', async () => {
   const anonymous = worker();
@@ -98,4 +105,82 @@ test('motion analysis returns useful quota, no-key, timeout and incomplete-resul
   const rejected = worker({ providerStatus: 401 }); const r = await rejected.handler(request()); assert.equal(r.status, 502); assert.doesNotMatch(JSON.stringify(await r.json()), /sk-do-not-return/);
   const timeout = worker({ error: new DOMException('late', 'TimeoutError') }); assert.match((await (await timeout.handler(request())).json()).error, /タイムアウト/); assert.equal(paid(timeout).length, 1);
   const incomplete = worker({ result: { status: 'incomplete' } }); assert.equal((await incomplete.handler(request())).status, 422); assert.equal(paid(incomplete).length, 1);
+});
+
+test('small motion batches retain whole-clip timestamps and a shared boundary frame with bounded output', async () => {
+ const w = worker({ result: { output_text: JSON.stringify({ summary: '中盤の動きです。', observations: [row(10, 15)] }) } });
+ const response = await w.handler(request(batchInput())); const body = await response.json();
+ assert.equal(response.status, 200); assert.equal(body.analysisStart, 10); assert.equal(body.analysisEnd, 15); assert.equal(body.batchProtocol, 1);
+ assert.deepEqual(body.frameTimes, [10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15]);
+ assert.equal(body.observations[0].start, 10); assert.equal(body.observations[0].end, 15);
+ const payload = JSON.parse(paid(w)[0].options.body);
+ assert.equal(payload.max_output_tokens, 5000); assert.equal(payload.text.format.schema.properties.observations.maxItems, 11);
+ assert.match(payload.input[0].content[0].text, /ONLY clip 10 through 15/);
+ assert.match(payload.input[0].content[0].text, /Never subtract 10/); assert.equal(paid(w).length, 1);
+ const last = worker({ result: { output_text: JSON.stringify({ summary: '終盤の動きです。', observations: [row(25, 30)] }) } });
+ assert.equal((await last.handler(request(batchInput(25, 30, 30)))).status, 200);
+});
+
+test('motion batch validation rejects missing, oversized, out-of-window or uncovered frame ranges before paid calls', async () => {
+ const base = batchInput();
+ const invalid = [
+  { ...base, analysisEnd: undefined }, { ...base, analysisStart: -1 }, { ...base, analysisEnd: 17 }, { ...base, analysisEnd: 10.05 },
+  { ...base, frames: [{ time: 9.5, image }, ...base.frames] }, { ...base, frames: [...base.frames, { time: 15.5, image }] },
+  { ...base, frames: base.frames.slice(1) }, { ...base, frames: base.frames.slice(0, -2) },
+  { ...base, frames: Array.from({ length: 15 }, (_, i) => ({ time: 10 + i / 3, image })) },
+ ];
+ for (const body of invalid) { const w = worker(); const response = await w.handler(request(body)); assert.equal(response.status, 400); assert.equal(paid(w).length, 0); assert.equal((await response.json()).code, 'invalid_input'); }
+});
+
+test('motion batch results cannot write into a different chunk or silently retime global seconds', async () => {
+ for (const observation of [row(0, 5), row(10, 15.5), row(9.5, 15), row(15, 15.5)]) {
+  const w = worker({ result: { output_text: JSON.stringify({ summary: '', observations: [observation] }) } });
+  const response = await w.handler(request(batchInput())); const body = await response.json();
+  assert.equal(response.status, 422); assert.equal(body.stage, 'result'); assert.equal(body.code, 'invalid_result'); assert.equal(body.retryable, true);
+ }
+});
+
+test('motion output truncation identifies the token limit and does not retry a paid call', async () => {
+ const w = worker({ result: { status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' } } });
+ const response = await w.handler(request(batchInput())); const body = await response.json();
+ assert.equal(response.status, 422); assert.equal(body.code, 'output_limit'); assert.equal(body.stage, 'result'); assert.equal(body.retryable, true); assert.equal(paid(w).length, 1);
+});
+
+test('a stalled provider or provider response body releases the batch at its own deadline', async () => {
+ for (const bodyOnly of [false, true]) {
+  const timers = clock(); const w = worker({ timers, intercept: url => url.includes('api.openai.com') ? (bodyOnly ? { ok: true, text: () => new Promise(() => {}) } : new Promise(() => {})) : undefined });
+  const pending = w.handler(request(batchInput())); await until(() => paid(w).length === 1); timers.fire(55000);
+  const response = await pending; const result = await response.json();
+  assert.equal(response.status, 504); assert.equal(result.code, 'analysis_timeout'); assert.equal(result.stage, 'analysis'); assert.equal(result.retryable, true);
+  assert.equal(paid(w)[0].options.signal.aborted, true); assert.equal(paid(w).length, 1); assert.equal(timers.pending.size, 0);
+ }
+});
+
+test('disconnecting a client cancels the provider wait without a second paid request', async () => {
+ const timers = clock(), control = new AbortController();
+ const w = worker({ timers, intercept: url => url.includes('api.openai.com') ? new Promise(() => {}) : undefined });
+ const pending = w.handler(request(batchInput(), {}, control.signal)); await until(() => paid(w).length === 1); control.abort();
+ const response = await pending; const result = await response.json();
+ assert.equal(response.status, 499); assert.equal(result.code, 'cancelled'); assert.equal(paid(w)[0].options.signal.aborted, true);
+ assert.equal(paid(w).length, 1); assert.equal(timers.pending.size, 0);
+});
+
+test('stalled authentication and key response bodies report the actual waiting stage and release without model calls', async () => {
+ for (const [suffix, stage] of [['/auth/v1/user', 'authentication'], ['/hanako_openai_key_read', 'connection']]) {
+  const timers = clock(), w = worker({ timers, intercept: url => url.endsWith(suffix) ? { ok: true, json: () => new Promise(() => {}) } : undefined });
+  const pending = w.handler(request(batchInput())); await until(() => w.calls.some(call => call.url.endsWith(suffix))); timers.fire(10000);
+  const response = await pending; const result = await response.json();
+  assert.equal(response.status, 504); assert.equal(result.stage, stage); assert.equal(result.code, 'analysis_timeout'); assert.equal(paid(w).length, 0); assert.equal(timers.pending.size, 0);
+ }
+});
+
+test('a stalled request body is cancelled when input decoding times out', async () => {
+ const timers = clock(); let cancelled = false;
+ const body = new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('{')); }, cancel() { cancelled = true; } });
+ const req = new Request('https://function.test', { method: 'POST', headers: { Authorization: 'Bearer owner-session', 'Content-Type': 'application/json' }, body, duplex: 'half' });
+ const w = worker({ timers }); const pending = w.handler(req); await until(() => w.calls.length === 1 && [...timers.pending.values()].some(task => task.ms === 10000));
+ // The auth response must finish first; only the input stage remains pending.
+ await new Promise(resolve => setImmediate(resolve)); timers.fire(10000);
+ const response = await pending; const result = await response.json();
+ assert.equal(response.status, 504); assert.equal(result.stage, 'input'); assert.equal(cancelled, true); assert.equal(paid(w).length, 0); assert.equal(timers.pending.size, 0);
 });

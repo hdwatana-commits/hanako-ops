@@ -5,65 +5,90 @@ const MAX_BODY = 5 * 1024 * 1024;
 const movementFields = ['camera', 'body', 'leftHand', 'rightHand', 'feet', 'face', 'gaze', 'expression', 'transition'];
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 class InputError extends Error { status: number; constructor(message: string, status = 400) { super(message); this.status = status; } }
+const failure = (error: string, status: number, code: string, stage: string, retryable = false) => json({ error, code, stage, retryable }, status);
 
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (request.method !== 'POST') return json({ error: 'POSTのみ利用できます' }, 405);
+  let stage = 'authentication';
   try {
     const base = Deno.env.get('SUPABASE_URL'), service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'), owner = Deno.env.get('HANAKO_OWNER_USER_ID');
     if (!base || !service || !owner) return json({ error: '動画の動作解析のサーバー設定が必要です' }, 503);
     const authorization = request.headers.get('Authorization') || '';
     if (!/^Bearer \S+$/.test(authorization)) return json({ error: 'OPSにログインしてください' }, 401);
-    const auth = await fetch(`${base}/auth/v1/user`, { headers: { apikey: service, Authorization: authorization }, signal: AbortSignal.timeout(10000) });
-    const user = await auth.json().catch(() => ({}));
+    const { auth, user } = await deadline(async signal => { const auth = await fetch(`${base}/auth/v1/user`, { headers: { apikey: service, Authorization: authorization }, signal }); return { auth, user: await auth.json().catch(() => ({})) }; }, 10000, request.signal);
     if (!auth.ok) return json({ error: 'OPSへのログインを更新してください' }, 401);
     if (user.id !== owner) return json({ error: 'この機能は所有者のみ利用できます' }, 403);
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) throw new InputError('参考動画の静止フレームをJSON形式で送信してください', 415);
-    const input = await boundedJson(request);
+    stage = 'input';
+    const input = await deadline(signal => boundedJson(request, signal), 10000, request.signal);
     if (input.action === 'status') {
       assertKeys(input, ['action']);
-      return json({ configured: Boolean(await readKey(base, service, owner)), model: modelName(), maxDuration: 30, maxFrames: 60 });
+      stage = 'connection';
+      return json({ configured: Boolean(await readKey(base, service, owner, request.signal)), model: modelName(), maxDuration: 30, maxFrames: 60, batchProtocol: 1, maxBatchDuration: 6, maxBatchFrames: 14 });
     }
-    assertKeys(input, ['action', 'consent', 'duration', 'referenceStart', 'frames']);
+    assertKeys(input, ['action', 'consent', 'duration', 'referenceStart', 'analysisStart', 'analysisEnd', 'frames']);
     if (input.action != null && input.action !== 'analyze') throw new InputError('操作が不正です');
     if (input.consent !== true) throw new InputError('参考動画から取り出した画像をOpenAIへ送信する同意が必要です');
-    const { duration, referenceStart, frames } = validateInput(input);
-    const key = await readKey(base, service, owner);
-    if (!key) return json({ error: '連携画面でOpenAI APIキーを登録してください。動画の動作解析にはOpenAI接続が必要です。' }, 503);
-    const content: any[] = [{ type: 'input_text', text: `Analyze the ordered reference-video samples below. Clip duration: ${duration} seconds. All labels are seconds RELATIVE TO THE SELECTED CLIP. Original video start: ${referenceStart} seconds; do not add this offset to output times. No audio and no personal identity photo are provided. Sample times: ${frames.map(frame => frame.time).join(', ')}. Return only observed visual choreography and framing. Use sample times as boundaries. Leave unobserved gaps unfilled rather than inventing movement.` }];
+    const { duration, referenceStart, frames, analysisStart, analysisEnd, batch } = validateInput(input);
+    stage = 'connection';
+    const key = await readKey(base, service, owner, request.signal);
+    if (!key) return failure('連携画面でOpenAI APIキーを登録してください。動画の動作解析にはOpenAI接続が必要です。', 503, 'provider_not_configured', stage);
+    const content: any[] = [{ type: 'input_text', text: `Analyze the ordered reference-video samples below. Clip duration: ${duration} seconds. Analyze ONLY clip ${analysisStart} through ${analysisEnd} seconds. All labels are seconds RELATIVE TO THE WHOLE SELECTED CLIP, not relative to this batch. Never subtract ${analysisStart} from output times. Original video start: ${referenceStart} seconds; do not add this offset to output times. No audio and no personal identity photo are provided. Sample times: ${frames.map(frame => frame.time).join(', ')}. Return only observed visual choreography and framing. Use sample times and the analysis end ${analysisEnd} as boundaries. A frame at the analysis end is context for the preceding movement only; never emit an interval starting at or beyond ${analysisEnd}. Leave unobserved gaps unfilled rather than inventing movement.` }];
     for (const frame of frames) content.push({ type: 'input_text', text: `Reference frame at clip ${frame.time.toFixed(3)} seconds` }, { type: 'input_image', image_url: frame.image, detail: 'low' });
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    stage = 'analysis';
+    const { response, result } = await deadline(async signal => {
+     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: modelName(), store: false, instructions: instructions(), input: [{ role: 'user', content }], reasoning: { effort: 'none' }, max_output_tokens: 12000, text: { format: { type: 'json_schema', name: 'reference_motion_observations', strict: true, schema: outputSchema() } } }),
-      signal: AbortSignal.timeout(85000),
-    });
-    if (!response.ok) return json({ error: response.status === 429 ? '動作解析の利用上限です。OpenAIの残高・利用制限を確認し、時間をおいてお試しください。' : response.status === 401 ? 'OpenAI接続を確認してください。' : '動画の動作を解析できませんでした。区間を短くするか、時間をおいてお試しください。' }, response.status === 429 ? 429 : 502);
-    const result = await boundedResponseJson(response);
-    if (result.status === 'incomplete') return json({ error: '解析結果が途中で終了しました。短い区間を選び直してください。' }, 422);
+      body: JSON.stringify({ model: modelName(), store: false, instructions: instructions(), input: [{ role: 'user', content }], reasoning: { effort: 'none' }, max_output_tokens: batch ? 5000 : 12000, text: { format: { type: 'json_schema', name: 'reference_motion_observations', strict: true, schema: outputSchema(batch ? frames.length : 60) } } }),
+      signal,
+     });
+     return { response, result: response.ok ? await boundedResponseJson(response) : null };
+    }, batch ? 55000 : 85000, request.signal);
+    if (!response.ok) return failure(response.status === 429 ? '動作解析の利用上限です。OpenAIの残高・利用制限を確認し、時間をおいてお試しください。' : response.status === 401 ? 'OpenAI接続を確認してください。' : '動画の動作を解析できませんでした。時間をおいて、未完了の区間から再試行してください。', response.status === 429 ? 429 : 502, response.status === 429 ? 'quota_exceeded' : response.status === 401 ? 'provider_auth' : 'analysis_failed', stage, response.status !== 401);
+    stage = 'result';
+    if (result.status === 'incomplete') return failure('解析結果が途中で終了しました。完了した区間は残したまま、未完了の区間から再試行できます。', 422, result.incomplete_details?.reason === 'max_output_tokens' ? 'output_limit' : 'incomplete_result', stage, true);
     const text = typeof result.output_text === 'string' ? result.output_text : (Array.isArray(result.output) ? result.output : []).filter((item: any) => item.type === 'message').flatMap((item: any) => Array.isArray(item.content) ? item.content : []).filter((item: any) => item.type === 'output_text' && typeof item.text === 'string').map((item: any) => item.text).join('');
     let parsed;
-    try { parsed = JSON.parse(text); } catch { return json({ error: '動作の解析結果を読み取れませんでした。区間を短くするか、手動で動きを記入してください。' }, 422); }
-    const observation = validateOutput(parsed, duration, frames.map(frame => frame.time));
-    return json({ ...observation, frameTimes: frames.map(frame => frame.time), duration, referenceStart, model: modelName(), source: 'sampled_frames_ai', review_required: true, audio_analyzed: false });
+    try { parsed = JSON.parse(text); } catch { return failure('動作の解析結果を読み取れませんでした。未完了の区間から再試行するか、手動で動きを記入してください。', 422, 'invalid_result', stage, true); }
+    const observation = validateOutput(parsed, duration, frames.map(frame => frame.time), analysisStart, analysisEnd, batch ? frames.length : 60);
+    return json({ ...observation, frameTimes: frames.map(frame => frame.time), duration, referenceStart, analysisStart, analysisEnd, batchProtocol: 1, model: modelName(), source: 'sampled_frames_ai', review_required: true, audio_analyzed: false });
   } catch (error) {
-    if (error instanceof InputError) return json({ error: error.message }, error.status);
-    return json({ error: ['TimeoutError', 'AbortError'].includes(String((error as any)?.name || '')) ? '動作解析がタイムアウトしました。区間を短くしてお試しください。' : '動作を解析できませんでした。ファイルと時刻を確認してください。' }, 400);
+    if (error instanceof InputError) return failure(error.message, error.status, ['analysis', 'result'].includes(stage) ? 'invalid_result' : 'invalid_input', stage, ['analysis', 'result'].includes(stage));
+    if (request.signal.aborted) return failure('動作解析を中止しました。完了した区間は残っています。', 499, 'cancelled', stage);
+    if (['TimeoutError', 'AbortError'].includes(String((error as any)?.name || ''))) return failure(stage === 'authentication' ? 'ログインの確認がタイムアウトしました。' : stage === 'connection' ? 'OpenAI接続の確認がタイムアウトしました。' : '動作解析がタイムアウトしました。未完了の区間から再試行できます。', 504, 'analysis_timeout', stage, true);
+    return failure('動作を解析できませんでした。通信状態と時刻を確認し、未完了の区間から再試行してください。', 502, 'analysis_failed', stage, true);
   }
 });
 
 function modelName() { return Deno.env.get('MUSE_MOTION_MODEL')?.trim() || Deno.env.get('OPENAI_TEXT_MODEL')?.trim() || 'gpt-5.5'; }
-async function readKey(base: string, service: string, owner: string) {
-  const response = await fetch(`${base}/rest/v1/rpc/hanako_openai_key_read`, { method: 'POST', headers: { apikey: service, Authorization: `Bearer ${service}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ owner_id: owner }), signal: AbortSignal.timeout(10000) });
-  const stored = response.ok ? await response.json() : null;
+async function readKey(base: string, service: string, owner: string, parentSignal: AbortSignal) {
+  const stored = await deadline(async signal => { const response = await fetch(`${base}/rest/v1/rpc/hanako_openai_key_read`, { method: 'POST', headers: { apikey: service, Authorization: `Bearer ${service}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ owner_id: owner }), signal }); return response.ok ? await response.json() : null; }, 10000, parentSignal);
   return typeof stored === 'string' && /^sk-\S+$/.test(stored) ? stored : ['OPENAI_API_KEY', 'HanakoOPS Replies'].map(name => Deno.env.get(name)?.trim()).find(value => value && /^sk-\S+$/.test(value));
 }
-async function boundedJson(request: Request) {
+// Native fetch/body promises may not settle after a disconnect. Stop waiting and
+// abort that stage without retrying a billable provider request automatically.
+function deadline<T>(run: (signal: AbortSignal) => Promise<T>, timeoutMs: number, parentSignal: AbortSignal): Promise<T> {
+ return new Promise((resolve, reject) => {
+  const own = new AbortController(); let settled = false, timer: ReturnType<typeof setTimeout>;
+  const clean = () => { clearTimeout(timer); parentSignal.removeEventListener('abort', abort); };
+  const finish = (callback: (value: any) => void, value: any) => { if (settled) return; settled = true; clean(); callback(value); };
+  const abort = () => { const error = parentSignal.reason || new DOMException('Cancelled', 'AbortError'); own.abort(error); finish(reject, error); };
+  parentSignal.addEventListener('abort', abort, { once: true });
+  if (parentSignal.aborted) { abort(); return; }
+  timer = setTimeout(() => { const error = new DOMException('Stage timed out', 'TimeoutError'); own.abort(error); finish(reject, error); }, timeoutMs);
+  Promise.resolve().then(() => { if (settled) throw own.signal.reason; return run(own.signal); }).then(value => finish(resolve, value), error => finish(reject, error));
+ });
+}
+async function boundedJson(request: Request, signal: AbortSignal) {
   const advertised = Number(request.headers.get('Content-Length'));
   if (Number.isFinite(advertised) && advertised > MAX_BODY) throw new InputError('送信画像が大きすぎます。解析区間を短くしてください', 413);
   const reader = request.body?.getReader();
   if (!reader) throw new InputError('参考動画のフレームがありません');
+  const cancel = () => { reader.cancel().catch(() => {}); }; signal.addEventListener('abort', cancel, { once: true });
   const chunks: Uint8Array[] = []; let size = 0;
-  while (true) { const { done, value } = await reader.read(); if (done) break; size += value.length; if (size > MAX_BODY) { await reader.cancel(); throw new InputError('送信画像が大きすぎます。解析区間を短くしてください', 413); } chunks.push(value); }
+  try { while (true) { const { done, value } = await reader.read(); if (done) break; size += value.length; if (size > MAX_BODY) { cancel(); throw new InputError('送信画像が大きすぎます。解析区間を短くしてください', 413); } chunks.push(value); } }
+  finally { signal.removeEventListener('abort', cancel); }
   const bytes = new Uint8Array(size); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
   try { const value = JSON.parse(new TextDecoder().decode(bytes)); if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(); return value; } catch { throw new InputError('解析データを読み取れませんでした'); }
 }
@@ -78,17 +103,20 @@ function assertKeys(value: any, allowed: string[]) {
 function validateInput(input: any) {
   const duration = input.duration, referenceStart = input.referenceStart ?? 0;
   if (typeof duration !== 'number' || !Number.isFinite(duration) || duration < 2 || duration > 30 || typeof referenceStart !== 'number' || !Number.isFinite(referenceStart) || referenceStart < 0 || referenceStart + duration > 600) throw new InputError('動画の解析区間は2〜30秒、元動画は10分以内で指定してください');
-  if (!Array.isArray(input.frames) || input.frames.length < 2 || input.frames.length > 60) throw new InputError('参考動画の静止フレームを2〜60枚で指定してください');
+  const batch = input.analysisStart != null || input.analysisEnd != null;
+  const analysisStart = batch ? input.analysisStart : 0, analysisEnd = batch ? input.analysisEnd : duration;
+  if (typeof analysisStart !== 'number' || typeof analysisEnd !== 'number' || !Number.isFinite(analysisStart) || !Number.isFinite(analysisEnd) || analysisStart < 0 || analysisEnd > duration || analysisEnd - analysisStart < .1 || (batch && analysisEnd - analysisStart > 6.01)) throw new InputError('分割解析の開始・終了は選択区間内の0.1〜6秒で指定してください');
+  if (!Array.isArray(input.frames) || input.frames.length < 2 || input.frames.length > (batch ? 14 : 60)) throw new InputError(batch ? '分割した参考フレームは2〜14枚で指定してください' : '参考動画の静止フレームを2〜60枚で指定してください');
   let previous = -1;
   const frames = input.frames.map((frame: any) => {
     assertKeys(frame, ['time', 'image']);
-    if (typeof frame.time !== 'number' || !Number.isFinite(frame.time) || frame.time < 0 || frame.time >= duration || frame.time - previous < .01 || (previous >= 0 && frame.time - previous > 2.01)) throw new InputError('フレームの時刻を動画順に指定してください。間隔は最大2秒です');
+    if (typeof frame.time !== 'number' || !Number.isFinite(frame.time) || frame.time < analysisStart || frame.time >= duration || frame.time > analysisEnd || frame.time - previous < .01 || (previous >= 0 && frame.time - previous > 2.01)) throw new InputError('フレームの時刻を解析する範囲内で動画順に指定してください。間隔は最大2秒です');
     previous = frame.time;
     validateImage(frame.image);
     return { time: frame.time, image: frame.image };
   });
-  if (frames[0].time > .05 || frames.at(-1)!.time < duration - .6) throw new InputError('選択区間の冒頭から末尾までのフレームを用意してください');
-  return { duration, referenceStart, frames };
+  if (frames[0].time > analysisStart + .05 || frames.at(-1)!.time < analysisEnd - .6) throw new InputError('解析する区間の冒頭から末尾までのフレームを用意してください');
+  return { duration, referenceStart, frames, analysisStart, analysisEnd, batch };
 }
 function validateImage(value: unknown) {
   if (typeof value !== 'string' || value.length > 205000) throw new InputError('静止フレームは1枚150KB以内にしてください');
@@ -118,13 +146,14 @@ function validateImage(value: unknown) {
   }
   if (width < 1 || height < 1 || width > 512 || height > 512) throw new InputError('静止フレームは長辺512px以内に縮小してください');
 }
-function outputSchema() {
+function outputSchema(maxRows = 60) {
   return {
     type: 'object', additionalProperties: false, required: ['summary', 'observations'],
     properties: {
       summary: { type: 'string' },
       observations: {
         type: 'array',
+        maxItems: maxRows,
         items: {
           type: 'object', additionalProperties: false, required: ['start', 'end', ...movementFields, 'confidence'],
           properties: {
@@ -137,15 +166,15 @@ function outputSchema() {
     },
   };
 }
-function validateOutput(value: any, duration: number, frameTimes: number[]) {
+function validateOutput(value: any, duration: number, frameTimes: number[], analysisStart = 0, analysisEnd = duration, maxRows = 60) {
   const fail = () => { throw new InputError('時刻や動作の解析結果を確認できませんでした。区間を短くするか、手動で動きを記入してください。', 422); };
-  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(name => !['summary', 'observations'].includes(name)) || typeof value.summary !== 'string' || value.summary.length > 1200 || !Array.isArray(value.observations) || !value.observations.length || value.observations.length > 60) fail();
-  let previousEnd = 0;
-  const boundaries = [...frameTimes, duration];
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(name => !['summary', 'observations'].includes(name)) || typeof value.summary !== 'string' || value.summary.length > 1200 || !Array.isArray(value.observations) || !value.observations.length || value.observations.length > maxRows) fail();
+  let previousEnd = analysisStart;
+  const boundaries = [...frameTimes, analysisEnd];
   const observations = value.observations.map((row: any) => {
     if (!row || typeof row !== 'object' || Array.isArray(row) || Object.keys(row).some(name => !['start', 'end', ...movementFields, 'confidence'].includes(name))) fail();
     const { start, end, confidence } = row;
-    if (typeof start !== 'number' || typeof end !== 'number' || !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end > duration || start < previousEnd || end - start < .1 || !['low', 'medium', 'high'].includes(confidence) || !boundaries.some(time => Math.abs(time - start) < .011) || !boundaries.some(time => Math.abs(time - end) < .011)) fail();
+    if (typeof start !== 'number' || typeof end !== 'number' || !Number.isFinite(start) || !Number.isFinite(end) || start < analysisStart || end > analysisEnd || start < previousEnd || end - start < .1 || !['low', 'medium', 'high'].includes(confidence) || !boundaries.some(time => Math.abs(time - start) < .011) || !boundaries.some(time => Math.abs(time - end) < .011)) fail();
     for (const field of movementFields) if (typeof row[field] !== 'string' || !row[field].trim() || row[field].length > 360 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(row[field])) fail();
     previousEnd = end;
     return { start, end, ...Object.fromEntries(movementFields.map(name => [name, row[name].trim()])), confidence };

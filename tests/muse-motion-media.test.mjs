@@ -123,3 +123,54 @@ test('large reference videos retain the visual route but skip full-file audio al
  const file={name:'reference.mov',type:'video/quicktime',size:MOTION_MEDIA_LIMITS.audioBytes+1,arrayBuffer(){throw Error('large audio must not be read');}};
  validateMotionVideo(file);const result=await analyzeMotionTempo(file,{start:0,duration:2});assert.equal(result.beatStatus,'unverified');assert.equal(result.bpm,null);assert.match(result.reason,/40MB/);assert.match(result.reason,/動きの解析は続けられます/);
 });
+
+function frameBrowser(t,encodedLength){
+ const browser=mediaBrowser(t),attempts=[],draws=[],canvas={width:0,height:0,getContext:()=>({drawImage:(_video,_x,_y,width,height)=>draws.push({width,height})}),toDataURL(type,quality){attempts.push({width:this.width,height:this.height,type,quality});const prefix='data:image/jpeg;base64,';return prefix+'A'.repeat(encodedLength({width:this.width,height:this.height,quality})-prefix.length);}};
+ const createVideo=document.createElement;
+ t.mock.method(document,'createElement',tag=>{
+  if(tag==='canvas')return canvas;
+  const video=createVideo();video.duration=30;video.readyState=2;let currentTime=0;
+  Object.defineProperty(video,'currentTime',{get:()=>currentTime,set:value=>{currentTime=value;queueMicrotask(()=>video.dispatchEvent(new Event('seeked')));}});
+  video.requestVideoFrameCallback=callback=>{queueMicrotask(callback);return 1;};video.cancelVideoFrameCallback=()=>{};
+  return video;
+ });
+ return{...browser,attempts,draws};
+}
+
+test('all 60 half-second samples fit the existing total budget by lowering JPEG quality first',async t=>{
+ const {file,attempts,draws}=frameBrowser(t,({quality})=>quality===.66?40000:32000),progress=[];
+ const frames=await extractMotionFrames(file,{start:0,duration:30,onProgress:value=>progress.push(value)});
+ assert.equal(frames.length,60);assert.deepEqual(frames.map(frame=>frame.time),motionFrameTimes(30));assert.equal(attempts.length,120);
+ assert.ok(attempts.every(attempt=>attempt.width===216&&attempt.height===384));assert.equal(draws.length,60);
+ assert.ok(frames.every(frame=>frame.dataUrl.length<=Math.floor(MOTION_MEDIA_LIMITS.totalFrameChars/60)));
+ const bytes=frames.reduce((sum,frame)=>sum+frame.dataUrl.length,0);assert.ok(bytes<=MOTION_MEDIA_LIMITS.totalFrameChars);
+ assert.equal(progress.at(-1).bytes,bytes);assert.equal(progress.at(-1).byteLimit,MOTION_MEDIA_LIMITS.totalFrameChars);assert.equal(progress.at(-1).frameBytes,32000);
+ assert.deepEqual(progress.map(value=>value.done),Array.from({length:60},(_,i)=>i+1));
+});
+
+test('dense visual frames shrink only as far as 256px and keep every timing sample',async t=>{
+ const {file,attempts,draws}=frameBrowser(t,({height})=>height>320?65000:height>256?40000:30000);
+ const frames=await extractMotionFrames(file,{start:0,duration:30});
+ assert.equal(frames.length,60);assert.deepEqual(frames.map(frame=>frame.time),motionFrameTimes(30));
+ assert.deepEqual(draws.slice(0,3),[{width:216,height:384},{width:180,height:320},{width:144,height:256}]);
+ assert.deepEqual(attempts.slice(0,7).map(attempt=>attempt.quality),[.66,.56,.46,.66,.56,.46,.66]);
+ assert.ok(attempts.every(attempt=>attempt.height>=256));assert.ok(frames.reduce((sum,frame)=>sum+frame.dataUrl.length,0)<=MOTION_MEDIA_LIMITS.totalFrameChars);
+});
+
+test('short clips retain the original JPEG quality when it already fits their allocated budget',async t=>{
+ const {file,attempts}=frameBrowser(t,()=>40000);
+ const frames=await extractMotionFrames(file,{start:0,duration:2});
+ assert.equal(frames.length,4);assert.equal(attempts.length,4);assert.ok(attempts.every(attempt=>attempt.quality===.66&&attempt.width===216&&attempt.height===384));
+});
+
+test('an image that cannot fit at the minimum quality explains how to retry and releases the video',async t=>{
+ const {file,state,attempts}=frameBrowser(t,()=>40000),progress=[];
+ await assert.rejects(extractMotionFrames(file,{start:0,duration:30,onProgress:value=>progress.push(value)}),/画質と送信容量.*使用区間を短く/);
+ assert.equal(attempts.length,9);assert.equal(progress.length,0);assert.ok(state.videos.every(video=>video.removed));assert.equal(state.revoked.length,1);
+});
+
+test('cancellation during image compression stops before accepting or publishing a late sample',async t=>{
+ const controller=new AbortController();const {file,state}=frameBrowser(t,()=>{controller.abort();return 10000;}),progress=[];
+ await assert.rejects(extractMotionFrames(file,{start:0,duration:30,signal:controller.signal,onProgress:value=>progress.push(value)}),{name:'AbortError'});
+ assert.equal(progress.length,0);assert.ok(state.videos.every(video=>video.removed));assert.equal(state.revoked.length,1);
+});

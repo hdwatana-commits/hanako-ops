@@ -91,6 +91,22 @@ async function settleFrame(video,signal){
  });
  checkAbort(signal);
 }
+
+// Reserve an equal share of the image-data budget for every half-second sample.
+// Lower JPEG quality before reducing dimensions; never remove timing samples to
+// make a busy background fit. A 256px long edge is the minimum visual fallback.
+function encodeMotionFrame(video,canvas,ctx,size,budget,signal){
+ const edges=[...new Set([Math.max(size.width,size.height),Math.min(320,Math.max(size.width,size.height)),Math.min(256,Math.max(size.width,size.height))])];
+ for(const edge of edges){
+  checkAbort(signal);const fit=fitMotionFrame(size.width,size.height,edge);canvas.width=fit.width;canvas.height=fit.height;ctx.drawImage(video,0,0,fit.width,fit.height);
+  for(const quality of [.66,.56,.46]){
+   checkAbort(signal);const dataUrl=canvas.toDataURL('image/jpeg',quality);checkAbort(signal);
+   if(!dataUrl.startsWith('data:image/jpeg;base64,'))throw Error('確認用のJPEG画像を作れませんでした。Safariを更新するか、別のMP4/MOVをお試しください。');
+   if(dataUrl.length<=budget)return dataUrl;
+  }
+ }
+ throw Error('参考コマを、動きが分かる画質と送信容量の範囲に収められませんでした。使用区間を短くして再試行してください。0.5秒ごとのコマは省略していません。');
+}
 export async function extractMotionFrames(file,{start=0,duration,signal,onProgress=()=>{}}={}){
  const media=await openVideo(file,{signal}),{video,metadata}=media;
  try{
@@ -98,14 +114,14 @@ export async function extractMotionFrames(file,{start=0,duration,signal,onProgre
   if(video.readyState<2)await mediaEvent(video,'loadeddata',{signal});
   const size=fitMotionFrame(metadata.width,metadata.height),canvas=document.createElement('canvas');canvas.width=size.width;canvas.height=size.height;
   const ctx=canvas.getContext('2d');if(!ctx)throw Error('このブラウザでは参考フレームを作れません。Safariを更新してお試しください。');
-  const frames=[],times=motionFrameTimes(duration);let chars=0;
+  const frames=[],times=motionFrameTimes(duration),frameBudget=Math.min(MOTION_MEDIA_LIMITS.frameChars,Math.floor(MOTION_MEDIA_LIMITS.totalFrameChars/times.length));let chars=0;
   for(const [index,time] of times.entries()){
    checkAbort(signal);const sourceTime=Math.min(start+time,metadata.duration-.001);
    if(Math.abs(video.currentTime-sourceTime)>.0001)await mediaEvent(video,'seeked',{signal,trigger:()=>{video.currentTime=sourceTime;}});
-   await settleFrame(video,signal);ctx.drawImage(video,0,0,size.width,size.height);
-   const dataUrl=canvas.toDataURL('image/jpeg',.66);chars+=dataUrl.length;
+   await settleFrame(video,signal);
+   const dataUrl=encodeMotionFrame(video,canvas,ctx,size,frameBudget,signal);chars+=dataUrl.length;
    if(!dataUrl.startsWith('data:image/jpeg;base64,')||dataUrl.length>MOTION_MEDIA_LIMITS.frameChars||chars>MOTION_MEDIA_LIMITS.totalFrameChars)throw Error('確認用フレームの容量が大きいため、参考区間を短くしてお試しください。');
-   frames.push({time,dataUrl,sourceTime:rounded(sourceTime)});onProgress({done:index+1,total:times.length});
+   frames.push({time,dataUrl,sourceTime:rounded(sourceTime)});onProgress({done:index+1,total:times.length,bytes:chars,byteLimit:MOTION_MEDIA_LIMITS.totalFrameChars,frameBytes:dataUrl.length});
   }
   return frames;
  }finally{media.cleanup();}
