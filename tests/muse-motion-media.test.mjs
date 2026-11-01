@@ -55,3 +55,71 @@ test('an audible regular pulse gets estimated beats rather than a verified-sync 
  for(let beat=.2;beat<15;beat+=.5)for(let index=0;index<rate*.08;index++)samples[Math.floor(beat*rate)+index]=Math.sin(index*.3)*Math.exp(-index/(rate*.015))*.7;
  const result=analyzeMotionSamples(samples,rate);assert.equal(result.beatStatus,'estimated');assert.equal(result.bpm,120);assert.ok(result.confidence>.5);assert.ok(result.beatTimes.length>20);assert.ok(result.beatTimes.every(time=>time>=0&&time<15));
 });
+
+function mediaBrowser(t,{metadata=true,read=async()=>new ArrayBuffer(8),decode=async()=>({duration:2,sampleRate:8000,numberOfChannels:1,getChannelData:()=>new Float32Array(16000)}),close=()=>Promise.resolve()}={}){
+ const state={videos:[],revoked:[],decodeCalls:0,closeCalls:0};
+ class Video extends EventTarget{
+  constructor(){super();this.style={};this.duration=2;this.videoWidth=1080;this.videoHeight=1920;this.removed=false;}
+  setAttribute(){}
+  removeAttribute(name){delete this[name];}
+  load(){if(this.src&&metadata)queueMicrotask(()=>this.dispatchEvent(new Event('loadedmetadata')));}
+  pause(){}
+  remove(){this.removed=true;}
+ }
+ const replacements={document:{createElement:()=>{const video=new Video();state.videos.push(video);return video;},body:{append(){}}},AudioContext:class{
+  decodeAudioData(bytes){state.decodeCalls++;return decode(bytes);}
+  close(){state.closeCalls++;return close();}
+ }};
+ for(const [key,value]of Object.entries(replacements)){
+  const original=Object.getOwnPropertyDescriptor(globalThis,key);Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});
+  t.after(()=>{if(original)Object.defineProperty(globalThis,key,original);else delete globalThis[key];});
+ }
+ t.mock.method(URL,'createObjectURL',()=> 'blob:reference');t.mock.method(URL,'revokeObjectURL',url=>state.revoked.push(url));
+ return{state,file:{name:'reference.mp4',type:'video/mp4',size:100,arrayBuffer:read}};
+}
+
+test('cancelling a stalled file read releases resources without starting a late decoder',{timeout:1000},async t=>{
+ let started,release;const waiting=new Promise(resolve=>{started=resolve;}),read=new Promise(resolve=>{release=resolve;});
+ const {state,file}=mediaBrowser(t,{read:()=>{started();return read;}}),controller=new AbortController();
+ const run=analyzeMotionTempo(file,{start:0,duration:2,signal:controller.signal});await waiting;controller.abort();
+ await assert.rejects(run,{name:'AbortError'});assert.equal(state.closeCalls,1);assert.equal(state.decodeCalls,0);
+ release(new ArrayBuffer(8));await Promise.resolve();await Promise.resolve();assert.equal(state.decodeCalls,0);
+ assert.ok(state.videos.every(video=>video.removed));assert.equal(state.revoked.length,1);
+});
+
+test('cancelling an unresponsive native decoder does not wait for close either',{timeout:1000},async t=>{
+ let started;const waiting=new Promise(resolve=>{started=resolve;});
+ const {state,file}=mediaBrowser(t,{decode:()=>{started();return new Promise(()=>{});},close:()=>new Promise(()=>{})}),controller=new AbortController();
+ const run=analyzeMotionTempo(file,{start:0,duration:2,signal:controller.signal});await waiting;controller.abort();
+ await assert.rejects(run,{name:'AbortError'});assert.equal(state.decodeCalls,1);assert.equal(state.closeCalls,1);assert.ok(state.videos.every(video=>video.removed));
+});
+
+test('stalled native decoding returns an unknown tempo after a deadline',{timeout:1000},async t=>{
+ const nativeTimer=globalThis.setTimeout;
+ t.mock.method(globalThis,'setTimeout',(callback,delay,...args)=>nativeTimer(callback,[MOTION_MEDIA_LIMITS.audioReadMs,MOTION_MEDIA_LIMITS.audioDecodeMs].includes(delay)?0:delay,...args));
+ const {state,file}=mediaBrowser(t,{decode:()=>new Promise(()=>{}),close:()=>new Promise(()=>{})});
+ const result=await analyzeMotionTempo(file,{start:0,duration:2});assert.equal(result.beatStatus,'unverified');assert.equal(result.bpm,null);assert.match(result.reason,/タイムアウト/);assert.equal(state.closeCalls,1);
+});
+
+test('a stalled file read reaches its deadline without starting the native decoder',{timeout:1000},async t=>{
+ const nativeTimer=globalThis.setTimeout;
+ t.mock.method(globalThis,'setTimeout',(callback,delay,...args)=>nativeTimer(callback,delay===MOTION_MEDIA_LIMITS.audioReadMs?0:delay,...args));
+ const {state,file}=mediaBrowser(t,{read:()=>new Promise(()=>{}),close:()=>new Promise(()=>{})});
+ const result=await analyzeMotionTempo(file,{start:0,duration:2});assert.equal(result.beatStatus,'unverified');assert.match(result.reason,/タイムアウト/);assert.equal(state.decodeCalls,0);assert.equal(state.closeCalls,1);
+});
+
+test('successful analysis returns even if the native audio context never closes',{timeout:1000},async t=>{
+ const {state,file}=mediaBrowser(t,{close:()=>new Promise(()=>{})});
+ const result=await analyzeMotionTempo(file,{start:0,duration:2});assert.equal(result.beatStatus,'unverified');assert.match(result.reason,/無音/);assert.equal(state.closeCalls,1);
+});
+
+test('metadata waits abort promptly and release their object URL',{timeout:1000},async t=>{
+ const {state,file}=mediaBrowser(t,{metadata:false}),controller=new AbortController();
+ const run=inspectMotionVideo(file,{signal:controller.signal});controller.abort();await assert.rejects(run,{name:'AbortError'});
+ assert.equal(state.decodeCalls,0);assert.ok(state.videos[0].removed);assert.deepEqual(state.revoked,['blob:reference']);
+});
+
+test('large reference videos retain the visual route but skip full-file audio allocation',async()=>{
+ const file={name:'reference.mov',type:'video/quicktime',size:MOTION_MEDIA_LIMITS.audioBytes+1,arrayBuffer(){throw Error('large audio must not be read');}};
+ validateMotionVideo(file);const result=await analyzeMotionTempo(file,{start:0,duration:2});assert.equal(result.beatStatus,'unverified');assert.equal(result.bpm,null);assert.match(result.reason,/40MB/);assert.match(result.reason,/動きの解析は続けられます/);
+});

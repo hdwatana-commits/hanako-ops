@@ -1,12 +1,26 @@
 // Reference movies, their audio and the identity image remain on this device.
 // Only the caller can explicitly send the extracted stills to a vision service.
 import {analyze} from './reel-engine.mjs?v=5';
-import {decodeSource} from './reel-source.mjs?v=1';
 
-export const MOTION_MEDIA_LIMITS={videoBytes:150*1024*1024,sourceDuration:600,clipMin:2,clipMax:30,frames:60,longEdge:384,frameChars:150000,totalFrameChars:2000000};
+export const MOTION_MEDIA_LIMITS={videoBytes:150*1024*1024,audioBytes:40*1024*1024,audioReadMs:8000,audioDecodeMs:15000,sourceDuration:600,clipMin:2,clipMax:30,frames:60,longEdge:384,frameChars:150000,totalFrameChars:2000000};
 const rounded=value=>Math.round(value*1000)/1000;
 const abortError=()=>new DOMException('処理を中止しました。','AbortError');
 const checkAbort=signal=>{if(signal?.aborted)throw abortError();};
+
+// File reads and native audio decoding do not accept AbortSignal and can remain
+// pending on mobile. Stop waiting promptly; a late native result is ignored.
+function mediaTask(run,{signal,timeout}){
+ checkAbort(signal);
+ return new Promise((resolve,reject)=>{
+  let timer,settled=false;
+  const clean=()=>{clearTimeout(timer);signal?.removeEventListener('abort',abort);};
+  const finish=(callback,value)=>{if(settled)return;settled=true;clean();callback(value);};
+  const abort=()=>finish(reject,abortError());
+  signal?.addEventListener('abort',abort,{once:true});
+  timer=setTimeout(()=>finish(reject,new DOMException('音声解析がタイムアウトしました。','TimeoutError')),timeout);
+  try{Promise.resolve(run()).then(value=>finish(resolve,value),error=>finish(reject,error));}catch(error){finish(reject,error);}
+ });
+}
 
 export function validateMotionVideo(file){
  if(!file||!Number.isFinite(file.size)||file.size<=0)throw Error('参考動画を選んでください。');
@@ -48,7 +62,8 @@ async function openVideo(file,{signal}={}){
  // Safari decodes a paused video more consistently when it is in the document.
  video.style.cssText='position:fixed;left:-10000px;top:0;width:1px;height:1px;pointer-events:none';
  document.body.append(video);
- const cleanup=()=>{video.pause();video.removeAttribute('src');video.load();video.remove();URL.revokeObjectURL(url);};
+ let cleaned=false;
+ const cleanup=()=>{if(cleaned)return;cleaned=true;for(const release of [()=>video.pause(),()=>video.removeAttribute('src'),()=>video.load(),()=>video.remove(),()=>URL.revokeObjectURL(url)])try{release();}catch{}};
  try{
   await mediaEvent(video,'loadedmetadata',{signal,trigger:()=>{video.src=url;video.load();}});checkAbort(signal);
   const metadata={duration:video.duration,width:video.videoWidth,height:video.videoHeight};
@@ -117,6 +132,9 @@ export function analyzeMotionSamples(samples,rate){
 }
 export async function analyzeMotionTempo(file,{start=0,duration,signal}={}){
  validateMotionVideo(file);checkAbort(signal);
+ // Only audio analysis needs a full compressed-file allocation. Large videos
+ // can still supply reference frames and use manually entered tempo instead.
+ if(file.size>MOTION_MEDIA_LIMITS.audioBytes)return unknown('40MBを超える動画の音声解析は省略しました。動きの解析は続けられます。必要なら動画を短く切り出すか、BPMを手入力してください。');
  const Audio=globalThis.AudioContext||globalThis.webkitAudioContext;if(!Audio)return unknown('このブラウザでは音声解析に対応していません。BPMを手入力できます。');
  let context;
  try{
@@ -124,8 +142,10 @@ export async function analyzeMotionTempo(file,{start=0,duration,signal}={}){
   // decodeAudioData loads the entire compressed track. Bound that allocation on
   // iPhone; users can trim a long source movie without losing the video route.
   if(metadata.duration>120)return unknown('2分を超える動画の音声解析は省略しました。必要な部分を短く切り出すか、BPMを手入力してください。');
-  context=new Audio();const buffer=await decodeSource(context,file);checkAbort(signal);
+  context=new Audio();
+  const bytes=await mediaTask(()=>file.arrayBuffer(),{signal,timeout:MOTION_MEDIA_LIMITS.audioReadMs});checkAbort(signal);
+  const buffer=await mediaTask(()=>context.decodeAudioData(bytes),{signal,timeout:MOTION_MEDIA_LIMITS.audioDecodeMs});checkAbort(signal);
   const clip=monoMotionClip(buffer,{start,duration});return analyzeMotionSamples(clip.samples,clip.rate);
- }catch(error){if(error?.name==='AbortError')throw error;return unknown('動画の音声を読み取れないため、テンポは未確認です。音声のあるMP4/MOVか、手入力BPMを使ってください。');}
- finally{if(context)await context.close().catch(()=>{});}
+ }catch(error){if(signal?.aborted||error?.name==='AbortError')throw abortError();if(error?.name==='TimeoutError')return unknown('音声解析がタイムアウトしたため、テンポは未確認です。動きの解析は続けられます。必要ならBPMを手入力してください。');return unknown('動画の音声を読み取れないため、テンポは未確認です。音声のあるMP4/MOVか、手入力BPMを使ってください。');}
+ finally{if(context)try{Promise.resolve(context.close()).catch(()=>{});}catch{}}
 }
