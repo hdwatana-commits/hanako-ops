@@ -151,3 +151,15 @@ test('skirt flutter follows steps, inertia and gravity without changing clothing
  for(const shot of plan.shots){assert.match(shot.prompt,/delicate, visible flutter/);assert.match(shot.prompt,/inertial lag/);assert.match(shot.prompt,/No added wind/);assert.match(shot.prompt,/original hem length/);assert.match(shot.prompt,/Do not add a skirt to a trouser outfit/);}
  const off=buildMuseMotionPackage(config({skirtMotion:false}));assert.doesNotMatch(off.shotPrompts[0],/delicate, visible flutter/);
 });
+
+test('buzz presentation modes preserve all source timing, beat positions and observed movement',()=>{
+ const baseline=buildMuseMotionPackage(config({beatTimes:[.3,.8,1.3],beatStatus:'estimated'}));
+ for(const buzzMode of ['cute','dynamic']){
+  const plan=buildMuseMotionPackage(config({buzzMode,captionNote:'POST_TEXT_ONLY',beatTimes:[.3,.8,1.3],beatStatus:'estimated'}));
+  assert.deepEqual(plan.timeline,baseline.timeline);
+  assert.deepEqual(plan.shots.map(shot=>({start:shot.start,end:shot.end,observations:shot.observations,halfSecondCues:shot.halfSecondCues,beatTimes:shot.beatTimes})),baseline.shots.map(shot=>({start:shot.start,end:shot.end,observations:shot.observations,halfSecondCues:shot.halfSecondCues,beatTimes:shot.beatTimes})));
+  assert.ok(plan.shots.every(shot=>shot.prompt.includes('PRESENTATION PROPOSAL')));
+  assert.doesNotMatch(plan.musePrompt,/POST_TEXT_ONLY/);assert.doesNotMatch(plan.chatgptPrompt,/POST_TEXT_ONLY/);assert.match(plan.social.captions[0].fullText,/POST_TEXT_ONLY/);
+ }
+ assert.ok(baseline.shots.every(shot=>!shot.prompt.includes('PRESENTATION PROPOSAL')));
+});

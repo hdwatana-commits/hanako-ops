@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {buildMuseMotionPackage} from '../muse-motion-engine.mjs';
+import {buildMotionSocialPackage} from '../muse-motion-social.mjs';
 
 const source=fs.readFileSync(new URL('../muse-motion.mjs',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export function mountMuseMotion','function mountMuseMotion');
 class Element{
@@ -24,7 +25,8 @@ class Element{
 const observation={start:0,end:2,camera:'Fixed frontal full-body shot.',body:'Small continuous weight transfer.',leftHand:'Left hand stays beside waist.',rightHand:'Right hand rises near cheek.',feet:'Left step then grounded feet.',face:'Head remains toward camera.',gaze:'Look toward lens.',expression:'Soft smile.',transition:'Ease into a stable ending pose.',confidence:'medium'};
 function setup({signedIn=true,token=async()=> 'session-token'}={}){
  let panel;const calls=[],document={createElement:tag=>new Element(tag),body:new Element('body')};
- const context=vm.createContext({document,Blob,File,AbortController,DOMException,setTimeout,clearTimeout,navigator:{clipboard:{writeText:async()=>{}}},URL:{createObjectURL:()=> 'blob:local',revokeObjectURL:()=>{}},buildMuseMotionPackage,
+ const copied=[];
+ const context=vm.createContext({document,Blob,File,AbortController,DOMException,setTimeout,clearTimeout,navigator:{clipboard:{writeText:async value=>{copied.push(value);}}},URL:{createObjectURL:()=> 'blob:local',revokeObjectURL:()=>{}},buildMuseMotionPackage,buildMotionSocialPackage,
   inspectMotionVideo:async()=>({duration:15,width:1080,height:1920}),validateMotionClip:(range,duration)=>{if(range.start<0||range.duration<2||range.start+range.duration>duration)throw Error('区間が不正');},
   extractMotionFrames:async(_file,{onProgress})=>{onProgress({done:4,total:4});return[0,.5,1,1.5].map(time=>({time,dataUrl:`data:image/jpeg;base64,${time}`,sourceTime:time+3}));},
   analyzeMotionTempo:async()=>({bpm:120,beatTimes:[.1,.6,1.1,1.6],beatStatus:'estimated'}),
@@ -33,7 +35,7 @@ function setup({signedIn=true,token=async()=> 'session-token'}={}){
  });
  vm.runInContext(source,context);
  context.mountMuseMotion({querySelector:()=>({after:element=>{panel=element;}})},{prepareIdentity:async file=>({blob:new Blob(['photo']),name:file.name})});
- return{$:name=>panel.querySelector('#motion'+name),calls,panel};
+ return{$:name=>panel.querySelector('#motion'+name),calls,panel,copied};
 }
 async function load(ui){
  ui.$('Video').files=[{name:'reference.mov',size:100,lastModified:1}];ui.$('Video').onchange();await Promise.resolve();await Promise.resolve();
@@ -61,4 +63,18 @@ test('AI analysis is not invoked without specific consent or a signed-in OPS ses
 test('cancelling while the session refreshes prevents a late frame upload',async()=>{
  let release;const gate=new Promise(resolve=>{release=resolve;});const ui=setup({token:()=>gate});await load(ui);ui.$('Consent').checked=true;
  const run=ui.$('Analyze').onclick();await Promise.resolve();await Promise.resolve();ui.$('Cancel').onclick();release('session-token');await run;assert.equal(ui.calls.length,0);assert.match(ui.$('Status').textContent,/中止/);
+});
+
+test('caption choices work without uploaded media or login and never call a paid API',async()=>{
+ const ui=setup({signedIn:false});ui.$('CaptionPlatform').value='Threads';ui.$('CaptionTone').value='soft';ui.$('CaptionTheme').value='outfit';ui.$('CaptionNote').value='今日はピンクの気分 ♡';
+ ui.$('MakeCaptions').onclick();assert.equal(ui.calls.length,0);assert.equal(ui.$('CaptionOutput').hidden,false);assert.equal(ui.$('CaptionChoices').children.length,3);assert.match(ui.$('CaptionText').value,/今日はピンク/);assert.doesNotMatch(ui.$('CaptionText').value,/#/);assert.ok(ui.$('OverlayText').value.length>0);
+ const first=ui.$('CaptionText').value;ui.$('AnotherCaptions').onclick();assert.notEqual(ui.$('CaptionText').value,first);
+ ui.$('CaptionText').value='自分で直したキャプション 🎀';await ui.$('CopyCaption').onclick();assert.equal(ui.copied.at(-1),'自分で直したキャプション 🎀');
+ ui.$('CaptionText').value='あ'.repeat(501);await ui.$('CopyCaption').onclick();assert.equal(ui.copied.length,1);assert.match(ui.$('CaptionStatus').textContent,/文字数/);
+});
+
+test('buzz mode reaches every cut while rebuilding keeps an edited caption and overlay',async()=>{
+ const ui=setup();await load(ui);ui.$('Consent').checked=true;await ui.$('Analyze').onclick();ui.$('MakeCaptions').onclick();ui.$('CaptionText').value='この文章を残してね♡';ui.$('OverlayText').value='自分のテロップ';
+ ui.$('BuzzMode').value='cute';ui.$('BuzzMode').emit('change');ui.$('Build').onclick();assert.match(ui.$('MusePrompt').value,/CUTE PRESENTATION PROPOSAL/);assert.match(ui.$('MusePrompt').value,/0\.5-second/);assert.equal(ui.$('CaptionText').value,'この文章を残してね♡');assert.equal(ui.$('OverlayText').value,'自分のテロップ');
+ ui.$('BuzzMode').value='dynamic';ui.$('BuzzMode').emit('change');assert.equal(ui.$('Outputs').hidden,true);ui.$('Build').onclick();assert.match(ui.$('MusePrompt').value,/DYNAMIC PRESENTATION PROPOSAL/);assert.equal(ui.calls.length,1);
 });

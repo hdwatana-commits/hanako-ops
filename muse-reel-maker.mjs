@@ -1,5 +1,5 @@
 import {mountMuseSongDance} from './muse-song-dance.mjs?v=3';
-import {mountMuseMotion} from './muse-motion.mjs?v=1';
+import {mountMuseMotion} from './muse-motion.mjs?v=2';
 import {buildMuseReelPackage,normalizeMuseReferenceUrl} from './muse-reel-engine.mjs?v=2';
 import {museReferences,museThemes} from './muse-reel-presets.mjs?v=1';
 const draftKey='hanako-muse-reel-draft-v1';
