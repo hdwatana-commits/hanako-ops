@@ -27,7 +27,7 @@ const observation={start:0,end:2,camera:'Fixed frontal full-body shot.',body:'Sm
 function setup({signedIn=true,token=async()=> 'session-token',respond,overrides={}}={}){
  let panel;const calls=[],document={createElement:tag=>new Element(tag),body:new Element('body')};
  const copied=[];
- const context=vm.createContext({document,Blob,File,AbortController,DOMException,setTimeout,clearTimeout,navigator:{clipboard:{writeText:async value=>{copied.push(value);}}},URL:{createObjectURL:()=> 'blob:local',revokeObjectURL:()=>{}},buildMuseMotionPackage,normalizeMotionObservations,buildMotionSocialPackage,planMotionBatches,
+ const context=vm.createContext({document,Blob,File,AbortController,DOMException,setTimeout,clearTimeout,navigator:{clipboard:{writeText:async value=>{copied.push(value);}}},URL:{createObjectURL:()=> 'blob:local',revokeObjectURL:()=>{}},buildMuseMotionPackage,normalizeMotionObservations,buildMotionSocialPackage,planMotionBatches,mountMuseMotionFinish:()=>({setPlan(){},clear(){}}),
   inspectMotionVideo:async()=>({duration:15,width:1080,height:1920}),validateMotionClip:(range,duration)=>{if(range.start<0||range.duration<2||range.start+range.duration>duration)throw Error('区間が不正');},
   extractMotionFrames:async(_file,{duration,start,onProgress})=>{const frames=Array.from({length:Math.ceil(duration/.5)},(_,i)=>({time:i*.5,dataUrl:`data:image/jpeg;base64,${i}`,sourceTime:start+i*.5}));onProgress({done:frames.length,total:frames.length,bytes:3000,byteLimit:2000000});return frames;},
   analyzeMotionTempo:async()=>({bpm:120,beatTimes:[.1,.6,1.1,1.6],beatStatus:'estimated'}),
@@ -52,7 +52,7 @@ test('reference frames flow through analysis into half-second MUSE prompts witho
  assert.equal(ui.calls[0].url,'https://cloud.test/functions/v1/muse-motion-analyze');assert.deepEqual(Object.keys(ui.calls[0].body).sort(),['analysisEnd','analysisStart','consent','duration','frames','referenceStart']);
  assert.deepEqual(ui.calls[0].body.frames.map(frame=>Object.keys(frame).sort()),Array.from({length:4},()=>['image','time']));
  assert.equal(ui.calls[0].body.referenceStart,3);assert.equal(ui.$('Timeline').children.length,1);
- ui.$('Build').onclick();assert.equal(ui.$('Outputs').hidden,false);assert.match(ui.$('MusePrompt').value,/source 3\.000/);
+ ui.$('Build').onclick();assert.equal(ui.$('Outputs').hidden,false);assert.match(ui.$('Editing').value,/3\.000/);
  assert.match(ui.$('MusePrompt').value,/HALF-SECOND PERFORMANCE CHECKPOINTS/);assert.match(ui.$('MusePrompt').value,/original 1\.0x playback speed/);assert.match(ui.$('MusePrompt').value,/delicate, visible flutter/);
  assert.equal(ui.$('Shots').children.length,1);assert.match(ui.$('KeyframePrompt').value,/MY_IDENTITY\.jpg/);
  ui.$('Skirt').checked=false;ui.$('Skirt').emit('input');assert.equal(ui.$('Outputs').hidden,true);ui.$('Build').onclick();assert.doesNotMatch(ui.$('MusePrompt').value,/delicate, visible flutter/);
@@ -180,7 +180,7 @@ test('a failed batch keeps successful global-time notes and explicitly retries o
  await turn();assert.equal(ui.calls.length,2,'no paid retry happens before the user chooses to resume');
  await ui.$('Retry').onclick();assert.deepEqual(ui.calls.map(call=>call.body.analysisStart),[0,4,4,8]);assert.equal(ui.$('Timeline').children.length,3);
  assert.equal(ui.calls[2].body.referenceStart,3);assert.equal(ui.calls[2].body.frames[0].time,4);assert.equal(ui.calls[3].body.analysisEnd,12);
- ui.$('Build').onclick();assert.equal(ui.$('Outputs').hidden,false);assert.match(ui.$('MusePrompt').value,/source 7\.000/);assert.equal(ui.$('Retry').hidden,true);
+ ui.$('Build').onclick();assert.equal(ui.$('Outputs').hidden,false);assert.match(ui.$('Editing').value,/8\.000/);assert.equal(ui.$('Retry').hidden,true);
 });
 
 test('cancelling a later batch keeps progress and late old results cannot change a resumed operation',async t=>{

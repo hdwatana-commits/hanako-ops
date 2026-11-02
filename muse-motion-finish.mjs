@@ -1,0 +1,74 @@
+import {inspectGeneratedCut,extractCutBoundary,renderMuseCuts,canRenderMuseCuts} from './muse-motion-cut-media.mjs?v=1';
+
+const stamp=value=>Number(value).toFixed(3);
+const cancelled=()=>new DOMException('処理を中止しました。','AbortError');
+// Local files only. No face replacement, uploads, AI requests or automatic posts.
+export function mountMuseMotionFinish(root){
+ const panel=document.createElement('section');panel.className='motion-finish';panel.hidden=true;
+ panel.innerHTML=`<h3>4 / MUSEから戻す → 指定尺で仕上げる</h3><p class="muse-note">MUSEの生成尺は文章だけでは固定できません。各CUTを作るたびにここへ戻し、使う範囲を確認してください。前CUTの<strong>実動画の最後の1コマ</strong>を保存し、元の本人写真と一緒に次CUTへ渡すと、つなぎ目の基準を共有できます。</p><p class="muse-note">各CUTを等速で指定秒数だけ使用します。動き全体が倍に引き伸ばされた場合だけ「2倍速でテンポを戻す」を選び、参考動画と見比べてください。振付や顔のずれ自体を自動で描き直す機能ではありません。</p><p class="muse-note">画像・動画は端末内で処理します。完成MP4は無音です。Instagramまたは編集アプリで、確認した開始位置から音楽を付けてください。30fpsの1コマ単位で尺をそろえます。</p><div id="motionFinishRows" class="motion-finish-rows"></div><label class="motion-check"><input id="motionFinishReviewed" type="checkbox"> つなぎ目の2枚を見比べ、顔・姿勢・画角・服装が続いていることを確認した</label><div class="muse-toolbar"><button type="button" id="motionFinishJoin" class="muse-primary">指定尺でCUTをつなぎ、MP4にする</button><button type="button" id="motionFinishManifest">CUTの秒数表を保存（JSON）</button><button type="button" id="motionFinishCancel" hidden>仕上げ処理を中止</button></div><p id="motionFinishStatus" class="muse-status" role="status" aria-live="polite">MUSEで作ったCUTを、番号ごとに選んでください。</p><p id="motionFinishClock" class="muse-note"></p><progress id="motionFinishProgress" max="100" value="0" hidden aria-label="CUT仕上げの進捗"></progress><video id="motionFinishPreview" controls playsinline preload="metadata" hidden></video><div class="muse-toolbar"><button type="button" id="motionFinishDownload" hidden>完成MP4を保存</button><button type="button" id="motionFinishShare" hidden>完成MP4を共有</button></div><p class="muse-note">書き出しにはH.264のWebCodecsに対応したブラウザが必要です。非対応の場合も、実際の終了画像と秒数表を保存し、編集アプリで同じ範囲を切り出せます。画面を閉じると選んだ動画と仕上げ結果は消えます。</p>`;
+ root.append(panel);const $=id=>panel.querySelector('#motionFinish'+id);
+ let plan=null,referenceFile=null,cuts=[],owner=null,epoch=0,result=null,resultUrl='',clockTimer=null,started=0,urls=new Set();
+ const say=message=>$('Status').textContent=message;
+ const own=signal=>{if(signal.aborted||owner?.signal!==signal)throw cancelled();};
+ function unlock(){for(const item of panel.querySelectorAll('input,select,button'))item.disabled=false;$('Cancel').hidden=true;$('Progress').hidden=true;}
+ function stop(message='仕上げ処理を中止しました。選択した動画と使用範囲は残っています。'){
+  const previous=owner;owner=null;previous?.abort();clearTimeout(clockTimer);unlock();if(message)say(message);
+ }
+ function clearResult(){result=null;if(resultUrl)URL.revokeObjectURL(resultUrl);resultUrl='';$('Preview').pause();$('Preview').removeAttribute('src');$('Preview').load();$('Preview').hidden=true;$('Download').hidden=true;$('Share').hidden=true;}
+ function reset(){epoch++;stop('');clearResult();for(const url of urls)URL.revokeObjectURL(url);urls.clear();plan=null;referenceFile=null;cuts=[];$('Rows').replaceChildren();$('Reviewed').checked=false;panel.hidden=true;}
+ function changed(){clearResult();$('Reviewed').checked=false;}
+ async function run(task){
+  if(owner)return;const current=new AbortController(),version=epoch;owner=current;started=Date.now();
+  for(const item of panel.querySelectorAll('input,select,button'))item.disabled=true;$('Cancel').hidden=false;$('Cancel').disabled=false;$('Progress').hidden=false;$('Progress').value=0;
+  const tick=()=>{if(owner!==current)return;$('Clock').textContent=`${Math.floor((Date.now()-started)/1000)}秒経過 ／ 待機上限300秒`;clockTimer=setTimeout(tick,1000);};tick();
+  let timer,onAbort;const interrupted=new Promise((_,reject)=>{onAbort=()=>reject(current.signal.reason||cancelled());current.signal.addEventListener('abort',onAbort,{once:true});timer=setTimeout(()=>current.abort(new DOMException('仕上げが時間切れになりました。CUTを1本ずつ保存するか、編集アプリで秒数表に合わせてつないでください。','TimeoutError')),300000);});
+  try{await Promise.race([Promise.resolve().then(()=>task(current.signal)),interrupted]);}
+  catch(error){if(owner===current&&version===epoch)say(error?.message||'処理できませんでした。動画と使用範囲を確認してください。');}
+  finally{clearTimeout(timer);current.signal.removeEventListener('abort',onAbort);if(owner===current){owner=null;clearTimeout(clockTimer);unlock();}}
+ }
+ function download(blob,name){const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+ const node=(tag,text,className)=>{const element=document.createElement(tag);if(text!==undefined)element.textContent=text;if(className)element.className=className;return element;};
+ function selected(cut){
+  if(!cut.file||!cut.metadata)throw Error(`CUT ${cut.shot.index} のMUSE動画を選んでください。`);
+  const inPoint=Number(cut.inPoint.value),playbackRate=Number(cut.speed.value||1),duration=cut.shot.duration;
+  if(!Number.isFinite(inPoint)||inPoint<0||![1,2].includes(playbackRate)||inPoint+duration*playbackRate>cut.metadata.duration+.001)throw Error(`CUT ${cut.shot.index} は${stamp(duration)}秒分の映像が必要です。使用開始位置・速度・動画の長さを確認してください。`);
+  return{file:cut.file,inPoint,duration,playbackRate};
+ }
+ function summary(cut){try{const spec=selected(cut);cut.info.textContent=`元動画 ${stamp(cut.metadata.duration)}秒 → ${stamp(spec.inPoint)}〜${stamp(spec.inPoint+spec.duration*spec.playbackRate)}秒を${spec.playbackRate===1?'等速':'2倍速'}で使用 → 完成CUT ${stamp(spec.duration)}秒`; }catch(error){cut.info.textContent=error.message;}}
+ function clearBoundary(container){for(const image of container.querySelectorAll('img')){URL.revokeObjectURL(image.src);urls.delete(image.src);}container.replaceChildren();}
+ function showImage(container,blob,label){const url=URL.createObjectURL(blob);urls.add(url);const figure=node('figure'),image=node('img');image.src=url;image.alt=label;figure.append(image,node('figcaption',label));container.append(figure);}
+ function progress(value){$('Progress').value=value.percent??0;const current=value.cut??value.index??1;say(value.phase==='finalizing'?'MP4の秒数とファイルを確定しています…':`CUT ${current} / ${value.totalCuts||1} を処理中… ${value.done||0} / ${value.total||0}コマ`);}
+ const report=signal=>value=>{if(!signal.aborted&&owner?.signal===signal)progress(value);};
+ function setPlan(next,{referenceFile:reference=null}={}){
+  reset();plan=next;referenceFile=reference;panel.hidden=false;say('CUT 1を作ったら動画を選び、使用範囲を確認して最後の1コマを保存してください。');
+  for(const shot of plan.shots){
+   const card=node('div',undefined,'motion-finish-card'),title=node('h4',`CUT ${shot.index} ／ 完成${stamp(shot.duration)}秒`),info=node('p','MUSEで作った動画を選んでください。','muse-note');
+   const pickLabel=node('label',`MUSEのCUT ${shot.index}（MP4 / MOV・150MBまで）`),pick=node('input');pick.type='file';pick.accept='video/mp4,video/quicktime,.mp4,.mov,.m4v';pickLabel.append(pick);
+   const fields=node('div',undefined,'muse-two'),startLabel=node('label','使い始める位置（MUSE動画内・秒）'),inPoint=node('input');inPoint.type='number';inPoint.min='0';inPoint.step='0.001';inPoint.value='0';startLabel.append(inPoint);
+   const speedLabel=node('label','参考動画と比べたテンポの補正'),speed=node('select');for(const [value,text]of [['1','等速（余りを切る）'],['2','2倍速でテンポを戻す（動きが倍に延びた場合）']]){const option=node('option',text);option.value=value;speed.append(option);}speed.value='1';speedLabel.append(speed);fields.append(startLabel,speedLabel);
+   const preview=node('video');preview.controls=true;preview.playsInline=true;preview.preload='metadata';preview.hidden=true;
+   const buttons=node('div',undefined,'muse-toolbar'),last=node('button','最後の1コマを保存 → 次CUTの開始画像'),compare=node('button','前CUTの終わりと、このCUTの始まりを見比べる'),save=node('button','このCUTを指定尺で保存（無音MP4）'),referenceButton=node('button','このCUTの参考動画を保存（無音MP4）');for(const button of [last,compare,save,referenceButton])button.type='button';buttons.append(last,compare,save);if(referenceFile)buttons.append(referenceButton);
+   const boundary=node('div',undefined,'motion-boundary-images'),cut={shot,file:null,metadata:null,info,inPoint,speed,preview,previewUrl:'',boundary};cuts.push(cut);
+   pick.onchange=()=>{const candidate=pick.files?.[0];pick.value='';if(!candidate)return;return run(async signal=>{say(`CUT ${shot.index} の動画の長さを確認しています…`);const metadata=await inspectGeneratedCut(candidate,{signal});own(signal);cut.file=candidate;cut.metadata=metadata;if(cut.previewUrl){URL.revokeObjectURL(cut.previewUrl);urls.delete(cut.previewUrl);}cut.previewUrl=URL.createObjectURL(candidate);urls.add(cut.previewUrl);preview.src=cut.previewUrl;preview.hidden=false;changed();summary(cut);say(`CUT ${shot.index} を読み込みました。参考の動きが指定秒数内で進むか、プレビューして確認してください。`);});};
+   for(const element of [inPoint,speed])element.onchange=()=>{changed();summary(cut);clearBoundary(boundary);};
+   preview.addEventListener('play',()=>{try{const spec=selected(cut);preview.playbackRate=spec.playbackRate;const out=spec.inPoint+spec.duration*spec.playbackRate;if(preview.currentTime<spec.inPoint||preview.currentTime>=out)preview.currentTime=spec.inPoint;}catch{preview.pause();}});
+   preview.addEventListener('timeupdate',()=>{try{const spec=selected(cut);if(!preview.paused&&preview.currentTime>=spec.inPoint+spec.duration*spec.playbackRate)preview.pause();}catch{}});
+   last.onclick=()=>run(async signal=>{say(`CUT ${shot.index} の実際の終了フレームを取り出しています…`);const image=await extractCutBoundary(cut.file,{...selected(cut),edge:'end',signal});own(signal);clearBoundary(boundary);showImage(boundary,image.blob,`CUT ${shot.index} 実動画の最後（${stamp(image.time)}秒付近）`);download(image.blob,shot.actualEndFrameName||`CUT_${String(shot.index).padStart(2,'0')}_LAST_FRAME.png`);say('この画像の顔を元の本人写真と照合し、姿勢・画角が合うことを確認してから、次CUTの開始画像としてMUSEへ添付してください。');});
+   compare.onclick=()=>run(async signal=>{const previous=cuts[shot.index-2];if(!previous)throw Error('CUT 1には前のCUTがありません。CUT 2以降でつなぎ目を確認します。');say('前CUTの最後と、このCUTの最初を取り出しています…');const end=await extractCutBoundary(previous.file,{...selected(previous),edge:'end',signal});own(signal);const start=await extractCutBoundary(cut.file,{...selected(cut),edge:'start',signal});own(signal);clearBoundary(boundary);showImage(boundary,end.blob,`CUT ${previous.shot.index} 最後`);showImage(boundary,start.blob,`CUT ${shot.index} 最初`);say('2枚の顔・手足・重心・画角を確認してください。ずれていれば開始位置を調整するか、前CUTの実際の最後の画像から、このCUTを作り直してください。');});
+   save.onclick=()=>run(async signal=>{const rendered=await renderMuseCuts({shots:[selected(cut)],signal,onProgress:report(signal)});own(signal);download(rendered.blob,`CUT_${String(shot.index).padStart(2,'0')}_${stamp(rendered.duration)}s.mp4`);say(`CUT ${shot.index} を${stamp(rendered.duration)}秒・30fpsの無音MP4で保存しました。速度を自動変更していません。`);});
+   referenceButton.onclick=()=>run(async signal=>{say('MUSEへ手動で添付する、このCUTだけの参考映像を書き出しています…');const rendered=await renderMuseCuts({shots:[{file:referenceFile,inPoint:shot.sourceStart,duration:shot.duration,playbackRate:1}],signal,onProgress:report(signal)});own(signal);download(rendered.blob,shot.referenceClipName||`REFERENCE_CUT_${String(shot.index).padStart(2,'0')}.mp4`);say('参考動画の顔は本人画像に使いません。MUSEに参照動画の入力欄がある場合だけ、CUTの英語指示と一緒に手動で添付してください。');});
+   card.append(title,node('p',`完成動画 ${stamp(shot.start)}〜${stamp(shot.end)}秒 ／ 参考動画 ${stamp(shot.sourceStart)}〜${stamp(shot.sourceEnd)}秒`,'muse-note'),pickLabel,fields,info,preview,buttons,boundary);$('Rows').append(card);
+  }
+ }
+ $('Cancel').onclick=()=>stop();
+ $('Join').onclick=()=>run(async signal=>{
+  if(!plan)throw Error('MUSE制作指示を先に作ってください。');if(!$('Reviewed').checked)throw Error('各CUTのつなぎ目を見比べ、確認チェックを入れてください。');
+  const shots=cuts.map(selected);say('H.264で書き出せるか確認しています…');if(!await canRenderMuseCuts({signal}))throw Error('この端末ではH.264の固定30fps書き出しに対応していません。終了画像とCUTの秒数表を使い、編集アプリで同じ範囲を切り出してください。');own(signal);
+  clearResult();const rendered=await renderMuseCuts({shots,signal,onProgress:report(signal)});own(signal);result=rendered;resultUrl=URL.createObjectURL(rendered.blob);$('Preview').src=resultUrl;$('Preview').hidden=false;$('Download').hidden=false;$('Share').hidden=false;
+  say(`完成 ${stamp(rendered.duration)}秒 ／ 指定 ${stamp(rendered.requestedDuration)}秒・30fps・無音MP4。${Math.abs(rendered.roundingSeconds||0)>.0001?'30fpsのコマ境界へ丸めた差があります。':''} プレビューして音楽を後付けしてください。`);
+ });
+ $('Manifest').onclick=()=>{if(!plan)return;const manifest={fps:30,audio:false,totalDuration:plan.config.duration,cuts:cuts.map(cut=>({cut:cut.shot.index,outputStart:cut.shot.start,outputEnd:cut.shot.end,referenceStart:cut.shot.sourceStart,referenceEnd:cut.shot.sourceEnd,inPoint:Number(cut.inPoint.value)||0,duration:cut.shot.duration,playbackRate:Number(cut.speed.value)||1,file:cut.file?.name||null}))};download(new Blob([JSON.stringify(manifest,null,2)],{type:'application/json'}),'hanako-muse-cut-timing.json');};
+ $('Download').onclick=()=>{if(result)download(result.blob,`hanako-muse-${stamp(result.duration)}s.mp4`);};
+ $('Share').onclick=async()=>{if(!result)return;try{const file=new File([result.blob],'hanako-muse-reel.mp4',{type:'video/mp4'});if(!navigator.canShare?.({files:[file]}))throw Error('この端末では動画共有に対応していません。「完成MP4を保存」を使ってください。');await navigator.share({files:[file],title:'ハナコ MUSEリール'});}catch(error){if(error.name!=='AbortError')say(error.message);}};
+ return{setPlan,clear:reset};
+}

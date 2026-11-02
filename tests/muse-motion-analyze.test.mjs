@@ -25,6 +25,7 @@ function worker({ other = false, key = true, result, providerStatus = 200, envEx
 }
 function request(body = input(), headers = {}, signal) { return new Request('https://function.test', { method: 'POST', headers: { Authorization: 'Bearer owner-session', 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body), signal }); }
 const paid = w => w.calls.filter(call => call.url.includes('api.openai.com'));
+const halfRows = (start, end) => Array.from({ length: Math.ceil((end - start) * 2) }, (_, i) => row(start + i / 2, Math.min(end, start + (i + 1) / 2)));
 const batchInput = (start = 10, end = 15, duration = 20) => ({ consent: true, duration, referenceStart: 12, analysisStart: start, analysisEnd: end, frames: Array.from({ length: Math.floor((Math.min(end, duration - .5) - start) * 2) + 1 }, (_, i) => ({ time: start + i / 2, image })) });
 function clock() {
  const pending = new Map(); let next = 0;
@@ -108,16 +109,16 @@ test('motion analysis returns useful quota, no-key, timeout and incomplete-resul
 });
 
 test('small motion batches retain whole-clip timestamps and a shared boundary frame with bounded output', async () => {
- const w = worker({ result: { output_text: JSON.stringify({ summary: '中盤の動きです。', observations: [row(10, 15)] }) } });
+ const w = worker({ result: { output_text: JSON.stringify({ summary: '中盤の動きです。', observations: halfRows(10, 15) }) } });
  const response = await w.handler(request(batchInput())); const body = await response.json();
  assert.equal(response.status, 200); assert.equal(body.analysisStart, 10); assert.equal(body.analysisEnd, 15); assert.equal(body.batchProtocol, 1);
  assert.deepEqual(body.frameTimes, [10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15]);
- assert.equal(body.observations[0].start, 10); assert.equal(body.observations[0].end, 15);
+ assert.equal(body.observations[0].start, 10); assert.equal(body.observations[0].end, 10.5); assert.equal(body.observations.at(-1).end, 15); assert.equal(body.observationProtocol, 2);
  const payload = JSON.parse(paid(w)[0].options.body);
- assert.equal(payload.max_output_tokens, 5000); assert.equal(payload.text.format.schema.properties.observations.maxItems, 11);
+ assert.equal(payload.max_output_tokens, 5000); assert.equal(payload.text.format.schema.properties.observations.maxItems, 10); assert.equal(payload.text.format.schema.properties.observations.minItems, 10);
  assert.match(payload.input[0].content[0].text, /ONLY clip 10 through 15/);
  assert.match(payload.input[0].content[0].text, /Never subtract 10/); assert.equal(paid(w).length, 1);
- const last = worker({ result: { output_text: JSON.stringify({ summary: '終盤の動きです。', observations: [row(25, 30)] }) } });
+ const last = worker({ result: { output_text: JSON.stringify({ summary: '終盤の動きです。', observations: halfRows(25, 30) }) } });
  assert.equal((await last.handler(request(batchInput(25, 30, 30)))).status, 200);
 });
 
@@ -138,6 +139,51 @@ test('motion batch results cannot write into a different chunk or silently retim
   const response = await w.handler(request(batchInput())); const body = await response.json();
   assert.equal(response.status, 422); assert.equal(body.stage, 'result'); assert.equal(body.code, 'invalid_result'); assert.equal(body.retryable, true);
  }
+});
+
+test('checkpoint analysis keeps each changing start-frame pose instead of collapsing a dance into one generic interval', async () => {
+ const observations = halfRows(10, 15).map((item, index) => ({ ...item, rightHand: `Right palm position ${index}; visible in start frame`, transition: index === 9 ? 'Arrive at shared boundary pose at 15.0s' : `Move toward next visible position ${index + 1}` }));
+ const w = worker({ result: { output_text: JSON.stringify({ summary: '時刻ごとの手の位置です。', observations }) } });
+ const response = await w.handler(request(batchInput())), result = await response.json();
+ assert.equal(response.status, 200); assert.equal(result.observationSemantics, 'start_frame_pose_and_next_frame_transition');
+ assert.deepEqual(result.observations.map(item => [item.start, item.end, item.rightHand]), observations.map(item => [item.start, item.end, item.rightHand]));
+ assert.equal(result.observations.at(-1).end, 15); assert.ok(!result.observations.some(item => item.start === 15), 'the shared ending image is context, not a duplicated action');
+ const payload = JSON.parse(paid(w)[0].options.body), schema = payload.text.format.schema.properties.observations;
+ assert.deepEqual(schema.items.properties.start.enum, [10,10.5,11,11.5,12,12.5,13,13.5,14,14.5]);
+ assert.deepEqual(schema.items.properties.end.enum, [10.5,11,11.5,12,12.5,13,13.5,14,14.5,15]);
+ assert.equal(schema.items.properties.body.maxLength, 140);
+ assert.match(payload.instructions, /visual snapshot at the interval START/);
+ assert.match(payload.instructions, /not a slideshow of resets/);
+ assert.match(payload.input[0].content[0].text, /Do not merge, skip, duplicate or stretch/);
+ assert.equal(payload.max_output_tokens, 5000); assert.equal(paid(w).length, 1);
+});
+
+test('checkpoint output rejects merged, missing, reordered, duplicated or shifted intervals without retrying a paid request', async () => {
+ const complete = halfRows(10, 15);
+ const invalid = [
+  [row(10, 15)],
+  complete.slice(1),
+  [complete[1], complete[0], ...complete.slice(2)],
+  [complete[0], complete[0], ...complete.slice(2)],
+  [{ ...complete[0], start: 10.001 }, ...complete.slice(1)],
+  [{ ...complete[0], end: 11 }, ...complete.slice(1)],
+  [{ ...complete[0], body: 'x'.repeat(141) }, ...complete.slice(1)],
+ ];
+ for (const observations of invalid) {
+  const w = worker({ result: { output_text: JSON.stringify({ summary: '', observations }) } }), response = await w.handler(request(batchInput()));
+  assert.equal(response.status, 422); assert.equal((await response.json()).code, 'invalid_result'); assert.equal(paid(w).length, 1);
+ }
+});
+
+test('unknown checkpoints remain unknown and a fractional final sample does not stretch or drop the requested duration', async () => {
+ const body = { consent: true, duration: 2.05, referenceStart: 12, analysisStart: 0, analysisEnd: 2.05, frames: [0,.5,1,1.5,2].map(time => ({ time, image })) };
+ const observations = halfRows(0, 2.05).map(item => ({ ...item, ...Object.fromEntries(fields.map(field => [field, 'Not visible / unconfirmed'])), confidence: 'low' }));
+ const w = worker({ result: { output_text: JSON.stringify({ summary: '見えない動作は未確認です。', observations }) } }), response = await w.handler(request(body)), result = await response.json();
+ assert.equal(response.status, 200); assert.equal(result.observations.length, 5); assert.equal(result.observations.at(-1).start, 2); assert.equal(result.observations.at(-1).end, 2.05);
+ assert.ok(result.observations.every(item => fields.every(field => item[field] === 'Not visible / unconfirmed')));
+ assert.match(JSON.parse(paid(w)[0].options.body).instructions, /keep every required checkpoint row with low confidence/);
+ const legacy = worker(), oldResult = await (await legacy.handler(request())).json();
+ assert.equal(oldResult.observationProtocol, 1); assert.equal(oldResult.observations.length, 1, 'legacy single-request clients still accept interval notes');
 });
 
 test('motion output truncation identifies the token limit and does not retry a paid call', async () => {

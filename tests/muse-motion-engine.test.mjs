@@ -14,7 +14,8 @@ test('selected source timing maps to contiguous output cuts, including fractiona
       assert.ok(shot.duration > 0 && shot.duration <= 5.001);
       assert.equal(shot.sourceStart, Number((shot.start + 12.5).toFixed(3)));
       assert.equal(shot.sourceEnd, Number((shot.end + 12.5).toFixed(3)));
-      assert.match(shot.prompt, new RegExp(`CUT-local 0\\.000s maps to source ${shot.sourceStart.toFixed(3)}`));
+      assert.match(shot.referenceMapping, new RegExp(`source ${shot.sourceStart.toFixed(3)}`));
+      assert.match(shot.prompt,new RegExp(`ACTION DURATION: exactly ${shot.duration.toFixed(3)} seconds`));
       if (i) assert.equal(shot.start, plan.shots[i - 1].end);
     }
   }
@@ -26,7 +27,9 @@ test('an observation crossing a cut is clipped and retains source and cut-local 
   const second = plan.shots[1].observations.find(row => row.kind === 'provided');
   assert.deepEqual([first.start, first.end, first.cutStart, first.cutEnd, first.sourceStart, first.sourceEnd], [3, 5, 3, 5, 15.5, 17.5]);
   assert.deepEqual([second.start, second.end, second.cutStart, second.cutEnd, second.sourceStart, second.sourceEnd], [5, 7, 0, 2, 17.5, 19.5]);
-  assert.match(plan.shotPrompts[1], /CUT 0\.000–2\.000s \/ output 5\.000–7\.000s \/ source 17\.500–19\.500s/);
+  assert.match(plan.shotPrompts[1], /CUT-local 0\.000–0\.500s/);
+  assert.match(plan.shots[1].referenceMapping,/output 5\.000–10\.000s \/ source 17\.500–22\.500s/);
+  assert.doesNotMatch(plan.shotPrompts[1],/\/ output \d|\/ source \d/);
 });
 
 test('unobserved time remains UNKNOWN rather than invented choreography or a claimed official dance', () => {
@@ -131,6 +134,7 @@ test('input limits reject missing identity, invalid ranges, BPM and unsupported 
   for (const maxCutDuration of [0, 5.1, Infinity]) assert.throws(() => buildMuseMotionPackage(config({ maxCutDuration })));
   assert.throws(() => buildMuseMotionPackage(config({ identityName: '' })), /本人画像/);
   assert.equal(motionObservationFields.length, 9);
+  assert.throws(()=>buildMuseMotionPackage(config({duration:5.01,maxCutDuration:5,observations:[observed(0,5.01)],frameTimes:[0,5]})),/1コマ/);
 });
 
 test('every cut has half-second checkpoints with original source time and continuous tempo',()=>{
@@ -162,4 +166,53 @@ test('buzz presentation modes preserve all source timing, beat positions and obs
   assert.doesNotMatch(plan.musePrompt,/POST_TEXT_ONLY/);assert.doesNotMatch(plan.chatgptPrompt,/POST_TEXT_ONLY/);assert.match(plan.social.captions[0].fullText,/POST_TEXT_ONLY/);
  }
  assert.ok(baseline.shots.every(shot=>!shot.prompt.includes('PRESENTATION PROPOSAL')));
+});
+
+test('the requested cut length is retained instead of stretching every cut by equal division',()=>{
+ const plan=buildMuseMotionPackage(config({duration:10.3,observations:[observed(0,10.3)],frameTimes:Array.from({length:21},(_,i)=>i*.5)}));
+ assert.deepEqual(plan.shots.map(shot=>shot.duration),[5,5,.3]);
+ assert.deepEqual(plan.editingManifest.cuts.map(cut=>[cut.outputStart,cut.outputEnd,cut.trimStart,cut.trimEnd]),[[0,5,0,5],[5,10,0,5],[10,10.3,0,.3]]);
+ assert.equal(plan.editingManifest.duration,10.3);assert.equal(plan.editingManifest.transition,'cut');assert.equal(plan.editingManifest.fps,30);
+ const exact=buildMuseMotionPackage(config({duration:4.2,maxCutDuration:1.4,observations:[observed(0,4.2)],frameTimes:[]}));
+ assert.deepEqual(exact.shots.map(shot=>shot.duration),[1.4,1.4,1.4],'floating-point division must not create an empty extra cut');
+});
+
+test('native generation duration never doubles the action clock or silently changes playback speed',()=>{
+ const plan=buildMuseMotionPackage(config({generationDuration:10}));
+ for(const shot of plan.shots){
+  assert.equal(shot.duration,5);assert.equal(shot.generationDuration,10);assert.equal(shot.trimStart,0);assert.equal(shot.trimEnd,5);assert.equal(shot.playbackRate,1);
+  assert.match(shot.prompt,/ACTION DURATION: exactly 5\.000 seconds/);assert.match(shot.prompt,/ONE CLOCK ONLY/);assert.match(shot.prompt,/generation setting is 10\.000s/);assert.match(shot.prompt,/FIRST 5\.000s/);assert.match(shot.prompt,/not followed by a second performance/);
+  assert.doesNotMatch(shot.prompt,/\/ output \d|\/ source \d|CUT-local 0\.000s maps to source/);
+ }
+ assert.match(plan.editingInstructions,/動作自体が10秒へ引き伸ばされている場合/);assert.match(plan.editingInstructions,/長さだけを根拠に自動加速しません/);
+ for(const generationDuration of [0,31,false,'bad'])assert.throws(()=>buildMuseMotionPackage(config({generationDuration})));
+ assert.throws(()=>buildMuseMotionPackage(config({generationDuration:3})),/生成尺より長い/);
+ assert.equal(buildMuseMotionPackage(config()).config.generationDuration,null,'unsupported service durations cannot be invented');
+});
+
+test('adjacent cuts share one sampled boundary estimate instead of choosing conflicting neighbouring poses',()=>{
+ const plan=buildMuseMotionPackage(config({duration:10,observations:[observed(0,5,{body:'Lean left with left foot planted.'}),observed(5,10,{body:'Lean right with right foot planted.'})],frameTimes:Array.from({length:20},(_,i)=>i*.5)}));
+ const a=plan.shots[0],b=plan.shots[1];assert.equal(a.endBoundary,b.startBoundary);
+ assert.equal(a.endBoundary.pose.body,'Lean right with right foot planted.');assert.equal(a.endBoundary.reviewRequired,true);assert.equal(a.endBoundary.basis,'sample-anchored interval estimate');
+ assert.match(a.keyframeEndPrompt,/Lean right with right foot planted/);assert.match(b.keyframeStartPrompt,/Lean right with right foot planted/);
+ assert.match(a.prompt,/INTERNAL CUT: continue the existing movement/);assert.match(a.prompt,/Do not add deceleration, a neutral stance, a freeze/);
+ assert.equal(b.endBoundary.pose,null,'the unsampled final endpoint is not fabricated from the last interval');assert.match(b.keyframeEndPrompt,/endpoint pose is UNKNOWN/);
+});
+
+test('later cuts use the actual trimmed video end frame rather than assuming a planned keyframe was rendered',()=>{
+ const plan=buildMuseMotionPackage(config());
+ for(const [index,shot] of plan.shots.entries()){
+  assert.equal(shot.actualEndFrameName,`CUT_${String(index+1).padStart(2,'0')}_LAST_FRAME.png`);assert.equal(shot.referenceClipName,`REFERENCE_CUT_${String(index+1).padStart(2,'0')}.mp4`);
+  assert.match(shot.prompt,new RegExp(shot.referenceClipName));
+  if(index){assert.equal(shot.actualStartFrom,plan.shots[index-1].actualEndFrameName);assert.match(shot.prompt,/actual LAST DISPLAYED FRAME/);assert.match(shot.prompt,/AFTER trimming/);assert.match(shot.keyframeStartPrompt,/planned end-keyframe alias does not prove/);}
+ }
+ assert.equal(plan.manifest.filter(row=>row.role==='actual-end-frame').length,4);assert.match(plan.editingInstructions,/計画上のKEYFRAME_END画像は、実動画が同じ姿勢で終わった証拠ではありません/);
+});
+
+test('a continuous observation is directed once and later checkpoints continue it without replaying the full dance',()=>{
+ const plan=buildMuseMotionPackage(config({duration:5,observations:[observed(0,5)],frameTimes:Array.from({length:10},(_,i)=>i*.5)}));
+ const prompt=plan.shots[0].prompt;
+ assert.equal((prompt.match(/HALF-SECOND PERFORMANCE CHECKPOINTS/g)||[]).length,1);
+ assert.equal((prompt.match(/Reference torso, hips and shoulders:/g)||[]).length,1);
+ assert.match(prompt,/continue the SAME action from the preceding checkpoint/);assert.match(prompt,/Follow this list ONCE/);
 });

@@ -1,5 +1,5 @@
 import {mountMuseSongDance} from './muse-song-dance.mjs?v=4';
-import {mountMuseMotion} from './muse-motion.mjs?v=5';
+import {mountMuseMotion} from './muse-motion.mjs?v=6';
 import {buildMuseReelPackage,normalizeMuseReferenceUrl} from './muse-reel-engine.mjs?v=3';
 import {museReferences,museThemes} from './muse-reel-presets.mjs?v=1';
 import {museIdentityHelp} from './muse-identity-lock.mjs?v=1';
