@@ -230,3 +230,99 @@ test('a stalled request body is cancelled when input decoding times out', async 
  const response = await pending; const result = await response.json();
  assert.equal(response.status, 504); assert.equal(result.stage, 'input'); assert.equal(cancelled, true); assert.equal(paid(w).length, 0); assert.equal(timers.pending.size, 0);
 });
+
+const denseInput=(step=.125)=>{
+ const base=batchInput(),motionFrames=[];
+ for(let time=base.analysisStart+step;time<base.analysisEnd;time+=step)if(!base.frames.some(frame=>frame.time===time))motionFrames.push({time,image});
+ return{...base,motionFrames};
+};
+const denseRows=body=>halfRows(body.analysisStart,body.analysisEnd).map(item=>({...item,motionDetails:body.motionFrames.filter(frame=>frame.time>item.start&&frame.time<item.end).map(frame=>({time:frame.time,motion:'Right hand arcs upward; weight shifts onto grounded left foot.',confidence:'medium'}))}));
+
+test('dense context retains exact intermediate evidence and global times without changing the half-second primary rows',async()=>{
+ for(const step of [.25,.125]){
+  const body=denseInput(step),observations=denseRows(body),w=worker({result:{output_text:JSON.stringify({summary:'半秒の間の手の軌道です。',observations})}});
+  const response=await w.handler(request(body)),result=await response.json();assert.equal(response.status,200);
+  assert.equal(result.observationProtocol,3);assert.equal(result.observationSemantics,'start_frame_pose_with_intermediate_motion_evidence');assert.deepEqual(result.observations,observations);
+  assert.deepEqual(result.motionFrameTimes,body.motionFrames.map(frame=>frame.time));assert.equal(result.observations.length,10);assert.equal(result.observations[0].start,10);assert.equal(result.observations.at(-1).end,15);
+  const payload=JSON.parse(paid(w)[0].options.body),images=payload.input[0].content.filter(item=>item.type==='input_image'),schema=payload.text.format.schema;
+  assert.equal(images.length,body.frames.length+body.motionFrames.length);assert.equal(images.length,step===.125?41:21);assert.equal(payload.max_output_tokens,7000);assert.equal(payload.store,false);
+  assert.ok(schema.properties.observations.items.required.includes('motionDetails'));assert.equal(schema.properties.observations.items.properties.motionDetails.maxItems,3);
+  assert.equal(schema.properties.observations.items.properties.motionDetails.items.additionalProperties,false);assert.equal(schema.properties.soundtrack,undefined);
+  assert.match(payload.instructions,/Song|song/);assert.match(payload.input[0].content[0].text,/Do not infer choreography from song names/);
+  const labels=payload.input[0].content.filter(item=>item.type==='input_text').slice(1).map(item=>Number(/clip ([0-9.]+) seconds/.exec(item.text)[1]));assert.deepEqual(labels,[...body.frames,...body.motionFrames].map(frame=>frame.time).sort((a,b)=>a-b));assert.equal(paid(w).length,1);
+ }
+});
+
+test('malformed or excessive dense context is rejected before reading a provider key or sending paid requests',async()=>{
+ const base=denseInput();
+ const invalid=[
+  {...input(),motionFrames:[]}, {...base,motionFrames:null}, {...base,motionFrames:[{time:10,image}]},
+  {...base,motionFrames:[{time:10.1,image}]}, {...base,motionFrames:[{time:15.125,image}]},
+  {...base,motionFrames:[{time:10.125,image},{time:10.125,image}]}, {...base,motionFrames:[{time:10.375,image},{time:10.125,image}]},
+  {...base,motionFrames:[{time:10.125,image:'https://private.test/frame.jpg'}]},
+  {...base,motionFrames:[{time:10.125,image,identity:'private identity'}]},
+  {...base,motionFrames:Array.from({length:37},(_,i)=>({time:10+i*.125,image}))},
+  {...base,readSoundtrack:'yes'},
+ ];
+ for(const body of invalid){const w=worker(),response=await w.handler(request(body));assert.equal(response.status,400);assert.equal(paid(w).length,0);assert.ok(!w.calls.some(call=>call.url.endsWith('/hanako_openai_key_read')));}
+ const sparse={...base,frames:[{time:10,image},{time:11,image},{time:12,image},{time:13,image},{time:14,image},{time:15,image}]};const w=worker();assert.equal((await w.handler(request(sparse))).status,400,'more than three details per anchor interval cannot be silently compressed');assert.equal(paid(w).length,0);
+});
+
+test('dense output cannot skip, duplicate, invent or move a context time into a different primary interval',async()=>{
+ const body=denseInput(),complete=denseRows(body);
+ const mutate=callback=>{const value=structuredClone(complete);callback(value);return value;};
+ const invalid=[
+  mutate(rows=>{delete rows[0].motionDetails;}), mutate(rows=>rows[0].motionDetails.pop()),
+  mutate(rows=>{rows[0].motionDetails[0].time+=.001;}), mutate(rows=>{rows[0].motionDetails[0].time=10.625;}),
+  mutate(rows=>{rows[0].motionDetails[1]=rows[0].motionDetails[0];}),
+  mutate(rows=>{rows[0].motionDetails[0].confidence='verified';}),
+  mutate(rows=>{rows[0].motionDetails[0].motion='x'.repeat(121);}),
+  mutate(rows=>{rows[0].motionDetails[0].lyrics='not allowed';}),
+  mutate(rows=>{rows[0].motionDetails[0].motion='';}),
+ ];
+ for(const observations of invalid){const w=worker({result:{output_text:JSON.stringify({summary:'',observations})}}),response=await w.handler(request(body));assert.equal(response.status,422);assert.equal((await response.json()).code,'invalid_result');assert.equal(paid(w).length,1);}
+});
+
+test('unknown motion details remain unconfirmed and an empty context array does not fabricate intermediate poses',async()=>{
+ const body=denseInput(),observations=denseRows(body).map(item=>({...item,motionDetails:item.motionDetails.map(detail=>({...detail,motion:'Not visible / unconfirmed',confidence:'low'}))}));
+ const w=worker({result:{output_text:JSON.stringify({summary:'補助コマでも見えない箇所は未確認。',observations})}}),result=await(await w.handler(request(body))).json();assert.equal(result.observations[0].motionDetails[0].motion,'Not visible / unconfirmed');assert.equal(result.observations[0].motionDetails[0].confidence,'low');
+ const empty={...batchInput(),motionFrames:[]},rows=denseRows(empty),old=worker({result:{output_text:JSON.stringify({summary:'',observations:rows})}}),response=await old.handler(request(empty));assert.equal(response.status,200);assert.ok((await response.json()).observations.every(item=>item.motionDetails.length===0));assert.equal(JSON.parse(paid(old)[0].options.body).text.format.schema.properties.observations.items.properties.motionDetails.maxItems,0);
+});
+
+test('motion detail text cannot smuggle a source clock into CUT-local directions while movement numbers remain valid',async()=>{
+ const body=denseInput(.25);
+ for(const motion of ['At 10.250s raise right palm.','At 10.25 seconds turn the head.','Hold for 125 ms.','At 00:10.250 shift left.','t=10.25, look at camera.','CUT 2: raise the right hand.']){
+  const observations=denseRows(body);observations[0].motionDetails[0].motion=motion;
+  const w=worker({result:{output_text:JSON.stringify({summary:'',observations})}}),response=await w.handler(request(body));assert.equal(response.status,422);assert.equal(paid(w).length,1);
+ }
+ const observations=denseRows(body);observations[0].motionDetails[0].motion='Right elbow bends 90 degrees; two small grounded steps.';
+ const w=worker({result:{output_text:JSON.stringify({summary:'',observations})}}),response=await w.handler(request(body));assert.equal(response.status,200);assert.equal((await response.json()).observations[0].motionDetails[0].motion,observations[0].motionDetails[0].motion);
+ assert.match(JSON.parse(paid(w)[0].options.body).instructions,/timestamps ONLY in the numeric time field/);
+ const legacy=worker({result:{output_text:JSON.stringify({summary:'',observations:[row(0,1.5)]})}});assert.equal((await legacy.handler(request())).status,200);
+});
+
+test('soundtrack reading is explicit visible-label metadata and never enables lyrics, lookup or choreography inference',async()=>{
+ const body={...denseInput(.25),readSoundtrack:true},observations=denseRows(body),soundtrack={title:'Visible song label',artist:'Visible artist',confidence:'medium'};
+ const w=worker({result:{output_text:JSON.stringify({summary:'',observations,soundtrack})}}),response=await w.handler(request(body)),result=await response.json();assert.equal(response.status,200);assert.deepEqual(result.soundtrack,soundtrack);assert.equal(result.soundtrackSource,'visible_overlay_only');assert.equal(result.soundtrack_verified,false);assert.equal(result.audio_analyzed,false);
+ const payload=JSON.parse(paid(w)[0].options.body);assert.ok(payload.text.format.schema.required.includes('soundtrack'));assert.match(payload.instructions,/Song names NEVER supply unobserved motion/);assert.match(payload.instructions,/No song lookup, downloads, guessed artists, lyric transcription/);assert.match(payload.input[0].content[0].text,/not a verified song\/version match/);
+ assert.ok(w.calls.every(call=>/db\.test|api\.openai\.com/.test(call.url)));assert.equal(paid(w).length,1);
+ const standard={...batchInput(),readSoundtrack:true},old=worker({result:{output_text:JSON.stringify({summary:'',observations:halfRows(10,15),soundtrack})}}),standardResult=await(await old.handler(request(standard))).json();assert.equal(standardResult.observationProtocol,3);assert.equal(standardResult.observations[0].motionDetails,undefined);
+});
+
+test('unreadable and generic audio labels stay empty and soundtrack output is excluded from older requests',async()=>{
+ for(const soundtrack of [{title:'',artist:'',confidence:'high'},{title:'Original audio',artist:'some account',confidence:'high'},{title:'オリジナル音源',artist:'投稿者',confidence:'medium'}]){
+  const w=worker({result:{output_text:JSON.stringify({summary:'',observations:halfRows(10,15),soundtrack})}}),result=await(await w.handler(request({...batchInput(),readSoundtrack:true}))).json();assert.deepEqual(result.soundtrack,{title:'',artist:'',confidence:'low'});
+ }
+ const unexpected=worker({result:{output_text:JSON.stringify({summary:'',observations:halfRows(10,15),soundtrack:{title:'Guessed song',artist:'',confidence:'low'}})}});assert.equal((await unexpected.handler(request(batchInput()))).status,422);assert.equal(paid(unexpected).length,1);
+ const noMetadata=worker({result:{output_text:JSON.stringify({summary:'',observations:halfRows(10,15)})}}),legacy=await(await noMetadata.handler(request(batchInput()))).json();assert.equal(legacy.observationProtocol,2);assert.equal(legacy.soundtrack,undefined);
+});
+
+test('soundtrack schema rejects malformed labels, control characters and extra lyric data without paid retry',async()=>{
+ const invalid=[null,{title:'x',artist:'y',confidence:'verified'},{title:'x'.repeat(161),artist:'',confidence:'low'},{title:'song\nlyric',artist:'',confidence:'low'},{title:'song',artist:'artist',confidence:'medium',lyrics:'not requested'}];
+ for(const soundtrack of invalid){const w=worker({result:{output_text:JSON.stringify({summary:'',observations:halfRows(10,15),soundtrack})}});assert.equal((await w.handler(request({...batchInput(),readSoundtrack:true}))).status,422);assert.equal(paid(w).length,1);}
+});
+
+test('dense output still times out and truncates cleanly without automatically repeating a paid request',async()=>{
+ const body=denseInput();const truncated=worker({result:{status:'incomplete',incomplete_details:{reason:'max_output_tokens'}}}),response=await truncated.handler(request(body));assert.equal(response.status,422);assert.equal((await response.json()).code,'output_limit');assert.equal(paid(truncated).length,1);
+ const timers=clock(),stalled=worker({timers,intercept:url=>url.includes('api.openai.com')?new Promise(()=>{}):undefined}),pending=stalled.handler(request(body));await until(()=>paid(stalled).length===1);timers.fire(55000);const timeout=await pending;assert.equal(timeout.status,504);assert.equal((await timeout.json()).stage,'analysis');assert.equal(paid(stalled).length,1);assert.equal(paid(stalled)[0].options.signal.aborted,true);
+});

@@ -12,7 +12,7 @@ class Element{
  set innerHTML(value){this.html=value;if(this.tagName==='DETAILS'&&value.includes('motionInputs')){this.controls=new Map();for(const match of value.matchAll(/<(input|textarea|video|progress|button|div|section|figure|img|p|details|select)[^>]*id="(motion[^"]+)"[^>]*>/g)){const element=new Element(match[1]);element.id=match[2];element.value=/value="([^"]*)"/.exec(match[0])?.[1]||'';element.checked=/\bchecked\b/.test(match[0]);element.readOnly=/\breadonly\b/.test(match[0]);element.hidden=/\bhidden\b/.test(match[0]);this.controls.set(element.id,element);}}}
  get innerHTML(){return this.html||'';}
  querySelector(selector){return this.controls?.get(selector.slice(1))||null;}
- querySelectorAll(selector){const all=new Set();const collect=element=>{if(all.has(element))return;all.add(element);for(const child of element.children||[])collect(child);};for(const element of this.controls?.values()||this.children)collect(element);return [...all].filter(element=>!selector||['INPUT','SELECT','BUTTON'].includes(element.tagName)||(element.tagName==='TEXTAREA'&&!element.readOnly));}
+ querySelectorAll(selector){const all=new Set();const collect=element=>{if(all.has(element))return;all.add(element);for(const child of element.children||[])collect(child);};for(const element of this.controls?.values()||this.children)collect(element);return [...all].filter(element=>!selector||selector.split(',').some(part=>part.trim()==='textarea:not([readonly])'?element.tagName==='TEXTAREA'&&!element.readOnly:element.tagName===part.trim().toUpperCase()));}
  addEventListener(type,handler){(this.listeners[type]||=[]).push(handler);}
  emit(type){for(const handler of this.listeners[type]||[])handler({target:this});}
  append(...elements){this.children.push(...elements);}
@@ -24,7 +24,7 @@ class Element{
  play(){this.paused=false;return Promise.resolve();}
 }
 const observation={start:0,end:2,camera:'Fixed frontal full-body shot.',body:'Small continuous weight transfer.',leftHand:'Left hand stays beside waist.',rightHand:'Right hand rises near cheek.',feet:'Left step then grounded feet.',face:'Head remains toward camera.',gaze:'Look toward lens.',expression:'Soft smile.',transition:'Ease into a stable ending pose.',confidence:'medium'};
-function setup({signedIn=true,token=async()=> 'session-token',respond,overrides={}}={}){
+function setup({signedIn=true,token=async()=> 'session-token',respond,sampleInterval='.5',overrides={}}={}){
  let panel;const calls=[],document={createElement:tag=>new Element(tag),body:new Element('body')};
  const copied=[];
  const context=vm.createContext({document,Blob,File,AbortController,DOMException,setTimeout,clearTimeout,navigator:{clipboard:{writeText:async value=>{copied.push(value);}}},URL:{createObjectURL:()=> 'blob:local',revokeObjectURL:()=>{}},buildMuseMotionPackage,normalizeMotionObservations,buildMotionSocialPackage,planMotionBatches,mountMuseMotionFinish:()=>({setPlan(){},clear(){}}),
@@ -36,9 +36,10 @@ function setup({signedIn=true,token=async()=> 'session-token',respond,overrides=
  });
  vm.runInContext(source,context);
  context.mountMuseMotion({querySelector:()=>({after:element=>{panel=element;}})},{prepareIdentity:async file=>({blob:new Blob(['photo']),name:file.name})});
+ panel.querySelector('#motionSampleInterval').value=sampleInterval;
  return{$:name=>panel.querySelector('#motion'+name),calls,panel,copied,context};
 }
-function batchResponse(body,rows=[{...observation,start:body.analysisStart,end:body.analysisEnd}]){return{ok:true,json:async()=>({batchProtocol:1,analysisStart:body.analysisStart,analysisEnd:body.analysisEnd,observations:rows,summary:'参考動作の候補です。'})};}
+function batchResponse(body,rows=[{...observation,start:body.analysisStart,end:body.analysisEnd}],extra={}){return{ok:true,json:async()=>({batchProtocol:1,analysisStart:body.analysisStart,analysisEnd:body.analysisEnd,observations:rows,summary:'参考動作の候補です。',...extra})};}
 async function load(ui,{duration=2,start=3}={}){
  ui.$('Video').files=[{name:'reference.mov',size:100,lastModified:1}];await ui.$('Video').onchange();await Promise.resolve();await Promise.resolve();
  ui.$('Identity').files=[{name:'me.jpg'}];await ui.$('Identity').onchange();
@@ -49,7 +50,7 @@ async function load(ui,{duration=2,start=3}={}){
 test('reference frames flow through analysis into half-second MUSE prompts without sending the identity or audio',async()=>{
  const ui=setup();await load(ui);assert.equal(ui.$('Frames').children.length,4);assert.match(ui.$('TempoStatus').textContent,/120 BPM/);
  ui.$('Consent').checked=true;await ui.$('Analyze').onclick();assert.equal(ui.calls.length,1);
- assert.equal(ui.calls[0].url,'https://cloud.test/functions/v1/muse-motion-analyze');assert.deepEqual(Object.keys(ui.calls[0].body).sort(),['analysisEnd','analysisStart','consent','duration','frames','referenceStart']);
+ assert.equal(ui.calls[0].url,'https://cloud.test/functions/v1/muse-motion-analyze');assert.deepEqual(Object.keys(ui.calls[0].body).sort(),['analysisEnd','analysisStart','consent','duration','frames','readSoundtrack','referenceStart']);
  assert.deepEqual(ui.calls[0].body.frames.map(frame=>Object.keys(frame).sort()),Array.from({length:4},()=>['image','time']));
  assert.equal(ui.calls[0].body.referenceStart,3);assert.equal(ui.$('Timeline').children.length,1);
  ui.$('Build').onclick();assert.equal(ui.$('Outputs').hidden,false);assert.match(ui.$('Editing').value,/3\.000/);
@@ -198,7 +199,7 @@ test('cancelling a later batch keeps progress and late old results cannot change
 test('a batch request timeout restores controls and reuses completed ranges when the user resumes',async t=>{
  const timers=fakeTimers();const ui=setup({overrides:{Date:timers.Date,setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout},respond:(body,_options,count)=>count===2?new Promise(()=>{}):batchResponse(body)});t.after(()=>ui.$('Cancel').onclick());
  await load(ui,{duration:12});ui.$('Consent').checked=true;const run=ui.$('Analyze').onclick();await turn();assert.equal(ui.calls.length,2);
- assert.ok([...timers.jobs.values()].some(job=>job.delay===450000),'the multi-batch operation has enough time for all bounded requests');
+ assert.ok([...timers.jobs.values()].some(job=>job.delay===540000),'the multi-batch operation has enough time for all bounded requests');
  assert.ok(![...timers.jobs.values()].some(job=>job.delay===240000),'the earlier whole-task limit cannot cut off a healthy multi-batch analysis');
  timers.fire(100000);await turn();await run;assert.equal(ui.$('Retry').hidden,false);assert.equal(ui.$('Prepare').disabled,false);assert.equal(ui.$('Timeline').children.length,1);assert.equal(timers.jobs.size,0);
  assert.match(ui.$('StageStatus').textContent,/区間 2 \/ 3.*時間切れ/);assert.equal(ui.calls[1].options.signal.aborted,true);
@@ -254,4 +255,119 @@ test('clicking analysis again after full completion reuses every completed batch
  const ui=setup();await load(ui,{duration:12});ui.$('Consent').checked=true;await ui.$('Analyze').onclick();assert.equal(ui.calls.length,3);assert.equal(ui.$('Timeline').children.length,3);
  await ui.$('Analyze').onclick();assert.equal(ui.calls.length,3,'a fully cached analysis is free to reopen');assert.equal(ui.$('Timeline').children.length,3);assert.equal(ui.$('Retry').hidden,true);assert.equal(ui.$('Analyze').disabled,false);
  ui.$('Build').onclick();assert.equal(ui.$('Outputs').hidden,false);
+});
+
+const descendants=element=>element.children.flatMap(child=>[child,...descendants(child)]);
+const denseExtractor=calls=>async(_file,{duration,start,sampleInterval,onProgress})=>{
+ calls.push({duration,start,sampleInterval});
+ const frames=Array.from({length:Math.ceil(duration/sampleInterval)},(_,i)=>({time:i*sampleInterval,dataUrl:`data:image/jpeg;base64,dense-${i}`,sourceTime:start+i*sampleInterval}));
+ onProgress({done:frames.length,total:frames.length,bytes:frames.length*32000,byteLimit:2000000*.5/sampleInterval,sampleInterval});return frames;
+};
+function detailedResponse(body,extra={}){
+ const rows=body.frames.filter(frame=>frame.time<body.analysisEnd).map((frame,index,anchors)=>{
+  const end=anchors[index+1]?.time??body.analysisEnd;
+  return{...observation,start:frame.time,end,motionDetails:(body.motionFrames||[]).filter(point=>point.time>frame.time&&point.time<end).map(point=>({time:point.time,motion:`Visible hand arc ${point.time>=5?'LATER_CUT_MARKER':'OPENING_MARKER'}`,confidence:'medium'}))};
+ });
+ return batchResponse(body,rows,extra);
+}
+
+test('the recommended default asks for quarter-second extraction and sends its extra samples with specific consent',async()=>{
+ const extracted=[],ui=setup({sampleInterval:'',overrides:{extractMotionFrames:denseExtractor(extracted)}});await load(ui);
+ assert.equal(extracted[0].sampleInterval,.25);assert.equal(ui.$('Frames').children.length,4,'the gallery stays on half-second anchors');assert.match(ui.$('DataStatus').textContent,/3\.81 MB以内/);
+ await ui.$('Analyze').onclick();assert.equal(ui.calls.length,0,'denser frames still require explicit consent');
+ ui.$('Consent').checked=true;await ui.$('Analyze').onclick();assert.equal(ui.calls.length,1);assert.equal(ui.calls[0].body.readSoundtrack,true);
+ assert.deepEqual(ui.calls[0].body.frames.map(frame=>frame.time),[0,.5,1,1.5]);assert.deepEqual(ui.calls[0].body.motionFrames.map(frame=>frame.time),[.25,.75,1.25,1.75]);
+ assert.deepEqual(ui.calls[0].body.motionFrames.map(frame=>Object.keys(frame).sort()),Array.from({length:4},()=>['image','time']));
+ assert.ok(!('identity' in ui.calls[0].body)&&!('audio' in ui.calls[0].body));
+});
+
+test('maximum detail retains 240 images across six requests while keeping sixty anchor observations',async()=>{
+ const extracted=[],ui=setup({sampleInterval:'0.125',respond:body=>detailedResponse(body),overrides:{inspectMotionVideo:async()=>({duration:40,width:1080,height:1920}),extractMotionFrames:denseExtractor(extracted)}});
+ await load(ui,{duration:30,start:0});assert.equal(extracted[0].sampleInterval,.125);assert.equal(ui.$('Frames').children.length,60);
+ ui.$('Consent').checked=true;await ui.$('Analyze').onclick();assert.equal(ui.calls.length,6);assert.equal(ui.$('Timeline').children.length,60);
+ assert.ok(ui.calls.every(call=>call.body.frames.length<=11&&call.body.motionFrames.length===30));
+ const anchors=[...new Set(ui.calls.flatMap(call=>call.body.frames.map(frame=>frame.time)))],context=ui.calls.flatMap(call=>call.body.motionFrames.map(frame=>frame.time));
+ assert.equal(anchors.length,60);assert.equal(context.length,180);assert.equal(new Set(context).size,180);
+ assert.deepEqual([...anchors,...context].sort((a,b)=>a-b),Array.from({length:240},(_,i)=>i*.125));
+ assert.match(ui.$('DataStatus').textContent,/40枚（補助30枚）.*240枚/);assert.match(ui.$('BatchStatus').textContent,/6 \/ 6/);
+ const micro=descendants(ui.$('Timeline')).filter(element=>element.tagName==='TEXTAREA'&&element['aria-label']==='半秒の間の補助観察');
+ assert.equal(micro.length,60);assert.ok(micro.every(element=>element.readOnly));assert.ok(micro.every(element=>!element.disabled),'read-only intermediate evidence must remain selectable after parsing');assert.match(micro[0].value,/0\.125秒.*Visible hand arc/);assert.match(micro.at(-1).value,/29\.875秒/);
+});
+
+test('changing sample density clears partial consent and cache before a different-density retry',async()=>{
+ let fail=true;const extracted=[],ui=setup({sampleInterval:'0.125',overrides:{extractMotionFrames:denseExtractor(extracted)},respond:body=>body.analysisStart===4&&fail?(fail=false,{ok:false,json:async()=>({error:'temporary issue'})}):detailedResponse(body)});
+ await load(ui,{duration:12});ui.$('Consent').checked=true;await ui.$('Analyze').onclick();assert.equal(ui.calls.length,2);assert.equal(ui.$('Retry').hidden,false);
+ assert.equal(ui.calls[0].body.motionFrames.length,24);ui.$('SampleInterval').value='0.25';ui.$('SampleInterval').emit('change');
+ assert.equal(ui.$('Consent').checked,false);assert.equal(ui.$('Retry').hidden,true);assert.equal(ui.$('Frames').children.length,0);assert.equal(ui.$('Timeline').children.length,0);
+ await ui.$('Analyze').onclick();assert.equal(ui.calls.length,2,'old consent cannot authorize a changed preparation');
+ await ui.$('Prepare').onclick();ui.$('Consent').checked=true;await ui.$('Analyze').onclick();
+ assert.deepEqual(extracted.map(value=>value.sampleInterval),[.125,.25]);assert.deepEqual(ui.calls.map(call=>call.body.analysisStart),[0,4,0,4,8]);
+ assert.equal(ui.calls[2].body.motionFrames.length,8);assert.equal(ui.$('Timeline').children.length,24);
+});
+
+test('read-only intermediate observations remain selectable while later batches are still processing',async t=>{
+ const pending=deferred(),ui=setup({sampleInterval:'0.125',overrides:{extractMotionFrames:denseExtractor([])},respond:(body,_options,count)=>count===2?pending.promise:detailedResponse(body)});t.after(()=>ui.$('Cancel').onclick());
+ await load(ui,{duration:12});ui.$('Consent').checked=true;const run=ui.$('Analyze').onclick();await turn();
+ const micro=descendants(ui.$('Timeline')).filter(element=>element.tagName==='TEXTAREA'&&element['aria-label']==='半秒の間の補助観察');assert.equal(micro.length,8);assert.ok(micro.every(element=>element.readOnly&&!element.disabled));
+ const editable=ui.$('Timeline').querySelectorAll('input,textarea:not([readonly]),button');assert.ok(editable.length>0);assert.ok(editable.every(element=>element.disabled));
+ await assertFinishedAfterCancel(ui,run);assert.ok(micro.every(element=>!element.disabled));
+});
+
+test('a cancelled dense request cannot populate the later density cache or music label',async t=>{
+ const pending=deferred(),extracted=[],ui=setup({sampleInterval:'0.125',overrides:{extractMotionFrames:denseExtractor(extracted)},respond:(body,_options,count)=>count===2?pending.promise:detailedResponse(body)});t.after(()=>ui.$('Cancel').onclick());
+ await load(ui,{duration:12});ui.$('Consent').checked=true;const old=ui.$('Analyze').onclick();await turn();assert.equal(ui.calls.length,2);await assertFinishedAfterCancel(ui,old);
+ ui.$('SampleInterval').value='0.25';ui.$('SampleInterval').emit('change');await ui.$('Prepare').onclick();ui.$('Consent').checked=true;await ui.$('Analyze').onclick();
+ const count=ui.calls.length,notes=ui.$('Timeline').children.length;
+ pending.resolve(detailedResponse(ui.calls[1].body,{soundtrack:{title:'STALE SONG',artist:'OLD ARTIST',confidence:'high'}}));await turn();
+ assert.equal(ui.calls.length,count);assert.equal(ui.$('Timeline').children.length,notes);assert.equal(ui.$('MusicTitle').value,'');assert.equal(ui.$('MusicArtist').value,'');
+});
+
+test('dense extraction gets a bounded longer deadline while releasing the form and consent after timeout',async t=>{
+ const timers=fakeTimers(),ui=setup({sampleInterval:'0.125',overrides:{Date:timers.Date,setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,extractMotionFrames:()=>new Promise(()=>{})}});t.after(()=>ui.$('Cancel').onclick());
+ ui.$('Video').files=[{name:'screen-recording.mov',size:100,lastModified:1}];await ui.$('Video').onchange();const run=ui.$('Prepare').onclick();await turn();
+ assert.ok([...timers.jobs.values()].some(job=>job.delay===180000));assert.ok(![...timers.jobs.values()].some(job=>job.delay===90000));
+ timers.fire(180000);await run;assert.equal(ui.$('Prepare').disabled,false);assert.equal(ui.$('SampleInterval').disabled,false);assert.equal(ui.$('Consent').checked,false);assert.match(ui.$('StageStatus').textContent,/時間切れ/);assert.equal(timers.jobs.size,0);
+});
+
+test('only confident readable soundtrack candidates fill labels and labels survive range changes but not new videos',async()=>{
+ const candidate={title:'画面に見えた曲',artist:'表示アーティスト',confidence:'medium'},ui=setup({respond:body=>batchResponse(body,undefined,{soundtrack:candidate})});
+ await load(ui);ui.$('Consent').checked=true;await ui.$('Analyze').onclick();assert.equal(ui.$('MusicTitle').value,candidate.title);assert.equal(ui.$('MusicArtist').value,candidate.artist);assert.match(ui.$('MusicStatus').textContent,/候補.*確認/);
+ ui.$('Start').value='4';ui.$('Start').emit('change');assert.equal(ui.$('MusicTitle').value,candidate.title);assert.equal(ui.$('MusicArtist').value,candidate.artist);
+ ui.$('Video').files=[{name:'another.mov',size:100,lastModified:2}];await ui.$('Video').onchange();assert.equal(ui.$('MusicTitle').value,'');assert.equal(ui.$('MusicArtist').value,'');assert.match(ui.$('MusicStatus').textContent,/未確認/);
+});
+
+test('uncertain, empty or malformed soundtrack metadata cannot invent a song label',async()=>{
+ for(const soundtrack of [undefined,null,{title:'Guess',artist:'Guess',confidence:'low'},{title:'Guess',confidence:'unverified'},{title:' ',artist:'\n',confidence:'high'},{title:{guess:'not a title'},artist:['not an artist'],confidence:'high'}]){
+  const ui=setup({respond:body=>batchResponse(body,undefined,{soundtrack})});await load(ui);ui.$('Consent').checked=true;await ui.$('Analyze').onclick();
+  assert.equal(ui.$('MusicTitle').value,'');assert.equal(ui.$('MusicArtist').value,'');assert.match(ui.$('MusicStatus').textContent,/未確認/);
+ }
+});
+
+test('manually edited music labels and cleared fields are never overwritten by resumed or cached AI results',async()=>{
+ let fail=true;const ui=setup({respond:body=>body.analysisStart===4&&fail?(fail=false,{ok:false,json:async()=>({error:'temporary'})}):batchResponse(body,undefined,{soundtrack:{title:'AI label',artist:'AI artist',confidence:'high'}})});
+ await load(ui,{duration:12});ui.$('Consent').checked=true;await ui.$('Analyze').onclick();assert.equal(ui.$('MusicTitle').value,'AI label');
+ ui.$('MusicTitle').value='自分で確認した曲';ui.$('MusicTitle').emit('input');ui.$('MusicArtist').value='';ui.$('MusicArtist').emit('input');
+ await ui.$('Retry').onclick();assert.equal(ui.$('MusicTitle').value,'自分で確認した曲');assert.equal(ui.$('MusicArtist').value,'');
+ await ui.$('Analyze').onclick();assert.equal(ui.calls.length,4);assert.equal(ui.$('MusicTitle').value,'自分で確認した曲');assert.equal(ui.$('MusicArtist').value,'');assert.match(ui.$('MusicStatus').textContent,/手入力/);
+});
+
+test('soundtrack candidates from different batches cannot be combined into a fabricated title-and-artist pair',async()=>{
+ const ui=setup({respond:(body,_options,count)=>batchResponse(body,undefined,{soundtrack:count===1?{title:'Song A',artist:'',confidence:'high'}:{title:'Song B',artist:'Artist B',confidence:'high'}})});
+ await load(ui,{duration:12});ui.$('Consent').checked=true;await ui.$('Analyze').onclick();assert.equal(ui.$('MusicTitle').value,'Song A');assert.equal(ui.$('MusicArtist').value,'');
+});
+
+test('a matching later soundtrack label may complete its missing counterpart without mixing unrelated candidates',async()=>{
+ for(const first of [{title:'Song A',artist:'',confidence:'medium'},{title:'',artist:'Artist A',confidence:'medium'}]){
+  const ui=setup({respond:(body,_options,count)=>batchResponse(body,undefined,{soundtrack:count===1?first:{title:'Song A',artist:'Artist A',confidence:'high'}})});
+  await load(ui,{duration:12});ui.$('Consent').checked=true;await ui.$('Analyze').onclick();assert.equal(ui.$('MusicTitle').value,'Song A');assert.equal(ui.$('MusicArtist').value,'Artist A');
+ }
+});
+
+test('micro-observations reach MUSE using cut-local seconds while labels never manufacture missing choreography',async()=>{
+ const ui=setup({sampleInterval:'0.125',overrides:{extractMotionFrames:denseExtractor([])},respond:body=>detailedResponse(body,{soundtrack:{title:'Identified Song',artist:'Visible Artist',confidence:'high'}})});
+ await load(ui,{duration:10,start:3});ui.$('Consent').checked=true;await ui.$('Analyze').onclick();ui.$('Interpolation').value='observed';ui.$('Build').onclick();assert.equal(ui.$('Outputs').hidden,false);
+ const second=ui.$('Shots').children[1],prompt=descendants(second).find(element=>element.tagName==='TEXTAREA').value;
+ assert.match(prompt,/CUT-local 0\.125s — INTERMEDIATE MOTION/);assert.match(prompt,/Visible hand arc LATER_CUT_MARKER/);assert.match(prompt,/AI estimate from an additional sampled frame/);
+ assert.match(prompt,/OBSERVED-ONLY MODE/);assert.match(prompt,/Identified Song/);assert.match(prompt,/Never fill unseen motion from knowledge of a song/);assert.doesNotMatch(prompt,/CUT-local 5\.125s/);
+ assert.equal(ui.calls.length,2,'building richer prompts does not issue another paid analysis');
 });

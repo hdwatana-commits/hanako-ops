@@ -216,3 +216,71 @@ test('a continuous observation is directed once and later checkpoints continue i
  assert.equal((prompt.match(/Reference torso, hips and shoulders:/g)||[]).length,1);
  assert.match(prompt,/continue the SAME action from the preceding checkpoint/);assert.match(prompt,/Follow this list ONCE/);
 });
+
+const detail=(time,motion,confidence='medium')=>({time,motion,confidence});
+
+test('intermediate details are bounded, ordered observations inside their main interval',()=>{
+ const motionDetails=[detail(.125,'  Right wrist continues upward.  '),detail(.25,'Weight shifts onto the planted left foot.','high'),detail(.375,'Gaze returns toward the lens.','low')];
+ const row=normalizeMotionObservations([observed(0,.5,{motionDetails})],{duration:2})[0];
+ assert.deepEqual(row.motionDetails,[detail(.125,'Right wrist continues upward.'),motionDetails[1],motionDetails[2]]);
+ assert.equal(motionDetails[0].motion,'  Right wrist continues upward.  ','normalization must not mutate the stored observations');
+ assert.deepEqual(normalizeMotionObservations([observed(0,2)],{duration:2})[0].motionDetails,[]);
+ for(const invalid of [null,{},[detail(0,'At start')],[detail(.5,'At end')],[detail(.25,'A'),detail(.125,'B')],[detail(.25,'A'),detail(.25,'B')],[detail('0.125','A')],[detail(false,'A')],[detail(NaN,'A')],[detail(.125,'')],[detail(.125,'\u0001')],[detail(.125,'a'.repeat(161))],[detail(.125,'A','verified')],Array.from({length:4},(_,i)=>detail(.1+i*.1,'A'))]){
+  assert.throws(()=>normalizeMotionObservations([observed(0,.5,{motionDetails:invalid})],{duration:2}));
+ }
+});
+
+test('details crossing a CUT use one local clock and are never duplicated at either boundary',()=>{
+ const plan=buildMuseMotionPackage(config({duration:10,observations:[observed(4.5,5.5,{motionDetails:[detail(4.625,'UNIQUE_WRIST_ARC'),detail(5,'UNIQUE_JOIN_WEIGHT'),detail(5.125,'UNIQUE_EYE_RETURN')]})],frameTimes:[0,4.5,4.625,5,5.125,5.5,9.5],sampleInterval:.125}));
+ const first=plan.shots[0].observations.find(row=>row.kind==='provided'),second=plan.shots[1].observations.find(row=>row.kind==='provided');
+ assert.deepEqual(first.motionDetails,[{...detail(4.625,'UNIQUE_WRIST_ARC'),cutTime:4.625,sourceTime:17.125}]);
+ assert.deepEqual(second.motionDetails,[{...detail(5,'UNIQUE_JOIN_WEIGHT'),cutTime:0,sourceTime:17.5},{...detail(5.125,'UNIQUE_EYE_RETURN'),cutTime:.125,sourceTime:17.625}]);
+ assert.match(plan.shots[0].prompt,/CUT-local 4\.625s — INTERMEDIATE MOTION/);assert.match(plan.shots[1].prompt,/CUT-local 0\.000s — INTERMEDIATE MOTION/);assert.match(plan.shots[1].prompt,/CUT-local 0\.125s — INTERMEDIATE MOTION/);
+ assert.doesNotMatch(plan.shots[1].prompt,/CUT-local 5\.125s/);
+ for(const token of ['UNIQUE_WRIST_ARC','UNIQUE_JOIN_WEIGHT','UNIQUE_EYE_RETURN'])assert.equal(plan.shotPrompts.join('\n').split(token).length-1,1);
+ const detailTimes=plan.shots.flatMap(shot=>shot.halfSecondCues.flatMap(cue=>cue.observations.flatMap(row=>row.motionDetails.map(point=>point.time))));
+ assert.deepEqual(detailTimes,[4.625,5,5.125]);
+});
+
+test('repeating a basic posture never suppresses a different detail inside the next half-second',()=>{
+ const plan=buildMuseMotionPackage(config({duration:2,observations:[observed(0,1,{motionDetails:[detail(.125,'FIRST_HAND_ARC'),detail(.625,'SECOND_WEIGHT_SHIFT')]})],frameTimes:[0,.125,.5,.625,1,1.5],sampleInterval:.125}));
+ const prompt=plan.shots[0].prompt;
+ assert.equal(prompt.split('FIRST_HAND_ARC').length-1,1);assert.equal(prompt.split('SECOND_WEIGHT_SHIFT').length-1,1);
+ assert.equal((prompt.match(/Reference torso, hips and shoulders:/g)||[]).length,1);
+ assert.match(prompt,/CUT-local 0\.625s — INTERMEDIATE MOTION/);assert.match(prompt,/continue the SAME action/);
+ assert.match(prompt,/AI estimate from an additional sampled frame/);
+});
+
+test('unsupported intermediate evidence remains unconfirmed even if the caller supplies a high confidence',()=>{
+ const plan=buildMuseMotionPackage(config({duration:2,observations:[observed(0,.5,{motionDetails:[detail(.25,'Unverified hand path','high')]})],frameTimes:[0,.5,1,1.5],sampleInterval:.25}));
+ assert.match(plan.shots[0].prompt,/unconfirmed intermediate detail; source image not established/);
+ assert.ok(plan.warnings.some(message=>message.includes('補助コマを確認できない')));
+ assert.doesNotMatch(plan.shots[0].prompt,/AI estimate from an additional sampled frame/);
+});
+
+test('inferred natural connections and observed-only directions retain the same source timing and recorded gestures',()=>{
+ const input=config({duration:10,observations:[observed(0,.5,{motionDetails:[detail(.125,'Wrist rises along the visible arc.')]})],frameTimes:[0,.125,.5,5,9.5],beatTimes:[.3,5.3],beatStatus:'estimated',sampleInterval:.125});
+ const natural=buildMuseMotionPackage({...input,interpolationMode:'natural'}),observedOnly=buildMuseMotionPackage({...input,interpolationMode:'observed'});
+ assert.deepEqual(natural.timeline,observedOnly.timeline);
+ assert.deepEqual(natural.shots.map(shot=>({start:shot.start,end:shot.end,beatTimes:shot.beatTimes,observations:shot.observations})),observedOnly.shots.map(shot=>({start:shot.start,end:shot.end,beatTimes:shot.beatTimes,observations:shot.observations})));
+ assert.match(natural.musePrompt,/NATURAL CONNECTION MODE — INFERRED INTERPOLATION, NOT OBSERVED FACT/);assert.match(natural.musePrompt,/shortest physically plausible continuous connection/);
+ assert.match(observedOnly.musePrompt,/OBSERVED-ONLY MODE/);assert.match(observedOnly.musePrompt,/Do not introduce a pose hold or freeze/);assert.doesNotMatch(observedOnly.musePrompt,/NATURAL CONNECTION MODE/);
+ for(const plan of [natural,observedOnly]){assert.match(plan.musePrompt,/actual LAST DISPLAYED FRAME/);assert.match(plan.musePrompt,/ACTION DURATION: exactly 5\.000 seconds/);assert.match(plan.musePrompt,/UNKNOWN/);assert.match(plan.musePrompt,/original 1\.0x playback speed/);}
+});
+
+test('a song name is unverified metadata and cannot manufacture choreography, BPM, lyrics or beat positions',()=>{
+ const input=config({duration:2,observations:[observed(0,2)],frameTimes:[0,.5,1,1.5]});
+ const base=buildMuseMotionPackage(input),withLabel=buildMuseMotionPackage({...input,musicTitle:'A song\nlabel',musicArtist:'An artist',sampleInterval:.25});
+ assert.equal(withLabel.config.musicTitle,'A song label');assert.equal(withLabel.config.musicArtist,'An artist');assert.equal(withLabel.config.bpm,null);assert.deepEqual(withLabel.config.beatTimes,[]);
+ assert.deepEqual(withLabel.observations,base.observations);assert.deepEqual(withLabel.shots[0].observations,base.shots[0].observations);
+ assert.match(withLabel.musePrompt,/MUSIC LABEL — UNVERIFIED IDENTIFICATION DATA/);assert.match(withLabel.musePrompt,/A title or artist name does not establish this reel's choreography/);assert.match(withLabel.musePrompt,/Never fill unseen motion from knowledge of a song/);assert.match(withLabel.musePrompt,/Do not retrieve, generate or transcribe song audio or lyrics/);
+ assert.ok(withLabel.warnings.some(message=>message.includes('曲名だけから')));assert.ok(withLabel.warnings.some(message=>message.includes('詳細動作はまだ取得')));
+ assert.match(withLabel.editingInstructions,/曲名は音源の識別だけ/);
+});
+
+test('detail sampling settings are explicit and do not claim an unrequested mode',()=>{
+ const standard=buildMuseMotionPackage(config());assert.equal(standard.config.sampleInterval,.5);assert.equal(standard.config.interpolationMode,'natural');assert.equal(standard.config.musicTitle,'');
+ for(const sampleInterval of [.5,.25,.125])assert.equal(buildMuseMotionPackage(config({sampleInterval})).config.sampleInterval,sampleInterval);
+ for(const sampleInterval of [.1,0,1,NaN,false])assert.throws(()=>buildMuseMotionPackage(config({sampleInterval})));
+ for(const interpolationMode of ['official','music-guessed','',false])assert.throws(()=>buildMuseMotionPackage(config({interpolationMode})));
+});

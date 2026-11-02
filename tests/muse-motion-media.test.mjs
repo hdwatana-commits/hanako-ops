@@ -31,6 +31,17 @@ test('sampling uses exact half-second timestamps and never stretches the referen
  assert.throws(()=>motionFrameTimes(31),/2〜30秒/);
 });
 
+test('detail modes preserve the original half-second anchors and add exact quarter/eighth-second samples',()=>{
+ for(const duration of [2,2.01,2.125,5,15,29.99,30])for(const sampleInterval of [.25,.125]){
+  const times=motionFrameTimes(duration,sampleInterval);
+  assert.equal(times.length,Math.ceil(duration/sampleInterval));assert.equal(times[0],0);
+  assert.ok(times.every((time,index)=>time===index*sampleInterval&&time<duration));
+  assert.deepEqual(times.filter(time=>Number.isInteger(time*2)),motionFrameTimes(duration));
+ }
+ assert.equal(motionFrameTimes(30,.25).length,120);assert.equal(motionFrameTimes(30,.125).length,MOTION_MEDIA_LIMITS.denseFrames);
+ for(const interval of [0,.1,1,NaN,'0.25',null])assert.throws(()=>motionFrameTimes(5,interval),/0.5秒・0.25秒・0.125秒/);
+});
+
 test('reference frames preserve aspect ratio and do not enlarge small sources',()=>{
  assert.deepEqual(fitMotionFrame(1080,1920),{width:216,height:384});
  assert.deepEqual(fitMotionFrame(1920,1080),{width:384,height:216});
@@ -146,6 +157,32 @@ test('all 60 half-second samples fit the existing total budget by lowering JPEG 
  const bytes=frames.reduce((sum,frame)=>sum+frame.dataUrl.length,0);assert.ok(bytes<=MOTION_MEDIA_LIMITS.totalFrameChars);
  assert.equal(progress.at(-1).bytes,bytes);assert.equal(progress.at(-1).byteLimit,MOTION_MEDIA_LIMITS.totalFrameChars);assert.equal(progress.at(-1).frameBytes,32000);
  assert.deepEqual(progress.map(value=>value.done),Array.from({length:60},(_,i)=>i+1));
+});
+
+test('120 quarter-second samples keep the same per-image quality budget rather than sacrificing anchor detail',async t=>{
+ const {file,attempts}=frameBrowser(t,({quality})=>quality===.66?40000:32000),progress=[];
+ const frames=await extractMotionFrames(file,{start:0,duration:30,sampleInterval:.25,onProgress:value=>progress.push(value)});
+ assert.equal(frames.length,120);assert.deepEqual(frames.map(frame=>frame.time),motionFrameTimes(30,.25));
+ assert.equal(attempts.length,240);assert.ok(attempts.every(attempt=>attempt.width===216&&attempt.height===384));
+ assert.equal(progress.at(-1).byteLimit,MOTION_MEDIA_LIMITS.totalFrameChars*2);assert.equal(progress.at(-1).sampleInterval,.25);
+ assert.equal(progress.at(-1).bytes,120*32000);assert.ok(progress.at(-1).bytes<=progress.at(-1).byteLimit);
+});
+
+test('240 eighth-second samples reserve an explicit bounded memory budget and report every prepared image',async t=>{
+ const {file,attempts}=frameBrowser(t,()=>32000),progress=[];
+ const frames=await extractMotionFrames(file,{start:0,duration:30,sampleInterval:.125,onProgress:value=>progress.push(value)});
+ assert.equal(frames.length,240);assert.deepEqual(frames.map(frame=>frame.time),motionFrameTimes(30,.125));
+ assert.equal(attempts.length,240);assert.equal(progress.at(-1).byteLimit,MOTION_MEDIA_LIMITS.totalFrameChars*4);
+ assert.equal(progress.at(-1).bytes,240*32000);assert.equal(progress.at(-1).total,240);assert.equal(progress.at(-1).done,240);
+ assert.equal(progress.at(-1).sampleInterval,.125);assert.ok(progress.at(-1).bytes<=progress.at(-1).byteLimit);
+});
+
+test('invalid dense sampling settings fail before opening a decoder and dense cancellation releases it',async t=>{
+ const {file,state}=frameBrowser(t,()=>10000);
+ await assert.rejects(extractMotionFrames(file,{start:0,duration:2,sampleInterval:.2}),/間隔/);assert.equal(state.videos.length,0);
+ const controller=new AbortController(),progress=[];
+ await assert.rejects(extractMotionFrames(file,{start:0,duration:30,sampleInterval:.125,signal:controller.signal,onProgress:value=>{progress.push(value);if(value.done===12)controller.abort();}}),{name:'AbortError'});
+ assert.equal(progress.length,12);assert.equal(progress.at(-1).done,12);assert.ok(state.videos.every(video=>video.removed));assert.equal(state.revoked.length,1);
 });
 
 test('dense visual frames shrink only as far as 256px and keep every timing sample',async t=>{

@@ -2,7 +2,7 @@
 // Only the caller can explicitly send the extracted stills to a vision service.
 import {analyze} from './reel-engine.mjs?v=5';
 
-export const MOTION_MEDIA_LIMITS={videoBytes:150*1024*1024,audioBytes:40*1024*1024,audioReadMs:8000,audioDecodeMs:15000,sourceDuration:600,clipMin:2,clipMax:30,frames:60,longEdge:384,frameChars:150000,totalFrameChars:2000000};
+export const MOTION_MEDIA_LIMITS={videoBytes:150*1024*1024,audioBytes:40*1024*1024,audioReadMs:8000,audioDecodeMs:15000,sourceDuration:600,clipMin:2,clipMax:30,frames:60,denseFrames:240,longEdge:384,frameChars:150000,totalFrameChars:2000000};
 const rounded=value=>Math.round(value*1000)/1000;
 const abortError=()=>new DOMException('処理を中止しました。','AbortError');
 const checkAbort=signal=>{if(signal?.aborted)throw abortError();};
@@ -32,11 +32,17 @@ export function validateMotionClip({start=0,duration},sourceDuration){
  if(!Number.isFinite(start)||start<0||!Number.isFinite(duration)||duration<MOTION_MEDIA_LIMITS.clipMin||duration>MOTION_MEDIA_LIMITS.clipMax||start+duration>sourceDuration+.001)throw Error('参考動画の中から、2〜30秒の区間を指定してください。');
  return{start,duration};
 }
-export function motionFrameTimes(duration){
+function sampling(sampleInterval){
+ if(![.5,.25,.125].includes(sampleInterval))throw Error('参考コマの間隔は0.5秒・0.25秒・0.125秒から選んでください。');
+ const multiplier=.5/sampleInterval;
+ return{sampleInterval,maxFrames:MOTION_MEDIA_LIMITS.frames*multiplier,byteLimit:MOTION_MEDIA_LIMITS.totalFrameChars*multiplier};
+}
+export function motionFrameTimes(duration,sampleInterval=.5){
  if(!Number.isFinite(duration)||duration<2||duration>30)throw Error('参照する区間は2〜30秒にしてください。');
- const count=Math.min(MOTION_MEDIA_LIMITS.frames,Math.ceil(duration*2));
- // Exactly half-second checkpoints; do not stretch time to fit an ending frame.
- return Array.from({length:count},(_,index)=>rounded(index*.5));
+ const settings=sampling(sampleInterval),count=Math.min(settings.maxFrames,Math.ceil(duration/sampleInterval));
+ // Preserve the selected time grid, including every half-second anchor. Never
+ // stretch the reference to manufacture a final sample at the clip endpoint.
+ return Array.from({length:count},(_,index)=>rounded(index*sampleInterval));
 }
 export function fitMotionFrame(width,height,longEdge=MOTION_MEDIA_LIMITS.longEdge){
  if(!Number.isFinite(width)||!Number.isFinite(height)||width<1||height<1||!Number.isFinite(longEdge)||longEdge<1)throw Error('動画の画角を読み取れませんでした。');
@@ -92,7 +98,7 @@ async function settleFrame(video,signal){
  checkAbort(signal);
 }
 
-// Reserve an equal share of the image-data budget for every half-second sample.
+// Reserve an equal share of the image-data budget for every selected sample.
 // Lower JPEG quality before reducing dimensions; never remove timing samples to
 // make a busy background fit. A 256px long edge is the minimum visual fallback.
 function encodeMotionFrame(video,canvas,ctx,size,budget,signal){
@@ -105,23 +111,24 @@ function encodeMotionFrame(video,canvas,ctx,size,budget,signal){
    if(dataUrl.length<=budget)return dataUrl;
   }
  }
- throw Error('参考コマを、動きが分かる画質と送信容量の範囲に収められませんでした。使用区間を短くして再試行してください。0.5秒ごとのコマは省略していません。');
+ throw Error('参考コマを、動きが分かる画質と送信容量の範囲に収められませんでした。使用区間を短くして再試行してください。指定した間隔のコマは省略していません。');
 }
-export async function extractMotionFrames(file,{start=0,duration,signal,onProgress=()=>{}}={}){
+export async function extractMotionFrames(file,{start=0,duration,sampleInterval=.5,signal,onProgress=()=>{}}={}){
+ checkAbort(signal);const settings=sampling(sampleInterval);
  const media=await openVideo(file,{signal}),{video,metadata}=media;
  try{
   validateMotionClip({start,duration},metadata.duration);
   if(video.readyState<2)await mediaEvent(video,'loadeddata',{signal});
   const size=fitMotionFrame(metadata.width,metadata.height),canvas=document.createElement('canvas');canvas.width=size.width;canvas.height=size.height;
   const ctx=canvas.getContext('2d');if(!ctx)throw Error('このブラウザでは参考フレームを作れません。Safariを更新してお試しください。');
-  const frames=[],times=motionFrameTimes(duration),frameBudget=Math.min(MOTION_MEDIA_LIMITS.frameChars,Math.floor(MOTION_MEDIA_LIMITS.totalFrameChars/times.length));let chars=0;
+  const frames=[],times=motionFrameTimes(duration,sampleInterval),frameBudget=Math.min(MOTION_MEDIA_LIMITS.frameChars,Math.floor(settings.byteLimit/times.length));let chars=0;
   for(const [index,time] of times.entries()){
    checkAbort(signal);const sourceTime=Math.min(start+time,metadata.duration-.001);
    if(Math.abs(video.currentTime-sourceTime)>.0001)await mediaEvent(video,'seeked',{signal,trigger:()=>{video.currentTime=sourceTime;}});
    await settleFrame(video,signal);
    const dataUrl=encodeMotionFrame(video,canvas,ctx,size,frameBudget,signal);chars+=dataUrl.length;
-   if(!dataUrl.startsWith('data:image/jpeg;base64,')||dataUrl.length>MOTION_MEDIA_LIMITS.frameChars||chars>MOTION_MEDIA_LIMITS.totalFrameChars)throw Error('確認用フレームの容量が大きいため、参考区間を短くしてお試しください。');
-   frames.push({time,dataUrl,sourceTime:rounded(sourceTime)});onProgress({done:index+1,total:times.length,bytes:chars,byteLimit:MOTION_MEDIA_LIMITS.totalFrameChars,frameBytes:dataUrl.length});
+   if(!dataUrl.startsWith('data:image/jpeg;base64,')||dataUrl.length>MOTION_MEDIA_LIMITS.frameChars||chars>settings.byteLimit)throw Error('確認用フレームの容量が大きいため、参考区間を短くしてお試しください。');
+   frames.push({time,dataUrl,sourceTime:rounded(sourceTime)});onProgress({done:index+1,total:times.length,bytes:chars,byteLimit:settings.byteLimit,frameBytes:dataUrl.length,sampleInterval});
   }
   return frames;
  }finally{media.cleanup();}
