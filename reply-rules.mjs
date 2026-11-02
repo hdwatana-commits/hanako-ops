@@ -125,7 +125,21 @@ export function wrongGreeting(text,now=new Date()) {
 
 
 export function normalizeReplyLayout(text){
- return String(text||'').replace(/\\r\\n|\\n|\\r/g,'\n').replace(/\r\n?/g,'\n').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+ const value=String(text||'').replace(/\\r\\n|\\n|\\r/g,'\n').replace(/\r\n?/g,'\n').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+ const segmenter=new Intl.Segmenter('ja',{granularity:'sentence'});
+ return value.split('\n').map(line=>{
+  const protectedParts=[];
+  // Keep URLs, decimal numbers and common abbreviations intact.
+  const masked=line.replace(/https?:\/\/[^\s<>"'。！？]+|\b(?:Mr|Mrs|Ms|Dr|Prof|St)\.|\b(?:e\.g|i\.e)\./giu,part=>{
+   const token=`HANAKOLAYOUTTOKEN${protectedParts.length}X`;protectedParts.push([token,part]);return token;
+  });
+  let result=[...segmenter.segment(masked)].map(x=>x.segment.trimStart()).filter(Boolean).join('\n');
+  // A terminal emoji belongs with the sentence before it, not on its own line.
+  result=result.replace(/\n([\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Modifier}\uFE0F\u200D♡♥]+)[ \t]*/gu,'$1\n').trimEnd();
+  if(/[ぁ-んァ-ン一-龯]/u.test(masked))result=result.replace(/([\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Modifier}\uFE0F\u200D♡♥]+)[ \t]+(?=[ぁ-んァ-ン一-龯])/gu,'$1\n');
+  for(const [token,part] of protectedParts)result=result.replace(token,part);
+  return result.replace(/[ \t]+\n/g,'\n');
+ }).join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }
 export function stopChoiceReprompt(text){
  const parts=String(text||'').split(/(?<=[。！？!?])|(?=\n)|(?<=\n)/u);
