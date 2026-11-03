@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {planMuseCutAssembly,fitCutFrame,inspectGeneratedCut,extractCutBoundary,renderMuseCuts,canRenderMuseCuts} from '../muse-motion-cut-media.mjs';
+import {planMuseCutAssembly,fitCutFrame,inspectGeneratedCut,extractCutBoundary,renderMuseCuts,canRenderMuseCuts,assessMuseLoop} from '../muse-motion-cut-media.mjs';
 const file=(name='cut.mp4')=>new File([new Uint8Array(100)],name,{type:'video/mp4'});
 
 test('long generated clips are cut at 1x without stretching or taking the extra duration',()=>{
@@ -27,6 +27,10 @@ test('a fractional source ending contains the final sampled frame even when the 
  assert.equal(result.frameCount,125);assert.equal(state.frames.length,125);assert.equal(state.videos[0].seeks.at(-1),124/30);
  const boundary=await extractCutBoundary(file(),{duration:4.15});assert.equal(boundary.time,4.133333);
 });
+test('caption timing uses requested duration even when the encoded end rounds down to a frame boundary',async t=>{
+ const state=browser(t,{duration:4.14}),result=await renderMuseCuts({shots:[{file:file(),duration:4.14}],polish:{caption:{text:'最後までかわいく♡',start:0,end:4.14},beatTimes:[4.139],beatStyle:'soft'}});
+ assert.equal(result.requestedDuration,4.14);assert.equal(result.frameCount,124);assert.equal(result.duration,4.133333);assert.equal(result.polish.duration,4.14);assert.equal(result.polish.caption.end,4.14);assert.ok(state.captions.length>100);assert.ok(state.frames.every(frame=>frame.closed));
+});
 test('foreground framing contains the complete person without stretching a 4:5 or landscape source',()=>{
  assert.deepEqual(fitCutFrame(1080,1350),{x:0,y:285,width:1080,height:1350});
  const landscape=fitCutFrame(1920,1080);assert.equal(landscape.width,1080);assert.equal(landscape.height,607.5);assert.equal(landscape.width/landscape.height,1920/1080);
@@ -34,7 +38,7 @@ test('foreground framing contains the complete person without stretching a 4:5 o
 
 function browser(t,{duration=10,stallSeek=false,stallPng=false,stallFlush=false}={}){
  const keys=['document','VideoEncoder','VideoFrame','EncodedVideoChunk','navigator'],originals=new Map(keys.map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
- const originalCreate=URL.createObjectURL,originalRevoke=URL.revokeObjectURL,state={videos:[],frames:[],chunks:[],draws:[],revoked:[],encoders:[],pngCallbacks:[]};
+ const originalCreate=URL.createObjectURL,originalRevoke=URL.revokeObjectURL,state={videos:[],frames:[],chunks:[],draws:[],revoked:[],encoders:[],pngCallbacks:[],captions:[],sparkles:0};
  const define=(key,value)=>Object.defineProperty(globalThis,key,{value,configurable:true,writable:true});
  class Video extends EventTarget{
   constructor(){super();this.style={};this.duration=duration;this.videoWidth=1080;this.videoHeight=1920;this.readyState=2;this._time=0;this.seeks=[];}
@@ -43,7 +47,7 @@ function browser(t,{duration=10,stallSeek=false,stallPng=false,stallFlush=false}
   setAttribute(){} removeAttribute(){} pause(){this.paused=true;} remove(){this.removed=true;}
   load(){if(this.src)queueMicrotask(()=>this.dispatchEvent(new Event('loadedmetadata')));}
  }
- const ctx={save(){},restore(){},fillRect(){},drawImage(video,...coordinates){state.draws.push({time:video.currentTime,coordinates,filter:this.filter});}};
+ const ctx={save(){},restore(){},fillRect(){},drawImage(video,...coordinates){if(typeof video.currentTime==='number')this.lastVideoTime=video.currentTime;state.draws.push({time:video.currentTime,coordinates,filter:this.filter});},measureText:text=>({width:text.length*50}),strokeText(){},fillText(text,x,y){state.captions.push({text,x,y,alpha:this.globalAlpha});},beginPath(){},moveTo(){},lineTo(){},stroke(){state.sparkles++;},getImageData(_x,_y,width,height){return{data:Uint8ClampedArray.from({length:width*height*4},(_,index)=>index%4===3?255:Math.round(this.lastVideoTime*70))};}};
  define('document',{body:{append(){}},createElement(tag){if(tag==='video'){const video=new Video();state.videos.push(video);return video;}if(tag==='canvas')return{width:0,height:0,getContext:()=>ctx,toBlob(callback){state.pngCallbacks.push(callback);if(!stallPng)queueMicrotask(()=>callback(new Blob(['png'],{type:'image/png'})));}};throw Error(tag);}});
  define('navigator',{});URL.createObjectURL=()=>`blob:video-${state.videos.length}`;URL.revokeObjectURL=url=>state.revoked.push(url);
  class Frame{constructor(_canvas,options){Object.assign(this,options);state.frames.push(this);}close(){this.closed=true;}}
@@ -97,4 +101,23 @@ test('cancellation while a native encoder flush is stalled does not leave the op
 test('an interrupted codec capability probe returns immediately without allocating videos',async t=>{
  const state=browser(t),controller=new AbortController();VideoEncoder.isConfigSupported=()=>new Promise(()=>{});
  const run=canRenderMuseCuts({signal:controller.signal});controller.abort();await assert.rejects(run,{name:'AbortError'});assert.equal(state.videos.length,0);
+});
+test('rendering burns captions and beat accents into output frames on one continuous clock',async t=>{
+ const state=browser(t),result=await renderMuseCuts({shots:[{file:file(),duration:1},{file:file(),inPoint:3,duration:1}],polish:{caption:{text:'今日の主役♡',start:0,end:.9,color:'pink'},beatStyle:'sparkle',beatTimes:[1]}});
+ assert.equal(result.duration,2);assert.equal(result.frameCount,60);assert.equal(result.audio,false);assert.ok(state.captions.length>10);assert.ok(state.captions.every(value=>value.text==='今日の主役♡'));assert.ok(state.sparkles>0);
+ const foreground=state.draws.filter(value=>value.filter==='none');assert.equal(foreground.length,60);assert.equal(foreground[0].coordinates[2],1080*.985);assert.equal(foreground[30].coordinates[2],1080);assert.ok(foreground.every(value=>value.coordinates[2]<=1080&&value.coordinates[3]<=1920));
+ assert.equal(foreground[30].time,3,'the beat decorates the second source without changing its original in-point');assert.equal(state.frames[30].timestamp,1000000);
+});
+test('explicit trimming preserves source times and uses the original clock for captions',async t=>{
+ const state=browser(t),result=await renderMuseCuts({shots:[{file:file(),duration:2},{file:file(),inPoint:4,duration:2}],trim:{start:1,end:3},polish:{caption:{text:'最初の1秒だけ',start:0,end:1}}});
+ assert.equal(result.duration,2);assert.equal(result.frameCount,60);assert.deepEqual(result.trim,{start:1,end:3});assert.deepEqual(result.shots.map(shot=>[shot.inPoint,shot.requestedDuration,shot.playbackRate]),[[1,1,1],[4,1,1]]);assert.equal(state.captions.length,0,'a caption outside the trimmed range must not restart at the new zero');
+ assert.equal(state.videos[0].seeks[0],1);assert.equal(state.videos[1].seeks[0],4);
+});
+test('loop sampling compares actual first and final frames and releases all local sources',async t=>{
+ const state=browser(t),result=await assessMuseLoop({shots:[{file:file(),inPoint:0,duration:2}]});
+ assert.equal(result.status,'review');assert.equal(result.requiresReview,true);assert.equal(result.identityVerified,false);assert.equal(result.startTime,0);assert.equal(result.endTime,1.966667);assert.equal(result.startBlob.type,'image/png');assert.equal(result.endBlob.type,'image/png');assert.equal(result.duration,2);assert.ok(result.appearanceDifference>.3);assert.ok(state.videos.every(video=>video.removed));assert.equal(state.revoked.length,2);
+});
+test('loop image extraction honors cancellation and does not leave its video mounted',async t=>{
+ const state=browser(t,{stallPng:true}),controller=new AbortController(),run=assessMuseLoop({shots:[{file:file(),duration:2}],signal:controller.signal});
+ while(!state.pngCallbacks.length)await new Promise(resolve=>setImmediate(resolve));controller.abort();await assert.rejects(run,{name:'AbortError'});assert.ok(state.videos.every(video=>video.removed));
 });

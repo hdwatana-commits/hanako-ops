@@ -1,19 +1,19 @@
-const CACHE_NAME = "hanako-room-ops-v399";
+const CACHE_NAME = "hanako-room-ops-v400";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./muse-identity-lock.mjs?v=1",
-  "./muse-motion.mjs?v=7", "./muse-motion-finish.mjs?v=1", "./muse-motion-cut-media.mjs?v=1", "./vendor/mp4-muxer-5.2.2/mp4-muxer.mjs", "./muse-motion-batches.mjs?v=2", "./muse-motion-media.mjs?v=4", "./muse-motion-engine.mjs?v=5", "./muse-motion-social.mjs?v=1", "./muse-motion.css?v=4",
+  "./muse-motion.mjs?v=8", "./muse-motion-highlights.mjs?v=1", "./muse-motion-polish.mjs?v=1", "./muse-motion-finish.mjs?v=2", "./muse-motion-cut-media.mjs?v=2", "./vendor/mp4-muxer-5.2.2/mp4-muxer.mjs", "./muse-motion-batches.mjs?v=2", "./muse-motion-media.mjs?v=4", "./muse-motion-engine.mjs?v=6", "./muse-motion-social.mjs?v=2", "./muse-motion.css?v=5",
   "./muse-song-help.mjs?v=2",
   "./sns-studio.mjs?v=2", "./sns-studio.css?v=2",
   "./muse-instagram-observations.mjs?v=1",
   "./muse-song-youtube.mjs?v=1", "./muse-song-dance.mjs?v=4", "./muse-song-dance.css?v=3", "./muse-song-catalog.mjs?v=1", "./muse-song-library.mjs?v=1", "./muse-song-analysis.mjs?v=1", "./muse-song-choreography.mjs?v=3",
-  "./muse-reel-maker.mjs?v=13", "./muse-reel-engine.mjs?v=3", "./muse-reel-presets.mjs?v=1", "./muse-reel-maker.css?v=1",
+  "./muse-reel-maker.mjs?v=14", "./muse-reel-engine.mjs?v=3", "./muse-reel-presets.mjs?v=1", "./muse-reel-maker.css?v=1",
   "./reel-theme-stage.mjs?v=1",
   "./reel-source.mjs?v=1",
   "./reel-style-renderer.mjs?v=5", "./reel-edit-styles.mjs?v=5", "./reel-engine.mjs?v=5",
   "./reel-captions.mjs?v=2", "./reel-caption-editor.mjs?v=4",
   "./reel-music.mjs?v=4",
-  "./reel-maker.mjs?v=24", "./reel-engine.mjs", "./reel-maker.css?v=8",
+  "./reel-maker.mjs?v=25", "./reel-engine.mjs", "./reel-maker.css?v=8",
   "./threads-replies.js?v=36",
   "./reply-analytics.mjs?v=1",
   "./fan-profile.mjs?v=3",
@@ -22,7 +22,7 @@ const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=372",
-  "./app.js?v=399",
+  "./app.js?v=400",
   "./cloud-sync.js?v=307",
   "./ops-engine.js?v=222",
   "./ops-phase2-engine.js?v=222",
@@ -428,7 +428,7 @@ const CORE_SHELL = [
   "./",
   "./index.html",
     "./styles.css?v=372",
-    "./app.js?v=399",
+    "./app.js?v=400",
     "./cloud-sync.js?v=307",
     "./ops-engine.js?v=222",
     "./ops-phase2-engine.js?v=222",
@@ -492,7 +492,7 @@ self.addEventListener("fetch", (event) => {
     || url.pathname.endsWith("/muse-song-youtube.mjs")
     || url.pathname.endsWith("/muse-song-dance.mjs")
     || url.pathname.endsWith("/muse-identity-lock.mjs")
-    || /\/muse-motion(?:-media|-engine|-social|-batches|-finish|-cut-media)?\.(mjs|css)$/.test(url.pathname)
+    || /\/muse-motion(?:-media|-engine|-social|-batches|-finish|-cut-media|-highlights|-polish)?\.(mjs|css)$/.test(url.pathname)
     || url.pathname.endsWith("/muse-song-help.mjs")
     || url.pathname.endsWith("/muse-song-dance.css")
     || url.pathname.endsWith("/muse-song-catalog.mjs")

@@ -31,7 +31,7 @@ function buzzProposal(mode) {
   dynamic: { label:'バズり・ダイナミック', hook:'冒頭0〜1秒から、参考にある動作の切り返しや全身の動きを見やすく。振付や速度・画角は変えません。', ending:'参考どおりの決め姿勢と減速を明瞭にし、動作が落ち着いたところで自然につなぎます。', prompt:'DYNAMIC PRESENTATION PROPOSAL: Make existing weight transfers, direction changes, hand shapes and grounded foot contacts visually clear from the original opening. Use crisp, continuous execution of the observed movement without increasing its speed, range or force. Preserve realistic motion blur, anatomical balance and natural fabric inertia. Do not add a zoom, flash, shake, jump, exaggerated wind or new dance move. Keep any observed expression changes at their original times. Preserve the confirmed ending pose and natural deceleration; consider a loop later only when the actual end and beginning already connect.' },
  };
  const selected=proposals[mode];
- return {...selected,prompt:core+'\n'+selected.prompt,editingNotes:['キャプションは投稿欄用の文章テンプレート案です。映像内の文字・字幕は編集アプリで追加します。','冒頭テロップは顔・手・足やInstagramの操作表示と重ならない位置へ。元動画の動作時間と音楽のフレーズを優先します。','ループは冒頭と終了の姿勢が実際につながる場合だけ検討し、尺や振付を勝手に変更しません。']};
+ return {...selected,prompt:core+'\n'+selected.prompt,editingNotes:['キャプションは投稿欄用の文章テンプレート案です。映像内の文字・字幕はOPSの手順4の仕上げ、または編集アプリで追加します。','冒頭テロップは顔・手・足やInstagramの操作表示と重ならない位置へ。元動画の動作時間と音楽のフレーズを優先します。','ループは冒頭と終了の姿勢が実際につながる場合だけ検討し、尺や振付を勝手に変更しません。']};
 }
 
 export function buildMotionSocialPackage(input={}) {

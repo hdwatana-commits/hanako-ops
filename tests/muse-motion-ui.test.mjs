@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import {buildMuseMotionPackage,normalizeMotionObservations} from '../muse-motion-engine.mjs';
 import {buildMotionSocialPackage} from '../muse-motion-social.mjs';
 import {planMotionBatches} from '../muse-motion-batches.mjs';
+import {proposeMotionHighlights,cropMotionAnalysis} from '../muse-motion-highlights.mjs';
 
 const source=fs.readFileSync(new URL('../muse-motion.mjs',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export function mountMuseMotion','function mountMuseMotion');
 class Element{
@@ -20,6 +21,7 @@ class Element{
  setAttribute(name,value){this[name]=value;}
  removeAttribute(name){delete this[name];}
  pause(){this.paused=true;}
+ scrollIntoView(){}
  load(){}
  play(){this.paused=false;return Promise.resolve();}
 }
@@ -27,7 +29,7 @@ const observation={start:0,end:2,camera:'Fixed frontal full-body shot.',body:'Sm
 function setup({signedIn=true,token=async()=> 'session-token',respond,sampleInterval='.5',overrides={}}={}){
  let panel;const calls=[],document={createElement:tag=>new Element(tag),body:new Element('body')};
  const copied=[];
- const context=vm.createContext({document,Blob,File,AbortController,DOMException,setTimeout,clearTimeout,navigator:{clipboard:{writeText:async value=>{copied.push(value);}}},URL:{createObjectURL:()=> 'blob:local',revokeObjectURL:()=>{}},buildMuseMotionPackage,normalizeMotionObservations,buildMotionSocialPackage,planMotionBatches,mountMuseMotionFinish:()=>({setPlan(){},clear(){}}),
+ const context=vm.createContext({document,Blob,File,AbortController,DOMException,setTimeout,clearTimeout,navigator:{clipboard:{writeText:async value=>{copied.push(value);}}},URL:{createObjectURL:()=> 'blob:local',revokeObjectURL:()=>{}},buildMuseMotionPackage,normalizeMotionObservations,buildMotionSocialPackage,planMotionBatches,proposeMotionHighlights,cropMotionAnalysis,mountMuseMotionFinish:()=>({setPlan(){},clear(){}}),
   inspectMotionVideo:async()=>({duration:15,width:1080,height:1920}),validateMotionClip:(range,duration)=>{if(range.start<0||range.duration<2||range.start+range.duration>duration)throw Error('区間が不正');},
   extractMotionFrames:async(_file,{duration,start,onProgress})=>{const frames=Array.from({length:Math.ceil(duration/.5)},(_,i)=>({time:i*.5,dataUrl:`data:image/jpeg;base64,${i}`,sourceTime:start+i*.5}));onProgress({done:frames.length,total:frames.length,bytes:3000,byteLimit:2000000});return frames;},
   analyzeMotionTempo:async()=>({bpm:120,beatTimes:[.1,.6,1.1,1.6],beatStatus:'estimated'}),
@@ -370,4 +372,58 @@ test('micro-observations reach MUSE using cut-local seconds while labels never m
  assert.match(prompt,/CUT-local 0\.125s — INTERMEDIATE MOTION/);assert.match(prompt,/Visible hand arc LATER_CUT_MARKER/);assert.match(prompt,/AI estimate from an additional sampled frame/);
  assert.match(prompt,/OBSERVED-ONLY MODE/);assert.match(prompt,/Identified Song/);assert.match(prompt,/Never fill unseen motion from knowledge of a song/);assert.doesNotMatch(prompt,/CUT-local 5\.125s/);
  assert.equal(ui.calls.length,2,'building richer prompts does not issue another paid analysis');
+});
+
+async function analysedHighlightUi(){
+ const ui=setup({overrides:{inspectMotionVideo:async()=>({duration:60,width:1080,height:1920}),analyzeMotionTempo:async()=>({bpm:120,beatTimes:Array.from({length:60},(_,index)=>index*.5+.25),beatStatus:'estimated'})},respond:body=>batchResponse(body,Array.from({length:Math.ceil((body.analysisEnd-body.analysisStart)*2)},(_,index)=>{const start=body.analysisStart+index*.5;return {...observation,start,end:Math.min(body.analysisEnd,start+.5),gaze:start===5?'Look directly into the lens.':'Look away from camera.',expression:start===5?'A gentle smile.':'Neutral expression.',motionDetails:[{time:start+.25,motion:'Continue the observed hand arc.',confidence:'medium'}]};}))});
+ await load(ui,{duration:30,start:3});ui.$('Consent').checked=true;await ui.$('Analyze').onclick();assert.equal(ui.calls.length,6);return ui;
+}
+function findHighlight(ui,duration=20){ui.$('HighlightDuration').value=String(duration);ui.$('FindHighlights').onclick();const card=ui.$('HighlightChoices').children[0];assert.ok(card,'observed eye contact supplies a candidate');return{card,preview:card.children[2],apply:card.children[3]};}
+
+test('a 20-second highlight rebases cached observations, frames, beats and MUSE source times without another AI request',async()=>{
+ const ui=await analysedHighlightUi(),candidate=findHighlight(ui);assert.match(candidate.card.children[0].textContent,/7\.50〜27\.50秒/);candidate.apply.onclick();
+ assert.equal(ui.$('Start').value,'7.5');assert.equal(ui.$('Duration').value,'20');assert.equal(ui.$('Consent').checked,false);assert.equal(ui.$('RestoreHighlights').hidden,false);assert.equal(ui.$('Frames').children.length,40);assert.equal(ui.$('Timeline').children.length,40);assert.equal(ui.$('Preview').currentTime,7.5);
+ assert.match(ui.$('Frames').children[0].children[0].src,/,9$/,'the first cached image is the original local 4.5s sample');assert.equal(ui.$('Beats').value.split(', ')[0],'0.250');assert.equal(ui.$('Beats').value.split(', ').at(-1),'19.750');
+ const micro=descendants(ui.$('Timeline')).find(element=>element['aria-label']==='半秒の間の補助観察');assert.match(micro.value,/0\.250秒/);
+ ui.$('NaturalMotion').value='standard';ui.$('NaturalMotion').emit('input');ui.$('Build').onclick();assert.equal(ui.$('Shots').children.length,4);assert.match(ui.$('Editing').value,/source 7\.500–12\.500s/);assert.match(ui.$('MusePrompt').value,/STANDARD DETAIL/);assert.equal(ui.calls.length,6);
+ ui.$('RestoreHighlights').onclick();assert.equal(ui.$('Start').value,'3');assert.equal(ui.$('Duration').value,'30');assert.equal(ui.$('Frames').children.length,60);assert.equal(ui.$('Timeline').children.length,60);assert.equal(ui.$('Beats').value.split(', ').at(-1),'29.750');assert.equal(ui.$('RestoreHighlights').hidden,true);
+ ui.$('Build').onclick();assert.equal(ui.$('Shots').children.length,6);assert.match(ui.$('Editing').value,/source 3\.000–8\.000s/);assert.equal(ui.calls.length,6,'applying, restoring and rebuilding only reuse local cached evidence');
+});
+
+test('switching 15-second and 20-second highlights always crops the original range rather than accumulating offsets',async()=>{
+ const ui=await analysedHighlightUi();findHighlight(ui,15).apply.onclick();assert.equal(ui.$('Start').value,'7.5');assert.equal(ui.$('Duration').value,'15');
+ findHighlight(ui,20).apply.onclick();assert.equal(ui.$('Start').value,'7.5');assert.equal(ui.$('Duration').value,'20');assert.equal(ui.$('Frames').children.length,40);assert.equal(ui.$('Beats').value.split(', ').length,40);
+ ui.$('RestoreHighlights').onclick();assert.equal(ui.$('Start').value,'3');assert.equal(ui.$('Duration').value,'30');assert.equal(ui.calls.length,6);
+});
+
+test('editing a cropped hand observation removes stale choices and restore snapshots without discarding the correction',async()=>{
+ const ui=await analysedHighlightUi(),old=findHighlight(ui);old.apply.onclick();const field=ui.$('Timeline').children[0].querySelectorAll('textarea')[3];field.value='Keep the corrected right hand beside the shoulder.';field.oninput();
+ assert.equal(ui.$('HighlightChoices').children.length,0);assert.equal(ui.$('RestoreHighlights').hidden,true);assert.match(ui.$('HighlightStatus').textContent,/編集を保持/);
+ old.apply.onclick();await old.preview.onclick();assert.equal(ui.$('Start').value,'7.5');assert.equal(ui.$('Duration').value,'20');assert.equal(field.value,'Keep the corrected right hand beside the shoulder.');
+ findHighlight(ui,15).apply.onclick();ui.$('Build').onclick();assert.match(ui.$('MusePrompt').value,/corrected right hand beside the shoulder/);assert.equal(ui.calls.length,6);
+});
+
+test('BPM and explicit beat edits invalidate old candidate actions while keeping user-entered timing',async()=>{
+ for(const key of ['Bpm','Beats']){
+  const ui=await analysedHighlightUi(),old=findHighlight(ui);old.apply.onclick();ui.$(key).value=key==='Bpm'?'125':'0.125, 0.625, 1.125';ui.$(key).oninput();
+  assert.equal(ui.$('HighlightChoices').children.length,0);assert.equal(ui.$('RestoreHighlights').hidden,true);old.apply.onclick();assert.equal(ui.$(key).value,key==='Bpm'?'125':'0.125, 0.625, 1.125');
+  findHighlight(ui,15).apply.onclick();ui.$('Build').onclick();assert.match(ui.$('MusePrompt').value,key==='Bpm'?/BPM 125 \(user-entered\)/:/0\.125, 0\.625, 1\.125/);assert.equal(ui.calls.length,6);
+ }
+});
+
+test('new AI results remove original-range snapshots so later suggestions use the newly analysed range',async()=>{
+ const ui=await analysedHighlightUi(),old=findHighlight(ui);old.apply.onclick();ui.$('Consent').checked=true;await ui.$('Analyze').onclick();
+ assert.equal(ui.calls.length,10);assert.equal(ui.$('HighlightChoices').children.length,0);assert.equal(ui.$('RestoreHighlights').hidden,true);assert.equal(ui.$('Duration').value,'20');
+ const current=findHighlight(ui,20);assert.match(current.card.children[0].textContent,/7\.50〜27\.50秒/);current.apply.onclick();assert.equal(ui.$('Start').value,'7.5');ui.$('RestoreHighlights').onclick();assert.equal(ui.$('Start').value,'7.5');assert.equal(ui.$('Duration').value,'20');
+});
+
+test('manual frame, observation and CUT seeks clear a candidate-only playback end boundary',async()=>{
+ for(const kind of ['frame','observation','cut']){
+  const ui=await analysedHighlightUi(),candidate=findHighlight(ui);await candidate.preview.onclick();assert.equal(ui.$('Preview').currentTime,7.5);
+  if(kind==='frame')ui.$('Frames').children[0].onclick();
+  if(kind==='observation')ui.$('Timeline').children[0].querySelectorAll('button').find(button=>button.textContent==='この位置を動画で確認').onclick();
+  if(kind==='cut'){ui.$('Build').onclick();ui.$('Shots').children[0].querySelectorAll('button').find(button=>button.textContent==='元の参考動画をこのCUTの開始位置へ').onclick();}
+  ui.$('Preview').paused=false;ui.$('Preview').currentTime=30;ui.$('Preview').emit('timeupdate');assert.equal(ui.$('Preview').paused,false,'selected range ends at source 33s, not the candidate-only 27.5s boundary');
+  ui.$('Preview').currentTime=33;ui.$('Preview').emit('timeupdate');assert.equal(ui.$('Preview').paused,true);
+ }
 });

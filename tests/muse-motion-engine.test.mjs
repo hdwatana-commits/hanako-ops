@@ -156,6 +156,39 @@ test('skirt flutter follows steps, inertia and gravity without changing clothing
  const off=buildMuseMotionPackage(config({skirtMotion:false}));assert.doesNotMatch(off.shotPrompts[0],/delicate, visible flutter/);
 });
 
+test('natural secondary detail is explicit in every CUT without replacing choreography or the original identity',()=>{
+ const standard=buildMuseMotionPackage(config()),delicate=buildMuseMotionPackage(config({naturalMotion:'delicate',hair:'a low ponytail',outfit:'a pink cardigan and pleated skirt'}));
+ assert.equal(standard.config.naturalMotion,'standard');assert.equal(delicate.config.naturalMotion,'delicate');
+ assert.deepEqual(delicate.shots.map(shot=>[shot.start,shot.end,shot.sourceStart,shot.sourceEnd]),standard.shots.map(shot=>[shot.start,shot.end,shot.sourceStart,shot.sourceEnd]));
+ assert.deepEqual(delicate.shots.map(shot=>shot.halfSecondCues),standard.shots.map(shot=>shot.halfSecondCues));
+ for(const shot of delicate.shots){assert.match(shot.prompt,/SECONDARY MOTION — SUBORDINATE TO THE SINGLE ACTION SCHEDULE/);assert.match(shot.prompt,/DELICATE DETAIL/);assert.match(shot.prompt,/small plausible delay/);assert.match(shot.prompt,/not an observed action/);assert.match(shot.prompt,/five fingers per intact hand/);assert.match(shot.prompt,/Do not invent a blink, wink, gaze reset or smile/i);assert.match(shot.prompt,/my-photo\.jpg/);assert.match(shot.prompt,/a low ponytail/);assert.match(shot.prompt,/preserve the reference|Preserve the reference/i);}
+});
+
+test('observed-only delicate detail leaves unseen hair and garment trajectories unspecified',()=>{
+ const plan=buildMuseMotionPackage(config({naturalMotion:'delicate',interpolationMode:'observed'}));
+ for(const shot of plan.shots){assert.match(shot.prompt,/OBSERVED-ONLY POLICY/);assert.match(shot.prompt,/Do not direct an unobserved inertial lag or settling sequence/);assert.doesNotMatch(shot.prompt,/let loose hair tips/);assert.match(shot.prompt,/do not invent a blink/i);}
+});
+
+test('secondary cloth motion stays off when requested and never adds a skirt to trousers',()=>{
+ const plan=buildMuseMotionPackage(config({naturalMotion:'delicate',skirtMotion:false,outfit:'blue jeans and a cotton shirt'}));
+ for(const shot of plan.shots){assert.match(shot.prompt,/Enhanced skirt flutter is OFF/);assert.doesNotMatch(shot.prompt,/delicate, visible flutter/);assert.match(shot.prompt,/do not request extra hem movement or add a skirt/);assert.match(shot.prompt,/blue jeans and a cotton shirt/);}
+ for(const frame of plan.keyframes){assert.match(frame.prompt,/Enhanced skirt flutter is OFF/);assert.match(frame.prompt,/without adding decorative hem movement/);}
+ const skirt=buildMuseMotionPackage(config({naturalMotion:'delicate',outfit:'a pleated skirt'}));
+ assert.ok(skirt.shotPrompts.every(prompt=>prompt.includes('Do not add a skirt to a trouser outfit.')));
+});
+
+test('secondary dynamics carry through internal joins and keyframes retain the actual observed shape',()=>{
+ const plan=buildMuseMotionPackage(config({naturalMotion:'delicate'}));
+ for(const shot of plan.shots.slice(0,-1)){assert.match(shot.prompt,/without a reset or forced settling at the out-point/);assert.match(shot.prompt,/INTERNAL CUT: continue the existing movement/);assert.match(shot.prompt,/Continue hair, cloth and hand momentum through an internal CUT/);assert.match(shot.prompt,/allow settling only when the reference actually settles/);}
+ for(const frame of plan.keyframes){assert.match(frame.prompt,/SINGLE-FRAME PHYSICAL CONSISTENCY/);assert.match(frame.prompt,/A still image does not demonstrate a motion trajectory/);assert.match(frame.prompt,/preserve its pixels and pose rather than redrawing its hair, cloth or hands/);assert.doesNotMatch(frame.prompt,/allow a delicate, visible flutter/);}
+ assert.match(plan.shots[1].keyframeStartPrompt,/CUT_01_LAST_FRAME\.png/);
+ assert.equal(plan.shots.at(-1).end,20);
+});
+
+test('natural secondary detail accepts only supported modes',()=>{
+ for(const naturalMotion of ['dynamic','',false,{},1])assert.throws(()=>buildMuseMotionPackage(config({naturalMotion})),/自然な動き/);
+});
+
 test('buzz presentation modes preserve all source timing, beat positions and observed movement',()=>{
  const baseline=buildMuseMotionPackage(config({beatTimes:[.3,.8,1.3],beatStatus:'estimated'}));
  for(const buzzMode of ['cute','dynamic']){

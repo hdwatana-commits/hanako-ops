@@ -1,6 +1,7 @@
 // Local-only, silent H.264 finishing. Source video pixels are decoded, fitted
 // without distortion and sampled at an explicit speed; no AI or network API.
 import {Muxer,ArrayBufferTarget} from './vendor/mp4-muxer-5.2.2/mp4-muxer.mjs';
+import {normalizeMusePolish,polishFrameState,drawMusePolish,trimMuseCutSpecs,assessLoopPixels} from './muse-motion-polish.mjs?v=1';
 
 const FPS=30,MAX_BYTES=150*1024*1024;
 const abortError=()=>new DOMException('動画の処理を中止しました。','AbortError');
@@ -79,11 +80,11 @@ export function fitCutFrame(width,height,outWidth=1080,outHeight=1920){
  const scale=Math.min(outWidth/width,outHeight/height),w=width*scale,h=height*scale;
  return{x:(outWidth-w)/2,y:(outHeight-h)/2,width:w,height:h};
 }
-function draw(ctx,video,width,height){
+function draw(ctx,video,width,height,subjectScale=1){
  const sourceWidth=video.videoWidth,sourceHeight=video.videoHeight,fit=fitCutFrame(sourceWidth,sourceHeight,width,height),cover=Math.max(width/sourceWidth,height/sourceHeight);
  ctx.save();ctx.fillStyle='#17131a';ctx.fillRect(0,0,width,height);ctx.filter='blur(28px) brightness(.7)';
  const backgroundWidth=sourceWidth*cover*1.08,backgroundHeight=sourceHeight*cover*1.08;
- ctx.drawImage(video,(width-backgroundWidth)/2,(height-backgroundHeight)/2,backgroundWidth,backgroundHeight);ctx.filter='none';ctx.drawImage(video,fit.x,fit.y,fit.width,fit.height);ctx.restore();
+ ctx.drawImage(video,(width-backgroundWidth)/2,(height-backgroundHeight)/2,backgroundWidth,backgroundHeight);ctx.filter='none';const foregroundWidth=fit.width*subjectScale,foregroundHeight=fit.height*subjectScale;ctx.drawImage(video,(width-foregroundWidth)/2,(height-foregroundHeight)/2,foregroundWidth,foregroundHeight);ctx.restore();
 }
 function canvas(width,height){const value=document.createElement('canvas');value.width=width;value.height=height;const ctx=value.getContext('2d',{alpha:false});if(!ctx)throw Error('このブラウザでは動画の画像を処理できません。');return{canvas:value,ctx};}
 function png(value,{signal}={}){return task(()=>new Promise((resolve,reject)=>value.toBlob(blob=>blob?resolve(blob):reject(Error('接続用の画像を保存できませんでした。')),'image/png')),{signal,timeout:8000});}
@@ -111,9 +112,26 @@ async function encoderConfig({width=1080,height=1920,fps=FPS,signal}={}){
 }
 export async function canRenderMuseCuts(options={}){return Boolean(await encoderConfig(options));}
 
+/** Local seam hint. Pixel similarity never verifies facial identity or choreography. */
+export async function assessMuseLoop({shots,trim,signal}={}){
+ check(signal);const specs=trim?trimMuseCutSpecs(shots,trim):shots,plan=planMuseCutAssembly(specs),first=plan.shots[0],last=plan.shots.at(-1),surface=canvas(1080,1920),small=canvas(64,114);
+ if(plan.frameCount<4||first.frameCount<2||last.frameCount<2)throw Error('ループの確認には4コマ以上、最初と最後のCUTは2コマ以上の動画を指定してください。');
+ const sample=async(shot,times)=>{
+  const media=await open(shot.file,{signal});try{
+   if(shot.inPoint+shot.requestedDuration*shot.playbackRate>media.metadata.duration+.001||shot.lastFrameTime>=media.metadata.duration)throw Error('ループ比較の素材が不足しています。使用区間を確認してください。');
+   const values=[];for(const time of times){
+    await seek(media.video,time,{signal});draw(surface.ctx,media.video,1080,1920);small.ctx.drawImage(surface.canvas,0,0,64,114);
+    const pixels=new Uint8ClampedArray(small.ctx.getImageData(0,0,64,114).data),blob=await png(surface.canvas,{signal});check(signal);values.push({pixels,blob,time});
+   }return values;
+  }finally{media.cleanup();}
+ };
+ const start=await sample(first,[first.inPoint,Math.min(first.lastFrameTime,first.inPoint+first.playbackRate/FPS)]),end=await sample(last,[Math.max(last.inPoint,last.lastFrameTime-last.playbackRate/FPS),last.lastFrameTime]);
+ check(signal);return{...assessLoopPixels({first:start[0].pixels,afterFirst:start[1].pixels,beforeLast:end[0].pixels,last:end[1].pixels,width:64,height:114}),startBlob:start[0].blob,endBlob:end[1].blob,startTime:start[0].time,endTime:end[1].time,duration:plan.duration};
+}
+
 /** Fixed-timestamp encoding. Extra source duration is discarded, never stretched. */
-export async function renderMuseCuts({shots,width=1080,height=1920,fps=FPS,signal,onProgress=()=>{}}={}){
- check(signal);const plan=planMuseCutAssembly(shots,{fps}),config=await encoderConfig({width,height,fps,signal});
+export async function renderMuseCuts({shots,polish,trim,width=1080,height=1920,fps=FPS,signal,onProgress=()=>{}}={}){
+ check(signal);const untrimmed=planMuseCutAssembly(shots,{fps}),plan=trim?planMuseCutAssembly(trimMuseCutSpecs(shots,trim),{fps}):untrimmed,decoration=normalizeMusePolish(polish,{duration:untrimmed.requestedDuration}),polishOffset=trim?.start??0,config=await encoderConfig({width,height,fps,signal});
  if(!config)throw Error('このブラウザは指定尺のH.264 MP4仕上げに対応していません。対応する最新ブラウザか、動画編集アプリで使用区間を切り出してください。');
  const own=new AbortController(),cancel=()=>own.abort(),timeout=setTimeout(()=>own.abort(),240000);signal?.addEventListener('abort',cancel,{once:true});
  let encoder,media,wake,encodingError=null,done=0;
@@ -129,7 +147,7 @@ export async function renderMuseCuts({shots,width=1080,height=1920,fps=FPS,signa
    media=await open(shot.file,{signal:own.signal});if(shot.inPoint+shot.requestedDuration*shot.playbackRate>media.metadata.duration+.001||shot.lastFrameTime>=media.metadata.duration)throw Error(`CUT ${shot.index} の素材が不足しています。開始位置・使用秒数・速度を確認してください。`);
    for(let local=0;local<shot.frameCount;local++){
     check(own.signal);if(encodingError)throw encodingError;
-    const sourceTime=shot.inPoint+local/fps*shot.playbackRate;await seek(media.video,sourceTime,{signal:own.signal});draw(surface.ctx,media.video,width,height);
+    const sourceTime=shot.inPoint+local/fps*shot.playbackRate,polishTime=polishOffset+done/fps;await seek(media.video,sourceTime,{signal:own.signal});const state=polishFrameState(decoration,polishTime);draw(surface.ctx,media.video,width,height,state.subjectScale);drawMusePolish(surface.ctx,width,height,decoration,polishTime);
     const timestamp=Math.round(done*1000000/fps),next=Math.round((done+1)*1000000/fps),frame=new VideoFrame(surface.canvas,{timestamp,duration:next-timestamp});
     try{encoder.encode(frame,{keyFrame:local===0||done%(fps*2)===0});}finally{frame.close();}
     done++;if(encoder.encodeQueueSize>5)await task(()=>encoder.flush(),{signal:own.signal,timeout:20000,message:'動画の書き出しが時間切れになりました。'});
@@ -140,7 +158,7 @@ export async function renderMuseCuts({shots,width=1080,height=1920,fps=FPS,signa
   onProgress({phase:'finalizing',cut:plan.shots.length,index:plan.shots.length-1,totalCuts:plan.shots.length,done,total:plan.frameCount,percent:99});
   await task(()=>encoder.flush(),{signal:own.signal,timeout:30000,message:'MP4の保存準備が時間切れになりました。'});check(own.signal);if(encodingError)throw encodingError;muxer.finalize();
   const blob=new Blob([target.buffer],{type:'video/mp4'});if(!blob.size)throw Error('MP4を保存できませんでした。');
-  return{blob,...plan,shots:plan.shots.map(({file,...shot})=>shot),mime:'video/mp4',audio:false,width,height};
+  return{blob,...plan,shots:plan.shots.map(({file,...shot})=>shot),mime:'video/mp4',audio:false,width,height,polish:decoration,trim:trim?{start:polishOffset,end:trim.end??untrimmed.requestedDuration}:null};
  }catch(error){if(own.signal.aborted&&!signal?.aborted)throw new DOMException('仕上げ処理が時間切れになりました。CUTを短くするか、ほかのアプリを閉じてお試しください。','TimeoutError');throw error;}
  finally{clearTimeout(timeout);signal?.removeEventListener('abort',cancel);own.abort();media?.cleanup();try{encoder?.close();}catch{}try{Promise.resolve(wake?.release()).catch(()=>{});}catch{}}
 }

@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {buildMuseMotionPackage} from '../muse-motion-engine.mjs';
+import {normalizeMusePolish} from '../muse-motion-polish.mjs';
 
 const source=fs.readFileSync(new URL('../muse-motion-finish.mjs',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export function mountMuseMotionFinish','function mountMuseMotionFinish');
 const descendants=element=>[...element.children,...element.children.flatMap(descendants)];
 class Element{
  constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.listeners={};this.value='';this.checked=false;this.hidden=false;this.disabled=false;this.files=[];this.currentTime=0;this.paused=true;}
- set innerHTML(value){this.html=value;this.controls=new Map();for(const match of value.matchAll(/<(input|video|progress|button|div|p)[^>]*id="(motionFinish[^"]+)"[^>]*>/g)){const element=new Element(match[1]);element.id=match[2];element.hidden=/\bhidden\b/.test(match[0]);element.value=/value="([^"]*)"/.exec(match[0])?.[1]||'';this.controls.set(element.id,element);}}
+ set innerHTML(value){this.html=value;this.controls=new Map();for(const match of value.matchAll(/<(input|textarea|select|video|progress|button|div|p)[^>]*id="(motionFinish[^"]+)"[^>]*>/g)){const element=new Element(match[1]);element.id=match[2];element.hidden=/\bhidden\b/.test(match[0]);element.value=/value="([^"]*)"/.exec(match[0])?.[1]||'';this.controls.set(element.id,element);}}
  get innerHTML(){return this.html||'';}
  querySelector(selector){return this.controls?.get(selector.slice(1))||null;}
  querySelectorAll(selector){const all=new Set(),collect=element=>{if(all.has(element))return;all.add(element);for(const child of element.children)collect(child);};for(const element of this.controls?.values()||this.children)collect(element);return [...all].filter(element=>selector.split(',').some(tag=>tag.toUpperCase()===element.tagName));}
@@ -34,6 +35,7 @@ function setup(overrides={}){
   inspectGeneratedCut:async(file,options)=>{inspectCalls.push({file,...options});return{duration:file.duration??10,width:1080,height:1920};},
   extractCutBoundary:async(file,options)=>{boundaryCalls.push({file,...options});return{blob:new Blob([options.edge],{type:'image/png'}),time:options.inPoint+(options.edge==='end'?options.duration*options.playbackRate-1/30:0)};},
   canRenderMuseCuts:async()=>true,
+  normalizeMusePolish,assessMuseLoop:async()=>({status:'candidate',startBlob:new Blob(['start'],{type:'image/png'}),endBlob:new Blob(['end'],{type:'image/png'}),reason:'画素比較の候補・目視確認が必要です。'}),
   renderMuseCuts:async options=>{renderCalls.push(options);options.onProgress?.({phase:'rendering',cut:1,totalCuts:options.shots.length,done:1,total:30,percent:50});const duration=options.shots.reduce((sum,shot)=>sum+shot.duration,0);return{blob:new Blob(['mp4'],{type:'video/mp4'}),duration,requestedDuration:duration,roundingSeconds:0};},...overrides});
  vm.runInContext(source,context);const api=context.mountMuseMotionFinish(root),panel=root.children[0];
  const $=name=>panel.querySelector('#motionFinish'+name),card=index=>$('Rows').children[index-1],find=(index,tag,predicate=()=>true)=>descendants(card(index)).find(element=>element.tagName===tag.toUpperCase()&&predicate(element));
@@ -105,4 +107,35 @@ test('reset aborts a pending read and reclaims all preview and comparison URLs b
 
 test('the finishing watchdog updates time and unlocks the form without starting a billable or hidden retry',async()=>{
  const ui=setup({inspectGeneratedCut:()=>new Promise(()=>{})});ui.api.setPlan(plan());const run=load(ui,1);await turn();ui.advance(4000);ui.fire(1000);assert.match(ui.$('Clock').textContent,/4秒経過/);ui.fire(300000);await run;assert.match(ui.$('Status').textContent,/時間切れ/);assert.equal(ui.$('Join').disabled,false);assert.equal(ui.$('Cancel').hidden,true);assert.equal(ui.renderCalls.length,0);assert.equal(ui.jobs.size,0);
+});
+
+test('finishing sends the chosen Japanese caption and actual estimated beats without changing cut durations',async()=>{
+ const ui=setup(),next=plan();next.config.beatTimes=[.1,.6,5.1,11.6];next.config.beatStatus='estimated';ui.api.setPlan(next,{captionText:'今日の主役は\nこのふわっと感♡'});await loadAll(ui);
+ assert.equal(ui.$('BeatStyle').value,'sparkle');assert.match(ui.$('BeatInfo').textContent,/推定した4拍/);ui.$('CaptionColor').value='pink';ui.$('CaptionPosition').value='upper';ui.$('Reviewed').checked=true;await ui.$('Join').onclick();
+ const call=ui.renderCalls.at(-1);assert.equal(call.polish.caption.text,'今日の主役は\nこのふわっと感♡');assert.equal(call.polish.caption.color,'pink');assert.equal(call.polish.caption.position,'upper');assert.deepEqual(Array.from(call.polish.beatTimes),[.1,.6,5.1,11.6]);assert.equal(call.trim,undefined);assert.equal(call.shots.reduce((sum,shot)=>sum+shot.duration,0),12);
+ ui.$('Caption').value='別のひと言♡';ui.$('Caption').emit('input');assert.equal(ui.$('Download').hidden,true);assert.equal(ui.$('Preview').hidden,true);
+ ui.$('Manifest').onclick();const manifest=JSON.parse(await ui.downloads.at(-1).blob.text());assert.equal(manifest.polish.caption.text,'別のひと言♡');assert.equal(manifest.audioSourceStart,3);assert.equal(manifest.trim,null);
+});
+
+test('unverified beats never activate music accents and invalid captions fail before encoding',async()=>{
+ const ui=setup(),next=plan();next.config.beatTimes=[.5];next.config.beatStatus='unverified';ui.api.setPlan(next);await loadAll(ui);ui.$('BeatStyle').value='sparkle';ui.$('Reviewed').checked=true;await ui.$('Join').onclick();assert.equal(ui.renderCalls[0].polish.beatStyle,'none');assert.deepEqual(Array.from(ui.renderCalls[0].polish.beatTimes),[]);
+ ui.$('Caption').value='あ'.repeat(61);await ui.$('Join').onclick();assert.equal(ui.renderCalls.length,1);assert.match(ui.$('Status').textContent,/60文字/);assert.equal(ui.$('Join').disabled,false);
+});
+
+test('loop checks show actual boundaries and explicit trimming requires review and records the shifted music start',async()=>{
+ const comparisons=[],ui=setup({assessMuseLoop:async options=>{comparisons.push(options);return{status:'review',reason:'動く向きを確認してください。',startBlob:new Blob(['first']),endBlob:new Blob(['last'])};}});ui.api.setPlan(plan());await loadAll(ui);ui.$('TrimEnabled').checked=true;ui.$('TrimStart').value='1';ui.$('TrimEnd').value='11';ui.$('TrimStart').emit('input');assert.match(ui.$('TrimInfo').textContent,/10\.000秒/);
+ await ui.$('LoopCompare').onclick();assert.equal(comparisons.length,1);assert.equal(comparisons[0].trim.start,1);assert.equal(ui.$('LoopImages').children.length,2);assert.match(ui.$('LoopStatus').textContent,/画素の比較/);assert.equal(ui.$('LoopReviewed').checked,false);
+ ui.$('Reviewed').checked=true;await ui.$('Join').onclick();assert.equal(ui.renderCalls.length,0);assert.match(ui.$('Status').textContent,/ループ確認/);ui.$('LoopReviewed').checked=true;await ui.$('Join').onclick();assert.equal(ui.renderCalls[0].trim.end,11);
+ ui.$('Manifest').onclick();const manifest=JSON.parse(await ui.downloads.at(-1).blob.text());assert.equal(manifest.totalDuration,10);assert.equal(manifest.untrimmedDuration,12);assert.equal(manifest.audioSourceStart,4);
+ ui.$('TrimEnd').value='10';ui.$('TrimEnd').emit('input');assert.equal(ui.$('LoopReviewed').checked,false);assert.equal(ui.$('LoopImages').children.length,0);assert.equal(ui.$('Download').hidden,true);
+ ui.api.setPlan(plan());assert.equal(ui.$('TrimEnabled').checked,false);assert.equal(ui.$('TrimStart').value,'0');assert.equal(ui.$('TrimEnd').value,'12');
+});
+
+test('caption stays locked during rendering and cancelled loop reads cannot restore obsolete images',async()=>{
+ const pending=gate(),ui=setup({renderMuseCuts:()=>pending.promise});ui.api.setPlan(plan());await loadAll(ui);ui.$('Reviewed').checked=true;const run=ui.$('Join').onclick();await turn();assert.equal(ui.$('Caption').disabled,true);ui.$('Cancel').onclick();await run;assert.equal(ui.$('Caption').disabled,false);pending.resolve({blob:new Blob(['late']),duration:12});await turn();assert.equal(ui.$('Preview').hidden,true);
+ const images=gate();ui.context.assessMuseLoop=()=>images.promise;const reading=ui.$('LoopCompare').onclick();await turn();ui.$('Cancel').onclick();await reading;images.resolve({status:'candidate',reason:'late',startBlob:new Blob(['x']),endBlob:new Blob(['y'])});await turn();assert.equal(ui.$('LoopImages').children.length,0);
+});
+
+test('clearing a plan stops every selected source preview and releases its media URL',async()=>{
+ const ui=setup();ui.api.setPlan(plan());await loadAll(ui);const videos=[1,2,3].map(index=>ui.find(index,'video'));for(const video of videos)video.paused=false;ui.api.clear();assert.ok(videos.every(video=>video.paused&&video.src===undefined));assert.equal(ui.panel.hidden,true);
 });
