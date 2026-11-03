@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-let handler; let directReplies=null; let countResult=0;let noteAllowed=true;let noteClaimed=true;
+let handler; let dailyPlanReads=0; let directReplies=null; let countResult=0;let noteAllowed=true;let noteClaimed=true;
 let vault={}, vaultWrites=0, vaultReads=0, fetchMock;let openaiVault=null;
 Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,set:fn=>{fetchMock=async(url,opts={})=>{
-  if(String(url).includes('/rpc/hanako_daily_activity_get'))return response({day_jst:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}),activity_code:'shopping',day_kind:'holiday',answer_ja:'今日はお買い物を楽しむ日だよ☺️'});
+  if(String(url).includes('/rpc/hanako_daily_activity_get')){dailyPlanReads++;return response({day_jst:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}),activity_code:'shopping',day_kind:'holiday',answer_ja:'今日はお買い物を楽しむ日だよ☺️'});}
   if(String(url).includes('/rpc/hanako_instagram_available'))return response(true);
   if(String(url).includes('/rpc/hanako_instagram_claim'))return response(true);
   if(String(url).includes('/rpc/hanako_note_available'))return response(noteAllowed);
@@ -33,15 +33,19 @@ await import('../supabase/functions/threads-replies/index.ts');
 const response=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
 const invoke=(body,headers={})=>handler(new Request('https://function.test',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer owner',...headers},body:JSON.stringify(body)}));
 test('Instagram設定と認証登録は所有者だけに許可しCronは設定変更できない',async()=>{globalThis.fetch=async()=>response({id:'other'});for(const action of ['ig_save','ig_load','ig_connect'])assert.equal((await invoke({action})).status,400);for(const action of ['ig_save','ig_load','ig_connect'])assert.equal((await invoke({action},{'x-cron-secret':'cron'})).status,403);});
-test('同じ日の活動質問は相手が違っても同じ共通設定でAIなしに投稿する',async()=>{
- const answers=[];
+test('活動を聞かれたときだけ共通予定をAIへ渡し、固定文への投稿直前の上書きをしない',async()=>{
+ const answers=[];let generated=0;
  for(const username of ['guest1','guest2']){
   let c={comment_id:'activity-'+username,post_id:'test-post',username,comment_text:'今日は何してる？',status:'pending'};
-  const s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],ai_provider:'openai',openai_ready:true};
-  globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([s]);if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('rpc/hanako_reply_claim'))return response({...c,status:'generating'});if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([]);}if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});if(url.endsWith('/me/threads')){answers.push(opts.body.get('text'));return response({id:'activity-container'});}if(url.includes('/activity-container?'))return response({status:'FINISHED'});if(url.endsWith('/me/threads_publish'))return response({id:'activity-published'});throw Error('Unexpected request '+url);};
+  const s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],use_history:false,tones:['cute'],max_chars:180,custom_prompt:'',ai_provider:'openai',openai_ready:true};
+  globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+   if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('hanako_reply_settings'))return response([s]);if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('rpc/hanako_reply_claim'))return response({...c,status:'generating'});if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([]);}if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});
+   if(url.includes('api.openai.com')){generated++;const input=JSON.parse(b.input);assert.equal(input.daily_activity.activity_code,'shopping');assert.equal(input.activity_context.requested,true);const text=username==='guest1'?'今日は買い物の予定だよ☺️':'今日はお買い物の日だよ';return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text}]}]});}
+   if(url.endsWith('/me/threads')){answers.push(opts.body.get('text'));return response({id:'activity-container'});}if(url.includes('/activity-container?'))return response({status:'FINISHED'});if(url.endsWith('/me/threads_publish'))return response({id:'activity-published'});throw Error('Unexpected request '+url);
+  };
   const result=await invoke({action:'run'});assert.equal(result.status,200,JSON.stringify(await result.json()));assert.equal(c.status,'published');
  }
- assert.deepEqual(answers,['今日はお買い物を楽しむ日だよ☺️','今日はお買い物を楽しむ日だよ☺️']);
+ assert.equal(generated,2);assert.deepEqual(answers,['今日は買い物の予定だよ☺️','今日はお買い物の日だよ']);
 });
 test('特別な合図にはAIを使わず指定した返信だけを投稿する',async()=>{
  let c={comment_id:'code-current',post_id:'test-post',username:'guest',comment_text:'バナナと漬物を買うよ。お釣りはいらない',status:'pending'};let posted=0;
@@ -636,6 +640,34 @@ test('両AIが他の相手へも続いた反応を再生成し、他人の事情
   };
   try{const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(generations,2);assert.equal(styleReads,2);assert.equal(c.reply_text,'コーデの雰囲気が伝わった☺️\n今日は黒がお気に入りだよ。');}finally{delete secrets.GEMINI_API_KEY;}
  }
+});
+
+test('両AIで無関係な予定を渡さず、付け足した買い物報告を再生成する',async()=>{
+ for(const provider of ['openai','gemini']){
+  dailyPlanReads=0;let generations=0;
+  let c={post_id:'test-post',post_text:'コールラビのおすすめの食べ方は？',comment_id:'unsolicited-activity',username:'guest',comment_text:'煮込んだらおいしそう',status:'generating'};
+  const s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],use_history:false,tones:['cute'],max_chars:180,custom_prompt:'',ai_provider:provider,openai_ready:true};secrets.GEMINI_API_KEY='test-key';
+  globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+   if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('rpc/hanako_reply_claim'))return response(c);if(url.includes('hanako_reply_settings'))return response([s]);
+   if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([]);}if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});
+   if(url.includes('generativelanguage.googleapis.com')||url.includes('api.openai.com')){generations++;const input=JSON.parse(provider==='gemini'?b.contents[0].parts[0].text:b.input);assert.equal(input.daily_activity,null);assert.equal(input.activity_context.requested,false);if(generations===2)assert.match(input.reply_retry_feedback,/聞かれていない予定/);const text=generations===1?'煮込んだらおいしそう☺️ 今日はお買い物を楽しんでくるね！':'とろっとした食感になりそうだよね☺️';return provider==='gemini'?response({candidates:[{finishReason:'STOP',content:{parts:[{text}]}}]}):response({status:'completed',output:[{type:'message',content:[{type:'output_text',text}]}]});}
+   throw Error('Unexpected request '+url);
+  };
+  try{const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(generations,2);assert.equal(dailyPlanReads,0);assert.doesNotMatch(c.reply_text,/買い物/);}finally{delete secrets.GEMINI_API_KEY;}
+ }
+});
+
+test('同じ相手へ今日の予定を回答済みなら、その会話状態をAIへ渡す',async()=>{
+ let c={post_id:'test-post',comment_id:'activity-again',username:'guest',comment_text:'今日は何してる？',status:'generating'};
+ const old={comment_id:'old-activity',comment_text:'何してる？',reply_text:'今日は買い物の日だよ☺️',status:'published',commented_at:new Date(Date.now()-600000).toISOString(),post_text:'別の投稿'};
+ const s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],use_history:true,tones:['cute'],max_chars:180,custom_prompt:'',ai_provider:'openai',openai_ready:true};
+ globalThis.fetch=async(url,opts={})=>{url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
+  if(url.includes('auth/v1/user'))return response({id:'owner'});if(url.includes('rpc/hanako_reply_lock'))return response(true);if(url.includes('rpc/hanako_reply_claim'))return response(c);if(url.includes('rpc/hanako_reply_fans'))return response([]);if(url.includes('hanako_reply_settings'))return response([s]);
+  if(url.includes('username=eq.guest')&&url.includes('comment_id=neq.'))return response([old]);
+  if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...b};return response([]);}if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});if(url.includes('/me/threads?'))return response({data:[{id:'test-post'}]});
+  if(url.includes('api.openai.com')){const input=JSON.parse(b.input);assert.equal(input.activity_context.already_shared_today,true);assert.deepEqual(input.activity_context.recent_activity_reports,['shopping']);return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'うん、その予定だよ☺️'}]}]});}throw Error('Unexpected request '+url);
+ };
+ const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(c.reply_text,'うん、その予定だよ☺️');
 });
 
 test('コメント単体の取得が400でも元の会話で存在・手動返信を確認する',async()=>{
