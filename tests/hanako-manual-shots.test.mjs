@@ -4,6 +4,9 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const source = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+const libraryContext = {};
+vm.runInNewContext(readFileSync(new URL('../hanako-four-shot-plans.js',import.meta.url),'utf8'),libraryContext);
+const planner = libraryContext.HanakoFourShotPlans;
 const helperStart = source.indexOf("function extractSocialExtraLocation(");
 const helperEnd = source.indexOf("\nfunction buildSocialCreativeDirective(", helperStart);
 const start = source.indexOf("function buildHanakoLifestyleImagePrompt(");
@@ -20,6 +23,7 @@ function makePrompt(profile, shotIndex) {
     snsOutfitPreset: [{ value: "dress", textContent: "ワンピース" }],
   };
   const context = {
+    HanakoFourShotPlans: planner,
     state: { hanakoInstagramLook: "look" },
     document: { querySelector: (selector) => ({ options: options[selector.slice(1)] || [], value: "pose1" }) },
     buildSocialCreativeDirective: () => "同一人物・同じ衣装",
@@ -89,6 +93,23 @@ test("Buzz kawaii mode creates a distinct fourth story shot", () => {
   assert.match(prompt, /続きを想像したくなる静かな一枚/);
   assert.match(prompt, /第4カットの画像ファイル1個だけ/);
   assert.doesNotMatch(prompt, /4枚とも構図とカメラ位置を固定/);
+});
+
+test('新しい構成の4枚は各カットのカメラ・仕草を優先し、再生成しても構成が変わらない',()=>{
+ for(const [mode,flags] of [['threads',{hanakoThreadsMode:true,hanakoBuzzKawaiiMode:true}],['instagramIndoor',{hanakoInstagramMode:true,hanakoInstagramBuzzKawaiiMode:true}],['instagramOuting',{hanakoInstagramMode:true,hanakoInstagramOutingBuzzMode:true}]]){
+  for(const plan of planner.plans){
+   const profile={...flags,threadsImageCount:4,locationPreset:'homeWindow',hanakoExpression:'smile',compositionPreset:'face',hanakoFourShotPlans:{[mode]:{id:plan.id}}};
+   const before=JSON.stringify(profile);
+   for(let shot=0;shot<4;shot++){
+    const prompt=makePrompt(profile,shot);
+    assert.ok(prompt.includes(plan.shots[shot].camera));assert.ok(prompt.includes(plan.shots[shot].pose));
+    assert.ok(prompt.includes(`第${shot+1}カットの画像ファイル1個だけ`));
+    assert.doesNotMatch(prompt,/表情アップ→全身→親密な仕草→余韻|1枚目と3枚目はカメラ目線/);
+    assert.equal(makePrompt(profile,shot),prompt);
+   }
+   assert.equal(JSON.stringify(profile),before);
+  }
+ }
 });
 
 test("Threads grocer story creates an independent eighth shot", () => {
