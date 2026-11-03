@@ -111,6 +111,35 @@ test("fixed Threads settings reject an overseas location", () => {
   assert.equal(look.hair, "ポニーテール");
 });
 
+test("all twenty everyday influencer locations survive fixed daily settings on both platforms", () => {
+  const appSource = fs.readFileSync(path.resolve("app.js"), "utf8");
+  const start = appSource.indexOf("const hanakoExtraOutfits = [");
+  const end = appSource.indexOf("const hanakoIdeaCatalog = [", start);
+  const locations = vm.runInNewContext(`${appSource.slice(start, end)}\nhanakoInfluencerDailyCatalog.location`);
+  assert.equal(locations.length, 20);
+  const context = worker();
+  for (const platform of ["Instagram", "Threads"]) for (const item of locations) {
+    const draft = { user_id: "owner", platform, local_date: "2026-11-03", look: { autoVariation: false, locationId: item.id, location: item.prompt, imageCount: 4, hair: "本人のロングヘア", expression: "自然な微笑み" } };
+    const look = vm.runInContext(`chooseLook(${JSON.stringify(draft)})`, context);
+    assert.equal(look.location, item.prompt, `${platform}: ${item.id}`);
+    assert.equal(look.hair, "本人のロングヘア");
+    assert.equal(look.expression, "自然な微笑み");
+    assert.equal(look.imageCount, 4);
+    assert.equal(look.chosen, true);
+    const resumed = vm.runInContext(`chooseLook(${JSON.stringify({ ...draft, look })})`, context);
+    assert.deepEqual(resumed, look, "an existing draft must reuse its selected setting");
+  }
+});
+
+test("unregistered influencer-like IDs remain restricted and daily variation keeps its existing pool", () => {
+  const context = worker();
+  for (const platform of ["Instagram", "Threads"]) for (const autoVariation of [false, true]) {
+    const look = vm.runInContext(`chooseLook(${JSON.stringify({ user_id: "owner", platform, local_date: "2026-11-03", look: { autoVariation, locationId: "dailyGirlLocationNotRegistered", location: "未登録の場所", hair: "手動のロングヘア" } })})`, context);
+    assert.notEqual(look.location, "未登録の場所");
+    if (!autoVariation) assert.equal(look.hair, "手動のロングヘア");
+  }
+});
+
 test("image edit sends the private identity reference and keeps 4:5 portrait output", async () => {
   let request;
   const context = worker(async (url, options) => {

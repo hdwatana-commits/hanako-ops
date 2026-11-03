@@ -763,6 +763,8 @@ function enhanceCoordinateSelectOptions() {
   appendHanakoCatalogOptions("#snsPosePreset", hanakoExtraPoses);
   appendHanakoCatalogOptions("#snsLocationPreset", hanakoExtraLocations);
   appendHanakoCatalogOptions("#snsHanakoExpression", hanakoExtraExpressions);
+  appendHanakoCatalogOptions("#snsHairPreset", [{ label: "インフルエンサー女子・ロングヘア（新着20）", items: hanakoInfluencerDailyCatalog.hair }]);
+  appendHanakoCatalogOptions("#snsCompositionPreset", [{ label: "インフルエンサー女子の構図（新着20）", items: hanakoInfluencerDailyCatalog.composition }]);
   Object.assign(hanakoExpressionOptions, Object.fromEntries(hanakoExtraExpressions.flatMap((group) => group.items.map((item) => [item.id, { label: item.label, prompt: item.prompt }]))));
   installHanakoPickers();
   renderHanakoGasSettings();
@@ -780,6 +782,7 @@ function appendHanakoCatalogOptions(selector, groups) {
       const option = document.createElement("option");
       option.value = item.id;
       option.textContent = item.label;
+      if (item.id.startsWith("dailyGirl")) option.dataset.imagePrompt = item.prompt;
       optgroup.appendChild(option);
       known.add(item.id);
     }
@@ -3949,6 +3952,146 @@ const hanakoExtraLocations = [{ label: "人物が映えるシンプル背景（�
   { id: "dailyHomeWindowSeat", label: "家の窓際の小さな椅子", prompt: "飾り気のない住居の窓際に置かれた小さな椅子。外の住所や隣家、家族写真を写さず、自然光と静かな生活感を見せる" },
 ] }];
 
+// Everyday influencer styling shared by selectors, prompts and fixed daily settings.
+const hanakoInfluencerDailyCatalog = {
+  expression: [
+    {"id":"dailyGirlExpressionListeningNod","label":"話を聞く、納得のやさしい目","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。相手の話をうなずいて受け止めた直後の表情。眉間は緩め、唇を自然に閉じたまま目元へ理解と親しみを表す"},
+    {"id":"dailyGirlExpressionJustSaidHi","label":"「やっほー」の声をかけた瞬間","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。気軽に挨拶した直後の、口が小さく自然に開いた笑顔。頬は上げすぎず、レンズへ親しげな視線を向ける"},
+    {"id":"dailyGirlExpressionSmileAfterLaugh","label":"笑った後に残る、頬の余韻","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。ひとしきり笑った後で呼吸が落ち着いた瞬間。唇は自然に閉じ、頬と目尻だけに笑いの余韻を残す"},
+    {"id":"dailyGirlExpressionTinyNoseScrunch","label":"鼻先を少しくしゃっとさせた笑顔","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。楽しくて鼻先と目尻がほんの少しだけくしゃっとなる笑顔。鼻や目の形を変えず、顔全体をゆがめない"},
+    {"id":"dailyGirlExpressionQuietEditorial","label":"すんとした透明感のある表情","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。眉と顎の力を抜き、口角を作りすぎず静かにレンズを見る。冷たい睨み顔ではなく、穏やかで飾らないファッションスナップの表情"},
+    {"id":"dailyGirlExpressionLipCornerRelax","label":"片方だけほどけた自然な口角","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。口元の左右を無理に対称へ整えず、片方の口角がごくわずかにほどける自然な微笑み。本人の顔立ちと歯並びを保つ"},
+    {"id":"dailyGirlExpressionCheekLiftClosedLips","label":"唇を閉じて、頬で笑う","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。唇を軽く閉じたまま頬がふっくら持ち上がる笑顔。頬を膨らませたり、輪郭を加工したりせず本人の自然な笑顔にする"},
+    {"id":"dailyGirlExpressionSoftUpperTeeth","label":"上の歯が少し見える軽い笑顔","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。口角を無理なく横へ広げ、上の歯が少しだけ見える軽やかな笑顔。口を大きく開けず、歯を増やしたり均一な白へ変えたりしない"},
+    {"id":"dailyGirlExpressionLaughingSideBreath","label":"横を向いてふっと笑った口元","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。顔をわずかに横へ向けたまま、ふっと息がもれるような小さな笑顔。目元も自然に緩め、歯や舌を強調しない"},
+    {"id":"dailyGirlExpressionSmallWow","label":"小さな「わあ」が伝わる目","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。大げさに目を見開かず、瞳が少し明るくなって唇が小さく開く嬉しい発見の表情。驚愕や演技じみた顔にしない"},
+    {"id":"dailyGirlExpressionTryNotToGrin","label":"うれしさを隠す、まっすぐな口元","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。口元をいったんまっすぐに保ちながら、目尻にだけ嬉しさが出る瞬間。唇を強く噛まず、緊張や不機嫌に見せない"},
+    {"id":"dailyGirlExpressionPleasedDownwardEyes","label":"お気に入りを見て満足げな伏し目","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。視線を斜め下の手元付近へ自然に落とし、好きなものを眺めるような満足げな口元にする。まぶたを閉じず、穏やかな幸福感を表す"},
+    {"id":"dailyGirlExpressionFreshAfterStretch","label":"ひと息ついた、すっきり顔","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。深呼吸を終えたように顎と眉の力を抜き、目を自然に開いた清々しい表情。眠そうにせず、朝に限らない爽やかな空気にする"},
+    {"id":"dailyGirlExpressionThinkingSmallSmile","label":"考えごとに混ざる小さな笑み","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。視線をレンズのすぐ横へ置き、何か思い出して口角がわずかに上がった思索的な表情。眉間を寄せず、本人の目の形を保つ"},
+    {"id":"dailyGirlExpressionGentleAgreement","label":"「それいいね」が伝わる微笑み","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。眉を少しだけ持ち上げ、相手の提案へ賛成したように温かく笑う。口元は軽く開いても自然な範囲で、感情を誇張しない"},
+    {"id":"dailyGirlExpressionCameraReadyExhale","label":"撮影前の息を抜いた自然な顔","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。ポーズを決める直前に息をふっと抜き、唇と肩の力が緩んだ一瞬。レンズと目を合わせ、無表情ではない柔らかな集中を残す"},
+    {"id":"dailyGirlExpressionSoftDetermination","label":"今日を楽しむ、きりっと優しい目","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。眉をつり上げず、目線だけを少しはっきりさせた前向きな表情。口元にはわずかな微笑みを置き、自信と親しみを両立する"},
+    {"id":"dailyGirlExpressionAlmostSpeaking","label":"話しかける直前の柔らかな口元","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。相手へひと言話しかける直前の、唇がわずかに離れた自然な表情。目線をまっすぐ向け、口や舌を過度に強調しない"},
+    {"id":"dailyGirlExpressionSweetReminiscence","label":"楽しかったことを思い出す笑顔","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。視線を少し遠くへ置き、楽しい出来事を思い出しているような静かな微笑み。涙や寂しさを加えず、表情だけで余韻を伝える"},
+    {"id":"dailyGirlExpressionGratefulEyes","label":"目尻で伝える、やさしい感謝","prompt":"成人女性本人の顔立ち・目の形・肌の質感を保つ。唇は控えめに微笑み、両目の目尻が自然に緩む温かな表情。上目遣いを強制せず、落ち着いた大人の親しみを表す"},
+  ],
+  hair: [
+    {"id":"dailyGirlHairBubbleLowPony","label":"玉ねぎ結びのゆるローポニー","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。低い位置で結んだ長いポニーテールに、細い同系色ゴムを数か所だけ置き、結び目の間を軽く丸く整える。毛先まで長さを見せ、玉を巨大にしない"},
+    {"id":"dailyGirlHairRopeTwistPony","label":"ロープ編みの長めポニーテール","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。低めの長いポニーテールを二束に分け、緩やかなロープ状へねじって毛先で留める。頭皮を引っ張らず、束のつながりを自然に描く"},
+    {"id":"dailyGirlHairFishtailLong","label":"ほどよくほぐしたフィッシュボーン","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。長い髪を片側へ寄せ、細かなフィッシュボーン編みにまとめる。編み目を少しだけほぐし、毛先と顔まわりは自然な厚みを残す"},
+    {"id":"dailyGirlHairDoubleFrontBraids","label":"前髪横に細い三つ編みを2本","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。長い髪の大部分は下ろし、顔の左右に細い三つ編みを一本ずつ作る。編み込みは目にかけず、残した髪の長さを明瞭に見せる"},
+    {"id":"dailyGirlHairBraidedCrownLoose","label":"自分の髪の編み込みカチューシャ","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。耳付近の細い毛束を編み、頭の上へカチューシャのように渡して留める。長い後ろ髪は下ろし、付け毛や短髪へ変えない"},
+    {"id":"dailyGirlHairTopKnotHalfDown","label":"小さなハーフお団子＋下ろしロング","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。頭頂近くの少量の毛束だけを小さなお団子にし、残りの長い髪を背中へ下ろす。団子を高く膨らませすぎず、全体の髪量を保つ"},
+    {"id":"dailyGirlHairClawHalfTwist","label":"小さなバンスクリップの半ねじり","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。上半分の髪を軽くねじり、マットな小さなバンスクリップで留める。下半分の長い髪はそのまま下ろし、クリップと毛束を融合させない"},
+    {"id":"dailyGirlHairBraidedLowPony","label":"低い三つ編みポニー","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。うなじ付近でゆるく一つ結びにし、長い毛束全体を太めの三つ編みへまとめる。毛先を短くせず、編み目を均一にしすぎない"},
+    {"id":"dailyGirlHairLoopTailPony","label":"輪をひとつ作った長めポニー","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。低い一つ結びの根元だけに小さな輪を作り、長い毛先を輪の下から流す。短いお団子にまとめきらず、長い尾の流れを見せる"},
+    {"id":"dailyGirlHairRibbonLacedBraid","label":"細リボンを織り込んだ一本編み","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。低い位置の長い三つ編みに、無地の細いリボンを一本だけ織り込む。リボンは毛束へ自然に沿わせ、大きな飾りや舞台衣装風にしない"},
+    {"id":"dailyGirlHairTwinBraidsLoose","label":"低い位置のほぐしツイン三つ編み","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。長い髪を左右二束に分け、耳より下から緩い三つ編みにする。大人らしい控えめなボリュームで、左右の髪の長さをそろえる"},
+    {"id":"dailyGirlHairHeartTwistHalf","label":"小さなハートねじりのハーフアップ","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。左右の少量の毛束を後頭部で小さなハート状へねじり留めし、残りの長い髪を下ろす。ハートは髪で自然に作り、大きな装飾を追加しない"},
+    {"id":"dailyGirlHairParallelSidePins","label":"片側の平行ピン＋さらさらロング","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。長いストレートを下ろし、片側のこめかみ付近に細い無地のピンを二本平行に留める。両目と顔の輪郭を隠さず、毛先まで艶を自然に残す"},
+    {"id":"dailyGirlHairLightWetTexture","label":"束感だけ足したセミウェットロング","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。長い髪の毛先へ軽いオイルの束感を足し、根元は自然な空気感を保つ。濡れた直後の水滴や硬い整髪料感を出さず、顔へ張り付けない"},
+    {"id":"dailyGirlHairSlickLongPony","label":"すっきり根元の長めローポニー","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。分け目を自然に整え、顔まわりをすっきりまとめた低いポニーテール。長い毛先はしなやかに落とし、引っ張りすぎた頭皮や極端な濡れ感を作らない"},
+    {"id":"dailyGirlHairWideBandLong","label":"太めカチューシャのふんわりロング","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。無地で少し幅のある布カチューシャを使い、頭頂の自然な丸みと長い下ろし髪を残す。頭を大きく見せる厚みやロゴを付けない"},
+    {"id":"dailyGirlHairDoubleKnotHalf","label":"二段くるりんぱのロングハーフアップ","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。上半分の髪を少量ずつ二段でくるりんぱし、細いねじりが縦につながるハーフアップ。下ろした毛先は長いままにし、結び目を複雑に増やさない"},
+    {"id":"dailyGirlHairScarfPonyWrap","label":"細スカーフを巻いたロングポニー","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。低い位置でまとめた長いポニーテールの根元へ小さな無地スカーフを巻く。スカーフの端は短く、毛先の長さと本来の髪色を主役にする"},
+    {"id":"dailyGirlHairSoftCShapedEnds","label":"顔まわりは流して毛先だけ内巻き","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。長い髪を全体には巻かず、顔まわりを頬の外へ軽く流し、毛先だけに緩いC字の内巻きを作る。短いボブに見せず、胸下までの自然な長さを保つ"},
+    {"id":"dailyGirlHairSideClipLayerFlow","label":"細長クリップで片耳を見せるロング","prompt":"成人女性本人の顔立ちと髪色を保ち、元画像の長い髪の長さ・毛量を短く切り替えず維持するロングヘア用アレンジ。片側の耳の後ろへ毛束を寄せ、細長いマットなヘアクリップで留める。反対側は長く下ろし、既存の顔まわりの毛を生かして立体感を作る"},
+  ],
+  outfit: [
+    {"id":"dailyGirlOutfitChambrayCamisole","label":"シャンブレーシャツ＋白キャミワンピ","prompt":"成人女性向けの、自然に着られる日常のファッション。淡いシャンブレーの長袖シャツを、不透明な白い膝下キャミソールワンピースへ羽織る。シャツの前は自然に開け、細いサンダルと小さなかごバッグで日常的にまとめる"},
+    {"id":"dailyGirlOutfitBurgundyStripe","label":"ボーダーT＋バーガンディカーデ","prompt":"成人女性向けの、自然に着られる日常のファッション。細いネイビーのボーダーTシャツにバーガンディの薄手カーディガンを肩掛けし、ベージュのストレートパンツとローファーを合わせる。大きなロゴは入れない"},
+    {"id":"dailyGirlOutfitSageUtilitySkirt","label":"セージのベスト＋白タックミディ","prompt":"成人女性向けの、自然に着られる日常のファッション。セージグリーンの短いユーティリティベスト、白い長袖カットソー、アイボリーのタック入り膝下スカート。スポーティすぎず、布の厚みと実用的なポケットを自然に見せる"},
+    {"id":"dailyGirlOutfitNavyDenimJumper","label":"紺デニムのジャンパースカート","prompt":"成人女性向けの、自然に着られる日常のファッション。濃紺デニムの膝下ジャンパースカートに、細い襟のストライプブラウスを重ねる。黒いフラットシューズと小さなショルダーバッグで大人の日常着にする"},
+    {"id":"dailyGirlOutfitSoftYellowSlacks","label":"淡い黄色のニット＋グレースラックス","prompt":"成人女性向けの、自然に着られる日常のファッション。バターイエローのクルーネック薄手ニットと、ライトグレーのセンタープレスパンツ。白いスニーカーと小さなシルバーアクセサリーで明るく端正にまとめる"},
+    {"id":"dailyGirlOutfitDenimMidiVest","label":"白T＋ニットベスト＋デニムミディ","prompt":"成人女性向けの、自然に着られる日常のファッション。無地の白Tシャツ、生成りの透かしすぎないニットベスト、濃色デニムの膝下台形スカート。歩けるフラットシューズで、素朴だが洗練された重ね着にする"},
+    {"id":"dailyGirlOutfitGinghamWidePants","label":"小粒ギンガムブラウス＋白ワイド","prompt":"成人女性向けの、自然に着られる日常のファッション。黒白の細かなギンガムブラウスと、不透明な白いハイウエストワイドパンツ。袖のふくらみは控えめにし、黒い細ベルトとバレエシューズで整える"},
+    {"id":"dailyGirlOutfitKhakiLaceLayer","label":"カーキシャツ＋裾レーススカート","prompt":"成人女性向けの、自然に着られる日常のファッション。淡いカーキのワークシャツに、不透明なアイボリーの膝下スカートを合わせる。裾だけに細いレースを使い、茶色のサンダルで甘さを控えめにする"},
+    {"id":"dailyGirlOutfitPinkOxfordDenim","label":"ピンクのオックスシャツ＋グレーデニム","prompt":"成人女性向けの、自然に着られる日常のファッション。淡いピンクのオックスフォードシャツを自然なフィットで着て、色落ちを抑えたグレーのストレートデニムを合わせる。白いスニーカーと細い腕時計で軽快にまとめる"},
+    {"id":"dailyGirlOutfitBrownVestSax","label":"ブラウンのジレ＋サックスシャツ","prompt":"成人女性向けの、自然に着られる日常のファッション。薄いブラウンのテーラードジレ、サックスブルーの長袖シャツ、同系色のワイドパンツ。肩を張らせず、控えめなゴールド金具の小さなバッグを添える"},
+    {"id":"dailyGirlOutfitRibPoloFlare","label":"アイボリーのリブポロ＋緑フレア","prompt":"成人女性向けの、自然に着られる日常のファッション。襟付きのアイボリー長袖リブポロと、深いグリーンの膝下フレアスカート。黒いメリージェーンで、普段の買い物にも合う整った大人可愛い装いにする"},
+    {"id":"dailyGirlOutfitNylonSkirtCardigan","label":"薄手カーデ＋ナイロンロングスカート","prompt":"成人女性向けの、自然に着られる日常のファッション。ライトグレーの短めカーディガンと、黒いナイロン素材のロングスカート。白い薄底スニーカーと無地の小さなバッグで、きれいめと実用感を混ぜる"},
+    {"id":"dailyGirlOutfitStripeShirtKnitVest","label":"ブルーストライプ＋ネイビーベスト","prompt":"成人女性向けの、自然に着られる日常のファッション。淡いブルーのストライプ長袖シャツ、ネイビーの薄手Vネックベスト、白いストレートパンツ。袖口と襟の重なりをきれいに見せ、制服のような意匠にしない"},
+    {"id":"dailyGirlOutfitLavenderCargo","label":"ラベンダーカーデ＋アイボリーカーゴ","prompt":"成人女性向けの、自然に着られる日常のファッション。ラベンダーの丸首カーディガンと、不透明なアイボリーのゆるいカーゴパンツ。黒いフラットサンダルを合わせ、ポケットは大きすぎず大人らしいバランスにする"},
+    {"id":"dailyGirlOutfitBlackSquareNeckLinen","label":"黒スクエアネック＋リネンパンツ","prompt":"成人女性向けの、自然に着られる日常のファッション。開きすぎない黒のスクエアネック長袖トップスに、ベージュのリネン混ワイドパンツ。細いブラウンベルトと黒いバレエシューズで、素材の違いを上品に見せる"},
+    {"id":"dailyGirlOutfitEcruSalopette","label":"生成りサロペット＋細リブT","prompt":"成人女性向けの、自然に着られる日常のファッション。生成りの膝下まで覆うワイドサロペットと、くすみブルーの細リブ長袖Tシャツ。金具を控えめにし、白いスニーカーで親しみやすい休日コーデにする"},
+    {"id":"dailyGirlOutfitPeplumDenim","label":"控えめペプラム＋濃紺デニム","prompt":"成人女性向けの、自然に着られる日常のファッション。白い長袖の控えめペプラムブラウスと、濃紺のストレートデニム。腰のフリルを膨らませすぎず、小さな赤いバッグと黒いフラットシューズでまとめる"},
+    {"id":"dailyGirlOutfitShortQuiltSkirt","label":"短丈キルトジャケット＋ニットミディ","prompt":"成人女性向けの、自然に着られる日常のファッション。薄いオリーブ色の短丈キルトジャケット、不透明な白トップス、チャコールの膝下ニットスカート。厚みと縫い目を自然にし、軽いショートブーツを合わせる"},
+    {"id":"dailyGirlOutfitLinenShirtDots","label":"リネンシャツ＋小粒ドットミディ","prompt":"成人女性向けの、自然に着られる日常のファッション。生成りの長袖リネンシャツを、黒地に小さな白ドットの膝下スカートへ軽くタックインする。茶色いフラットサンダルで、柔らかな日常スナップの装いにする"},
+    {"id":"dailyGirlOutfitCollarlessDenimJacket","label":"ノーカラーデニム＋タックワンピ","prompt":"成人女性向けの、自然に着られる日常のファッション。インディゴのノーカラーデニムジャケットに、淡いグレーの膝下タックワンピース。白いフラットシューズで軽くし、襟なしの端正な首元と自然な裾を見せる"},
+  ],
+  composition: [
+    {"id":"dailyGirlCompositionFullBodyFourFive","label":"4:5・足元まで入る日常コーデ全身","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。縦4:5で頭頂から靴の先まで入れ、人物の上下に少し余白を残す。目線から胸の高さで自然に撮り、顔と服の比率を加工せず、背景の生活感を少量残す"},
+    {"id":"dailyGirlCompositionHalfBodyHandsIncluded","label":"両手まで入る、腰上の会話距離","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。縦4:5で頭頂から腰下まで入れ、両手を自然な大きさで収める。近い会話距離の自然な遠近感で、手首や頭を切らず、表情と日常の小物を両方見せる"},
+    {"id":"dailyGirlCompositionWallAndShoesBreathing","label":"無地の塀＋足元の余白","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。人物を画面中央寄りへ全身で置き、道沿いの塀は背景の薄い面として使う。靴の下に少し地面を残し、頭から目地が生えないよう位置をずらす"},
+    {"id":"dailyGirlCompositionDoorHandleSidePortrait","label":"ドアノブを端に入れる上半身","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。顔を主役にした腰上構図で、背景の閉じた扉のドアノブを画面端へ小さく入れる。扉の垂直線を保ち、ノブや木目より人物の瞳を鮮明にする"},
+    {"id":"dailyGirlCompositionCropAtCalfStraight","label":"ふくらはぎまでのまっすぐスナップ","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。頭頂からふくらはぎの中ほどまでを自然な正面寄りで収める。膝の関節で切らず、服の裾と両手を含め、広角で脚や顔を伸ばさない"},
+    {"id":"dailyGirlCompositionSeatedFeetAndTable","label":"座り姿・足先と小さな机の端","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。安定した椅子へ座る人物を、目線に近い高さから足先まで収める。机は画面端だけへ置き、顔・両手・膝の重なりを自然にし、座面との接地も見せる"},
+    {"id":"dailyGirlCompositionSingleMirrorFullFace","label":"鏡越しでも顔が見える全身","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。縦長の鏡に写る全身を一つだけ描き、スマートフォンは顔から少し横へずらす。実像と鏡像を不必要に二重表示せず、髪・衣服・手指の向きを鏡として正しく保つ"},
+    {"id":"dailyGirlCompositionSideHairAndOutfit","label":"片側の長い髪と服を見せる膝上","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。顔を自然な3/4に保ち、片肩へ流れる長い髪と上着の縫い目が読める膝上構図。髪で両目を隠さず、背景は日常の面を一つ残す"},
+    {"id":"dailyGirlCompositionHandsBelowSmile","label":"手元を笑顔の少し下に置く胸上","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。頭頂から胸下まで収め、顔のすぐ下に自然な両手や小物を小さく置く。口元を覆わず、手を巨大にせず、表情と手の仕草を一枚で見せる"},
+    {"id":"dailyGirlCompositionKitchenCounterDiagonal","label":"キッチン台の端を斜めに入れる","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。腰上の人物を主役にし、キッチン台の前端を画面下に穏やかな斜線として入れる。台で胴体を不自然に切らず、顔と両手へ柔らかな光を回す"},
+    {"id":"dailyGirlCompositionRoomCornerBalanced","label":"部屋の角を左右へ振り分ける","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。一般的な部屋の二面の壁が作る角を、人物の頭の真後ろから少し外して配置する。人物は全身または膝下まで、家具は端に一つだけ入れて生活の奥行きを作る"},
+    {"id":"dailyGirlCompositionWindowCurtainEdge","label":"カーテンの端と窓光の肩上","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。顔と肩を中心に、薄いカーテンの端を画面の片側へ少量だけ入れる。布は顔へかぶせず、逆光でも両目と肌の自然な明るさを残す"},
+    {"id":"dailyGirlCompositionLowShelfWaistFrame","label":"低い棚の高さで整える腰上","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。低い棚の水平線を腰より下へ置き、人物の顔と手を明瞭に写す腰上構図。棚の線を首や目の高さへ通さず、家の静かな日常感を残す"},
+    {"id":"dailyGirlCompositionOutfitCenteredSoftSides","label":"コーデ中央・左右に少し生活感","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。人物の服全体を中央に全身で収め、背景の左右端にだけ玄関の靴箱や壁の角を控えめに残す。背景を完全なスタジオへ変えず、顔と服へ視線を集める"},
+    {"id":"dailyGirlCompositionBagAtHipPortrait","label":"腰のバッグも見える膝上","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。頭頂から膝の少し下までを収め、肩から腰へ下がるバッグのストラップと本体を自然に見せる。手とバッグの境界を明確にし、顔を主役のまま保つ"},
+    {"id":"dailyGirlCompositionPortraitVerticalWallTexture","label":"壁の質感を片側に残す縦ポートレート","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。頭頂から胸下までの縦ポートレートで、人物は中央寄り、片側に塀や室内壁の細かな質感を少量見せる。壁へ近づけすぎず、髪の輪郭を柔らかな影で分ける"},
+    {"id":"dailyGirlCompositionTwoStepDistance","label":"二歩ぶん離れた自然な全身","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。撮影者が人物から二歩ほど離れた親しみやすい距離の全身写真。頭頂と足先を切らず、強い望遠圧縮も広角誇張も使わず、普通のスマホ写真らしい空気を残す"},
+    {"id":"dailyGirlCompositionEyesAtUpperThird","label":"瞳を上三分の一に置くバストアップ","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。両目を画面上から約三分の一の高さへ置き、頭頂と肩先を自然に収めた胸上構図。下側には服の襟と手の一部が読める余白を残し、過度な接写をしない"},
+    {"id":"dailyGirlCompositionSkirtAndSmileMidshot","label":"裾の形と笑顔を一緒に見せる","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。頭頂からスカートの裾より少し下まで収める正面寄りのファッション写真。裾の広がりを誇張せず、顔・両手・服の形が一目で分かる距離にする"},
+    {"id":"dailyGirlCompositionOffCenterHomeSnapshot","label":"生活空間の真ん中を少し外す","prompt":"成人女性の顔立ち・体格を保ち、独立した一枚の写真として撮る。人物を画面の中央からほんの少しだけ外し、生活空間の床と壁を自然に残す全身または膝下写真。大きな余白や広告風の文字を作らず、日常の一枚にする"},
+  ],
+  pose: [
+    {"id":"dailyGirlPoseKeysAtWaist","label":"鍵を腰の高さでそっと持つ","prompt":"成人女性の自然な日常スナップ。片手で無地のキーホルダーを腰の高さに持ち、もう片方の腕は自然に下ろす。鍵をレンズへ突き出さず、両足の接地と手指の重なりを自然に保つ"},
+    {"id":"dailyGirlPoseToteBothHands","label":"トートの持ち手を前でそろえる","prompt":"成人女性の自然な日常スナップ。無地のトートバッグの左右の持ち手を身体の前で軽くそろえる。肘を張らず肩の力を抜き、バッグで服全体や顔を隠さない"},
+    {"id":"dailyGirlPosePhoneAtSide","label":"スマホを横に下げてふと目線","prompt":"成人女性の自然な日常スナップ。スマートフォンを片手で腰の横へ自然に下げ、画面から顔を上げた瞬間の立ち姿。スマホ画面は見せず、空いた手を無理に曲げない"},
+    {"id":"dailyGirlPoseMugAtWaist","label":"マグを腰の前で包む","prompt":"成人女性の自然な日常スナップ。無地のマグを腰より少し上で両手に包み、腕と肩の力を抜いて立つ。カップの取っ手と指を区別し、顔や服の襟を隠さない"},
+    {"id":"dailyGirlPoseShirtCuffCheck","label":"袖のボタンを確かめる手元","prompt":"成人女性の自然な日常スナップ。片手で反対の長袖のボタン付近へ軽く触れ、袖口を確認しながら顔を自然にレンズへ戻す。袖を引っ張らず、左右の手首と指を正しくつなぐ"},
+    {"id":"dailyGirlPoseSneakerHeelDown","label":"スニーカーのかかとを整えて立つ","prompt":"成人女性の自然な日常スナップ。片足を半歩だけ後ろへ置き、かかとを靴の中へ落ち着かせた直後の自然な立ち姿。手はバッグか身体の横に置き、足首を無理に曲げない"},
+    {"id":"dailyGirlPoseBookAtHip","label":"閉じた本を腰の横へ抱える","prompt":"成人女性の自然な日常スナップ。無地の表紙の閉じた本を片腕で腰の横に軽く抱え、もう片手は自然に下ろす。本で胴体を大きく覆わず、背筋と足の重心を安定させる"},
+    {"id":"dailyGirlPoseFrontHemFlat","label":"トップスの前裾を軽く整える","prompt":"成人女性の自然な日常スナップ。両手の指先でトップスの前裾を軽く平らに整える瞬間。服を持ち上げず、ウエストの形と自然な手指の動きを見せる"},
+    {"id":"dailyGirlPoseCardiganButtonTouch","label":"カーデのボタンに指を添える","prompt":"成人女性の自然な日常スナップ。片手の指先をカーディガンの中央のボタンへ軽く添え、もう片腕は力を抜く。胸元を開けず、ボタンと手指を融合させない"},
+    {"id":"dailyGirlPoseSunglassesInHand","label":"外したサングラスを低く持つ","prompt":"成人女性の自然な日常スナップ。外した無地のサングラスを片手で腰の横に持ち、顔を見せて自然に立つ。眼鏡を口へ当てず、レンズと指先の境界を明確にする"},
+    {"id":"dailyGirlPoseSmallPouchZip","label":"ポーチのファスナーに手を添える","prompt":"成人女性の自然な日常スナップ。小さな無地ポーチを片手で身体の前に支え、反対の手をファスナーへ軽く添える。中身や文字を見せず、バッグの構造と指の本数を自然にする"},
+    {"id":"dailyGirlPosePaperBagSwing","label":"小さな紙袋を横に下げる","prompt":"成人女性の自然な日常スナップ。無地の小さな紙袋を片手で身体の横へ下げ、反対の足へ自然に重心を置く。袋を大きく振らず、持ち手と指の接触を正しくする"},
+    {"id":"dailyGirlPoseHatBrimLightTouch","label":"帽子のつばをそっと直す","prompt":"成人女性の自然な日常スナップ。着用している帽子がある場合だけ片手でつばを軽く整え、顔と両目を隠さず微笑む。帽子未指定なら小物を追加せず、手を自然に身体の横へ戻す"},
+    {"id":"dailyGirlPoseCheckWatchRelaxed","label":"腕時計をちらりと確かめる","prompt":"成人女性の自然な日常スナップ。片方の前腕を腰より少し上に上げ、腕時計をちらりと見る。反対の手は軽く手首の下へ添え、肘と肩を張らず、時計文字盤は判読不能にする"},
+    {"id":"dailyGirlPoseJacketFoldArm","label":"畳んだ羽織を腕に掛ける","prompt":"成人女性の自然な日常スナップ。自然に脱いで整えた羽織を片方の前腕へ掛け、反対の手で小さなバッグを持つ。服装はきちんと着たまま、羽織の重みと肘の位置を自然に見せる"},
+    {"id":"dailyGirlPosePalmOnShelf","label":"低い棚へ片手を軽く置く","prompt":"成人女性の自然な日常スナップ。腰の高さ程度の安定した棚へ片方の手のひらを軽く置き、身体は棚へ押し付けずに立つ。肩をすくめず、もう片腕は自然に下ろす"},
+    {"id":"dailyGirlPoseFoldUmbrellaAtSide","label":"閉じた傘を足元へ向けて持つ","prompt":"成人女性の自然な日常スナップ。乾いた閉じた傘を片手で身体の横に持ち、傘先を自分の足元寄りの床へ向ける。振り回さず、両足と傘が交差しない落ち着いた立ち姿にする"},
+    {"id":"dailyGirlPoseBagSetDownPause","label":"バッグを置いて顔を上げる","prompt":"成人女性の自然な日常スナップ。安定した椅子の座面へ小さなバッグを置き終え、片手だけを持ち手へ残して顔を上げる。前屈しすぎず、バッグと椅子と手の接触を自然にする"},
+    {"id":"dailyGirlPoseSittingHandsOnBag","label":"膝上のバッグに両手を重ねる","prompt":"成人女性の自然な日常スナップ。安定した椅子に深く座り、膝を自然にそろえ、小さなバッグを膝上へ置いて両手を軽く重ねる。指を絡めず、足裏かつま先の接地を無理なく描く"},
+    {"id":"dailyGirlPoseDoorBeforeLeave","label":"閉じたドア前でお出かけ前の一枚","prompt":"成人女性の自然な日常スナップ。閉じたドアから半歩離れ、片手で小さなバッグを持ち、もう片手をドア側の腰の横へ自然に下ろす。扉を開けず、正面寄りで服と表情を見せる"},
+  ],
+  location: [
+    {"id":"dailyGirlLocationHomeToiletDoor","label":"自宅・トイレのドア前（廊下側）","prompt":"場所を特定できない架空の日常背景。一般的な日本の住居の廊下から、閉じたトイレの無地の木製ドア前を写す。背景はドア、控えめな取っ手、白い壁と床だけ。扉は開けず、トイレ内部や便器、使用場面は写さない。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationRoadsideResidentialWall","label":"いつもの道の塀の前","prompt":"場所を特定できない架空の日常背景。普通の住宅街の歩道沿いにある、低めのベージュの住宅の塀の前。目地と小さな植栽の影を控えめに見せ、人物は塀へ登らず歩道内に立つ。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationHomeWashroomOuterDoor","label":"自宅・洗面所のドア横の白い壁","prompt":"場所を特定できない架空の日常背景。一般的な住居の洗面所へ続く閉じた扉の横。白い壁と木枠の自然な質感、廊下へ回る柔らかな室内光を見せ、洗面所の中や生活用品は写し込まない。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationClosetSlidingDoor","label":"自宅・クローゼット扉の前","prompt":"場所を特定できない架空の日常背景。淡い木目の閉じたクローゼットの引き戸の前。床へ自然な影を落とし、家具を増やさず、普段の支度の途中のような飾らない部屋の景色にする。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationPlainBedroomDoor","label":"自宅・寝室の無地ドアの前","prompt":"場所を特定できない架空の日常背景。日本の一般的な住居にある無地の寝室ドアの廊下側。扉は閉じ、ドア枠と床の水平垂直を自然に保ち、私物やベッドは見せない。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationKitchenSideWall","label":"自宅・キッチン横の小さな無地壁","prompt":"場所を特定できない架空の日常背景。一般的な家のキッチン脇の無地の壁。画面の端に清潔な作業台の角を少しだけ残し、調味料の文字や洗い物を主役にしない、日常の拡散光にする。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationCurtainRailCorner","label":"自宅・レースカーテン脇の壁の角","prompt":"場所を特定できない架空の日常背景。家の薄いレースカーテンと壁が接する小さな角。窓を大きな撮影スタジオへ変えず、普通の窓幅と柔らかな昼の光を生かす。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationWoodSkirtingWall","label":"自宅・巾木のある部屋の白壁","prompt":"場所を特定できない架空の日常背景。白い壁と細い木製の巾木、日常的なフローリングだけの部屋の一角。傷や木目は控えめに残し、人物の影と服の色が自然に読める背景にする。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationShoeCabinetSide","label":"自宅・靴箱横の玄関内壁","prompt":"場所を特定できない架空の日常背景。一般的な住居の靴箱の側面と、その横に続く無地の内壁。靴や鍵は並べず、玄関の段差を小さく端へ入れ、人物は平らな室内側に立つ。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationDiningChairBack","label":"自宅・ダイニングの椅子の後ろ","prompt":"場所を特定できない架空の日常背景。普通の家の木製ダイニングチェアの背と、淡い壁のある生活空間。テーブルは画面端だけに置き、豪華な内装や大量の小物へ変えない。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationHomeIntercomWall","label":"自宅・インターホン脇の壁","prompt":"場所を特定できない架空の日常背景。一般的な住居の室内インターホンが小さく付いた壁の前。機器の画面は消し、ブランド名や文字は描かず、普段の廊下の柔らかな明るさにする。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationLinenCabinetDoor","label":"自宅・リネン収納の扉の前","prompt":"場所を特定できない架空の日常背景。家の廊下にある淡いグレーのリネン収納の閉じた扉の前。小さな取っ手と控えめな木目だけの背景にし、衣類やタオルを見せない。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationResidentialHedgeWall","label":"生け垣と低い塀のつなぎ目","prompt":"場所を特定できない架空の日常背景。住宅街の歩道から見える、手入れされた小さな生け垣と低い塀のつなぎ目。葉の影を軽く残し、人物は敷地へ入らず歩道内の安全な位置に立つ。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationQuietRollerShutter","label":"シャッター脇の明るい歩道","prompt":"場所を特定できない架空の日常背景。普通の商店街の閉じた無地の薄いグレーのシャッター脇。人物は店舗の入口を塞がず歩道の広い部分に立ち、看板や落書きを追加しない。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationNeighborhoodTileWall","label":"近所の小さなタイル壁","prompt":"場所を特定できない架空の日常背景。住宅街の建物脇にある、小さな生成り色タイルが並ぶ外壁。観光スポットにせず、タイルの繰り返しと日常の光を控えめに生かす。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationNarrowLaneCorner","label":"住宅街の曲がり角の壁","prompt":"場所を特定できない架空の日常背景。交通のない住宅街の路地の曲がり角を歩道側から写す。角の外壁と奥へ続く淡い舗装面を少し見せ、人物は車道へ踏み出さない。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationOrdinaryFencePath","label":"金網フェンス横のいつもの歩道","prompt":"場所を特定できない架空の日常背景。普通の住宅街の金網フェンス沿いの広い歩道。フェンスの反復を薄くぼかし、その奥は抽象的な緑だけにして、人物をフェンスへ登らせない。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationUtilityPoleShadowWall","label":"電柱の影が落ちる無地の壁","prompt":"場所を特定できない架空の日常背景。住宅街の無地の外壁へ細い電柱の影が落ちる、ごく普通の午後の歩道。電線や柱で人物の顔を横切らせず、派手な装飾のない生活の景色にする。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationPedestrianStoneEdge","label":"歩道の植え込みの縁の横","prompt":"場所を特定できない架空の日常背景。近所の歩道にある低い植え込みの石の縁の横。人物は石へ乗らず、平らな舗装面へ立つ。低い緑と足元の自然な影を少し入れた日常の景色にする。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+    {"id":"dailyGirlLocationBackstreetWhiteGarage","label":"白い車庫扉の横の歩道","prompt":"場所を特定できない架空の日常背景。住宅街の閉じた白い車庫扉と、その脇の無地壁が見える歩道。車やナンバープレートを入れず、出入口を塞がない位置で普通の街角スナップにする。表札・住所・住戸番号・個人名・読める看板やロゴ、他人の顔は入れない。"},
+  ],
+};
+hanakoExtraExpressions.push({ label: "インフルエンサー女子の表情（新着20）", items: hanakoInfluencerDailyCatalog.expression });
+hanakoExtraOutfits.push({ label: "インフルエンサー女子の日常コーデ（新着20）", items: hanakoInfluencerDailyCatalog.outfit });
+hanakoExtraPoses.push({ label: "インフルエンサー女子の日常ポーズ（新着20）", items: hanakoInfluencerDailyCatalog.pose });
+hanakoExtraLocations.push({ label: "インフルエンサー女子の日常風景（新着20）", items: hanakoInfluencerDailyCatalog.location });
+
 const hanakoIdeaCatalog = [
   { id: "vegetable", title: "八百屋の小さな発見", description: "旬の色や形から始まる朝の観察メモ", brief: "旬の野菜や果物から見つけた小さな発見を、店名や住所を出さずに等身大の短文で共有する", pattern: "observation", scene: "vegetableMorning", outfit: "grocer", pose: "vegetable", composition: "detail", lighting: "produce", carousel: "review" },
   { id: "piano", title: "夜のピアノ", description: "演奏前後の気分とバーの静かな余韻", brief: "夜のピアノを弾く前後の気分や音の余韻を、店を特定できる情報なしで短く切り取る", pattern: "scenestory", scene: "pianoNight", outfit: "piano", pose: "piano", composition: "waist", lighting: "bar", carousel: "story" },
@@ -5647,7 +5790,8 @@ function selectedHanakoDailyLook() {
   const selected = (id) => {
     const input = document.querySelector(`#${id}`);
     if (["auto", "keep", "world"].includes(input?.value || "")) return "";
-    return input?.selectedOptions?.[0]?.textContent?.trim() || "";
+    const option = input?.selectedOptions?.[0];
+    return option?.dataset?.imagePrompt || option?.textContent?.trim() || "";
   };
   return {
     autoVariation: Boolean(document.querySelector("#hanakoDailyVariation")?.checked),
@@ -14839,6 +14983,7 @@ function buildSocialCreativeDirective(context) {
     subwayFluorescent: "地下鉄の白い照明を肌が青白くならないよう柔らかく整える", rainReflection: "雨上がりの路面反射と店明かりを使った艶のある夜光", vendingGlow: "自動販売機の白い光と街灯を混ぜた自然な夜の光", lastTrainAmber: "終電前の暖かな駅照明と遠景の青い夜", convenienceSoft: "コンビニの明るさを拡散した清潔な夜光", sunsetBacklight: "夕焼けの縁取りが髪へ入る柔らかな逆光", streetLampWarm: "暖色の街灯が頬へ薄く当たる落ち着いた夜光", trainWindowBlue: "電車窓の青い反射と車内の暖色を混ぜた光", morningPlatform: "朝のホームへ斜めに差す透明感のある自然光", cityBokeh: "遠景の街明かりを細かな玉ぼけにした上品な夜光",
   });
   for (const [kind, entries] of Object.entries(museReelSnsPresets)) Object.assign(labels[kind], Object.fromEntries(entries.map(([id, , prompt]) => [id, prompt])));
+  for (const kind of ["hair", "composition"]) Object.assign(labels[kind], Object.fromEntries(hanakoInfluencerDailyCatalog[kind].map((item) => [item.id, item.prompt])));
   const presetSelectIds = { scene: "snsScenePreset", outfit: "snsOutfitPreset", hair: "snsHairPreset", pose: "snsPosePreset", composition: "snsCompositionPreset", lighting: "snsLightingPreset", location: "snsLocationPreset", carousel: "snsCarouselPreset" };
   const preset = (group, key, fallback) => {
     if (labels[group]?.[key]) return labels[group][key];

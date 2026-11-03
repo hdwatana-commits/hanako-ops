@@ -66,6 +66,14 @@ function chooseLook(draft: any) {
   const allowedLocationIds = instagram
     ? ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park"]
     : ["homeLiving", "homeSofa", "homeBedroom", "homeBed", "homeKitchen", "homeWindow", "homeDesk", "homeVanity", "room", "studioDaylight", "studioPastel", "studioNoir", "park", "cafe", "cafeTerrace", "bookstore", "museum", "riverside", "street", "rooftop", "grocer", "pianoBar", "noodle"];
+  // Explicit SNS catalogue entries only: fixed settings retain their selected
+  // everyday background; automatic variation keeps the existing defaults above.
+  allowedLocationIds.push(
+    "dailyGirlLocationHomeToiletDoor", "dailyGirlLocationRoadsideResidentialWall", "dailyGirlLocationHomeWashroomOuterDoor", "dailyGirlLocationClosetSlidingDoor", "dailyGirlLocationPlainBedroomDoor",
+    "dailyGirlLocationKitchenSideWall", "dailyGirlLocationCurtainRailCorner", "dailyGirlLocationWoodSkirtingWall", "dailyGirlLocationShoeCabinetSide", "dailyGirlLocationDiningChairBack",
+    "dailyGirlLocationHomeIntercomWall", "dailyGirlLocationLinenCabinetDoor", "dailyGirlLocationResidentialHedgeWall", "dailyGirlLocationQuietRollerShutter", "dailyGirlLocationNeighborhoodTileWall",
+    "dailyGirlLocationNarrowLaneCorner", "dailyGirlLocationOrdinaryFencePath", "dailyGirlLocationUtilityPoleShadowWall", "dailyGirlLocationPedestrianStoneEdge", "dailyGirlLocationBackstreetWhiteGarage",
+  );
   const overrides: Record<string, string> = fixed ? Object.fromEntries(Object.entries(saved).filter(([name, value]) => name in defaults && typeof value === "string" && value && value !== "自動")) : {};
   if (!allowedLocationIds.includes(saved.locationId)) delete overrides.location;
   // The queue snapshots this count. Never reinterpret an in-progress legacy draft.

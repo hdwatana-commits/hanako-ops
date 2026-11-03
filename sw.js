@@ -1,4 +1,4 @@
-const CACHE_NAME = "hanako-room-ops-v400";
+const CACHE_NAME = "hanako-room-ops-v401";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./muse-identity-lock.mjs?v=1",
@@ -22,7 +22,7 @@ const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=372",
-  "./app.js?v=400",
+  "./app.js?v=401",
   "./cloud-sync.js?v=307",
   "./ops-engine.js?v=222",
   "./ops-phase2-engine.js?v=222",
@@ -428,7 +428,7 @@ const CORE_SHELL = [
   "./",
   "./index.html",
     "./styles.css?v=372",
-    "./app.js?v=400",
+    "./app.js?v=401",
     "./cloud-sync.js?v=307",
     "./ops-engine.js?v=222",
     "./ops-phase2-engine.js?v=222",
