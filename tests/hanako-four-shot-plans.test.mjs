@@ -63,7 +63,9 @@ test('実際の3つのボタンを繰り返しても構成が続かず、通常�
  assert.equal(Object.keys(c.state.socialCreativeProfile.hanakoFourShotPlans).length,3);
 });
 test('初回とオフライン用の両方で構成ライブラリをアプリより先に読み込む',()=>{
- assert.ok(html.indexOf('src="hanako-four-shot-plans.js?v=1"')<html.indexOf('src="app.js?v=402"'));
+ const appScript=html.match(/src="app\.js\?v=\d+"/);
+ assert.ok(appScript);
+ assert.ok(html.indexOf('src="hanako-four-shot-plans.js?v=1"')<html.indexOf(appScript[0]));
  const worker=readFileSync(new URL('sw.js',root),'utf8');
  assert.equal((worker.match(/\.\/hanako-four-shot-plans\.js\?v=1/g)||[]).length,2);
 });

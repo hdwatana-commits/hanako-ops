@@ -1,4 +1,5 @@
 import {mountMuseSongDance} from './muse-song-dance.mjs?v=4';
+import {mountSongVibe} from './muse-song-vibe.mjs?v=1';
 import {mountMuseMotion} from './muse-motion.mjs?v=8';
 import {buildMuseReelPackage,normalizeMuseReferenceUrl} from './muse-reel-engine.mjs?v=3';
 import {museReferences,museThemes} from './muse-reel-presets.mjs?v=1';
@@ -70,5 +71,6 @@ export function mountMuseReelMaker(root){
  applyTheme();updateMode();(async()=>{try{const raw=localStorage.getItem(draftKey);if(!raw)return;const draft=JSON.parse(raw);for(const key of fields)if(typeof draft[key]==='string'&&draft[key].length<=12000)$(key).value=draft[key];assets=(await assetStore('getAll')).filter(a=>roles[a.role]&&a.blob instanceof Blob).sort((a,b)=>(a.order||0)-(b.order||0)).slice(0,10);renderAssets();updateMode();referenceLinks();section.querySelectorAll('[data-theme]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.theme===$('Theme').value)));$('Direction').textContent=museThemes.find(t=>t.id===$('Theme').value)?.direction||'';say('この端末の下書きを読み込みました。出力を作り直してからご利用ください。');}catch{say('下書きを読み込めませんでした。新しく素材を登録してください。');}})();
  mountMuseSongDance(section,{getStyling:()=>({hair:$('Hair').value,outfit:$('Outfit').value,location:$('Location').value,composition:$('Composition').value,identityNames:assets.flatMap((a,i)=>a.role==='identity'?[`hanako-${a.role}-${i+1}.jpg`]:[])})});
  mountMuseMotion(section,{prepareIdentity:file=>prepareAsset(file,'identity'),getIdentity:()=>assets.find(asset=>asset.role==='identity'),getStyling:()=>({hair:$('Hair').value,outfit:$('Outfit').value,location:$('Location').value})});
+ mountSongVibe(section,{prepareIdentity:file=>prepareAsset(file,'identity'),getIdentity:()=>assets.find(asset=>asset.role==='identity')});
  return{open(){$('Panel').open=true;section.scrollIntoView({behavior:'smooth',block:'start'});}};
 }
