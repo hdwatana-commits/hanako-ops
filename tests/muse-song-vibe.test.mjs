@@ -38,10 +38,19 @@ test('micro sway phase carries through cuts at noninteger tempo; fade applies on
  const out=buildSongVibe({...base,duration:20,bpm:123,hipMode:'micro'});
  for(let i=1;i<out.shots.length;i++){const before=out.shots[i-1].rows.at(-1).hipSway.to,after=out.shots[i].rows[0].hipSway.from;assert.deepEqual(before,after);assert.equal(after.amplitude,1);assert.notEqual(after.phase,0);}
  assert.equal(microHipSwayAt(.25,{duration:7}).phase,.25);
- assert.match(out.all,/two beats per full cycle/);
+ assert.match(out.all,/one beat per cycle/);
 });
 test('added sway stops when a shorter reference ends and rejects unknown modes',()=>{
  const r=reelReferenceLibrary[0],out=buildSongVibe({...base,referenceId:r.id,duration:20,hipMode:'micro'});
  for(const s of out.shots)for(const row of s.rows)if(s.start+row.start>=r.duration){assert.equal(row.hipSway.from.amplitude,0);assert.match(row.action,/hold still; no added sway/);}
  assert.throws(()=>buildSongVibe({...base,hipMode:'invalid'}));
+});
+test('fast full-body sway runs twice as fast as the old default and includes intra-row motion checkpoints',()=>{
+ const fast=buildSongVibe({...base,hipMode:'micro'}),soft=buildSongVibe({...base,hipMode:'micro-soft'});
+ assert.equal(fast.shots[0].rows[0].hipSway.from.cycle,.5);assert.equal(soft.shots[0].rows[0].hipSway.from.cycle,1);
+ assert.deepEqual(fast.shots[0].rows[0].hipSway.checkpoints.map(p=>p.time),[.125,.25,.375]);
+ assert.match(fast.all,/knee dips/);assert.match(fast.all,/shoulder counter-sway/);assert.match(fast.all,/no slow motion/);assert.match(soft.all,/Keep shoulders comparatively stable/);
+});
+test('fast BPM guide remains bounded and changes neither reference timing nor identity constraints',()=>{
+ for(const bpm of [40,120,240]){const out=buildSongVibe({...base,hipMode:'micro',referenceId:'K04',duration:'reference',bpm});for(const s of out.shots){assert.ok(s.rows[0].hipSway.from.cycle>=.4&&s.rows[0].hipSway.from.cycle<=.8);assert.match(s.prompt,/If seated, keep the hips supported/);assert.match(s.prompt,/sole authority for facial identity/);}assert.equal(out.shots.at(-1).end,reelReferenceLibrary.find(r=>r.id==='K04').duration);}
 });
