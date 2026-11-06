@@ -1,4 +1,4 @@
-import {GIF_SCENES,DEFAULT_GIF_SETTINGS,parseGiphyId,gifPreviewUrl,validateGifSettings,readGifSettings} from './gif-replies.mjs?v=5';
+import {GIF_SCENES,DEFAULT_GIF_SETTINGS,parseGiphyId,gifPreviewUrl,validateGifSettings,readGifSettings} from './gif-replies.mjs?v=6';
 function gifNode(tag,text,className=''){const node=document.createElement(tag);node.textContent=text;node.className=className;return node;}
 export function createGifPreview(selection){
  const url=gifPreviewUrl(selection?.gif_id);if(!url)return null;
@@ -14,7 +14,7 @@ export function createGifReplyPanel({call,notify=()=>{}}){
  <fieldset disabled><div class="reply-grid"><label class="reply-check"><input type="checkbox" name="enabled"> GIF返信を有効にする</label><label>通常の返信でGIFを添える割合（%）<input name="rate" type="number" min="0" max="100" value="20" required></label></div><label class="reply-check"><input name="emoji_enabled" type="checkbox" checked> 絵文字だけのコメントには登録済みGIFと短い絵文字で返信する（AIは使わない）</label>
  <label class="reply-check"><input name="video_mode" type="checkbox"> 登録GIFを短い動画として送信する（GIF公開エラーの回避）</label><p class="reply-help">オンの場合、同じ登録素材を動画形式で返信します。Threads上ではGIF添付ではなく動画として表示されます。</p>
  <label class="reply-check"><input name="latest_post_only" type="checkbox"> GIF返信を最新のポストだけにする</label><p class="reply-help">チェックすると、返信投稿を除いた最新1件のポストだけにGIFを添えます。ほかの対象ポストには文章・絵文字で返信します。新しいポストが公開されたら対象も自動で切り替わります。</p>
- <p class="reply-help">通常のコメントは、文章に設定した割合でGIFを添えます。割合は場面を判定できたコメントに適用します。絵文字だけのコメントは上の専用設定に従います。深刻な相談や苦情には添えません。保存済みの全GIF送信履歴を使い、同じ相手へまだ送っていないGIFを最優先します。使ったことがある場合は、使用回数が少なく、最後に送ってから時間がたっている候補を選びます。同じ相手への前回分と、アカウント全体の直前の返信に添えたGIFは避けます。別の候補がない場合や未登録の場面は文章・絵文字で返します。</p>
+ <p class="reply-help">通常のコメントは、文章に設定した割合でGIFを添えます。通常の文章は、該当する場面がなければ「その他のリアクション」から選びます。使用割合100%なら、この条件に合う文章には動画を添えます。絵文字だけのコメントは上の専用設定に従います。深刻な相談や苦情には添えません。保存済みの全GIF送信履歴を使い、同じ相手へまだ送っていないGIFを最優先します。使ったことがある場合は、使用回数が少なく、最後に送ってから時間がたっている候補を選びます。同じ相手への前回分と、アカウント全体の直前の返信に添えたGIFは避けます。別の候補がない場合や未登録の場面は文章・絵文字で返します。</p>
  <div class="reply-grid"><label>場面<select name="scene"></select></label><label>GIFの名前（任意）<input name="label" maxlength="60" placeholder="例：ぺこっとお礼"></label></div><label>GIPHYのGIFページURL<input name="url" type="url" maxlength="1000" placeholder="https://giphy.com/gifs/…"></label><div class="button-row"><button id="replyGifAdd" type="button">この場面に追加</button><a id="replyGifSearch" href="https://giphy.com/" target="_blank" rel="noopener noreferrer">GIPHYでGIFを探す</a></div><div id="replyGifItems"></div><button class="primary" type="submit">GIF設定を保存</button><button id="replyGifCheck" type="button">GIFの送信状況を確認</button></fieldset><p id="replyGifState" class="reply-help" role="status">所有者でログインし、上の「読み込む」で設定を確認してください。</p>`;
  const field=name=>element.elements.namedItem(name),list=element.querySelector('#replyGifItems'),state=element.querySelector('#replyGifState'),fieldset=element.querySelector('fieldset');
  let draft={...DEFAULT_GIF_SETTINGS,items:[]},ready=false,saving=false;

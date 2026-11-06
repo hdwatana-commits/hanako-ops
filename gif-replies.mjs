@@ -34,7 +34,7 @@ const gifHash=value=>{let result=2166136261;for(const c of String(value||''))res
 const gifEmojiOnly=value=>{const text=String(value||'').trim();return text.length>0&&/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/u.test(text)&&!/[\p{Letter}\p{Number}]/u.test(text);};
 export function gifScene(comment,reply='',now=new Date()){
  const text=String(comment||'').normalize('NFKC').trim();
- if(!text||/亡く|亡くな|お悔や|葬|死|病|入院|事故|災害|つらい|辛い|苦しい|怖い|寂しい|孤独|不安|嫌い|やめて|不快|謝罪|ごめん|ばっか|ばかり|迷惑|苦情|同じ.{0,8}(?:返|話)|sorry|died|death|grief|funeral|hospital|depress|suicid|lonely|scared|condolence/iu.test(text)||/note\.com|instagram\.com|記事.{0,20}(?:買|購入)/iu.test(reply))return null;
+ if(/亡く|亡くな|お悔や|葬|死|病|入院|事故|災害|つらい|辛い|苦しい|怖い|寂しい|孤独|不安|嫌い|やめて|不快|謝罪|ごめん|ばっか|ばかり|迷惑|苦情|同じ.{0,8}(?:返|話)|sorry|died|death|grief|funeral|hospital|depress|suicid|lonely|scared|condolence/iu.test(text)||/note\.com|instagram\.com|記事.{0,20}(?:買|購入)/iu.test(reply))return null;
  if(/おやすみ|good\s*night|buenas\s*noches|bonne\s*nuit|晚安|잘\s*자|😴|💤/iu.test(text)){
   const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',hour:'2-digit',hourCycle:'h23'}).format(now));return hour>=17||hour<5?'goodnight':null;
  }
@@ -45,18 +45,22 @@ export function gifScene(comment,reply='',now=new Date()){
  if(/びっくり|驚|surpris|wow|😳|😲|😮/iu.test(text))return 'surprise';
  if(/大好き|好きだ|好きです|love\s*you|te\s*amo|❤️|💕|💖|💗|💓|💞|🥰|😍|😘/iu.test(text))return 'affection';
  if(/かわいい|可愛い|すてき|素敵|嬉し|うれし|笑|cute|beautiful|lovely|happy|😂|🤣|😆|😁|😊|😀/iu.test(text))return 'happy';
- return gifEmojiOnly(text)?'reaction':null;
+ return 'reaction';
 }
-function gifCandidates(settings,comment,reply,now){
+function gifOptions(settings,comment,reply,now){
  const config=readGifSettings(settings),text=String(comment.comment_text||'');
- if(!config.enabled||comment.platform==='instagram')return null;
- const scene=gifScene(text,reply,now);if(!scene)return null;
- if(gifEmojiOnly(text)){if(!config.emoji_enabled)return null;}
- else if(gifHash(comment.comment_id)%100>=config.rate)return null;
+ const no=reason=>({items:null,reason});
+ if(!config.enabled)return no('GIF返信が停止中です');
+ if(comment.platform==='instagram')return no('InstagramはGIF返信の対象外です');
+ const scene=gifScene(text,reply,now);if(!scene)return no('会話内容・案内リンク・時刻に合わせて動画を付けません');
+ if(gifEmojiOnly(text)){if(!config.emoji_enabled)return no('絵文字だけのコメントへのGIF返信がオフです');}
+ else if(gifHash(comment.comment_id)%100>=config.rate)return no('設定した動画の使用割合による対象外です');
  let items=config.items.filter(item=>item.enabled&&item.scene===scene);
  if(!items.length)items=config.items.filter(item=>item.enabled&&item.scene==='reaction');
- return items.length?items:null;
+ return items.length?{items,reason:'動画を添付する条件に一致しています'}:no('該当場面・その他リアクションに使用可能なGIFがありません');
 }
+export function gifReplyReason(settings,comment,reply,now=new Date()){return gifOptions(settings,comment,reply,now).reason;}
+function gifCandidates(settings,comment,reply,now){return gifOptions(settings,comment,reply,now).items;}
 export function chooseReplyGif(settings,comment,reply,history=[],now=new Date(),accountLatest=[]){
  const items=gifCandidates(settings,comment,reply,now);if(!items)return null;
  const usage=new Map();let lastId=null;

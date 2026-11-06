@@ -12,6 +12,7 @@ Object.defineProperty(globalThis,'fetch',{configurable:true,get:()=>fetchMock,se
   if(String(url).includes('/hanako_fan_profiles'))return response([]);
   if(String(url).includes('/rpc/hanako_fan_auto_save'))return new Response(null,{status:204});
   if(String(url).includes('username=ilike.')&&String(url).includes('select=comment_id,comment_text,commented_at,is_owner'))return response([]);
+  if(String(url).includes('/rpc/hanako_reply_health')){const b=JSON.parse(opts.body);assert.equal(b.owner_id,'owner');assert.ok(Array.isArray(b.post_ids));return response({overdue:countResult,preparing:2,attention:1,attention_replies:[],overdue_replies:[]});}
   if(String(url).includes('/rpc/hanako_reply_daily_counts')){const b=JSON.parse(opts.body);assert.equal(b.owner_id,'owner');return response({date:'2026-10-10',automatic:12,legacy:3});}
   if(String(url).includes('/rpc/hanako_openai_key_')){const b=JSON.parse(opts.body);assert.equal(b.owner_id,'owner');assert.equal(opts.headers.Authorization,'Bearer service');if(String(url).endsWith('_status'))return response(Boolean(openaiVault));if(String(url).endsWith('_read'))return response(openaiVault);if(String(url).endsWith('_save')){openaiVault=b.key_value;return response(true);}}
   if(opts.method==='HEAD'){assert.match(String(url),/post_id=in/);assert.match(String(url),/status.eq.pending/);assert.match(String(url),/generation_attempts.lt.3/);assert.equal(opts.headers.Prefer,'count=exact');return new Response(null,{headers:{'Content-Range':'*/'+countResult}});}

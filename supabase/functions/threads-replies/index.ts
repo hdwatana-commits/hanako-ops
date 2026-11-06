@@ -1,7 +1,7 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
 import {instagramReplies} from './instagram.ts';
 import {noteOpportunity} from '../../../note-opportunity.mjs';
-import {validateGifSettings,chooseReplyGif,allowedReplyGif,gifVideoUrl} from '../../../gif-replies.mjs';
+import {validateGifSettings,chooseReplyGif,allowedReplyGif,gifVideoUrl,gifReplyReason} from '../../../gif-replies.mjs';
 import {replyToneContext,wrongReplyRegister} from '../../../reply-tone.mjs';
 import {replyVarietyContext,repeatedReplyPattern,REPLY_VARIETY_PROMPT} from '../../../reply-variety.mjs';
 import {loadThreadContext,avoidAnsweredQuestions} from '../../../reply-context.mjs';
@@ -91,6 +91,7 @@ async function refreshFanProfile(username:string){
   return {...(saved[0]||{}),username,auto_profile};
 }
 async function updateComment(id: string,value: any) { if(['published','skipped','uncertain'].includes(value?.status)||(value?.status==='failed'&&value.next_attempt_at===null))value={...value,reply_retry_once:false};return db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(id)}`,'PATCH',value); }
+async function replyHealth(){const posts=await latestPosts();return await db('rpc/hanako_reply_health','POST',{owner_id:owner(),post_ids:posts.map((p:any)=>p.id)})||{};}
 async function queueCount() {
   if(!Deno.env.get('THREADS_ACCESS_TOKEN'))return 0;
   const posts=await latestPosts();
@@ -148,7 +149,7 @@ ${INSTAGRAM_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
     const text=avoidAnsweredQuestions(reduceAhiOpening(normalizeReplyLayout((candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim()),c.comment_id),threadContext.answered_questions);
     if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongReplyRegister(text,toneContext)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||repeatedReplyPattern(text,varietyContext)||wrongActivityReply(text,activityContext)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,replyDay)||wrongInstagramReply(text,instagramAllowed)) {
-      if(!attempt) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258/n/n94503654ef15 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。直近の長い返信と同じ表現を繰り返さず、今回の内容に合う短く自然な別の言い方にする。'},{...c,reply_retry_feedback:wrongActivityReply(text,activityContext)?'聞かれていない予定を付け足した、または今日の共通予定と異なる活動を答えた。不要な予定の報告をやめ、今回のコメントと実際の会話に沿って答える。':repeatedReplyPattern(text,varietyContext)?'最近多用した感情表現・書き出しを繰り返した。別の反応・構成を選び、元の質問に答える。':'形式・言語・挨拶・宣伝制限・重複のいずれかに不一致。現在の質問と確定した事実を保って各規則を再確認する。'},1);
+      if(attempt<2) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258/n/n94503654ef15 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。直近の長い返信と同じ表現を繰り返さず、今回の内容に合う短く自然な別の言い方にする。'},{...c,reply_retry_feedback:wrongActivityReply(text,activityContext)?'聞かれていない予定を付け足した、または今日の共通予定と異なる活動を答えた。不要な予定の報告をやめ、今回のコメントと実際の会話に沿って答える。':repeatedReplyPattern(text,varietyContext)?'最近多用した感情表現・書き出しを繰り返した。別の反応・構成を選び、元の質問に答える。':'形式・言語・挨拶・宣伝制限・重複のいずれかに不一致。現在の質問と確定した事実を保って各規則を再確認する。'},attempt+1);
       throw new Error('返信形式・言語・直近の返信の繰り返しを確認してください');
     }
     return text;
@@ -160,7 +161,7 @@ ${INSTAGRAM_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名
   })},'AI返信生成');
   if(response.status!=='completed') throw new Error('AIの生成が未完了です');
   const text=avoidAnsweredQuestions(reduceAhiOpening(normalizeReplyLayout((response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim()),c.comment_id),threadContext.answered_questions);
-  if((invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongReplyRegister(text,toneContext)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||repeatedReplyPattern(text,varietyContext)||wrongActivityReply(text,activityContext)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,replyDay)||wrongInstagramReply(text,instagramAllowed))&&!attempt)return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶・表現の繰り返しの規則に合わないため破棄。直近の返信とは冒頭・語尾・話題を変えて短く自然に返す。Noteの案内可否を必ず守る。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。直近の長い返信とは別の言い方で、短く自然に返す。'},{...c,reply_retry_feedback:wrongActivityReply(text,activityContext)?'聞かれていない予定を付け足した、または今日の共通予定と異なる活動を答えた。不要な予定の報告をやめ、今回のコメントと実際の会話に沿って答える。':repeatedReplyPattern(text,varietyContext)?'最近多用した感情表現・書き出しを繰り返した。別の反応・構成を選び、元の質問に答える。':'形式・言語・挨拶・宣伝制限・重複のいずれかに不一致。現在の質問と確定した事実を保って各規則を再確認する。'},1);
+  if((invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongReplyRegister(text,toneContext)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||repeatedReplyPattern(text,varietyContext)||wrongActivityReply(text,activityContext)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,replyDay)||wrongInstagramReply(text,instagramAllowed))&&attempt<2)return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶・表現の繰り返しの規則に合わないため破棄。直近の返信とは冒頭・語尾・話題を変えて短く自然に返す。Noteの案内可否を必ず守る。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。直近の長い返信とは別の言い方で、短く自然に返す。'},{...c,reply_retry_feedback:wrongActivityReply(text,activityContext)?'聞かれていない予定を付け足した、または今日の共通予定と異なる活動を答えた。不要な予定の報告をやめ、今回のコメントと実際の会話に沿って答える。':repeatedReplyPattern(text,varietyContext)?'最近多用した感情表現・書き出しを繰り返した。別の反応・構成を選び、元の質問に答える。':'形式・言語・挨拶・宣伝制限・重複のいずれかに不一致。現在の質問と確定した事実を保って各規則を再確認する。'},attempt+1);
   if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongReplyRegister(text,toneContext)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||repeatedReplyPattern(text,varietyContext)||wrongActivityReply(text,activityContext)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,replyDay)||wrongInstagramReply(text,instagramAllowed)) throw new Error('返信形式・言語・時間帯・直近の返信の繰り返しを確認してください');
   return text;
 }
@@ -374,11 +375,25 @@ async function recoverReplyGifs() {
   }finally{await updateSettings({lease_until:null});}
 }
 const GIF_VIDEO_PREPARING='GIF動画を準備中です（未公開）';
-async function resumePreparingGif() {
-  const rows=await db(`hanako_reply_comments?${filter()}&status=eq.publishing&container_id=not.is.null&reply_id=is.null&error=eq.${encodeURIComponent(GIF_VIDEO_PREPARING)}&order=commented_at&limit=1`);
-  const c=rows.find((r:any)=>r.status==='publishing'&&r.reply_gif?.delivery==='video'&&r.error===GIF_VIDEO_PREPARING);
-  if(!c)return false;
-  await publish(c,true,true);return true;
+async function resumePreparingGifs(deadline:number) {
+  const rows=await db(`hanako_reply_comments?${filter()}&status=eq.publishing&container_id=not.is.null&reply_id=is.null&error=eq.${encodeURIComponent(GIF_VIDEO_PREPARING)}&order=commented_at&limit=3`);
+  const ids=[];
+  for(const c of rows){
+    if(Date.now()>deadline)break;
+    if(c.status!=='publishing'||c.reply_gif?.delivery!=='video'||c.error!==GIF_VIDEO_PREPARING)continue;
+    ids.push(c.comment_id);
+    try{await publish(c,true,true);}catch(e){await updateSettings({last_error:e instanceof Error?e.message:'動画公開失敗'});}
+  }
+  return ids;
+}
+async function recoverStalledReplies(s:any) {
+  const rows=await db(`hanako_reply_comments?${filter()}&is_owner=eq.false&status=in.(generating,draft)&container_id=is.null&reply_id=is.null&order=commented_at&limit=20`);
+  for(const c of rows){
+    if(c.container_id||c.reply_id||(c.reply_runtime?.media_expected&&c.reply_runtime?.media_attempts)||!(c.status==='generating'||(c.status==='draft'&&c.reply_automatic===true&&s.mode==='auto')))continue;
+    const started=Date.parse(c.reply_runtime?.started_at||c.created_at);if(!Number.isFinite(started)||Date.now()-started<300000)continue;
+    const retry=(c.generation_attempts||0)<3;
+    await updateComment(c.comment_id,{status:retry?'pending':'failed',error:retry?'中断した処理を再開します':'処理の中断が続いたため確認が必要です',next_attempt_at:null});
+  }
 }
 async function replyGifInScope(s:any,c:any) {
   if(s.gif_reply?.latest_post_only!==true)return true;
@@ -386,15 +401,40 @@ async function replyGifInScope(s:any,c:any) {
   return Boolean(posts[0]&&posts[0].id===c.post_id);
 }
 async function selectReplyGif(s:any,c:any,text:string) {
-  if(!chooseReplyGif(s.gif_reply,c,text))return null;
-  if(!await replyGifInScope(s,c))return null;
-  const recent=await db('rpc/hanako_reply_gif_usage','POST',{owner_id:owner(),fan_username:String(c.username||'')});
-  const latest=await db(`hanako_reply_comments?${filter()}&is_owner=eq.false&status=eq.published&order=reply_published_at.desc.nullslast,comment_id.desc&limit=1&select=reply_gif`);
-  const selected=chooseReplyGif(s.gif_reply,c,text,recent,new Date(),latest);
+  let selected=chooseReplyGif(s.gif_reply,c,text),reason=gifReplyReason(s.gif_reply,c,text);
+  if(selected&&!await replyGifInScope(s,c)){selected=null;reason='最新ポスト以外のため動画を付けません';}
+  if(selected){
+    const recent=await db('rpc/hanako_reply_gif_usage','POST',{owner_id:owner(),fan_username:String(c.username||'')});
+    const latest=await db(`hanako_reply_comments?${filter()}&is_owner=eq.false&status=eq.published&order=reply_published_at.desc.nullslast,comment_id.desc&limit=1&select=reply_gif`);
+    const failed=new Set(c.reply_runtime?.failed_gif_ids||[]);
+    const config={...s.gif_reply,items:(s.gif_reply?.items||[]).filter((x:any)=>!failed.has(x.gif_id))};
+    selected=chooseReplyGif(config,c,text,recent,new Date(),latest);
+    if(!selected){
+      reason='直前・使用済み・失敗した素材を避けるため、別のGIFを用意してください';
+      if(failed.size){await updateComment(c.comment_id,{status:'failed',next_attempt_at:null,error:reason,reply_runtime:{...c.reply_runtime,media_expected:true,media_reason:reason}});throw new Error(reason);}
+    }
+  }
+  c.reply_runtime={...c.reply_runtime,media_reason:reason,media_expected:Boolean(selected)};
+  await updateComment(c.comment_id,{reply_runtime:c.reply_runtime});
   return selected?{...selected,delivery:s.gif_reply?.video_mode===true?'video':'gif'}:null;
+}
+async function retryVideo(c:any,reason:string) {
+  const attempts=(c.reply_runtime?.media_attempts||0)+1,retry=attempts<3;
+  const runtime={...c.reply_runtime,media_expected:true,media_attempts:attempts,media_reason:reason,failed_gif_ids:[...new Set([...(c.reply_runtime?.failed_gif_ids||[]),c.reply_gif?.gif_id].filter(Boolean))]};
+  await updateComment(c.comment_id,{status:retry?'draft':'failed',container_id:null,reply_automatic:true,reply_runtime:runtime,next_attempt_at:retry?new Date(Date.now()+60000).toISOString():null,error:retry?'動画を添付できなかったため、別の素材で自動再試行します':'動画の送信に3回失敗しました。素材・設定の確認が必要です'});
+}
+async function resumeMediaRetries(deadline:number) {
+  const rows=await db(`hanako_reply_comments?${filter()}&status=eq.draft&reply_automatic=eq.true&container_id=is.null&reply_id=is.null&next_attempt_at=lte.${encodeURIComponent(new Date().toISOString())}&order=next_attempt_at&limit=3`),ids=[];
+  for(const c of rows){
+    if(Date.now()>deadline)break;
+    if(c.status!=='draft'||!c.reply_runtime?.media_expected||!c.next_attempt_at||Date.parse(c.next_attempt_at)>Date.now())continue;
+    ids.push(c.comment_id);try{await publish(c,true);}catch(e){await updateSettings({last_error:e instanceof Error?e.message:'動画再試行失敗'});}
+  }
+  return ids;
 }
 async function publish(c: any,automatic=false,resumeContainer=false) {
   const originalText=c.reply_text;
+  if(automatic){const gate=await settings();if(!gate.enabled||gate.mode!=='auto'||!inWindow(gate))return;}
   if(await skipOutsideLatest(c))return;
   if(await skipExcluded(c,await settings())) return;
   if(await skipIfReplied(c)) return;
@@ -435,7 +475,7 @@ async function publish(c: any,automatic=false,resumeContainer=false) {
   const publishContext=await loadThreadContext(db,owner(),c,(await settings()).use_history);
   c={...c,reply_text:avoidAnsweredQuestions(normalizeReplyLayout(c.reply_text),publishContext.answered_questions)};
   const gifSettings=await settings();
-  c={...c,reply_gif:allowedReplyGif(gifSettings.gif_reply,c,c.reply_text,c.reply_gif)?(resumeContainer?c.reply_gif:await selectReplyGif(gifSettings,c,c.reply_text)):null};
+  c={...c,reply_gif:resumeContainer?(allowedReplyGif(gifSettings.gif_reply,c,c.reply_text,c.reply_gif)?c.reply_gif:null):c.gif_fallback_note?null:await selectReplyGif(gifSettings,c,c.reply_text)};
   if(c.reply_gif&&resumeContainer&&!await replyGifInScope(gifSettings,c))c={...c,reply_gif:null};
   resumeContainer=Boolean(resumeContainer&&c.reply_gif&&originalText===c.reply_text);
   if(c.reply_gif?.delivery==='video'&&!resumeContainer)c={...c,reply_gif:{...c.reply_gif,preparing_started_at:new Date().toISOString()}};
@@ -445,6 +485,7 @@ async function publish(c: any,automatic=false,resumeContainer=false) {
     try {container=resumeContainer?{id:c.container_id}:await meta('me/threads',{media_type:c.reply_gif?.delivery==='video'?'VIDEO':'TEXT',text:c.reply_text,reply_to_id:c.comment_id,...(c.reply_gif?.delivery==='video'?{video_url:gifVideoUrl(c.reply_gif.gif_id)}:c.reply_gif?{gif_attachment:JSON.stringify({gif_id:c.reply_gif.gif_id,provider:'GIPHY'})}:{})},'POST');}
     catch(e){
       if(!c.reply_gif||!(e instanceof ThreadsReadError)||![400,422].includes(e.status))throw e;
+      if(c.reply_gif.delivery==='video'){await retryVideo(c,e.message);return;}
       c={...c,reply_gif:null};gifFallback='GIFを添付できなかったため、文章・絵文字のみで返信しました';
       await updateComment(c.comment_id,{reply_gif:null});
       container=await meta('me/threads',{media_type:'TEXT',text:c.reply_text,reply_to_id:c.comment_id},'POST');
@@ -462,6 +503,7 @@ async function publish(c: any,automatic=false,resumeContainer=false) {
         return;
       }
       if(c.reply_gif&&['ERROR','EXPIRED'].includes(state.status)){
+        if(c.reply_gif.delivery==='video'){await retryVideo(c,'動画の準備失敗：'+(state.error_message||state.status));return;}
         await updateComment(c.comment_id,{status:'draft',container_id:null,reply_gif:null});
         return await publish({...c,container_id:null,reply_gif:null,gif_fallback_note:'GIFを添付できなかったため、文章・絵文字のみで返信しました'},automatic);
       }
@@ -470,9 +512,12 @@ async function publish(c: any,automatic=false,resumeContainer=false) {
     }
     if(!ready) throw new Error('Threadsの返信準備が時間内に完了しませんでした。投稿状態を確認してください');
     const latestSettings=await settings();
+    if(automatic&&(!latestSettings.enabled||latestSettings.mode!=='auto'||!inWindow(latestSettings))){
+      await updateComment(c.comment_id,{status:'pending',container_id:null,reply_gif:null,generation_attempts:Math.max(0,(c.generation_attempts||1)-1),error:'自動返信の設定変更により公開を保留しました'});return;
+    }
     if(await skipExcluded(c,latestSettings)) return;
     if(c.reply_gif&&(!allowedReplyGif(latestSettings.gif_reply,c,c.reply_text,c.reply_gif)||!await replyGifInScope(latestSettings,c)||(c.reply_gif.delivery==='video')!==(latestSettings.gif_reply?.video_mode===true))){
-      await updateComment(c.comment_id,{status:'draft',container_id:null,reply_gif:null});
+      await updateComment(c.comment_id,{status:'draft',container_id:null,reply_gif:null,reply_runtime:{...c.reply_runtime,media_expected:false,media_reason:'送信前に動画の設定または対象ポストが変わりました'}});
       return await publish({...c,container_id:null,reply_gif:null},automatic);
     }
     if(await skipOutsideLatest(c))return;
@@ -501,6 +546,39 @@ async function claimEmoji() {
   }
   return null;
 }
+async function processReplyComment(c:any,s:any,aiWait:boolean,checked:number) {
+      try {
+        c={...c,reply_runtime:{...c.reply_runtime,started_at:new Date().toISOString()}};
+        await updateComment(c.comment_id,{reply_runtime:c.reply_runtime});
+        if(await skipOutsideLatest(c)||await skipExcluded(c,await settings()))return {status:'skipped',checked};
+        if(await skipIfReplied(c)) {
+          await updateSettings({last_run:new Date().toISOString(),last_error:''});
+          return {status:'skipped',checked};
+        }
+        const emoji=specialCodeReply(c.comment_text)||emojiReply(c.comment_text);
+        if(aiWait&&!emoji){await updateComment(c.comment_id,{status:'pending',generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});return {status:'quota_wait',retry_at:s.ai_retry_at};}
+            const text=emoji||await generate(s,c);
+        const replyGif=await selectReplyGif(s,c,text);
+        await updateComment(c.comment_id,{status:'draft',reply_text:text,reply_gif:replyGif,reply_automatic:s.mode==='auto',error:'',next_attempt_at:null});
+        // Re-read after generation so OFF and changed hours take effect before posting.
+        const fresh=await settings();
+        if(fresh.enabled&&fresh.mode==='auto'&&(emoji||aiProvider(fresh)===aiProvider(s))&&inWindow(fresh)&&(emoji||(fresh.ai_connection||'default')===(s.ai_connection||'default'))) await publish({...c,reply_text:text,reply_gif:replyGif},true);
+      } catch(e) {
+        if(e instanceof FreeQuotaError) {
+          await updateComment(c.comment_id,{status:'pending',error:e.message,generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});
+          const retry_at=new Date(Date.now()+3600000).toISOString();
+          await updateSettings({ai_retry_at:retry_at,last_error:e.message,last_run:new Date().toISOString()});
+          return {status:'quota_wait',retry_at};
+        }
+        const latest=await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.comment_id)}`);
+        if(latest[0]?.status==='generating'||(latest[0]?.status==='draft'&&s.mode==='auto'&&!latest[0].container_id&&!latest[0].reply_id)) {
+          const retry=(c.generation_attempts||1)<3;
+          await updateComment(c.comment_id,{status:'failed',error:(e instanceof Error?e.message:'生成失敗')+(retry?'。5分後に再生成します':'。再試行の上限です。設定を確認してください'),next_attempt_at:retry?new Date(Date.now()+300000).toISOString():null});
+        }
+        throw e;
+      }
+  return {status:'processed',checked};
+}
 async function run(action: string,body: any) {
   const s=await settings();
   if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()})) return {status:'busy'};
@@ -520,44 +598,30 @@ async function run(action: string,body: any) {
     const me=await checkThreadsOwner();
     const checked=await scanRecent(s,me);
     if(!inWindow(s)) {await updateSettings({last_run:new Date().toISOString(),last_error:''}); return {status:'outside_window'};}
-    if(s.mode==='auto'&&s.gif_reply&&await resumePreparingGif()){await updateSettings({last_run:new Date().toISOString(),last_error:''});return {status:'gif_preparing_checked',checked};}
-    const c=aiWait?await claimEmoji():await db('rpc/hanako_reply_claim','POST',{owner_id:owner()});
-    if(!c&&aiWait)return {status:aiProvider(s)==='openai'&&s.openai_ready===false?'openai_not_ready':'quota_wait',retry_at:s.ai_retry_at};
-    if(c) {
-      try {
-        if(await skipOutsideLatest(c)||await skipExcluded(c,await settings()))return {status:'skipped',checked};
-        if(await skipIfReplied(c)) {
-          await updateSettings({last_run:new Date().toISOString(),last_error:''});
-          return {status:'skipped',checked};
-        }
-        const emoji=specialCodeReply(c.comment_text)||emojiReply(c.comment_text);
-        if(aiWait&&!emoji){await updateComment(c.comment_id,{status:'pending',generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});return {status:'quota_wait',retry_at:s.ai_retry_at};}
-            const text=emoji||await generate(s,c);
-        const replyGif=await selectReplyGif(s,c,text);
-        await updateComment(c.comment_id,{status:'draft',reply_text:text,reply_gif:replyGif,error:'',next_attempt_at:null});
-        // Re-read after generation so OFF and changed hours take effect before posting.
-        const fresh=await settings();
-        if(fresh.enabled&&fresh.mode==='auto'&&(emoji||aiProvider(fresh)===aiProvider(s))&&inWindow(fresh)&&(emoji||(fresh.ai_connection||'default')===(s.ai_connection||'default'))) await publish({...c,reply_text:text,reply_gif:replyGif},true);
-      } catch(e) {
-        if(e instanceof FreeQuotaError) {
-          await updateComment(c.comment_id,{status:'pending',error:e.message,generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});
-          const retry_at=new Date(Date.now()+3600000).toISOString();
-          await updateSettings({ai_retry_at:retry_at,last_error:e.message,last_run:new Date().toISOString()});
-          return {status:'quota_wait',retry_at};
-        }
-        const latest=await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.comment_id)}`);
-        if(latest[0]?.status==='generating') {
-          const retry=(c.generation_attempts||1)<3;
-          await updateComment(c.comment_id,{status:'failed',error:(e instanceof Error?e.message:'生成失敗')+(retry?'。5分後に再生成します':'。再試行の上限です。設定を確認してください'),next_attempt_at:retry?new Date(Date.now()+300000).toISOString():null});
-        }
-        throw e;
+    if(s.mode==='auto')await recoverStalledReplies(s);
+    const deadline=Date.now()+25000;
+    const resumed=s.mode==='auto'&&s.gif_reply?[...await resumePreparingGifs(deadline),...await resumeMediaRetries(deadline)]:[];
+    const seen=new Set(resumed),errors:any[]=[];let c:any=null,processed=0,quota:any=null,lastStatus='idle';
+    for(let turn=0;turn<3;turn++){
+      if(turn&&Date.now()>deadline)break;
+      const fresh=await settings();if(!fresh.enabled||!inWindow(fresh)||aiProvider(fresh)!==aiProvider(s)||(fresh.ai_connection||'default')!==(s.ai_connection||'default'))break;
+      if(turn||resumed.length){
+        const due=await db(`hanako_reply_comments?${filter()}&is_owner=eq.false&container_id=is.null&reply_id=is.null&reply_due_at=lte.${encodeURIComponent(new Date().toISOString())}&or=(status.eq.pending,and(status.eq.failed,generation_attempts.lt.3,next_attempt_at.lte.${encodeURIComponent(new Date().toISOString())}))&order=reply_due_at,commented_at&limit=10`);
+        if(!due.some((r:any)=>!seen.has(r.comment_id)&&!r.container_id&&!r.reply_id&&(r.status==='pending'||(r.status==='failed'&&(r.generation_attempts||0)<3&&r.next_attempt_at&&Date.parse(r.next_attempt_at)<=Date.now()))))break;
       }
+      c=aiWait?await claimEmoji():await db('rpc/hanako_reply_claim','POST',{owner_id:owner()});
+      if(!c||seen.has(c.comment_id))break;seen.add(c.comment_id);
+      try{const result=await processReplyComment(c,s,aiWait,checked);processed++;lastStatus=result.status;if(result.status==='quota_wait'){quota=result;break;}}
+      catch(e){errors.push(e);}
     }
+    if(quota)return quota;
+    if(errors.length&&!processed&&!resumed.length)throw errors[0];
+    if(!c&&aiWait&&!resumed.length)return {status:aiProvider(s)==='openai'&&s.openai_ready===false?'openai_not_ready':'quota_wait',retry_at:s.ai_retry_at};
     // Historical fan statistics are lower priority and keep their original cursors.
     let historyError='';
     if(!c&&!aiWait&&new Date().getUTCMinutes()%5===0)try{await scan(s,me);}catch(e){historyError=e instanceof Error?e.message:'履歴の収集に失敗しました';}
-    await updateSettings({last_run:new Date().toISOString(),...(aiWait?{}:{last_error:historyError,ai_retry_at:null})});
-    return {status:c?'processed':'idle',checked};
+    await updateSettings({last_run:new Date().toISOString(),...(aiWait?{}:{last_error:errors.length?(errors[0] instanceof Error?errors[0].message:'返信失敗'):historyError,ai_retry_at:null})});
+    return {status:processed?(processed===1?lastStatus:'processed'):resumed.length?'gif_preparing_checked':'idle',checked,processed,resumed:resumed.length,failed:errors.length};
   } catch(e) {await updateSettings({last_error:e instanceof Error?e.message:'処理失敗'}).catch(()=>{});throw e;}
   finally {await updateSettings({lease_until:null});}
 }
@@ -636,7 +700,7 @@ Deno.serve(async request=>{
       await db(`hanako_fan_profiles?${filter()}&username=eq.${encodeURIComponent(username)}`,'PATCH',{manual_notes:body.notes,use_notes:body.use_notes,...(body.nickname!==undefined?{manual_nickname:body.nickname}:{}),...(body.nickname_enabled!==undefined?{nickname_enabled:body.nickname_enabled}:{})});
       return respond({saved:true});
     }
-    if(body.action==='load') {const current=await settings();return respond({settings:current,openai:{configured:await openaiConfigured(),ready:Boolean(current.openai_ready),model:OPENAI_LUNA_MODEL},profile:HANA_PROFILE,daily_activity:await db('rpc/hanako_daily_activity_get','POST',{owner_id:owner()}),daily_counts:await db('rpc/hanako_reply_daily_counts','POST',{owner_id:owner()}),queue_count:await queueCount(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
+    if(body.action==='load') {const current=await settings();return respond({settings:current,openai:{configured:await openaiConfigured(),ready:Boolean(current.openai_ready),model:OPENAI_LUNA_MODEL},profile:HANA_PROFILE,daily_activity:await db('rpc/hanako_daily_activity_get','POST',{owner_id:owner()}),daily_counts:await db('rpc/hanako_reply_daily_counts','POST',{owner_id:owner()}),queue_count:await queueCount(),health:await replyHealth(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),
       connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&await aiConfigured(current))});}
     if(body.action==='save') { const value:any=validateSettings(body.settings); const current=await settings();
