@@ -1,4 +1,4 @@
-import {createGifReplyPanel,createGifPreview} from './gif-reply-ui.mjs?v=4';
+import {createGifReplyPanel,createGifPreview} from './gif-reply-ui.mjs?v=5';
 import { renderReplyAnalytics } from './reply-analytics.mjs?v=1';
 import { FAN_PROFILE_FIELDS } from './fan-profile.mjs?v=3';
 import { TONES } from './reply-rules.mjs?v=13';
@@ -76,7 +76,7 @@ function card(c){const article=document.createElement('article');article.classNa
   article.append(textNode('strong',c.username),textNode('small',`${new Date(c.commented_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})} · ${labels[c.status]||c.status}`),textNode('p',c.comment_text||'（テキストなし）'));
   if(c.post_text) {const details=document.createElement('details');details.append(textNode('summary','元の投稿'),textNode('p',c.post_text));article.append(details);}
   if(c.reply_text){article.append(textNode('p',c.reply_text,'reply-body'));const copy=textNode('button','返信本文をコピー');copy.onclick=()=>task(async()=>{await navigator.clipboard.writeText(c.reply_text);status('返信本文をコピーしました。');});article.append(copy);}
-  if(c.reply_gif){const preview=createGifPreview(c.reply_gif);if(preview)article.append(textNode('small','GIF付きの返信'),preview);}
+  if(c.reply_gif){const preview=createGifPreview(c.reply_gif);if(preview)article.append(textNode('small',c.reply_gif.delivery==='video'?'GIF素材付きの返信（動画形式）':'GIF付きの返信'),preview);}
   if(c.error)article.append(textNode('p',c.error,'reply-error'));
   if(c.status==='pending'&&c.reply_due_at)article.append(textNode('small','返信可能になる時刻：'+new Date(c.reply_due_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})));
   if(c.status==='failed'&&c.next_attempt_at)article.append(textNode('small','次の自動再生成：'+new Date(c.next_attempt_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo'})));

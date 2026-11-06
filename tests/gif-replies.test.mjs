@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {parseGiphyId,validateGifSettings,readGifSettings,chooseReplyGif,allowedReplyGif,gifScene,gifPreviewUrl} from '../gif-replies.mjs';
+import {parseGiphyId,validateGifSettings,readGifSettings,chooseReplyGif,allowedReplyGif,gifScene,gifPreviewUrl,gifVideoUrl} from '../gif-replies.mjs';
 const item=(id='Alpha123',scene='affection')=>({gif_id:id,scene,label:id,enabled:true});
 const config={enabled:true,rate:100,emoji_enabled:true,items:[item(),item('Beta234'),item('Gamma345')]};
 const comment={comment_id:'current',comment_text:'💕',username:'guest'},night=new Date('2026-11-06T12:00:00Z');
@@ -75,4 +75,11 @@ test('最新ポスト限定の旧設定はOFFとして読み、新設定は真�
  assert.equal(validateGifSettings({...config,latest_post_only:true}).latest_post_only,true);
  assert.equal(validateGifSettings({...config,latest_post_only:false}).latest_post_only,false);
  for(const latest_post_only of ['true',1,null,{}])assert.throws(()=>validateGifSettings({...config,latest_post_only}));
+});
+
+test('動画方式の設定は既定OFFで真偽値だけを保存し、動画URLは登録IDからのみ作る',()=>{
+ assert.equal(readGifSettings(config).video_mode,false);assert.equal(validateGifSettings({...config,video_mode:true}).video_mode,true);
+ for(const video_mode of ['true',1,null,{}])assert.throws(()=>validateGifSettings({...config,video_mode}));
+ assert.equal(gifVideoUrl('Alpha123'),'https://media.giphy.com/media/Alpha123/giphy.mp4');
+ for(const value of ['https://evil.test/a.mp4','../private','javascript:alert(1)'])assert.throws(()=>gifVideoUrl(value));
 });

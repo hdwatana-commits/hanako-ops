@@ -1,5 +1,5 @@
 export const GIF_SCENES=Object.freeze({thanks:'ありがとう',happy:'うれしい・笑顔',shy:'照れ',affection:'好意・ハート',goodnight:'おやすみ',hello:'ごあいさつ',cheer:'応援・拍手',surprise:'びっくり',reaction:'その他のリアクション'});
-export const DEFAULT_GIF_SETTINGS=Object.freeze({enabled:false,rate:20,emoji_enabled:true,latest_post_only:false,items:[]});
+export const DEFAULT_GIF_SETTINGS=Object.freeze({enabled:false,rate:20,emoji_enabled:true,latest_post_only:false,video_mode:false,items:[]});
 export function parseGiphyId(value){
  const text=String(value||'').trim();if(!text||text.length>1000)throw Error('GIPHYのGIFページURLかGIF IDを入力してください');
  if(/^[a-zA-Z0-9]{1,100}$/.test(text))return text;
@@ -13,9 +13,11 @@ export function parseGiphyId(value){
  return id;
 }
 export function gifPreviewUrl(value){try{return `https://i.giphy.com/media/${parseGiphyId(value)}/giphy.gif`;}catch{return '';}}
+export function gifVideoUrl(value){return `https://media.giphy.com/media/${parseGiphyId(value)}/giphy.mp4`;}
 export function validateGifSettings(input){
  if(!input||typeof input.enabled!=='boolean'||typeof input.emoji_enabled!=='boolean'||!Number.isInteger(input.rate)||input.rate<0||input.rate>100||!Array.isArray(input.items)||input.items.length>180)throw Error('GIFの有効・無効、使用割合（0〜100%）、登録内容を確認してください');
  if(input.latest_post_only!==undefined&&typeof input.latest_post_only!=='boolean')throw Error('GIFを最新のポストだけにする設定を確認してください');
+ if(input.video_mode!==undefined&&typeof input.video_mode!=='boolean')throw Error('GIFの動画送信設定を確認してください');
  const seen=new Set(),counts={};
  const items=input.items.map(item=>{
   if(!item||!Object.hasOwn(GIF_SCENES,item.scene)||typeof item.enabled!=='boolean'||typeof item.label!=='string'||item.label.length>60)throw Error('GIFの場面・名前・使用設定を確認してください');
@@ -25,7 +27,7 @@ export function validateGifSettings(input){
   return {scene:item.scene,gif_id,label:item.label.trim()||GIF_SCENES[item.scene],enabled:item.enabled};
  });
  if(input.enabled&&!items.some(item=>item.enabled))throw Error('使用するGIFを1件以上登録してから有効にしてください');
- return {enabled:input.enabled,rate:input.rate,emoji_enabled:input.emoji_enabled,latest_post_only:input.latest_post_only??false,items};
+ return {enabled:input.enabled,rate:input.rate,emoji_enabled:input.emoji_enabled,latest_post_only:input.latest_post_only??false,video_mode:input.video_mode??false,items};
 }
 export function readGifSettings(input){try{return validateGifSettings(input||DEFAULT_GIF_SETTINGS);}catch{return {...DEFAULT_GIF_SETTINGS,items:[]};}}
 const gifHash=value=>{let result=2166136261;for(const c of String(value||''))result=Math.imul(result^c.codePointAt(0),16777619)>>>0;return result;};
