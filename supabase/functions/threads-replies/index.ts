@@ -349,8 +349,13 @@ async function diagnoseReplyGifs() {
     try {const state=await meta(row.container_id,{fields:'id,status,error_message'});containers.push({comment_id:row.comment_id,container_id:row.container_id,status:state.status,error_message:String(state.error_message||'').slice(0,500)});}
     catch(e){containers.push({comment_id:row.comment_id,container_id:row.container_id,error:e instanceof Error?e.message:'状態確認失敗'});}
   }
-  const recent=await db(`hanako_reply_comments?${filter()}&reply_gif=not.is.null&select=status,reply_gif,error&order=commented_at.desc&limit=10`);
-  return {containers,recent:recent.map((r:any)=>({status:r.status,delivery:r.reply_gif?.delivery||'gif',error:r.error||''}))};
+  const recent=await db(`hanako_reply_comments?${filter()}&reply_gif=not.is.null&select=status,reply_gif,error,reply_id&order=commented_at.desc&limit=10`);
+  const published_media=[];
+  for(const row of recent.filter((r:any)=>r.status==='published'&&r.reply_id).slice(0,2)){
+    try {const media=await meta(row.reply_id,{fields:'id,media_type,media_url,permalink'});published_media.push({id:media.id,media_type:media.media_type,has_media:Boolean(media.media_url),permalink:media.permalink});}
+    catch(e){published_media.push({id:row.reply_id,error:e instanceof Error?e.message:'公開確認失敗'});}
+  }
+  return {containers,published_media,recent:recent.map((r:any)=>({status:r.status,delivery:r.reply_gif?.delivery||'gif',error:r.error||''}))};
 }
 async function recoverReplyGifs() {
   if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()}))return {status:'busy'};
