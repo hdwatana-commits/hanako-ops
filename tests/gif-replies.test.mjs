@@ -69,3 +69,10 @@ test('別の相手への返信を含めて同じGIFを連続させず、個人�
  }
  assert.ok(chooseReplyGif({...config,items:[item()]},comment,'💕',[],night,[{reply_gif:null}]));
 });
+
+test('最新ポスト限定の旧設定はOFFとして読み、新設定は真偽値だけを保存する',()=>{
+ assert.equal(readGifSettings(config).latest_post_only,false);
+ assert.equal(validateGifSettings({...config,latest_post_only:true}).latest_post_only,true);
+ assert.equal(validateGifSettings({...config,latest_post_only:false}).latest_post_only,false);
+ for(const latest_post_only of ['true',1,null,{}])assert.throws(()=>validateGifSettings({...config,latest_post_only}));
+});

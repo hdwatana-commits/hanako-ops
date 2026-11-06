@@ -5,9 +5,10 @@ await import('../supabase/functions/threads-replies/index.ts');
 const response=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}});
 const invoke=(body,headers={})=>handler(new Request('https://fn.test',{method:'POST',headers:{Authorization:'Bearer owner','Content-Type':'application/json',...headers},body:JSON.stringify(body)}));
 const catalog=(scene='affection')=>({enabled:true,rate:100,emoji_enabled:true,items:[{scene,gif_id:'Alpha123',label:'A',enabled:true},{scene,gif_id:'Beta234',label:'B',enabled:true}]});
-function fixture({scenario='success',emoji=true,wait=false}={}){
+function fixture({scenario='success',emoji=true,wait=false,latestOnly=false,latest=true}={}){
  let c={comment_id:'gif-current',post_id:'test-post',username:'guest',comment_text:emoji?'💕':'ありがとう！',status:'pending',commented_at:new Date().toISOString()},s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],adapt_tone:true,max_chars:180,use_history:false,custom_prompt:'',ai_provider:'openai',openai_ready:!wait,gif_reply:catalog(emoji?'affection':'thanks')};
- const created=[],published=[];let aiCalls=0;
+ s.gif_reply.latest_post_only=latestOnly;
+ const created=[],published=[];let aiCalls=0,postAdvanced=!latest;
  globalThis.fetch=async(url,opts={})=>{
   url=String(url);const parsed=new URL(url),body=typeof opts.body==='string'?JSON.parse(opts.body):{};
   if(url.includes('auth/v1/user'))return response({id:opts.headers.Authorization==='Bearer other'?'other':'owner'});
@@ -21,14 +22,14 @@ function fixture({scenario='success',emoji=true,wait=false}={}){
   if(url.includes('limit=1&select=reply_gif')){assert.match(url,/user_id=eq.owner&is_owner=eq.false&status=eq.published/);assert.doesNotMatch(url,/username=|reply_gif=not.is.null/);return response(scenario==='global-repeat'?[{reply_gif:{gif_id:'Beta234'}}]:[]);}
   if(url.includes('/hanako_reply_comments')){if(opts.method==='PATCH'){if(!url.includes('status=in.'))c={...c,...body};return response([]);}return response(url.includes('reply_due_at=lte.')?[c]:[]);}
   if(parsed.pathname==='/v1.0/me')return response({id:'threads-owner',username:'hana'});
-  if(parsed.pathname==='/v1.0/me/threads'&&opts.method!=='POST')return response({data:[{id:'test-post',text:'今日の写真'}]});
+  if(parsed.pathname==='/v1.0/me/threads'&&opts.method!=='POST')return response({data:[{id:'owner-reply',is_reply:true},...(postAdvanced?[{id:'new-post',text:'新しい写真'}]:[]),{id:'test-post',text:'今日の写真'}]});
   if(parsed.pathname.endsWith('/replies')||parsed.pathname.endsWith('/conversation'))return response({data:[]});
   if(parsed.pathname==='/v1.0/me/threads'&&opts.method==='POST'){
    const params=Object.fromEntries(opts.body);created.push(params);
    if(scenario==='reject'&&params.gif_attachment)return response({error:{code:100}},400);
    return response({id:'container-'+created.length});
   }
-  if(parsed.pathname.startsWith('/v1.0/container-')){if(scenario==='disable')s={...s,gif_reply:{...s.gif_reply,enabled:false}};return response({status:scenario==='prepare-reject'&&created.length===1?'ERROR':'FINISHED'});}
+  if(parsed.pathname.startsWith('/v1.0/container-')){if(scenario==='new-post')postAdvanced=true;if(scenario==='enable-latest'){postAdvanced=true;s.gif_reply.latest_post_only=true;}if(scenario==='disable')s={...s,gif_reply:{...s.gif_reply,enabled:false}};return response({status:scenario==='prepare-reject'&&created.length===1?'ERROR':'FINISHED'});}
   if(parsed.pathname==='/v1.0/me/threads_publish'){published.push(opts.body.get('creation_id'));if(scenario==='uncertain')throw Error('Connection lost');return response({id:'published'});}
   if(url.includes('api.openai.com')){aiCalls++;return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'こちらこそありがとう☺️'}]}]});}
   throw Error('Unexpected request '+url);
@@ -41,6 +42,9 @@ test('GIF設定は所有者のみ保存でき、別の返信設定を変えず�
  assert.equal((await invoke({action:'gif_save',settings:config},{'x-cron-secret':'cron'})).status,403);
  assert.equal((await invoke({action:'gif_save',settings:{...config,items:[{...config.items[0],gif_id:'javascript:bad'}]}})).status,400);
  const result=await invoke({action:'gif_save',settings:{...config,rate:30}});assert.equal(result.status,200);assert.equal((await result.json()).settings.rate,30);assert.equal(f.settings.enabled,before);assert.equal(f.settings.gif_reply.items.length,2);
+ const saved=await invoke({action:'gif_save',settings:{...config,latest_post_only:true}});assert.equal(saved.status,200);assert.equal((await saved.json()).settings.latest_post_only,true);assert.equal(f.settings.gif_reply.latest_post_only,true);
+ assert.equal((await invoke({action:'gif_save',settings:{...config,latest_post_only:'true'}})).status,400);assert.equal(f.settings.gif_reply.latest_post_only,true);
+ const off=await invoke({action:'gif_save',settings:{...config,latest_post_only:false}});assert.equal(off.status,200);assert.equal(f.settings.gif_reply.latest_post_only,false);
 });
 test('1場面20件の保存を受け付け、21件を保存しない',async()=>{
  const f=fixture(),base=catalog(),items=Array.from({length:20},(_,i)=>({...base.items[0],gif_id:'Registered'+i}));
@@ -67,4 +71,19 @@ test('GIFのコンテナ準備が失敗しても、未公開のGIFを放棄し�
 });
 test('個人の前回分とアカウント直前分で候補を使い切る場合はGIFを重ねず1回返信する',async()=>{
  const f=fixture({scenario:'global-repeat'});const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.created.length,1);assert.equal(f.created[0].gif_attachment,undefined);assert.equal(f.comment.reply_gif,null);assert.equal(f.published.length,1);assert.equal(f.aiCalls,0);
+});
+
+test('最新ポスト限定は返信投稿を数えず、最新の通常ポストにだけGIFを添える',async()=>{
+ const f=fixture({latestOnly:true});const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.ok(f.created[0].gif_attachment);assert.equal(f.published.length,1);
+});
+test('最新ポスト限定でも古い対象ポストには文章・絵文字で返信し、OFFならGIFを添える',async()=>{
+ for(const emoji of [true,false]){
+  const f=fixture({latestOnly:true,latest:false,emoji});const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.created.length,1);assert.equal(f.created[0].gif_attachment,undefined);assert.ok(f.created[0].text);assert.equal(f.comment.reply_gif,null);assert.equal(f.published.length,1);assert.equal(f.aiCalls,emoji?0:1);
+ }
+ const f=fixture({latestOnly:false,latest:false});const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.ok(f.created[0].gif_attachment);assert.equal(f.published.length,1);
+});
+test('GIF準備中の新規ポストや限定ONで対象が変わったらGIFを公開せず文章だけを1回返信する',async()=>{
+ for(const scenario of ['new-post','enable-latest']){
+  const f=fixture({scenario,latestOnly:scenario==='new-post'});const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.created.length,2);assert.ok(f.created[0].gif_attachment);assert.equal(f.created[1].gif_attachment,undefined);assert.deepEqual(f.published,['container-2']);assert.equal(f.comment.reply_gif,null);
+ }
 });

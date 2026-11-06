@@ -1,4 +1,4 @@
-import {createGifReplyPanel,createGifPreview} from './gif-reply-ui.mjs?v=3';
+import {createGifReplyPanel,createGifPreview} from './gif-reply-ui.mjs?v=4';
 import { renderReplyAnalytics } from './reply-analytics.mjs?v=1';
 import { FAN_PROFILE_FIELDS } from './fan-profile.mjs?v=3';
 import { TONES } from './reply-rules.mjs?v=13';

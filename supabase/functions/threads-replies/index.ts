@@ -336,8 +336,14 @@ async function auditFailedReplies() {
   }
   return result;
 }
+async function replyGifInScope(s:any,c:any) {
+  if(s.gif_reply?.latest_post_only!==true)return true;
+  const posts=await latestPosts({...s,post_limit:1});
+  return Boolean(posts[0]&&posts[0].id===c.post_id);
+}
 async function selectReplyGif(s:any,c:any,text:string) {
   if(!chooseReplyGif(s.gif_reply,c,text))return null;
+  if(!await replyGifInScope(s,c))return null;
   const recent=await db('rpc/hanako_reply_gif_usage','POST',{owner_id:owner(),fan_username:String(c.username||'')});
   const latest=await db(`hanako_reply_comments?${filter()}&is_owner=eq.false&status=eq.published&order=reply_published_at.desc.nullslast,comment_id.desc&limit=1&select=reply_gif`);
   return chooseReplyGif(s.gif_reply,c,text,recent,new Date(),latest);
@@ -411,7 +417,7 @@ async function publish(c: any,automatic=false) {
     if(!ready) throw new Error('Threadsの返信準備が時間内に完了しませんでした。投稿状態を確認してください');
     const latestSettings=await settings();
     if(await skipExcluded(c,latestSettings)) return;
-    if(c.reply_gif&&!allowedReplyGif(latestSettings.gif_reply,c,c.reply_text,c.reply_gif)){
+    if(c.reply_gif&&(!allowedReplyGif(latestSettings.gif_reply,c,c.reply_text,c.reply_gif)||!await replyGifInScope(latestSettings,c))){
       await updateComment(c.comment_id,{status:'draft',container_id:null,reply_gif:null});
       return await publish({...c,container_id:null,reply_gif:null},automatic);
     }
