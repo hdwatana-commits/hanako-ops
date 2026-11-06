@@ -17,7 +17,7 @@ function fixture({scenario='success',emoji=true,wait=false}={}){
   if(url.includes('/hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...body};return response([s]);}
   if(url.includes('/hanako_fan_profiles'))return response([]);
   if(url.includes('/rpc/hanako_instagram_available')||url.includes('/rpc/hanako_note_available'))return response(true);
-  if(url.includes('reply_gif=not.is.null')){assert.match(url,/user_id=eq.owner&username=eq.guest&is_owner=eq.false&status=eq.published/);assert.match(url,/reply_published_at=gte\./);return response([{reply_gif:{gif_id:'Alpha123'}}]);}
+  if(url.includes('/rpc/hanako_reply_gif_usage')){assert.equal(opts.method,'POST');assert.deepEqual(body,{owner_id:'owner',fan_username:'guest'});return response({last_gif_id:'Alpha123',usage:[{gif_id:'Alpha123',uses:1,last_used_at:'2026-01-01T00:00:00Z'}]});}
   if(url.includes('limit=1&select=reply_gif')){assert.match(url,/user_id=eq.owner&is_owner=eq.false&status=eq.published/);assert.doesNotMatch(url,/username=|reply_gif=not.is.null/);return response(scenario==='global-repeat'?[{reply_gif:{gif_id:'Beta234'}}]:[]);}
   if(url.includes('/hanako_reply_comments')){if(opts.method==='PATCH'){if(!url.includes('status=in.'))c={...c,...body};return response([]);}return response(url.includes('reply_due_at=lte.')?[c]:[]);}
   if(parsed.pathname==='/v1.0/me')return response({id:'threads-owner',username:'hana'});
@@ -41,6 +41,11 @@ test('GIF設定は所有者のみ保存でき、別の返信設定を変えず�
  assert.equal((await invoke({action:'gif_save',settings:config},{'x-cron-secret':'cron'})).status,403);
  assert.equal((await invoke({action:'gif_save',settings:{...config,items:[{...config.items[0],gif_id:'javascript:bad'}]}})).status,400);
  const result=await invoke({action:'gif_save',settings:{...config,rate:30}});assert.equal(result.status,200);assert.equal((await result.json()).settings.rate,30);assert.equal(f.settings.enabled,before);assert.equal(f.settings.gif_reply.items.length,2);
+});
+test('1場面20件の保存を受け付け、21件を保存しない',async()=>{
+ const f=fixture(),base=catalog(),items=Array.from({length:20},(_,i)=>({...base.items[0],gif_id:'Registered'+i}));
+ let r=await invoke({action:'gif_save',settings:{...base,items}});assert.equal(r.status,200);assert.equal(f.settings.gif_reply.items.length,20);
+ r=await invoke({action:'gif_save',settings:{...base,items:[...items,{...items[0],gif_id:'Overflow'}]}});assert.equal(r.status,400);assert.equal(f.settings.gif_reply.items.length,20);
 });
 test('AI上限の待機中も絵文字にはAIなしで、直前と別のGIFを添えて1回だけ返信する',async()=>{
  const f=fixture({wait:true});const result=await invoke({action:'run'});assert.equal(result.status,200,JSON.stringify(await result.json()));

@@ -14,13 +14,13 @@ export function parseGiphyId(value){
 }
 export function gifPreviewUrl(value){try{return `https://i.giphy.com/media/${parseGiphyId(value)}/giphy.gif`;}catch{return '';}}
 export function validateGifSettings(input){
- if(!input||typeof input.enabled!=='boolean'||typeof input.emoji_enabled!=='boolean'||!Number.isInteger(input.rate)||input.rate<0||input.rate>100||!Array.isArray(input.items)||input.items.length>90)throw Error('GIFの有効・無効、使用割合（0〜100%）、登録内容を確認してください');
+ if(!input||typeof input.enabled!=='boolean'||typeof input.emoji_enabled!=='boolean'||!Number.isInteger(input.rate)||input.rate<0||input.rate>100||!Array.isArray(input.items)||input.items.length>180)throw Error('GIFの有効・無効、使用割合（0〜100%）、登録内容を確認してください');
  const seen=new Set(),counts={};
  const items=input.items.map(item=>{
   if(!item||!Object.hasOwn(GIF_SCENES,item.scene)||typeof item.enabled!=='boolean'||typeof item.label!=='string'||item.label.length>60)throw Error('GIFの場面・名前・使用設定を確認してください');
   const gif_id=parseGiphyId(item.gif_id),key=item.scene+':'+gif_id;
   if(seen.has(key))throw Error('同じ場面に同じGIFが重複しています');seen.add(key);
-  counts[item.scene]=(counts[item.scene]||0)+1;if(counts[item.scene]>10)throw Error('GIFは1つの場面に10件まで登録できます');
+  counts[item.scene]=(counts[item.scene]||0)+1;if(counts[item.scene]>20)throw Error('GIFは1つの場面に20件まで登録できます');
   return {scene:item.scene,gif_id,label:item.label.trim()||GIF_SCENES[item.scene],enabled:item.enabled};
  });
  if(input.enabled&&!items.some(item=>item.enabled))throw Error('使用するGIFを1件以上登録してから有効にしてください');
@@ -56,11 +56,26 @@ function gifCandidates(settings,comment,reply,now){
 }
 export function chooseReplyGif(settings,comment,reply,history=[],now=new Date(),accountLatest=[]){
  const items=gifCandidates(settings,comment,reply,now);if(!items)return null;
- const previous=history.map(row=>row.reply_gif?.gif_id).filter(Boolean);
- const excluded=new Set([previous[0],accountLatest[0]?.reply_gif?.gif_id].filter(Boolean));
+ const usage=new Map();let lastId=null;
+ if(Array.isArray(history)){
+  for(const [index,row] of history.entries()){
+   const id=row.reply_gif?.gif_id;if(!id)continue;
+   if(!lastId)lastId=id;
+   const old=usage.get(id)||{count:0,last:0},date=Date.parse(row.reply_published_at);
+   usage.set(id,{count:old.count+1,last:Math.max(old.last,Number.isFinite(date)?date:Math.max(1,Number(now)-index))});
+  }
+ }else if(history&&Array.isArray(history.usage)){
+  lastId=history.last_gif_id;
+  for(const row of history.usage){
+   const count=Number(row.uses),last=Date.parse(row.last_used_at);
+   if(typeof row.gif_id==='string'&&Number.isFinite(count)&&count>=0)usage.set(row.gif_id,{count,last:Number.isFinite(last)?last:0});
+  }
+ }
+ const excluded=new Set([lastId,accountLatest[0]?.reply_gif?.gif_id].filter(Boolean));
  const available=items.filter(item=>!excluded.has(item.gif_id));if(!available.length)return null;
- const count=item=>previous.filter(id=>id===item.gif_id).length;
- const minimum=Math.min(...available.map(count)),pool=available.filter(item=>count(item)===minimum);
+ const count=item=>usage.get(item.gif_id)?.count||0,last=item=>usage.get(item.gif_id)?.last||0;
+ const minimum=Math.min(...available.map(count)),leastUsed=available.filter(item=>count(item)===minimum);
+ const oldest=Math.min(...leastUsed.map(last)),pool=leastUsed.filter(item=>last(item)===oldest);
  const chosen=pool[gifHash(comment.comment_id+':gif')%pool.length];
  return {provider:'GIPHY',gif_id:chosen.gif_id,scene:chosen.scene,label:chosen.label};
 }

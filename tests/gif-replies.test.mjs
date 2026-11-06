@@ -10,11 +10,31 @@ test('GIPHYページ・埋め込み・画像URLをIDへ統一し、他サイト�
 });
 test('同じ場面へ複数登録でき、重複・件数超過・不正な設定を保存しない',()=>{
  assert.equal(validateGifSettings(config).items.length,3);
+ assert.equal(validateGifSettings({...config,items:Array.from({length:20},(_,i)=>item('Gif'+i))}).items.length,20);
+ const scenes=['thanks','happy','shy','affection','goodnight','hello','cheer','surprise','reaction'];
+ assert.equal(validateGifSettings({...config,items:scenes.flatMap(scene=>Array.from({length:20},(_,i)=>item('Gif'+i,scene)))}).items.length,180);
  assert.throws(()=>validateGifSettings({...config,items:[item(),item()]}),/重複/);
- assert.throws(()=>validateGifSettings({...config,items:Array.from({length:11},(_,i)=>item('Gif'+i))}),/10件/);
+ assert.throws(()=>validateGifSettings({...config,items:Array.from({length:21},(_,i)=>item('Gif'+i))}),/20件/);
  assert.throws(()=>validateGifSettings({...config,items:[]}),/1件以上/);
  for(const rate of [-1,101,0.5,'20'])assert.throws(()=>validateGifSettings({...config,rate}));
  assert.equal(readGifSettings({enabled:true,items:'bad'}).enabled,false);
+});
+test('24時間や30件で忘れず、全履歴の未使用・少使用・最終送信日の順で選ぶ',()=>{
+ const summary={last_gif_id:'Alpha123',usage:[{gif_id:'Alpha123',uses:100,last_used_at:'2026-10-01T00:00:00Z'},{gif_id:'Beta234',uses:1,last_used_at:'2026-01-01T00:00:00Z'}]};
+ assert.equal(chooseReplyGif(config,comment,'💕',summary,night).gif_id,'Gamma345');
+ const equal={last_gif_id:'Alpha123',usage:[...summary.usage,{gif_id:'Gamma345',uses:1,last_used_at:'2026-09-01T00:00:00Z'}]};
+ assert.equal(chooseReplyGif(config,comment,'💕',equal,night).gif_id,'Beta234');
+ const uneven={...equal,usage:equal.usage.map(row=>row.gif_id==='Beta234'?{...row,uses:3}:row)};
+ assert.equal(chooseReplyGif(config,comment,'💕',uneven,night).gif_id,'Gamma345');
+ const twenty={...config,items:Array.from({length:20},(_,i)=>item('LongGif'+i))},history={usage:[],last_gif_id:null};
+ const chosen=new Set();
+ for(let i=0;i<20;i++){
+  const selected=chooseReplyGif(twenty,{...comment,comment_id:'turn'+i},'💕',history,night);assert.ok(selected);assert.equal(chosen.has(selected.gif_id),false);chosen.add(selected.gif_id);
+  history.last_gif_id=selected.gif_id;history.usage.push({gif_id:selected.gif_id,uses:1,last_used_at:new Date(Date.UTC(2026,0,i+1)).toISOString()});
+ }
+ assert.equal(chosen.size,20);
+ const first=history.usage[0].gif_id;
+ assert.equal(chooseReplyGif(twenty,{...comment,comment_id:'turn21'},'💕',history,night).gif_id,first);
 });
 test('割合は再試行でも安定し、絵文字だけは専用設定でAI不要のGIFを選べる',()=>{
  const zero={...config,rate:0};assert.ok(chooseReplyGif(zero,comment,'💕',[],night));
