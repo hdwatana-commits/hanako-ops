@@ -18,6 +18,7 @@ function fixture({scenario='success',emoji=true,wait=false}={}){
   if(url.includes('/hanako_fan_profiles'))return response([]);
   if(url.includes('/rpc/hanako_instagram_available')||url.includes('/rpc/hanako_note_available'))return response(true);
   if(url.includes('reply_gif=not.is.null')){assert.match(url,/user_id=eq.owner&username=eq.guest&is_owner=eq.false&status=eq.published/);assert.match(url,/reply_published_at=gte\./);return response([{reply_gif:{gif_id:'Alpha123'}}]);}
+  if(url.includes('limit=1&select=reply_gif')){assert.match(url,/user_id=eq.owner&is_owner=eq.false&status=eq.published/);assert.doesNotMatch(url,/username=|reply_gif=not.is.null/);return response(scenario==='global-repeat'?[{reply_gif:{gif_id:'Beta234'}}]:[]);}
   if(url.includes('/hanako_reply_comments')){if(opts.method==='PATCH'){if(!url.includes('status=in.'))c={...c,...body};return response([]);}return response(url.includes('reply_due_at=lte.')?[c]:[]);}
   if(parsed.pathname==='/v1.0/me')return response({id:'threads-owner',username:'hana'});
   if(parsed.pathname==='/v1.0/me/threads'&&opts.method!=='POST')return response({data:[{id:'test-post',text:'今日の写真'}]});
@@ -47,7 +48,7 @@ test('AI上限の待機中も絵文字にはAIなしで、直前と別のGIFを�
  assert.deepEqual(JSON.parse(f.created[0].gif_attachment),{gif_id:'Beta234',provider:'GIPHY'});assert.equal(f.created[0].reply_to_id,'gif-current');assert.ok(f.created[0].text);
 });
 test('文字のあるコメントでは通常のAI返信にGIFを添え、GIF選択のためにAIを追加しない',async()=>{
- const f=fixture({emoji:false});const result=await invoke({action:'run'});assert.equal(result.status,200,JSON.stringify(await result.json()));assert.equal(f.aiCalls,1);assert.equal(f.published.length,1);assert.equal(f.comment.reply_gif.scene,'thanks');
+ const f=fixture({emoji:false});const result=await invoke({action:'run'});assert.equal(result.status,200,JSON.stringify(await result.json()));assert.equal(f.aiCalls,1);assert.equal(f.published.length,1);assert.equal(f.comment.reply_gif.scene,'thanks');assert.equal(f.created[0].text,'こちらこそありがとう☺️');assert.ok(f.created[0].gif_attachment);
 });
 test('GIFの準備が拒否されたら文章へ切り替え、投稿結果不明では再送しない',async()=>{
  const f=fixture({scenario:'reject'});let result=await invoke({action:'run'});assert.equal(result.status,200,JSON.stringify(await result.json()));assert.equal(f.created.length,2);assert.ok(f.created[0].gif_attachment);assert.equal(f.created[1].gif_attachment,undefined);assert.equal(f.published.length,1);assert.equal(f.comment.reply_gif,null);assert.match(f.comment.error,/文章・絵文字のみ/);
@@ -58,4 +59,7 @@ test('GIFの準備中にOFFへ変更されたら、そのGIFを公開せず文�
 });
 test('GIFのコンテナ準備が失敗しても、未公開のGIFを放棄し文章だけを1回公開する',async()=>{
  const f=fixture({scenario:'prepare-reject'});const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.created.length,2);assert.deepEqual(f.published,['container-2']);assert.equal(f.comment.reply_gif,null);assert.match(f.comment.error,/文章・絵文字のみ/);
+});
+test('個人の前回分とアカウント直前分で候補を使い切る場合はGIFを重ねず1回返信する',async()=>{
+ const f=fixture({scenario:'global-repeat'});const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.created.length,1);assert.equal(f.created[0].gif_attachment,undefined);assert.equal(f.comment.reply_gif,null);assert.equal(f.published.length,1);assert.equal(f.aiCalls,0);
 });

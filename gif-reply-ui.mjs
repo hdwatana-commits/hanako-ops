@@ -1,4 +1,4 @@
-import {GIF_SCENES,DEFAULT_GIF_SETTINGS,parseGiphyId,gifPreviewUrl,validateGifSettings,readGifSettings} from './gif-replies.mjs?v=1';
+import {GIF_SCENES,DEFAULT_GIF_SETTINGS,parseGiphyId,gifPreviewUrl,validateGifSettings,readGifSettings} from './gif-replies.mjs?v=2';
 function gifNode(tag,text,className=''){const node=document.createElement(tag);node.textContent=text;node.className=className;return node;}
 export function createGifPreview(selection){
  const url=gifPreviewUrl(selection?.gif_id);if(!url)return null;
@@ -12,7 +12,7 @@ export function createGifReplyPanel({call,notify=()=>{}}){
  const element=document.createElement('form');element.className='panel reply-settings reply-gif-panel';element.id='replyGifSettings';
  element.innerHTML=`<h3>ThreadsのGIF返信</h3><p class="reply-help">場面ごとに複数のGIFを登録できます（各10件まで）。GIPHYで使いたいGIFを開き、その個別ページのURLを貼り付けて「この場面に追加」、最後に「GIF設定を保存」を押してください。Instagramの公開コメント返信は対象外です。</p>
  <fieldset disabled><div class="reply-grid"><label class="reply-check"><input type="checkbox" name="enabled"> GIF返信を有効にする</label><label>通常の返信でGIFを添える割合（%）<input name="rate" type="number" min="0" max="100" value="20" required></label></div><label class="reply-check"><input name="emoji_enabled" type="checkbox" checked> 絵文字だけのコメントには登録済みGIFと短い絵文字で返信する（AIは使わない）</label>
- <p class="reply-help">割合は場面を判定できた通常のコメントに適用します。絵文字だけのコメントは上の専用設定に従います。深刻な相談や苦情には添えません。相手ごとの直近24時間のGIF履歴を見て、直前と同じものを避けます。別の候補がない場合や未登録の場面は文章・絵文字で返します。</p>
+ <p class="reply-help">通常のコメントは、文章に設定した割合でGIFを添えます。割合は場面を判定できたコメントに適用します。絵文字だけのコメントは上の専用設定に従います。深刻な相談や苦情には添えません。同じ相手へ直近24時間で送った最後のGIFと、アカウント全体の直前の返信に添えたGIFを避け、使用の少ない候補を優先します。別の候補がない場合や未登録の場面は文章・絵文字で返します。</p>
  <div class="reply-grid"><label>場面<select name="scene"></select></label><label>GIFの名前（任意）<input name="label" maxlength="60" placeholder="例：ぺこっとお礼"></label></div><label>GIPHYのGIFページURL<input name="url" type="url" maxlength="1000" placeholder="https://giphy.com/gifs/…"></label><div class="button-row"><button id="replyGifAdd" type="button">この場面に追加</button><a id="replyGifSearch" href="https://giphy.com/" target="_blank" rel="noopener noreferrer">GIPHYでGIFを探す</a></div><div id="replyGifItems"></div><button class="primary" type="submit">GIF設定を保存</button></fieldset><p id="replyGifState" class="reply-help" role="status">所有者でログインし、上の「読み込む」で設定を確認してください。</p>`;
  const field=name=>element.elements.namedItem(name),list=element.querySelector('#replyGifItems'),state=element.querySelector('#replyGifState'),fieldset=element.querySelector('fieldset');
  let draft={...DEFAULT_GIF_SETTINGS,items:[]},ready=false,saving=false;

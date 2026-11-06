@@ -38,3 +38,14 @@ test('深刻な話・購入案内には添えず、おやすみGIFは日本時�
  assert.equal(gifScene('Gracias!','',night),'thanks');assert.equal(gifScene('😂','',night),'happy');
  assert.equal(gifScene('好きな曲は？','',night),null);
 });
+test('別の相手への返信を含めて同じGIFを連続させず、個人への前回分も避ける',()=>{
+ const latest=[{reply_gif:item('Beta234')}],personal=[{reply_gif:item('Alpha123')}];
+ assert.equal(chooseReplyGif(config,comment,'💕',personal,night,latest).gif_id,'Gamma345');
+ assert.equal(chooseReplyGif({...config,items:config.items.slice(0,2)},comment,'💕',personal,night,latest),null);
+ let previous=null;
+ for(let i=0;i<100;i++){
+  const selected=chooseReplyGif(config,{...comment,comment_id:String(i),username:'different-'+i},'💕',[],night,[{reply_gif:previous}]);
+  assert.ok(selected);assert.notEqual(selected.gif_id,previous?.gif_id);previous=selected;
+ }
+ assert.ok(chooseReplyGif({...config,items:[item()]},comment,'💕',[],night,[{reply_gif:null}]));
+});

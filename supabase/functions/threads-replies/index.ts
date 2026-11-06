@@ -339,7 +339,8 @@ async function auditFailedReplies() {
 async function selectReplyGif(s:any,c:any,text:string) {
   if(!chooseReplyGif(s.gif_reply,c,text))return null;
   const recent=await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(String(c.username||''))}&is_owner=eq.false&status=eq.published&reply_gif=not.is.null&reply_published_at=gte.${encodeURIComponent(new Date(Date.now()-86400000).toISOString())}&order=reply_published_at.desc&limit=30&select=reply_gif`);
-  return chooseReplyGif(s.gif_reply,c,text,recent);
+  const latest=await db(`hanako_reply_comments?${filter()}&is_owner=eq.false&status=eq.published&order=reply_published_at.desc.nullslast,comment_id.desc&limit=1&select=reply_gif`);
+  return chooseReplyGif(s.gif_reply,c,text,recent,new Date(),latest);
 }
 async function publish(c: any,automatic=false) {
   if(await skipOutsideLatest(c))return;

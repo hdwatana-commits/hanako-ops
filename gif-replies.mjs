@@ -54,10 +54,11 @@ function gifCandidates(settings,comment,reply,now){
  if(!items.length)items=config.items.filter(item=>item.enabled&&item.scene==='reaction');
  return items.length?items:null;
 }
-export function chooseReplyGif(settings,comment,reply,history=[],now=new Date()){
+export function chooseReplyGif(settings,comment,reply,history=[],now=new Date(),accountLatest=[]){
  const items=gifCandidates(settings,comment,reply,now);if(!items)return null;
  const previous=history.map(row=>row.reply_gif?.gif_id).filter(Boolean);
- const available=items.filter(item=>item.gif_id!==previous[0]);if(!available.length)return null;
+ const excluded=new Set([previous[0],accountLatest[0]?.reply_gif?.gif_id].filter(Boolean));
+ const available=items.filter(item=>!excluded.has(item.gif_id));if(!available.length)return null;
  const count=item=>previous.filter(id=>id===item.gif_id).length;
  const minimum=Math.min(...available.map(count)),pool=available.filter(item=>count(item)===minimum);
  const chosen=pool[gifHash(comment.comment_id+':gif')%pool.length];
