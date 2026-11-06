@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialMuseSongs} from '../muse-song-catalog.mjs';
-import {buildSongVibe,suggestedVibe,vibePatterns} from '../muse-song-vibe-engine.mjs';
+import {buildSongVibe,suggestedVibe,vibePatterns,microHipSwayAt} from '../muse-song-vibe-engine.mjs';
 import {reelReferenceLibrary,referenceCategories} from '../muse-reference-library.mjs';
 const base={song:initialMuseSongs[0],identityName:'MY_IDENTITY.jpg'};
 test('all twenty song candidates choose a real pattern without fabricated song timing',()=>{
@@ -30,4 +30,18 @@ test('all 40 references generate their own observed timing and source, without s
 });
 test('multi-cut references stay edit transitions, while requested long outputs hold rather than stretching',()=>{
  const r=reelReferenceLibrary.find(r=>r.category==='montage');const out=buildSongVibe({...base,referenceId:r.id,duration:30});assert.match(out.all,/Do not morph clothes/);assert.match(out.all,/reference has ended/);assert.match(out.all,/do not rescale all movements/);assert.throws(()=>buildSongVibe({...base,duration:'reference'}));assert.throws(()=>buildSongVibe({...base,referenceId:'missing'}));
+});
+test('micro sway preserves all 40 reference sources and timings, with opt-in constraints in every cut',()=>{
+ for(const r of reelReferenceLibrary){const plain=buildSongVibe({...base,referenceId:r.id,duration:'reference'}),micro=buildSongVibe({...base,referenceId:r.id,duration:'reference',hipMode:'micro'});assert.equal(plain.hipMode,'off');assert.doesNotMatch(plain.all,/ADDED MICRO HIP SWAY/);assert.deepEqual(micro.shots.map(s=>[s.start,s.end]),plain.shots.map(s=>[s.start,s.end]));for(const s of micro.shots){assert.match(s.prompt,/ADDED MICRO HIP SWAY MODE/);assert.match(s.prompt,/If seated/);assert.match(s.prompt,/No thrusting/);assert.ok(s.prompt.includes(r.url));assert.match(s.prompt,/NOT an analyzed song tempo/);assert.match(s.prompt,/Keep trousers as trousers/);}assert.equal(micro.shots[0].rows[0].hipSway.from.amplitude,0);assert.equal(micro.shots.at(-1).rows.at(-1).hipSway.to.amplitude,0);}
+});
+test('micro sway phase carries through cuts at noninteger tempo; fade applies only at full interval ends',()=>{
+ const out=buildSongVibe({...base,duration:20,bpm:123,hipMode:'micro'});
+ for(let i=1;i<out.shots.length;i++){const before=out.shots[i-1].rows.at(-1).hipSway.to,after=out.shots[i].rows[0].hipSway.from;assert.deepEqual(before,after);assert.equal(after.amplitude,1);assert.notEqual(after.phase,0);}
+ assert.equal(microHipSwayAt(.25,{duration:7}).phase,.25);
+ assert.match(out.all,/two beats per full cycle/);
+});
+test('added sway stops when a shorter reference ends and rejects unknown modes',()=>{
+ const r=reelReferenceLibrary[0],out=buildSongVibe({...base,referenceId:r.id,duration:20,hipMode:'micro'});
+ for(const s of out.shots)for(const row of s.rows)if(s.start+row.start>=r.duration){assert.equal(row.hipSway.from.amplitude,0);assert.match(row.action,/hold still; no added sway/);}
+ assert.throws(()=>buildSongVibe({...base,hipMode:'invalid'}));
 });
