@@ -1,3 +1,4 @@
+import {createGifReplyPanel,createGifPreview} from './gif-reply-ui.mjs?v=1';
 import { renderReplyAnalytics } from './reply-analytics.mjs?v=1';
 import { FAN_PROFILE_FIELDS } from './fan-profile.mjs?v=3';
 import { TONES } from './reply-rules.mjs?v=13';
@@ -37,6 +38,7 @@ const form=$('#replySettings');let loaded=null, keyConnections=null, person='', 
 const labels={pending:'待機中',generating:'生成中',draft:'下書き',publishing:'公開結果を確認中',published:'返信済み',failed:'生成失敗',uncertain:'結果確認が必要',skipped:'対象外・スキップ',history:'過去のコメント'};
 function textNode(tag,value,className='') {const element=document.createElement(tag);element.textContent=value;element.className=className;return element;}
 function status(value){$('#replyStatus').textContent=value;}
+const gifPanel=createGifReplyPanel({call,notify:status});form.after(gifPanel.element);
 async function call(action,body={}) {
   if(!cloudSync.signedIn) throw new Error('画面上部の同期設定から、所有者アカウントでログインしてください。');
   const response=await fetch(`${cloudSync.url}/functions/v1/threads-replies`,{method:'POST',headers:{apikey:cloudSync.key,Authorization:`Bearer ${await cloudSync.getAccessToken()}`,'Content-Type':'application/json'},body:JSON.stringify({action,...body}),signal:AbortSignal.timeout(120000)});
@@ -45,7 +47,7 @@ async function call(action,body={}) {
 }
 async function task(fn){if(busy)return;busy=true;section.setAttribute('aria-busy','true');try{await fn();}catch(e){status(e.message);}finally{busy=false;section.removeAttribute('aria-busy');}}
 async function load(){
-  const data=await call('load');loaded=data;keyConnections=data.connections;
+  const data=await call('load');loaded=data;keyConnections=data.connections;gifPanel.load(data.settings.gif_reply);
   const aiSelect=form.elements.namedItem('ai_provider');aiSelect.value=data.settings.ai_provider||'gemini';aiSelect.querySelector('option[value="openai"]').disabled=!data.openai?.ready&&aiSelect.value!=='openai';
   const billingMessages={balance_empty:'OpenAIのクレジット残高がなくなりました。自動返信は待機中です。残高追加後、Lunaの接続テストで再開できます。',spend_limit:'OpenAIの利用金額上限に達しました。上限・月次リセットを確認後、Lunaの接続テストを実行してください。',billing_problem:'OpenAIの残高不足または課金・利用上限の問題を検知しました。請求画面を確認してください。',rate_limited:'OpenAIの一時的な利用制限を検知しました。自動返信中なら後で再試行します。接続テスト中なら時間をおいて再確認してください。'};
   const billingMessage=billingMessages[data.settings.openai_billing_status]||'';$('#replyBillingAlert').hidden=!billingMessage;$('#replyBillingAlert').textContent=billingMessage;
@@ -74,6 +76,7 @@ function card(c){const article=document.createElement('article');article.classNa
   article.append(textNode('strong',c.username),textNode('small',`${new Date(c.commented_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})} · ${labels[c.status]||c.status}`),textNode('p',c.comment_text||'（テキストなし）'));
   if(c.post_text) {const details=document.createElement('details');details.append(textNode('summary','元の投稿'),textNode('p',c.post_text));article.append(details);}
   if(c.reply_text){article.append(textNode('p',c.reply_text,'reply-body'));const copy=textNode('button','返信本文をコピー');copy.onclick=()=>task(async()=>{await navigator.clipboard.writeText(c.reply_text);status('返信本文をコピーしました。');});article.append(copy);}
+  if(c.reply_gif){const preview=createGifPreview(c.reply_gif);if(preview)article.append(textNode('small','GIF付きの返信'),preview);}
   if(c.error)article.append(textNode('p',c.error,'reply-error'));
   if(c.status==='pending'&&c.reply_due_at)article.append(textNode('small','返信可能になる時刻：'+new Date(c.reply_due_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})));
   if(c.status==='failed'&&c.next_attempt_at)article.append(textNode('small','次の自動再生成：'+new Date(c.next_attempt_at).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo'})));

@@ -1,5 +1,6 @@
 import {readFile,writeFile} from 'node:fs/promises';
 const root=new URL('./',import.meta.url);
+const gifs=await readFile(new URL('gif-replies.mjs',root),'utf8');
 const rules=await readFile(new URL('reply-rules.mjs',root),'utf8');
 const noteSales=await readFile(new URL('note-opportunity.mjs',root),'utf8');
 const tone=await readFile(new URL('reply-tone.mjs',root),'utf8');
@@ -12,4 +13,4 @@ const igRules=await readFile(new URL('instagram-reply-rules.mjs',root),'utf8');
 const igCode=await readFile(new URL('supabase/functions/threads-replies/instagram.ts',root),'utf8');
 const prompt=await readFile(new URL('supabase/functions/threads-replies/prompt.ts',root),'utf8');
 const code=await readFile(new URL('supabase/functions/threads-replies/index.ts',root),'utf8');
-await writeFile(new URL('threads-replies-dashboard.ts',root),'export {};\n'+context.replace(/^import .*;\r?\n/gm,'').replaceAll('export ','')+'\n'+tone.replaceAll('export ','')+'\n'+variety.replaceAll('export ','')+'\n'+noteSales.replaceAll('export ','')+'\n'+rules.replaceAll('export ','')+'\n'+profile.replaceAll('export ','')+'\n'+fanProfile.replaceAll('export ','')+'\n'+dailyActivity.replaceAll('export ','')+'\n'+igRules.replaceAll('export ','')+'\n'+igCode.replace(/^import .*;\r?\n/gm,'').replaceAll('export ','')+'\n'+prompt.replace('export ','')+'\n'+code.replace(/^import .*;\r?\n/gm,''));
+await writeFile(new URL('threads-replies-dashboard.ts',root),'export {};\n'+context.replace(/^import .*;\r?\n/gm,'').replaceAll('export ','')+'\n'+tone.replaceAll('export ','')+'\n'+variety.replaceAll('export ','')+'\n'+noteSales.replaceAll('export ','')+'\n'+gifs.replaceAll('export ','')+'\n'+rules.replaceAll('export ','')+'\n'+profile.replaceAll('export ','')+'\n'+fanProfile.replaceAll('export ','')+'\n'+dailyActivity.replaceAll('export ','')+'\n'+igRules.replaceAll('export ','')+'\n'+igCode.replace(/^import .*;\r?\n/gm,'').replaceAll('export ','')+'\n'+prompt.replace('export ','')+'\n'+code.replace(/^import .*;\r?\n/gm,''));

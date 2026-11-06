@@ -1,6 +1,7 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
 import {instagramReplies} from './instagram.ts';
 import {noteOpportunity} from '../../../note-opportunity.mjs';
+import {validateGifSettings,chooseReplyGif,allowedReplyGif} from '../../../gif-replies.mjs';
 import {replyToneContext,wrongReplyRegister} from '../../../reply-tone.mjs';
 import {replyVarietyContext,repeatedReplyPattern,REPLY_VARIETY_PROMPT} from '../../../reply-variety.mjs';
 import {loadThreadContext,avoidAnsweredQuestions} from '../../../reply-context.mjs';
@@ -335,6 +336,11 @@ async function auditFailedReplies() {
   }
   return result;
 }
+async function selectReplyGif(s:any,c:any,text:string) {
+  if(!chooseReplyGif(s.gif_reply,c,text))return null;
+  const recent=await db(`hanako_reply_comments?${filter()}&username=eq.${encodeURIComponent(String(c.username||''))}&is_owner=eq.false&status=eq.published&reply_gif=not.is.null&reply_published_at=gte.${encodeURIComponent(new Date(Date.now()-86400000).toISOString())}&order=reply_published_at.desc&limit=30&select=reply_gif`);
+  return chooseReplyGif(s.gif_reply,c,text,recent);
+}
 async function publish(c: any,automatic=false) {
   if(await skipOutsideLatest(c))return;
   if(await skipExcluded(c,await settings())) return;
@@ -375,9 +381,18 @@ async function publish(c: any,automatic=false) {
   // Write publishing before any external write. Never automatically retry an uncertain result.
   const publishContext=await loadThreadContext(db,owner(),c,(await settings()).use_history);
   c={...c,reply_text:avoidAnsweredQuestions(normalizeReplyLayout(c.reply_text),publishContext.answered_questions)};
-  await updateComment(c.comment_id,{status:'publishing',error:'',reply_automatic:automatic,reply_text:c.reply_text});
+  const gifSettings=await settings();
+  c={...c,reply_gif:allowedReplyGif(gifSettings.gif_reply,c,c.reply_text,c.reply_gif)?await selectReplyGif(gifSettings,c,c.reply_text):null};
+  await updateComment(c.comment_id,{status:'publishing',error:'',reply_automatic:automatic,reply_text:c.reply_text,reply_gif:c.reply_gif});
   try {
-    const container=await meta('me/threads',{media_type:'TEXT',text:c.reply_text,reply_to_id:c.comment_id},'POST');
+    let container:any,gifFallback=c.gif_fallback_note||'';
+    try {container=await meta('me/threads',{media_type:'TEXT',text:c.reply_text,reply_to_id:c.comment_id,...(c.reply_gif?{gif_attachment:JSON.stringify({gif_id:c.reply_gif.gif_id,provider:'GIPHY'})}:{})},'POST');}
+    catch(e){
+      if(!c.reply_gif||!(e instanceof ThreadsReadError)||![400,422].includes(e.status))throw e;
+      c={...c,reply_gif:null};gifFallback='GIFを添付できなかったため、文章・絵文字のみで返信しました';
+      await updateComment(c.comment_id,{reply_gif:null});
+      container=await meta('me/threads',{media_type:'TEXT',text:c.reply_text,reply_to_id:c.comment_id},'POST');
+    }
     if(!container.id) throw new Error('ThreadsコンテナIDがありません');
     await updateComment(c.comment_id,{container_id:container.id});
     // Meta prepares containers asynchronously. Publish only after readiness is confirmed.
@@ -385,11 +400,20 @@ async function publish(c: any,automatic=false) {
     for(let attempt=0;attempt<6;attempt++) {
       const state=await meta(container.id,{fields:'id,status,error_message'});
       if(state.status==='FINISHED') {ready=true;break;}
+      if(c.reply_gif&&['ERROR','EXPIRED'].includes(state.status)){
+        await updateComment(c.comment_id,{status:'draft',container_id:null,reply_gif:null});
+        return await publish({...c,container_id:null,reply_gif:null,gif_fallback_note:'GIFを添付できなかったため、文章・絵文字のみで返信しました'},automatic);
+      }
       if(state.status!=='IN_PROGRESS') throw new Error('Threadsの返信準備が完了しませんでした。投稿状態を確認してください');
       if(attempt<5) await new Promise(resolve=>setTimeout(resolve,2000));
     }
     if(!ready) throw new Error('Threadsの返信準備が時間内に完了しませんでした。投稿状態を確認してください');
-    if(await skipExcluded(c,await settings())) return;
+    const latestSettings=await settings();
+    if(await skipExcluded(c,latestSettings)) return;
+    if(c.reply_gif&&!allowedReplyGif(latestSettings.gif_reply,c,c.reply_text,c.reply_gif)){
+      await updateComment(c.comment_id,{status:'draft',container_id:null,reply_gif:null});
+      return await publish({...c,container_id:null,reply_gif:null},automatic);
+    }
     if(await skipOutsideLatest(c))return;
     if(wrongReplyLanguage(c.comment_text,c.reply_text))throw new Error('コメントと返信の言語が合いません。再生成してください');
     if(wrongGreeting(c.reply_text))throw new Error('返信時刻と挨拶が合いません。再生成してください');
@@ -402,7 +426,7 @@ async function publish(c: any,automatic=false) {
     }
     const result=await meta('me/threads_publish',{creation_id:container.id},'POST');
     if(!result.id) throw new Error('Threads投稿結果IDがありません');
-    await updateComment(c.comment_id,{status:'published',reply_id:result.id,reply_published_at:new Date().toISOString(),reply_automatic:automatic,error:''});
+    await updateComment(c.comment_id,{status:'published',reply_id:result.id,reply_published_at:new Date().toISOString(),reply_automatic:automatic,error:gifFallback});
   } catch(e) {
     await updateComment(c.comment_id,{status:'uncertain',error:'投稿結果が不明です。Threads側を確認してください。自動再送はしません'}).catch(()=>{});
     throw e;
@@ -428,7 +452,7 @@ async function run(action: string,body: any) {
     if(action==='retry') {
       const rows=await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(String(body.commentId))}`);
       if(!rows[0]||!['failed','generating','draft'].includes(rows[0].status)||rows[0].container_id||rows[0].reply_id) throw new Error('再生成できる返信がありません');
-      await updateComment(rows[0].comment_id,{status:'pending',error:'',generation_attempts:0,next_attempt_at:null}); return {status:'pending'};
+      await updateComment(rows[0].comment_id,{status:'pending',error:'',generation_attempts:0,next_attempt_at:null,reply_gif:null}); return {status:'pending'};
     }
     if(!s.enabled) return {status:'off'};
     const aiWait=(aiProvider(s)==='openai'&&s.openai_ready===false)||Boolean(s.ai_retry_at&&Date.parse(s.ai_retry_at)>Date.now());
@@ -447,10 +471,11 @@ async function run(action: string,body: any) {
         const emoji=specialCodeReply(c.comment_text)||emojiReply(c.comment_text);
         if(aiWait&&!emoji){await updateComment(c.comment_id,{status:'pending',generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});return {status:'quota_wait',retry_at:s.ai_retry_at};}
             const text=emoji||await generate(s,c);
-        await updateComment(c.comment_id,{status:'draft',reply_text:text,error:'',next_attempt_at:null});
+        const replyGif=await selectReplyGif(s,c,text);
+        await updateComment(c.comment_id,{status:'draft',reply_text:text,reply_gif:replyGif,error:'',next_attempt_at:null});
         // Re-read after generation so OFF and changed hours take effect before posting.
         const fresh=await settings();
-        if(fresh.enabled&&fresh.mode==='auto'&&(emoji||aiProvider(fresh)===aiProvider(s))&&inWindow(fresh)&&(emoji||(fresh.ai_connection||'default')===(s.ai_connection||'default'))) await publish({...c,reply_text:text},true);
+        if(fresh.enabled&&fresh.mode==='auto'&&(emoji||aiProvider(fresh)===aiProvider(s))&&inWindow(fresh)&&(emoji||(fresh.ai_connection||'default')===(s.ai_connection||'default'))) await publish({...c,reply_text:text,reply_gif:replyGif},true);
       } catch(e) {
         if(e instanceof FreeQuotaError) {
           await updateComment(c.comment_id,{status:'pending',error:e.message,generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});
@@ -530,6 +555,10 @@ Deno.serve(async request=>{
       const registered=await connections();
       if(!registered.find(x=>x.id===profile)?.configured) throw new Error('キーの保存結果を確認できませんでした。登録状態を確認してください');
       return respond({saved:true,connections:registered});
+    }
+    if(body.action==='gif_save'){
+      const config=validateGifSettings(body.settings);
+      await updateSettings({gif_reply:config});return respond({saved:true,settings:config});
     }
     if(body.action==='key_status') return respond({connections:await connections()});
     if(body.action==='analytics')return respond({analytics:await db('rpc/hanako_reply_analytics','POST',{owner_id:owner()})});
