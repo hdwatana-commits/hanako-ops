@@ -37,6 +37,7 @@ async function aiConfigured(s?: any) {if(aiProvider(s)==='gemini') return (await
 const invalidReply = (text: string,max: number,nickname='') => !text || [...text].length>max || /```|@|(?:〇|○|◯|×|X){2,}|\S+(?:さん|くん|君|ちゃん|様)/.test(nickname?text.replaceAll(nickname,''):text) || /会[うえいお]|逢|デート|電話|通話|連絡先|待ち合わせ|DM|LINE|\b(?:meet|meeting|date|call|phone|whatsapp|telegram)\b|见面|見面|전화|만나/i.test(text);
 class FreeQuotaError extends Error {}
 class ThreadsReadError extends Error {status:number;constructor(status:number,message:string){super(message);this.status=status;}}
+class ThreadsRateLimitError extends ThreadsReadError {}
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,apikey,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
 const owner = () => env('HANAKO_OWNER_USER_ID');
 const filter = () => `user_id=eq.${encodeURIComponent(owner())}`;
@@ -61,7 +62,9 @@ async function api(url: string, options: RequestInit, label: string) {
     const token=Deno.env.get('THREADS_ACCESS_TOKEN')||'__no_token__';
     const reason=String(body?.error?.message||'').replaceAll(token,'[認証情報]').replace(/https?:\/\/\S+/g,'[URL]').replace(/(?:bearer|access_token)\s*[:=]?\s*\S+/gi,'[認証情報]').slice(0,240);
     const code=Number.isInteger(body?.error?.code)?body.error.code:'unknown',subcode=Number.isInteger(body?.error?.error_subcode)?body.error.error_subcode:'none';
-    throw new ThreadsReadError(response.status,`Threads: HTTP ${response.status} / code ${code} / subcode ${subcode}${reason?' / '+reason:''}`);
+    const message=`Threads: HTTP ${response.status} / code ${code} / subcode ${subcode}${reason?' / '+reason:''}`;
+    if(response.status===429||[4,17,32,613].includes(code))throw new ThreadsRateLimitError(response.status,message);
+    throw new ThreadsReadError(response.status,message);
   }
   if(!response.ok||(label!=='データ保存'&&body?.error)) throw new Error(`${label}: HTTP ${response.status}。権限・期限・利用上限を確認してください`);
   return body;
@@ -73,7 +76,7 @@ async function meta(endpoint: string,params: Record<string,string>={},method='GE
   const url=new URL(`https://graph.threads.net/v1.0/${endpoint}`);
   if(method==='GET') url.search=new URLSearchParams(params).toString();
   try {return await api(url.toString(),{method,headers:{Authorization:`Bearer ${env('THREADS_ACCESS_TOKEN')}`},...(method==='GET'?{}:{body:new URLSearchParams(params)})},'Threads');}
-  catch(e){if(e instanceof ThreadsReadError)throw new ThreadsReadError(e.status,`${e.message} [${method} ${endpoint}]`);throw e;}
+  catch(e){if(e instanceof ThreadsReadError)e.message+=` [${method} ${endpoint}]`;throw e;}
 }
 async function settings() {
   const rows=await db(`hanako_reply_settings?${filter()}`);
@@ -81,6 +84,73 @@ async function settings() {
   return (await db('hanako_reply_settings','POST',{user_id:owner()}))[0];
 }
 async function updateSettings(value: unknown) { return db(`hanako_reply_settings?${filter()}`,'PATCH',value); }
+const threadsBlocked=(state:any,video=false)=>state?.status==='limited'&&(state.scope!=='video'||video);
+async function markThreadsLimited(reason='Threadsの利用上限により公開を待機しています',scope='all') {
+  const s=await settings(),state={...s.threads_publish_state,status:'limited',scope,reason,retry_at:new Date(Date.now()+900000).toISOString(),checked_at:new Date().toISOString()};
+  await updateSettings({threads_publish_state:state,last_error:'Threadsの利用上限により公開を待機しています'});return state;
+}
+async function threadsPublishingState(force=false) {
+  const current=await settings(),saved=current.threads_publish_state||{};
+  if(!force&&saved.status==='limited'&&Date.parse(saved.retry_at)>Date.now())return saved;
+  if(!force&&saved.status!=='limited'&&Date.now()-Date.parse(saved.checked_at)<60000)return saved;
+  try{
+    const reply=await meta('me/threads_publishing_limit',{fields:'reply_quota_usage,reply_config,quota_usage,config'}),data=reply.data?.[0]||{};
+    const usage=Number(data.reply_quota_usage),limit=Number(data.reply_config?.quota_total);
+    if(!Number.isFinite(usage)||!Number.isFinite(limit)||limit<=0)throw new Error('Threadsから返信枠の数値を取得できませんでした');
+    const postUsage=Number(data.quota_usage),postLimit=Number(data.config?.quota_total),postLimited=Number.isFinite(postUsage)&&Number.isFinite(postLimit)&&postLimit>0&&postUsage>=postLimit;
+    const limited=usage>=limit||postLimited,scope=usage>=limit?'all':postLimited?'video':null;
+    const state={status:limited?'limited':'available',scope,post_usage:Number.isFinite(Number(data.quota_usage))?Number(data.quota_usage):null,post_limit:Number.isFinite(Number(data.config?.quota_total))?Number(data.config.quota_total):null,post_duration_seconds:data.config?.quota_duration||null,reply_usage:usage,reply_limit:limit,reply_duration_seconds:data.reply_config?.quota_duration||null,checked_at:new Date().toISOString(),retry_at:limited?new Date(Date.now()+900000).toISOString():null,reason:usage>=limit?'Threadsの返信枠を使い切ったため待機しています':postLimited?'動画投稿枠が上限のため文章・絵文字だけで返信しています':''};
+    await updateSettings({threads_publish_state:state});return state;
+  }catch(e){
+    if(e instanceof ThreadsRateLimitError)return markThreadsLimited(e.message);
+    if(saved.status==='limited')return markThreadsLimited('上限の回復を確認できないため待機を継続します');
+    const state={...saved,status:'unknown',checked_at:new Date().toISOString(),reason:'Threadsの返信枠を取得できませんでした'};
+    await updateSettings({threads_publish_state:state});return state;
+  }
+}
+async function deferForThreadsLimit(c:any,e:ThreadsRateLimitError) {
+  const configured=await settings(),quota=configured.threads_publish_state||{};
+  const onlyVideo=c.reply_gif?.delivery==='video'&&Number(quota.reply_usage)<Number(quota.reply_limit);
+  const state=await markThreadsLimited(e.message,onlyVideo?'video':'all');
+  const rows=await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.comment_id)}`),saved=rows[0]||c;
+  if(saved.reply_id||['published','skipped'].includes(saved.status))return;
+  await updateComment(c.comment_id,{status:saved.reply_text?'draft':'pending',reply_automatic:true,next_attempt_at:state.retry_at,error:'Threadsの利用上限により保留中です。公開状態を確認してから自動再開します',reply_gif:c.reply_gif===undefined?saved.reply_gif:c.reply_gif,reply_text:c.reply_text||saved.reply_text,reply_runtime:{...saved.reply_runtime,...c.reply_runtime,threads_quota_wait:true,quota_deferred_at:new Date().toISOString()}});
+}
+async function resumeQuotaReplies(deadline:number) {
+  const rows=await db(`hanako_reply_comments?${filter()}&status=eq.draft&reply_id=is.null&reply_runtime->>threads_quota_wait=eq.true&order=commented_at&limit=50`),ids=[];
+  const quota=await threadsPublishingState();
+  for(const c of rows){
+    if(Date.now()>deadline)break;
+    if(ids.length>=3)break;
+    if(c.status!=='draft'||!c.reply_runtime?.threads_quota_wait||c.reply_id||threadsBlocked(quota))continue;
+    ids.push(c.comment_id);
+    let verifiedUnpublished=!c.container_id;
+    try{
+      if(await skipOutsideLatest(c)||await skipExcluded(c,await settings())||await skipIfReplied(c))continue;
+      let reuse=false;
+      if(c.container_id){
+        const state=await meta(c.container_id,{fields:'id,status,error_message'});
+        if(state.status==='PUBLISHED'){
+          await updateComment(c.comment_id,{status:'uncertain',error:'公開済みのコンテナです。返信を再送せず確認を待ちます',reply_runtime:{...c.reply_runtime,threads_quota_wait:false}});continue;
+        }
+        if(state.status==='IN_PROGRESS'){await updateComment(c.comment_id,{next_attempt_at:new Date(Date.now()+60000).toISOString()});continue;}
+        if(!['FINISHED','ERROR','EXPIRED'].includes(state.status))continue;
+        verifiedUnpublished=true;
+        reuse=state.status==='FINISHED';
+      }
+      await publish(c,true,reuse);
+    }catch(e){
+      if(e instanceof ThreadsRateLimitError){await deferForThreadsLimit(c,e);break;}
+      const latest=await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.comment_id)}`);
+      if(!verifiedUnpublished||latest[0]?.reply_id||!['draft','pending'].includes(latest[0]?.status))continue;
+      // Nothing has been republished on a failed preflight. Rebuild stale text only
+      // after confirming its old container was not published.
+      await updateComment(c.comment_id,{status:'pending',container_id:null,next_attempt_at:null,error:'上限待機後に返信内容を再確認して作成し直します',reply_runtime:{...c.reply_runtime,threads_quota_wait:false}});
+    }
+    if(threadsBlocked((await settings()).threads_publish_state))break;
+  }
+  return ids;
+}
 function fanUsername(value:any){if(typeof value!=='string'||! /^[a-zA-Z0-9._]{1,30}$/.test(value))throw new Error('ユーザー名が不正です');return value.toLowerCase();}
 async function refreshFanProfile(username:string){
   username=fanUsername(username);
@@ -435,6 +505,7 @@ async function resumeMediaRetries(deadline:number) {
 async function publish(c: any,automatic=false,resumeContainer=false) {
   const originalText=c.reply_text;
   if(automatic){const gate=await settings();if(!gate.enabled||gate.mode!=='auto'||!inWindow(gate))return;}
+  const quotaGate=await threadsPublishingState();if(threadsBlocked(quotaGate)){await deferForThreadsLimit(c,new ThreadsRateLimitError(429,'Threadsの上限回復を待機しています'));return;}
   if(await skipOutsideLatest(c))return;
   if(await skipExcluded(c,await settings())) return;
   if(await skipIfReplied(c)) return;
@@ -478,6 +549,11 @@ async function publish(c: any,automatic=false,resumeContainer=false) {
   c={...c,reply_gif:resumeContainer?(allowedReplyGif(gifSettings.gif_reply,c,c.reply_text,c.reply_gif)?c.reply_gif:null):c.gif_fallback_note?null:await selectReplyGif(gifSettings,c,c.reply_text)};
   if(c.reply_gif&&resumeContainer&&!await replyGifInScope(gifSettings,c))c={...c,reply_gif:null};
   resumeContainer=Boolean(resumeContainer&&c.reply_gif&&originalText===c.reply_text);
+  const mediaQuota=await threadsPublishingState();
+  if(threadsBlocked(mediaQuota)){await deferForThreadsLimit(c,new ThreadsRateLimitError(429,'Threadsの上限回復を待機しています'));return;}
+  if(c.reply_gif?.delivery==='video'&&threadsBlocked(mediaQuota,true)){
+    c={...c,reply_gif:null,reply_runtime:{...c.reply_runtime,media_expected:false,quota_text_fallback:true,media_reason:'動画投稿枠の上限中のため文章・絵文字だけで返信します'}};resumeContainer=false;
+  }
   if(c.reply_gif?.delivery==='video'&&!resumeContainer)c={...c,reply_gif:{...c.reply_gif,preparing_started_at:new Date().toISOString()}};
   await updateComment(c.comment_id,{status:'publishing',error:'',reply_automatic:automatic,reply_text:c.reply_text,reply_gif:c.reply_gif});
   try {
@@ -485,6 +561,7 @@ async function publish(c: any,automatic=false,resumeContainer=false) {
     try {container=resumeContainer?{id:c.container_id}:await meta('me/threads',{media_type:c.reply_gif?.delivery==='video'?'VIDEO':'TEXT',text:c.reply_text,reply_to_id:c.comment_id,...(c.reply_gif?.delivery==='video'?{video_url:gifVideoUrl(c.reply_gif.gif_id)}:c.reply_gif?{gif_attachment:JSON.stringify({gif_id:c.reply_gif.gif_id,provider:'GIPHY'})}:{})},'POST');}
     catch(e){
       if(!c.reply_gif||!(e instanceof ThreadsReadError)||![400,422].includes(e.status))throw e;
+      if(e instanceof ThreadsRateLimitError)throw e;
       if(c.reply_gif.delivery==='video'){await retryVideo(c,e.message);return;}
       c={...c,reply_gif:null};gifFallback='GIFを添付できなかったため、文章・絵文字のみで返信しました';
       await updateComment(c.comment_id,{reply_gif:null});
@@ -530,10 +607,12 @@ async function publish(c: any,automatic=false,resumeContainer=false) {
     if(instagramDay&&instagramDay!==new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'})){
       if(!await db('rpc/hanako_instagram_claim','POST',{owner_id:owner(),fan_username:c.username,target_comment_id:c.comment_id}))throw new Error('日付変更後のInstagram案内上限です');
     }
+    const beforePublish=await threadsPublishingState();if(threadsBlocked(beforePublish,c.reply_gif?.delivery==='video')){await deferForThreadsLimit(c,new ThreadsRateLimitError(429,'Threadsの上限回復を待機しています'));return;}
     const result=await meta('me/threads_publish',{creation_id:container.id},'POST');
     if(!result.id) throw new Error('Threads投稿結果IDがありません');
-    await updateComment(c.comment_id,{status:'published',reply_id:result.id,reply_published_at:new Date().toISOString(),reply_automatic:automatic,error:gifFallback});
+    await updateComment(c.comment_id,{status:'published',reply_id:result.id,reply_published_at:new Date().toISOString(),reply_automatic:automatic,error:gifFallback,reply_runtime:{...c.reply_runtime,threads_quota_wait:false}});
   } catch(e) {
+    if(e instanceof ThreadsRateLimitError){await deferForThreadsLimit(c,e);return;}
     await updateComment(c.comment_id,{status:'uncertain',error:'投稿結果が不明です。Threads側を確認してください。自動再送はしません'+(c.reply_gif&&e instanceof ThreadsReadError?' · '+e.message:'')}).catch(()=>{});
     throw e;
   }
@@ -564,6 +643,7 @@ async function processReplyComment(c:any,s:any,aiWait:boolean,checked:number) {
         const fresh=await settings();
         if(fresh.enabled&&fresh.mode==='auto'&&(emoji||aiProvider(fresh)===aiProvider(s))&&inWindow(fresh)&&(emoji||(fresh.ai_connection||'default')===(s.ai_connection||'default'))) await publish({...c,reply_text:text,reply_gif:replyGif},true);
       } catch(e) {
+        if(e instanceof ThreadsRateLimitError){await deferForThreadsLimit(c,e);return {status:'threads_rate_wait'};}
         if(e instanceof FreeQuotaError) {
           await updateComment(c.comment_id,{status:'pending',error:e.message,generation_attempts:Math.max(0,(c.generation_attempts||1)-1)});
           const retry_at=new Date(Date.now()+3600000).toISOString();
@@ -594,16 +674,19 @@ async function run(action: string,body: any) {
       await updateComment(rows[0].comment_id,{status:'pending',error:'',generation_attempts:0,next_attempt_at:null,reply_gif:null}); return {status:'pending'};
     }
     if(!s.enabled) return {status:'off'};
+    const threadsState=await threadsPublishingState();if(threadsBlocked(threadsState))return {status:'threads_rate_wait',retry_at:threadsState.retry_at,threads:threadsState};
     const aiWait=(aiProvider(s)==='openai'&&s.openai_ready===false)||Boolean(s.ai_retry_at&&Date.parse(s.ai_retry_at)>Date.now());
     const me=await checkThreadsOwner();
     const checked=await scanRecent(s,me);
     if(!inWindow(s)) {await updateSettings({last_run:new Date().toISOString(),last_error:''}); return {status:'outside_window'};}
     if(s.mode==='auto')await recoverStalledReplies(s);
     const deadline=Date.now()+25000;
-    const resumed=s.mode==='auto'&&s.gif_reply?[...await resumePreparingGifs(deadline),...await resumeMediaRetries(deadline)]:[];
+    const quotaResumed=s.mode==='auto'?await resumeQuotaReplies(deadline):[];
+    const resumed=[...quotaResumed,...(s.mode==='auto'&&s.gif_reply?[...await resumePreparingGifs(deadline),...await resumeMediaRetries(deadline)]:[])];
     const seen=new Set(resumed),errors:any[]=[];let c:any=null,processed=0,quota:any=null,lastStatus='idle';
     for(let turn=0;turn<3;turn++){
       if(turn&&Date.now()>deadline)break;
+      if(threadsBlocked((await settings()).threads_publish_state))return {status:'threads_rate_wait',processed,resumed:resumed.length};
       const fresh=await settings();if(!fresh.enabled||!inWindow(fresh)||aiProvider(fresh)!==aiProvider(s)||(fresh.ai_connection||'default')!==(s.ai_connection||'default'))break;
       if(turn||resumed.length){
         const due=await db(`hanako_reply_comments?${filter()}&is_owner=eq.false&container_id=is.null&reply_id=is.null&reply_due_at=lte.${encodeURIComponent(new Date().toISOString())}&or=(status.eq.pending,and(status.eq.failed,generation_attempts.lt.3,next_attempt_at.lte.${encodeURIComponent(new Date().toISOString())}))&order=reply_due_at,commented_at&limit=10`);
@@ -611,7 +694,7 @@ async function run(action: string,body: any) {
       }
       c=aiWait?await claimEmoji():await db('rpc/hanako_reply_claim','POST',{owner_id:owner()});
       if(!c||seen.has(c.comment_id))break;seen.add(c.comment_id);
-      try{const result=await processReplyComment(c,s,aiWait,checked);processed++;lastStatus=result.status;if(result.status==='quota_wait'){quota=result;break;}}
+      try{const result=await processReplyComment(c,s,aiWait,checked);processed++;lastStatus=result.status;if(result.status==='quota_wait'||result.status==='threads_rate_wait'){quota=result;break;}}
       catch(e){errors.push(e);}
     }
     if(quota)return quota;
@@ -622,7 +705,7 @@ async function run(action: string,body: any) {
     if(!c&&!aiWait&&new Date().getUTCMinutes()%5===0)try{await scan(s,me);}catch(e){historyError=e instanceof Error?e.message:'履歴の収集に失敗しました';}
     await updateSettings({last_run:new Date().toISOString(),...(aiWait?{}:{last_error:errors.length?(errors[0] instanceof Error?errors[0].message:'返信失敗'):historyError,ai_retry_at:null})});
     return {status:processed?(processed===1?lastStatus:'processed'):resumed.length?'gif_preparing_checked':'idle',checked,processed,resumed:resumed.length,failed:errors.length};
-  } catch(e) {await updateSettings({last_error:e instanceof Error?e.message:'処理失敗'}).catch(()=>{});throw e;}
+  } catch(e) {if(e instanceof ThreadsRateLimitError){const blocked=await markThreadsLimited(e.message);return {status:'threads_rate_wait',retry_at:blocked.retry_at};}await updateSettings({last_error:e instanceof Error?e.message:'処理失敗'}).catch(()=>{});throw e;}
   finally {await updateSettings({lease_until:null});}
 }
 Deno.serve(async request=>{
@@ -640,6 +723,14 @@ Deno.serve(async request=>{
     }
     if(body.action==='gif_recover')return respond(await recoverReplyGifs());
     if(body.action==='check') {
+      if(body.threads_quota===true){
+        const quota=await threadsPublishingState(true);
+        if(body.verify_text_fallback===true){
+          const rows=await db(`hanako_reply_comments?${filter()}&status=eq.published&reply_runtime->>quota_text_fallback=eq.true&select=reply_id&order=reply_published_at.desc&limit=1`);
+          if(rows[0]?.reply_id){const media=await meta(rows[0].reply_id,{fields:'id,media_type,media_url,permalink'});return respond({...quota,text_fallback:{id:media.id,media_type:media.media_type,has_media:Boolean(media.media_url),permalink:media.permalink}});}
+        }
+        return respond(quota);
+      }
       if(body.gif_status===true)return respond(await diagnoseReplyGifs());
       if(body.audit_failed===true)return respond(await auditFailedReplies());
       if(body.provider==='openai') {

@@ -1,4 +1,4 @@
-import {GIF_SCENES,DEFAULT_GIF_SETTINGS,parseGiphyId,gifPreviewUrl,validateGifSettings,readGifSettings} from './gif-replies.mjs?v=6';
+import {GIF_SCENES,DEFAULT_GIF_SETTINGS,parseGiphyId,gifPreviewUrl,validateGifSettings,readGifSettings} from './gif-replies.mjs?v=7';
 function gifNode(tag,text,className=''){const node=document.createElement(tag);node.textContent=text;node.className=className;return node;}
 export function createGifPreview(selection){
  const url=gifPreviewUrl(selection?.gif_id);if(!url)return null;
@@ -57,6 +57,6 @@ export function createGifReplyPanel({call,notify=()=>{}}){
    const result=await call('gif_save',{settings:value});load(result.settings||value);state.textContent='GIF設定をクラウドに保存しました。次に作る返信から反映します。';notify('GIF設定をクラウドに保存しました。');
   }catch(e){state.textContent=e.message;}finally{saving=false;fieldset.disabled=!ready;}
  });
- function load(value){draft=readGifSettings(value);ready=true;fieldset.disabled=saving;field('enabled').checked=draft.enabled;field('rate').value=String(draft.rate);field('emoji_enabled').checked=draft.emoji_enabled;field('latest_post_only').checked=draft.latest_post_only;field('video_mode').checked=draft.video_mode;render();state.textContent=`${draft.enabled?'有効':'停止中'} · 登録${draft.items.length}件（使用するGIF ${draft.items.filter(x=>x.enabled).length}件）`;}
+ function load(value){draft=readGifSettings(value);ready=true;fieldset.disabled=saving;field('enabled').checked=draft.enabled;field('rate').value=String(draft.rate);field('emoji_enabled').checked=draft.emoji_enabled;field('latest_post_only').checked=draft.latest_post_only;field('video_mode').checked=draft.video_mode;render();state.textContent=`${draft.enabled?'有効':'停止中'} · 通常の文章への使用割合 ${draft.rate}% · ${draft.video_mode?'動画形式':'GIF形式'} · 登録${draft.items.length}件（使用するGIF ${draft.items.filter(x=>x.enabled).length}件）`;}
  return {element,load};
 }

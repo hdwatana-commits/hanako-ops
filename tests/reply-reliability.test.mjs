@@ -8,7 +8,8 @@ const response=(body,status=200)=>new Response(JSON.stringify(body),{status,head
 const invoke=body=>handler(new Request('https://fn.test',{method:'POST',headers:{Authorization:'Bearer owner','Content-Type':'application/json'},body:JSON.stringify(body)}));
 const ago=ms=>new Date(Date.now()-ms).toISOString();
 const row=(id,extra={})=>({comment_id:id,post_id:'post',username:'guest'+id,comment_text:'💕',commented_at:ago(600000),created_at:ago(600000),reply_due_at:ago(500000),status:'pending',generation_attempts:0,is_owner:false,...extra});
-function fixture(initial,{manual=[],waitFirst=false,rejectVideo=false,preflightFailure=false,failGeneration=false,stopDuringPrepare=false}={}){
+function fixture(initial,{manual=[],waitFirst=false,rejectVideo=false,preflightFailure=false,failGeneration=false,stopDuringPrepare=false,quotaLimit=false,postLimit=false,ratePublish=false,loseResponse=false,containerReadFails=false,publishedContainer=false}={}){
+ const limits={post:postLimit,reply:quotaLimit};
  const rows=initial.map(r=>structuredClone(r)),containers=[],published=[],reads=new Map();let aiCalls=0;
  let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],adapt_tone:true,max_chars:180,use_history:false,custom_prompt:'',ai_provider:'openai',openai_ready:true,started_at:ago(86400000),post_limit:2,gif_reply:{enabled:true,rate:100,emoji_enabled:true,video_mode:true,items:['Alpha123','Beta234','Gamma345','Delta456'].map(gif_id=>({scene:'reaction',gif_id,label:gif_id,enabled:true}))}};
  function match(r,q){
@@ -28,6 +29,7 @@ function fixture(initial,{manual=[],waitFirst=false,rejectVideo=false,preflightF
  globalThis.fetch=async(url,opts={})=>{
   const u=new URL(String(url)),q=u.searchParams,p=u.pathname,b=typeof opts.body==='string'?JSON.parse(opts.body):{};
   if(p==='/auth/v1/user')return response({id:'owner'});
+  if(p==='/v1.0/me/threads_publishing_limit')return response({data:[{reply_quota_usage:limits.reply?1000:400,reply_config:{quota_total:1000,quota_duration:86400},quota_usage:limits.post?251:10,config:{quota_total:250,quota_duration:86400}}]});
   if(p.endsWith('/hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...b};return response([s]);}
   if(p.endsWith('/rpc/hanako_reply_lock'))return response(true);
   if(p.endsWith('/rpc/hanako_reply_claim')){
@@ -59,12 +61,12 @@ function fixture(initial,{manual=[],waitFirst=false,rejectVideo=false,preflightF
    if(rejectVideo&&args.media_type==='VIDEO')return response({error:{code:100,message:'Bad media'}},400);
    return response({id:'container-'+containers.length});
   }
-  if(p.startsWith('/v1.0/container-')){if(stopDuringPrepare)s.enabled=false;const n=(reads.get(p)||0)+1;reads.set(p,n);return response({status:waitFirst&&p.endsWith('-1')&&n===1?'IN_PROGRESS':'FINISHED'});}
-  if(p==='/v1.0/me/threads_publish'){const id=opts.body.get('creation_id');published.push(id);return response({id:'reply-'+id});}
+  if(p.startsWith('/v1.0/container-')){if(containerReadFails)return response({error:{code:2,message:'State unavailable'}},500);if(publishedContainer)return response({status:'PUBLISHED'});if(stopDuringPrepare)s.enabled=false;const n=(reads.get(p)||0)+1;reads.set(p,n);return response({status:waitFirst&&p.endsWith('-1')&&n===1?'IN_PROGRESS':'FINISHED'});}
+  if(p==='/v1.0/me/threads_publish'){const id=opts.body.get('creation_id');published.push(id);if(ratePublish&&containers[Number(id.split('-').at(-1))-1]?.media_type==='VIDEO')return response({error:{code:613,error_subcode:4279002,message:'Calls to this api have exceeded the rate limit.'}},400);if(loseResponse)throw Error('Network lost after publication');return response({id:'reply-'+id});}
   if(u.hostname==='api.openai.com'){aiCalls++;const input=JSON.parse(b.input);return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:failGeneration&&input.current_comment==='失敗するコメント'?'会いたいよ':'桃が好きだよ☺️'}]}]});}
   throw Error('Unexpected request '+p+'?'+q);
  };
- return {rows,containers,published,get aiCalls(){return aiCalls},get settings(){return s}};
+ return {rows,containers,published,limits,get aiCalls(){return aiCalls},get settings(){return s}};
 }
 test('1回で複数人に返し、同じコメントは同じ実行内で再処理しない',async()=>{
  const f=fixture([row('a'),row('b'),row('c')]);const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.published.length,3);assert.equal(new Set(f.containers.map(c=>c.reply_to_id)).size,3);assert.equal(f.aiCalls,0);assert.ok(f.rows.every(r=>r.status==='published'&&r.reply_gif.delivery==='video'));
@@ -96,4 +98,39 @@ test('中断した自動処理だけを再開し、手動の下書きは自動�
 
 test('動画の準備中に全自動返信をオフへ変えたら公開せず待機へ戻す',async()=>{
  const f=fixture([row('a')],{stopDuringPrepare:true});const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.published.length,0);assert.equal(f.rows[0].status,'pending');assert.equal(f.rows[0].container_id,null);
+});
+
+test('Metaの返信枠が満杯ならAI・動画作成・公開をせず、枠の回復確認後に再開する',async()=>{
+ const f=fixture([row('a')],{quotaLimit:true});let r=await invoke({action:'run'});assert.equal(r.status,200);assert.equal((await r.json()).status,'threads_rate_wait');assert.equal(f.aiCalls,0);assert.equal(f.containers.length,0);assert.equal(f.published.length,0);assert.equal(f.rows[0].status,'pending');assert.equal(f.settings.threads_publish_state.reply_usage,1000);
+ r=await invoke({action:'run'});assert.equal((await r.json()).status,'threads_rate_wait');assert.equal(f.containers.length,0);
+});
+test('動画公開613を結果不明や文章のみへ変えず、動画コンテナと本文を保留する',async()=>{
+ const f=fixture([row('a'),row('b')],{ratePublish:true});const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.rows[0].status,'draft');assert.equal(f.rows[0].container_id,'container-1');assert.ok(f.rows[0].reply_runtime.threads_quota_wait);assert.equal(f.rows[0].reply_gif.delivery,'video');assert.equal(f.rows[1].status,'published');assert.equal(f.published.length,2);assert.equal(f.containers.length,2);assert.equal(f.settings.threads_publish_state.status,'limited');
+});
+test('上限待ちの未公開動画を同じコンテナで復帰し、手動返信済みなら再送しない',async()=>{
+ const item=row('a',{status:'draft',reply_text:'💕',container_id:'container-saved',reply_gif:{provider:'GIPHY',gif_id:'Alpha123',scene:'reaction',delivery:'video'},reply_runtime:{threads_quota_wait:true}});
+ let f=fixture([item]);let r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.containers.length,0);assert.deepEqual(f.published,['container-saved']);assert.equal(f.rows[0].status,'published');assert.equal(f.rows[0].reply_runtime.threads_quota_wait,false);
+ f=fixture([item],{manual:['a']});r=await invoke({action:'run'});assert.equal(r.status,200);assert.equal(f.rows[0].status,'skipped');assert.equal(f.published.length,0);
+});
+test('状態が読めないコンテナ・公開済みコンテナ・公開応答が消えた返信を新規投稿し直さない',async()=>{
+ const item=row('a',{status:'draft',reply_text:'💕',container_id:'container-saved',reply_gif:{provider:'GIPHY',gif_id:'Alpha123',scene:'reaction',delivery:'video'},reply_runtime:{threads_quota_wait:true}});
+ for(const opts of [{containerReadFails:true},{publishedContainer:true},{loseResponse:true}]){const f=fixture([item],opts);const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.containers.length,0);assert.equal(f.published.length,opts.loseResponse?1:0);assert.notEqual(f.rows[0].status,'pending');}
+});
+
+test('投稿枠が上限なら選択済みの動画も文章へ切り替え、返信を継続する',async()=>{
+ const f=fixture([row('video'),row('text',{comment_text:'文章のコメント'})],{postLimit:true});f.settings.gif_reply.rate=0;
+ const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.rows[0].status,'published');assert.equal(f.rows[0].reply_gif,null);assert.ok(f.rows[0].reply_runtime.quota_text_fallback);assert.equal(f.rows[1].status,'published');assert.equal(f.containers.length,2);assert.ok(f.containers.every(c=>c.media_type==='TEXT'));assert.equal(f.settings.threads_publish_state.scope,'video');assert.equal(f.settings.threads_publish_state.post_usage,251);
+});
+test('動画への613が発生しても、同じバッチの文章返信を不必要に止めない',async()=>{
+ const f=fixture([row('video'),row('text',{comment_text:'文章のコメント'})],{ratePublish:true});f.settings.gif_reply.rate=0;
+ const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.rows[0].status,'draft');assert.equal(f.rows[1].status,'published');assert.equal(f.containers.length,2);assert.equal(f.containers[1].media_type,'TEXT');assert.equal(f.settings.threads_publish_state.scope,'video');
+});
+
+test('投稿枠が回復したら同じ設定のまま動画付き返信へ自動で戻る',async()=>{
+ const f=fixture([row('a')],{postLimit:true});let r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.containers[0].media_type,'TEXT');
+ f.limits.post=false;f.settings.threads_publish_state.retry_at=ago(1000);f.rows.push(row('restored'));
+ r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.containers[1].media_type,'VIDEO');assert.equal(f.rows[1].reply_gif.delivery,'video');
+});
+test('上限で止まった旧動画の未公開を確認してから、文章だけを一度返す',async()=>{
+ const f=fixture([row('old',{status:'draft',reply_text:'💕',container_id:'container-saved',reply_gif:{provider:'GIPHY',gif_id:'Alpha123',scene:'reaction',delivery:'video'},reply_runtime:{threads_quota_wait:true}})],{postLimit:true});const r=await invoke({action:'run'});assert.equal(r.status,200,JSON.stringify(await r.json()));assert.equal(f.rows[0].status,'published');assert.equal(f.rows[0].reply_gif,null);assert.equal(f.containers.length,1);assert.equal(f.containers[0].media_type,'TEXT');assert.deepEqual(f.published,['container-1']);
 });
