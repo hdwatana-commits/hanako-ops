@@ -1,4 +1,4 @@
-const CACHE_NAME = "hanako-room-ops-v413";
+const CACHE_NAME = "hanako-room-ops-v414";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./gif-replies.mjs?v=7", "./gif-reply-ui.mjs?v=7",
@@ -17,16 +17,16 @@ const APP_SHELL = [
   "./reel-captions.mjs?v=2", "./reel-caption-editor.mjs?v=4",
   "./reel-music.mjs?v=4",
   "./reel-maker.mjs?v=29", "./reel-engine.mjs", "./reel-maker.css?v=8",
-  "./threads-replies.js?v=43",
+  "./threads-replies.js?v=44",
   "./reply-analytics.mjs?v=1",
   "./fan-profile.mjs?v=3",
-  "./threads-replies.css?v=3",
+  "./threads-replies.css?v=4",
   "./reply-rules.mjs?v=13",
   "./",
   "./index.html",
   "./styles.css?v=372",
   "./hanako-four-shot-plans.js?v=1",
-    "./app.js?v=413",
+    "./app.js?v=414",
   "./cloud-sync.js?v=307",
   "./ops-engine.js?v=222",
   "./ops-phase2-engine.js?v=222",
@@ -433,7 +433,7 @@ const CORE_SHELL = [
   "./index.html",
     "./styles.css?v=372",
     "./hanako-four-shot-plans.js?v=1",
-    "./app.js?v=413",
+    "./app.js?v=414",
     "./cloud-sync.js?v=307",
     "./ops-engine.js?v=222",
     "./ops-phase2-engine.js?v=222",

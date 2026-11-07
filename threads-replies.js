@@ -95,7 +95,7 @@ function card(c){const article=document.createElement('article');article.classNa
 }
 function renderQueue(){const queue=$('#replyQueue');queue.replaceChildren();const values=(loaded?.replies||[]).filter(c=>$('#replyFilter').value==='all'||($('#replyFilter').value==='attention'?['failed','uncertain','draft','generating'].includes(c.status):c.status===$('#replyFilter').value));if(!values.length)queue.append(textNode('p','対象の返信はありません。'));values.forEach(c=>queue.append(card(c)));}
 function renderFans(){const list=$('#replyFans');list.replaceChildren();const values=(loaded?.fans||[]).filter(p=>p.username.toLowerCase().includes($('#replySearch').value.toLowerCase()));if(!values.length)list.append(textNode('p','収集済みの交流はありません。'));values.forEach(p=>{const row=document.createElement('article');row.className='reply-card';row.append(textNode('strong',`${p.position}位 · ${p.username}`),textNode('p',`${p.fan_rank} · ${p.score}点`),textNode('small',`コメント ${p.comments}件 / 交流 ${p.active_days}日 / 返答したコメント ${p.replies}件（手動含む）`));const open=textNode('button','履歴を見る');open.onclick=()=>task(()=>showHistory(p.username));const profile=textNode('button','プロフィール・備考');profile.onclick=()=>task(()=>showFanProfile(p.username));row.append(open,profile);list.append(row);});}
-async function showHistory(username,more=false){const result=await call('history',{username,offset:more?offset:0});if(!more){person=username;offset=0;$('#replyHistory').replaceChildren();}result.history.forEach(c=>$('#replyHistory').append(card(c)));offset+=result.history.length;$('#replyMore').hidden=result.history.length<50;$('#replyHistoryTitle').textContent=`${username} の会話履歴`;$('#replyHistoryPanel').hidden=false;$('#replyHistoryPanel').scrollIntoView({behavior:'smooth',block:'start'});}
+async function showHistory(username,more=false){const result=await call('history',{username,offset:more?offset:0});if(!more){person=username;offset=0;$('#replyHistory').replaceChildren();}result.history.forEach(c=>$('#replyHistory').append(card(c)));offset+=result.history.length;$('#replyMore').hidden=result.history.length<50;$('#replyHistoryTitle').textContent=`${username} の会話履歴`;$('#replyHistoryPanel').hidden=false;openReplyMenu($('#replyHistoryPanel'));$('#replyHistoryPanel').scrollIntoView({behavior:'smooth',block:'start'});}
 $('#replyLoad').onclick=()=>task(load);
 $('#replyThreadsQuota').onclick=()=>task(async()=>{status('Threadsの上限の回復を確認しています。');const result=await call('check',{threads_quota:true});await load();status(result.status==='limited'?(result.scope==='video'?'動画枠の上限が続いています。回復まで文章・絵文字だけで返信します。':'Metaの返信上限が続いています。返信を保留して回復を確認します。'):result.status==='available'?'Threadsの返信枠を確認できました。待機中の返信を順次再開します。':'Threadsの上限状態を取得できませんでした。');});
 $('#replyCheck').onclick=()=>task(async()=>{status('ThreadsとAIの接続を確認しています。');const result=await call('check');$('#replyCheckResult').textContent=[`AI（${result.openai.provider||'openai'} / ${result.openai.model}）: ${result.openai.ok?'返信生成OK':result.openai.error||'キー未設定'}`,`Threads: ${result.threads.ok?'接続OK（'+result.threads.username+'）':result.threads.error||'認証未設定'}`,result.openai.sample?'生成例: '+result.openai.sample:''].filter(Boolean).join('\n');status(result.ready?'ThreadsとAIの接続を確認しました。': '接続結果を確認してください。');});
@@ -148,7 +148,7 @@ async function showFanProfile(username){
   $('#fanAutoProfile').append(box);
  }
  $('#fanNickname').value=profile.manual_nickname||'';$('#fanNicknameEnabled').checked=profile.nickname_enabled!==false;$('#fanNicknameCandidate').textContent='現在の呼び名：'+(profile.nickname||'使用しません');
- $('#fanManualNotes').value=profile.manual_notes||'';$('#fanUseNotes').checked=Boolean(profile.use_notes);$('#fanProfileState').textContent='本人の発言として記録しています。誤抽出・古い情報の可能性があるため根拠も確認してください。';fanPanel.hidden=false;fanPanel.scrollIntoView({behavior:'smooth'});
+ $('#fanManualNotes').value=profile.manual_notes||'';$('#fanUseNotes').checked=Boolean(profile.use_notes);$('#fanProfileState').textContent='本人の発言として記録しています。誤抽出・古い情報の可能性があるため根拠も確認してください。';fanPanel.hidden=false;openReplyMenu(fanPanel);fanPanel.scrollIntoView({behavior:'smooth'});
 }
 $('#fanSaveNotes').onclick=()=>task(async()=>{await call('fan_notes',{username:fanPerson,nickname:$('#fanNickname').value.trim(),nickname_enabled:$('#fanNicknameEnabled').checked,notes:$('#fanManualNotes').value,use_notes:$('#fanUseNotes').checked});$('#fanProfileState').textContent='備考を保存しました。';});
 $('#fanRefreshProfile').onclick=()=>task(()=>showFanProfile(fanPerson));
@@ -169,3 +169,26 @@ $('#igReplyCheck').onclick=()=>task(async()=>{const r=await call('ig_check');$('
 $('#igReplyRun').onclick=()=>task(async()=>{const r=await call('ig_run');await loadIgReplies();status('Instagram確認結果：'+({off:'停止中',outside_window:'稼働時間外',busy:'処理中',idle:'コメントを確認しました',published:'初回コメントに返信しました',draft:'下書きを作成しました',skipped:'返信済み等のためスキップ',quota_wait:'AI上限のため待機中'})[r.status]);});
 $('#igReplyConnect').onclick=()=>task(async()=>{const token=$('#igReplyToken');try{await call('ig_connect',{connection:{account_id:$('#igReplyAccountId').value.trim(),api_host:$('#igReplyHost').value,graph_version:$('#igReplyVersion').value.trim(),token:token.value.trim().replace(/^Bearer\s+/i,'')}});await loadIgReplies();status('Instagramの接続情報を暗号化して登録しました。');}finally{token.value='';}});
 
+
+// Keep the basic status visible; preserve forms, IDs and handlers inside native disclosures.
+function openReplyMenu(panel){
+  const menu=panel.matches('details')?panel:panel.querySelector(':scope > details.reply-menu');
+  if(menu)menu.open=true;
+}
+function collapseReplyPanel(panel){
+  panel.classList.add('reply-collapsible');
+  const existing=panel.matches('details');
+  const menu=existing?panel:document.createElement('details');
+  menu.classList.add('reply-menu');
+  let summary=existing?menu.querySelector(':scope > summary'):null;
+  if(!summary){
+    summary=document.createElement('summary');
+    summary.textContent=panel.querySelector('h3')?.textContent.trim()||'相手のプロフィール・備考';
+  }
+  const content=document.createElement('div');content.className='reply-menu-content';
+  for(const child of [...panel.childNodes])if(child!==summary)content.append(child);
+  menu.append(summary,content);
+  if(!existing)panel.append(menu);
+  menu.open=false;
+}
+section.querySelectorAll(':scope > .panel:not(.reply-hero), :scope > .reply-panels > .panel').forEach(collapseReplyPanel);
