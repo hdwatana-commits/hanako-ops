@@ -1,4 +1,4 @@
-import {GIF_SCENES,DEFAULT_GIF_SETTINGS,parseGiphyId,gifPreviewUrl,validateGifSettings,readGifSettings} from './gif-replies.mjs?v=7';
+import {GIF_SCENES,DEFAULT_GIF_SETTINGS,parseGiphyId,gifPreviewUrl,validateGifSettings,readGifSettings} from './gif-replies.mjs?v=8';
 function gifNode(tag,text,className=''){const node=document.createElement(tag);node.textContent=text;node.className=className;return node;}
 export function createGifPreview(selection){
  const url=gifPreviewUrl(selection?.gif_id);if(!url)return null;
@@ -10,7 +10,7 @@ export function createGifPreview(selection){
 }
 export function createGifReplyPanel({call,notify=()=>{}}){
  const element=document.createElement('form');element.className='panel reply-settings reply-gif-panel';element.id='replyGifSettings';
- element.innerHTML=`<h3>ThreadsのGIF返信</h3><p class="reply-help">場面ごとに複数のGIFを登録できます（各20件まで）。GIPHYで使いたいGIFを開き、その個別ページのURLを貼り付けて「この場面に追加」、最後に「GIF設定を保存」を押してください。Instagramの公開コメント返信は対象外です。</p>
+ element.innerHTML=`<h3>ThreadsのGIF返信</h3><p class="reply-help">場面ごとに複数のGIFを登録できます（各30件まで）。GIPHYで使いたいGIFを開き、その個別ページのURLを貼り付けて「この場面に追加」、最後に「GIF設定を保存」を押してください。Instagramの公開コメント返信は対象外です。</p>
  <fieldset disabled><div class="reply-grid"><label class="reply-check"><input type="checkbox" name="enabled"> GIF返信を有効にする</label><label>通常の返信でGIFを添える割合（%）<input name="rate" type="number" min="0" max="100" value="20" required></label></div><label class="reply-check"><input name="emoji_enabled" type="checkbox" checked> 絵文字だけのコメントには登録済みGIFと短い絵文字で返信する（AIは使わない）</label>
  <label class="reply-check"><input name="video_mode" type="checkbox"> 登録GIFを短い動画として送信する（GIF公開エラーの回避）</label><p class="reply-help">オンの場合、同じ登録素材を動画形式で返信します。Threads上ではGIF添付ではなく動画として表示されます。</p>
  <label class="reply-check"><input name="latest_post_only" type="checkbox"> GIF返信を最新のポストだけにする</label><p class="reply-help">チェックすると、返信投稿を除いた最新1件のポストだけにGIFを添えます。ほかの対象ポストには文章・絵文字で返信します。新しいポストが公開されたら対象も自動で切り替わります。</p>
@@ -26,7 +26,7 @@ export function createGifReplyPanel({call,notify=()=>{}}){
   list.replaceChildren();if(!draft.items.length){list.append(gifNode('p','GIFはまだ登録されていません。場面を選んで追加してください。','reply-help'));return;}
   for(const [scene,label] of Object.entries(GIF_SCENES)){
    const entries=draft.items.map((item,index)=>({item,index})).filter(x=>x.item.scene===scene);if(!entries.length)continue;
-   const group=document.createElement('details');group.open=true;group.className='reply-gif-group';group.append(gifNode('summary',`${label}（${entries.length}/20件）`));
+   const group=document.createElement('details');group.open=true;group.className='reply-gif-group';group.append(gifNode('summary',`${label}（${entries.length}/30件）`));
    const grid=document.createElement('div');grid.className='reply-gif-grid';
    for(const {item,index} of entries){
     const card=document.createElement('article');card.className='reply-gif-item';const preview=createGifPreview(item);if(preview)card.append(preview);

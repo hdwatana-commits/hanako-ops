@@ -47,10 +47,10 @@ test('GIF設定は所有者のみ保存でき、別の返信設定を変えず�
  assert.equal((await invoke({action:'gif_save',settings:{...config,latest_post_only:'true'}})).status,400);assert.equal(f.settings.gif_reply.latest_post_only,true);
  const off=await invoke({action:'gif_save',settings:{...config,latest_post_only:false}});assert.equal(off.status,200);assert.equal(f.settings.gif_reply.latest_post_only,false);
 });
-test('1場面20件の保存を受け付け、21件を保存しない',async()=>{
- const f=fixture(),base=catalog(),items=Array.from({length:20},(_,i)=>({...base.items[0],gif_id:'Registered'+i}));
- let r=await invoke({action:'gif_save',settings:{...base,items}});assert.equal(r.status,200);assert.equal(f.settings.gif_reply.items.length,20);
- r=await invoke({action:'gif_save',settings:{...base,items:[...items,{...items[0],gif_id:'Overflow'}]}});assert.equal(r.status,400);assert.equal(f.settings.gif_reply.items.length,20);
+test('1場面30件の保存を受け付け、31件を保存しない',async()=>{
+ const f=fixture(),base=catalog(),items=Array.from({length:30},(_,i)=>({...base.items[0],gif_id:'Registered'+i}));
+ let r=await invoke({action:'gif_save',settings:{...base,items}});assert.equal(r.status,200);assert.equal(f.settings.gif_reply.items.length,30);
+ r=await invoke({action:'gif_save',settings:{...base,items:[...items,{...items[0],gif_id:'Overflow'}]}});assert.equal(r.status,400);assert.equal(f.settings.gif_reply.items.length,30);
 });
 test('AI上限の待機中も絵文字にはAIなしで、直前と別のGIFを添えて1回だけ返信する',async()=>{
  const f=fixture({wait:true});const result=await invoke({action:'run'});assert.equal(result.status,200,JSON.stringify(await result.json()));

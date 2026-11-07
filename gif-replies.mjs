@@ -15,7 +15,7 @@ export function parseGiphyId(value){
 export function gifPreviewUrl(value){try{return `https://i.giphy.com/media/${parseGiphyId(value)}/giphy.gif`;}catch{return '';}}
 export function gifVideoUrl(value){return `https://media.giphy.com/media/${parseGiphyId(value)}/giphy.mp4`;}
 export function validateGifSettings(input){
- if(!input||typeof input.enabled!=='boolean'||typeof input.emoji_enabled!=='boolean'||!Number.isInteger(input.rate)||input.rate<0||input.rate>100||!Array.isArray(input.items)||input.items.length>180)throw Error('GIFの有効・無効、使用割合（0〜100%）、登録内容を確認してください');
+ if(!input||typeof input.enabled!=='boolean'||typeof input.emoji_enabled!=='boolean'||!Number.isInteger(input.rate)||input.rate<0||input.rate>100||!Array.isArray(input.items)||input.items.length>270)throw Error('GIFの有効・無効、使用割合（0〜100%）、登録内容を確認してください');
  if(input.latest_post_only!==undefined&&typeof input.latest_post_only!=='boolean')throw Error('GIFを最新のポストだけにする設定を確認してください');
  if(input.video_mode!==undefined&&typeof input.video_mode!=='boolean')throw Error('GIFの動画送信設定を確認してください');
  const seen=new Set(),counts={};
@@ -23,7 +23,7 @@ export function validateGifSettings(input){
   if(!item||!Object.hasOwn(GIF_SCENES,item.scene)||typeof item.enabled!=='boolean'||typeof item.label!=='string'||item.label.length>60)throw Error('GIFの場面・名前・使用設定を確認してください');
   const gif_id=parseGiphyId(item.gif_id),key=item.scene+':'+gif_id;
   if(seen.has(key))throw Error('同じ場面に同じGIFが重複しています');seen.add(key);
-  counts[item.scene]=(counts[item.scene]||0)+1;if(counts[item.scene]>20)throw Error('GIFは1つの場面に20件まで登録できます');
+  counts[item.scene]=(counts[item.scene]||0)+1;if(counts[item.scene]>30)throw Error('GIFは1つの場面に30件まで登録できます');
   return {scene:item.scene,gif_id,label:item.label.trim()||GIF_SCENES[item.scene],enabled:item.enabled};
  });
  if(input.enabled&&!items.some(item=>item.enabled))throw Error('使用するGIFを1件以上登録してから有効にしてください');
