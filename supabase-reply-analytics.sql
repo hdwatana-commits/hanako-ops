@@ -1,13 +1,25 @@
-create or replace function public.hanako_reply_analytics(owner_id uuid)
-returns jsonb language sql stable security invoker set search_path=public as $$
+CREATE OR REPLACE FUNCTION public.hanako_reply_analytics(owner_id uuid)
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
 with bounds as (
  select (date_trunc('day',now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo') as today
 ), periods as (
  select n, today-(n+1)*interval '7 days' as start_at,today-n*interval '7 days' as end_at from bounds cross join generate_series(0,1)n
+), note_replies as (
+ select c.reply_published_at
+ from public.hanako_reply_comments c
+ where c.user_id=owner_id and c.status='published'
+   and c.reply_published_at >= (select today from bounds)-interval '14 days'
+   and c.reply_published_at < now()
+   and c.reply_text ~* $note_url$https?://(?:www\.)?note\.com/hanako47258(?![a-z0-9_.%-])$note_url$
 ), first_seen as (
  select lower(username) as username,min(commented_at) as first_at from hanako_reply_comments where user_id=owner_id and not is_owner group by 1
 ), stats as (
  select p.*,
+ (select count(*) from note_replies r where r.reply_published_at>=p.start_at and r.reply_published_at<p.end_at) as note_referrals,
  (select count(*) from hanako_reply_comments c where c.user_id=owner_id and not c.is_owner and c.commented_at>=p.start_at and c.commented_at<p.end_at) as comments,
  (select count(distinct lower(c.username)) from hanako_reply_comments c where c.user_id=owner_id and not c.is_owner and c.commented_at>=p.start_at and c.commented_at<p.end_at) as people,
  (select count(*) from hanako_reply_comments c where c.user_id=owner_id and c.status='published' and c.reply_automatic is true and c.reply_published_at>=p.start_at and c.reply_published_at<p.end_at) as auto_replies,
@@ -22,15 +34,17 @@ with bounds as (
  from periods p
 ), daily as (
  select d::date as day,
+ (select count(*) from note_replies r where r.reply_published_at>=(d at time zone 'Asia/Tokyo') and r.reply_published_at<((d+interval '1 day') at time zone 'Asia/Tokyo')) as note_referrals,
  (select count(*) from hanako_reply_comments c where c.user_id=owner_id and not c.is_owner and (c.commented_at at time zone 'Asia/Tokyo')::date=d::date) as comments,
  (select count(*) from hanako_reply_comments c where c.user_id=owner_id and c.status='published' and c.reply_automatic is true and (c.reply_published_at at time zone 'Asia/Tokyo')::date=d::date) as auto_replies
  from bounds,generate_series((today at time zone 'Asia/Tokyo')-interval '13 days',today at time zone 'Asia/Tokyo',interval '1 day') d
 )
 select jsonb_build_object('generated_at',now(),'timezone','Asia/Tokyo',
+ 'note_referrals_last_7_days',(select count(*) from note_replies where reply_published_at>=now()-interval '7 days'),
  'periods',(select jsonb_agg(to_jsonb(s) order by n) from stats s),
  'daily',(select jsonb_agg(to_jsonb(d) order by day) from daily d),
  'coverage',jsonb_build_object('oldest_comment',(select min(commented_at) from hanako_reply_comments where user_id=owner_id and not is_owner),'latest_comment',(select max(commented_at) from hanako_reply_comments where user_id=owner_id and not is_owner)),
  'queue',jsonb_build_object('pending',(select count(*) from hanako_reply_comments where user_id=owner_id and status='pending'),'failed',(select count(*) from hanako_reply_comments where user_id=owner_id and status='failed'),'uncertain',(select count(*) from hanako_reply_comments where user_id=owner_id and status='uncertain')));
-$$;
+$function$;
 revoke all on function public.hanako_reply_analytics(uuid) from public,anon,authenticated;
 grant execute on function public.hanako_reply_analytics(uuid) to service_role;

@@ -16,17 +16,20 @@ export function renderReplyAnalytics(target,data){
  const date=value=>new Date(value).toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'});
  const rate=(n,d)=>{const p=analyticsRate(n,d);return p===null?'未集計（0件）':`${p.toFixed(1)}%（${n}/${d}）`;};
  target.replaceChildren();target.append(node('p','集計日時：'+new Date(data.generated_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})));
+ const noteCount=n=>n==null?'未集計':n+'件';
+ target.append(node('p','直近7日間のnote案内（集計時点まで）：'+noteCount(data.note_referrals_last_7_days)));
  const table=document.createElement('table');table.style.width='100%';
  const head=document.createElement('tr');['指標','直近7日（今日を除く）','その前の7日'].forEach(x=>head.append(node('th',x)));table.append(head);
  const [a,b]=data.periods||[];if(!a)return;
- const rows=[['期間',p=>date(p.start_at)+'〜'+date(new Date(Date.parse(p.end_at)-86400000))],['相手のコメント',p=>`${p.comments}件 / ${p.people}人`],['確認済み自動返信',p=>`${p.auto_replies}件`],['会話継続率（48時間）',p=>rate(p.conversation_returned,p.conversation_eligible)],['継続の観測待ち',p=>`${p.conversation_waiting}件`],['再訪率（7日間）',p=>rate(p.revisit_returned,p.revisit_eligible)],['再訪の初回観測期間',p=>date(new Date(Date.parse(p.start_at)-7*86400000))+'〜'+date(new Date(Date.parse(p.end_at)-8*86400000))],['返信までの中央値',p=>p.median_minutes===null?'未集計':`${Number(p.median_minutes).toFixed(1)}分`]];
+ const rows=[['期間',p=>date(p.start_at)+'〜'+date(new Date(Date.parse(p.end_at)-86400000))],['相手のコメント',p=>`${p.comments}件 / ${p.people}人`],['確認済み自動返信',p=>`${p.auto_replies}件`],['noteを案内した返信',p=>noteCount(p.note_referrals)],['会話継続率（48時間）',p=>rate(p.conversation_returned,p.conversation_eligible)],['継続の観測待ち',p=>`${p.conversation_waiting}件`],['再訪率（7日間）',p=>rate(p.revisit_returned,p.revisit_eligible)],['再訪の初回観測期間',p=>date(new Date(Date.parse(p.start_at)-7*86400000))+'〜'+date(new Date(Date.parse(p.end_at)-8*86400000))],['返信までの中央値',p=>p.median_minutes===null?'未集計':`${Number(p.median_minutes).toFixed(1)}分`]];
  for(const [label,value] of rows){const tr=document.createElement('tr');tr.append(node('th',label),node('td',value(a)),node('td',b?value(b):'—'));table.append(tr);}
  const scroller=document.createElement('div');scroller.style.overflowX='auto';scroller.append(table);target.append(scroller);
  target.append(node('p',`現在の待機：${data.queue?.pending||0}件 / 失敗：${data.queue?.failed||0}件 / 公開結果不明：${data.queue?.uncertain||0}件`));
- const chart=document.createElement('details');chart.append(node('summary','日別のコメント・自動返信（今日を含む14日）'));
- for(const d of data.daily||[])chart.append(node('p',`${d.day}：相手のコメント ${d.comments}件 / 確認済み自動返信 ${d.auto_replies}件`));target.append(chart);
+ const chart=document.createElement('details');chart.append(node('summary','日別のコメント・自動返信・note案内（今日を含む14日）'));
+ for(const d of data.daily||[])chart.append(node('p',`${d.day}：相手のコメント ${d.comments}件 / 確認済み自動返信 ${d.auto_replies}件 / note案内 ${noteCount(d.note_referrals)}`));target.append(chart);
  target.append(node('h4','今週の確認・改善案'));const ul=document.createElement('ul');analyticsAdvice(data).forEach(t=>ul.append(node('li',t)));target.append(ul);
  target.append(node('p','会話継続＝自動返信から48時間以内に、同じ相手がその返信へ直接返答した割合。観測待ちは除外。再訪＝履歴で初めて確認した人が、7日以内の別の日にもコメントした割合。取得できた履歴だけの集計で、未取得の会話や履歴以前の交流は含みません。'));
+ target.append(node('p','note案内は、ハナのnoteへのリンクが含まれる投稿済みのThreads返信を、投稿日時で1返信につき1件として数えます。'));
  target.append(node('p','再訪は観測期間を確保するため、初回観測の対象期間を7日前へずらしています。APIの閲覧・いいね・フォロワー数、Note購入、実際の請求額はこの集計に含まれません。AI・Threadsへの追加リクエストは行いません。'));
  if(data.coverage?.oldest_comment)target.append(node('small','保存済みコメント期間：'+date(data.coverage.oldest_comment)+'〜'+date(data.coverage.latest_comment)));
 }

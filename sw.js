@@ -1,4 +1,4 @@
-const CACHE_NAME = "hanako-room-ops-v415";
+const CACHE_NAME = "hanako-room-ops-v416";
 const PERSISTENT_CACHES = new Set([CACHE_NAME, "hanako-private-photo-previews-v1"]);
 const APP_SHELL = [
   "./gif-replies.mjs?v=8", "./gif-reply-ui.mjs?v=8",
@@ -17,8 +17,8 @@ const APP_SHELL = [
   "./reel-captions.mjs?v=2", "./reel-caption-editor.mjs?v=4",
   "./reel-music.mjs?v=4",
   "./reel-maker.mjs?v=29", "./reel-engine.mjs", "./reel-maker.css?v=8",
-  "./threads-replies.js?v=45",
-  "./reply-analytics.mjs?v=1",
+  "./threads-replies.js?v=46",
+  "./reply-analytics.mjs?v=2",
   "./fan-profile.mjs?v=3",
   "./threads-replies.css?v=4",
   "./reply-rules.mjs?v=13",

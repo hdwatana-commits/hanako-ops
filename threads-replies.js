@@ -1,5 +1,5 @@
 import {createGifReplyPanel,createGifPreview} from './gif-reply-ui.mjs?v=8';
-import { renderReplyAnalytics } from './reply-analytics.mjs?v=1';
+import { renderReplyAnalytics } from './reply-analytics.mjs?v=2';
 import { FAN_PROFILE_FIELDS } from './fan-profile.mjs?v=3';
 import { TONES } from './reply-rules.mjs?v=13';
 const section=document.createElement('section');
