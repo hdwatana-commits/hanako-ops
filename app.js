@@ -7,6 +7,7 @@ const APP_VERSION = (() => {
 })();
 
 const COORDINATE_PHOTO_LIMIT = 6;
+const COORDINATE_PRODUCT_COPY_LIMIT = 40;
 const ROOM_SIGNATURE_LOGO_PATH = "icons/fashion-hanako-kawaisa-lab-logo.svg";
 
 const defaultProfile = `毎日おしゃれ研究家のハナコです
@@ -52,8 +53,7 @@ const state = loadState();
 state.updatedAt ||= new Date().toISOString();
 state.roomQueue ||= [];
 state.appearance ||= { avatarTheme: "original" };
-state.coordinatePhotos ||= [];
-state.selectedCoordinatePhotoId ||= state.coordinatePhotos[0]?.id || "";
+restoreCoordinatePhotoSelection(state);
 ensureOpsState(state);
 
 const avatarThemes = {
@@ -308,6 +308,7 @@ let coordinatePhotoPreviewHydrating = false;
 let coordinateBoardDataUrl = "";
 let coordinateBoardHasPerson = false;
 let coordinateBoardRenderId = 0;
+let coordinateSelectionController;
 let roomReferenceBoardDataUrl = "";
 let roomReferenceBoardHasPerson = false;
 let socialReferenceBoardDataUrl = "";
@@ -5544,7 +5545,7 @@ function bindOwnRoomPostedImporter() {
   });
 }
 
-async function fetchRakutenProduct(url) {
+async function fetchRakutenProduct(url, signal) {
   const token = await cloudSync.getAccessToken();
   let response;
   try {
@@ -5556,6 +5557,7 @@ async function fetchRakutenProduct(url) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ url }),
+      signal,
     });
   } catch (error) {
     throw createRakutenImportError("商品取得サーバーに接続できませんでした。新Supabaseでrakuten-product-importをDeployしてください。", "SYNC_CORS", error);
@@ -5569,7 +5571,7 @@ async function fetchRakutenProduct(url) {
   return body;
 }
 
-async function fetchRakutenProductSearch(query) {
+async function fetchRakutenProductSearch(query, signal) {
   const token = await cloudSync.getAccessToken();
   let response;
   try {
@@ -5581,6 +5583,7 @@ async function fetchRakutenProductSearch(query) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ query }),
+      signal,
     });
   } catch (error) {
     throw createRakutenImportError("商品検索サーバーに接続できませんでした。新Supabaseでrakuten-product-importをDeployしてください。", "SYNC_CORS", error);
@@ -6485,16 +6488,18 @@ async function pullCloudIfNewer() {
 }
 
 function applyCloudState(payload) {
+  coordinateSelectionController?.abort();
+  const previousPhotoId = state.selectedCoordinatePhotoId;
+  const previousDefaultPhotoId = state.defaultCoordinatePhotoId;
   suppressCloudSave = true;
   Object.keys(state).forEach((key) => delete state[key]);
   Object.assign(state, payload);
   ensureOpsState(state);
+  restoreCoordinatePhotoSelection(state, state.defaultCoordinatePhotoId === previousDefaultPhotoId ? previousPhotoId : "");
   hasMeaningfulLocalData = true;
   persistAppStateSafely();
   profileText.value = state.profile || defaultProfile;
   state.appearance ||= { avatarTheme: "original" };
-  state.coordinatePhotos ||= [];
-  state.selectedCoordinatePhotoId ||= state.coordinatePhotos[0]?.id || "";
   applyAppearance();
   renderProducts();
   renderDailySelection();
@@ -6963,9 +6968,46 @@ function bindCoordinateActions() {
   applyRandomCoordinateLocation();
   const coordinateImportUrl = document.querySelector("#coordProductUrl");
   const coordinateImportButton = document.querySelector("#coordImportProduct");
-  const importCoordinateProduct = () => importProductForCoordinate(coordinateImportUrl, coordinateImportButton);
+  let coordinateImportController;
+  let coordinatePasteTimer;
+  const resetImportButton = () => {
+    coordinateImportButton.disabled = false;
+    coordinateImportButton.textContent = "商品を読み込む";
+  };
+  const cancelCoordinateImport = () => {
+    if (!coordinateImportController) return;
+    coordinateImportController.abort();
+    coordinateImportController = null;
+    resetImportButton();
+  };
+  const importCoordinateProduct = async () => {
+    if (coordinateImportButton.disabled) return;
+    const controller = new AbortController();
+    coordinateImportController = controller;
+    coordinateImportButton.disabled = true;
+    coordinateImportButton.textContent = "読込中...";
+    try {
+      await importProductForCoordinate(coordinateImportUrl, controller.signal);
+    } finally {
+      if (coordinateImportController === controller) {
+        coordinateImportController = null;
+        resetImportButton();
+      }
+    }
+  };
   coordinateImportButton?.addEventListener("click", importCoordinateProduct);
-  coordinateImportUrl?.addEventListener("paste", () => window.setTimeout(importCoordinateProduct, 0));
+  coordinateImportUrl?.addEventListener("input", cancelCoordinateImport);
+  coordinateImportUrl?.addEventListener("paste", () => {
+    clearTimeout(coordinatePasteTimer);
+    coordinatePasteTimer = window.setTimeout(importCoordinateProduct, 0);
+  });
+  document.querySelector("#clearCoordProductUrl")?.addEventListener("click", () => {
+    clearTimeout(coordinatePasteTimer);
+    cancelCoordinateImport();
+    coordinateImportUrl.value = "";
+    showCoordinateImportStatus("URLをクリアしました。次の商品URLを貼り付けられます。");
+    coordinateImportUrl.focus();
+  });
   coordinateImportUrl?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -6989,6 +7031,7 @@ function bindCoordinateActions() {
     }
   });
   document.querySelector("#coordMainProduct")?.addEventListener("change", (event) => {
+    coordinateSelectionController?.abort();
     const product = state.products.find((item) => item.id === event.currentTarget.value);
     if (product) applyRecommendedCoordinateDefaults(product);
   });
@@ -7014,8 +7057,13 @@ function bindCoordinateActions() {
   document.querySelector("#rerollHanakoTeacher")?.addEventListener("click", () => {
     activateHanakoTeacherMode("random", true, true);
   });
-  document.querySelector("#autoCoordinate")?.addEventListener("click", () => autoSelectCoordinateItems(true, true, true));
-  document.querySelector("#generateCoordinate")?.addEventListener("click", generateCoordinate);
+  document.querySelector("#autoCoordinate")?.addEventListener("click", () => autoSelectCoordinateItems());
+  document.querySelector("#generateCoordinate")?.addEventListener("click", () => {
+    coordinateSelectionController?.abort();
+    void generateCoordinate();
+  });
+  document.querySelectorAll("#coordOnepiece, #coordTop, #coordBottom, #coordBag, #coordShoes, #coordAccessory, #coordStyle, #coordOccasion, #coordSeason, #coordColorMood")
+    .forEach((select) => select.addEventListener("change", () => coordinateSelectionController?.abort()));
   document.querySelector("#copyCoordinateText")?.addEventListener("click", () => copyText(coordinateOutput.value));
   document.querySelector("#copyGeminiImagePrompt")?.addEventListener("click", copyCoordinateImagePrompt);
   document.querySelector("#copyGeminiCaptionPrompt")?.addEventListener("click", () => copyText(coordGeminiCaptionPrompt.value));
@@ -7122,6 +7170,14 @@ async function uploadCoordinatePhotos(event) {
   }
 }
 
+function restoreCoordinatePhotoSelection(target, currentPhotoId = "") {
+  target.coordinatePhotos = Array.isArray(target.coordinatePhotos) ? target.coordinatePhotos : [];
+  const hasPhoto = (id) => id && target.coordinatePhotos.some((photo) => photo?.id === id);
+  if (!hasPhoto(target.defaultCoordinatePhotoId)) target.defaultCoordinatePhotoId = "";
+  target.selectedCoordinatePhotoId = [currentPhotoId, target.defaultCoordinatePhotoId, target.selectedCoordinatePhotoId]
+    .find(hasPhoto) || target.coordinatePhotos[0]?.id || "";
+}
+
 async function handleCoordinatePhotoLibraryClick(event) {
   const replaceButton = event.target.closest("[data-replace-coordinate-photo]");
   if (replaceButton) {
@@ -7143,7 +7199,7 @@ async function handleCoordinatePhotoLibraryClick(event) {
       await removeCoordinatePhotoPreview(photo.id);
       coordinatePhotoPreviewErrors.delete(photo.id);
       state.coordinatePhotos = state.coordinatePhotos.filter((item) => item.id !== photo.id);
-      if (state.selectedCoordinatePhotoId === photo.id) state.selectedCoordinatePhotoId = state.coordinatePhotos[0]?.id || "";
+      restoreCoordinatePhotoSelection(state, state.selectedCoordinatePhotoId);
       saveState();
       markRoomImagePromptStale();
       markSocialGeminiPromptStale();
@@ -7156,16 +7212,19 @@ async function handleCoordinatePhotoLibraryClick(event) {
     }
     return;
   }
+  const defaultButton = event.target.closest("[data-default-coordinate-photo]");
   const selectButton = event.target.closest("[data-select-coordinate-photo]");
-  if (!selectButton) return;
-  state.selectedCoordinatePhotoId = selectButton.dataset.selectCoordinatePhoto;
+  const photoId = defaultButton?.dataset.defaultCoordinatePhoto || selectButton?.dataset.selectCoordinatePhoto;
+  if (!photoId || !state.coordinatePhotos.some((photo) => photo.id === photoId)) return;
+  if (defaultButton) state.defaultCoordinatePhotoId = photoId;
+  state.selectedCoordinatePhotoId = photoId;
   saveState();
   markRoomImagePromptStale();
   markSocialGeminiPromptStale();
   coordinateBoardDataUrl = "";
   coordinateBoardHasPerson = false;
   renderCoordinatePhotoLibrary();
-  showToast("今回使う写真を選びました");
+  showToast(defaultButton ? "次回から使う既定の写真を保存しました" : "今回使う写真を選びました");
   try {
     await ensureSelectedCoordinatePhotoUrl();
     saveState();
@@ -7185,15 +7244,20 @@ function renderCoordinatePhotoLibrary() {
   state.coordinatePhotos ||= [];
   const selected = getSelectedCoordinatePhoto();
   coordinatePhotoDataUrl = selected ? getCoordinatePhotoDisplaySrc(selected) : "";
-  const libraryHtml = state.coordinatePhotos.length ? state.coordinatePhotos.map((photo, index) => `
-      <div class="coord-photo-card${photo.id === state.selectedCoordinatePhotoId ? " selected" : ""}">
-        <button type="button" data-select-coordinate-photo="${escapeHtml(photo.id)}" aria-label="${index + 1}枚目の写真を選ぶ">
+  const libraryHtml = state.coordinatePhotos.length ? state.coordinatePhotos.map((photo, index) => {
+    const isDefault = photo.id === state.defaultCoordinatePhotoId;
+    return `
+      <div class="coord-photo-card${photo.id === selected?.id ? " selected" : ""}">
+        <button type="button" data-select-coordinate-photo="${escapeHtml(photo.id)}" aria-label="${index + 1}枚目の写真を今回使う" aria-pressed="${photo.id === selected?.id}">
           ${renderCoordinatePhotoThumb(photo, index)}
           <strong>${escapeHtml(photo.name || `写真${index + 1}`)}</strong>
         </button>
+        <button class="coord-photo-default" type="button" data-default-coordinate-photo="${escapeHtml(photo.id)}"
+          aria-label="${isDefault ? `${index + 1}枚目は既定の写真` : `${index + 1}枚目を既定の写真にする`}"${isDefault ? " disabled" : ""}>${isDefault ? "既定の写真" : "既定にする"}</button>
         <button class="coord-photo-delete" type="button" data-delete-coordinate-photo="${escapeHtml(photo.id)}" aria-label="この写真を削除">×</button>
         ${coordinatePhotoPreviewErrors.has(photo.id) && !coordinatePhotoPreviewCache.has(photo.id) ? `<button class="coord-photo-replace" type="button" data-replace-coordinate-photo="${escapeHtml(photo.id)}">元写真を選び直す</button>` : ""}
-      </div>`).join("") : `<p class="muted">まだ写真がありません。「写真を追加」から登録してください。</p>`;
+      </div>`;
+  }).join("") : `<p class="muted">まだ写真がありません。「写真を追加」から登録してください。</p>`;
   document.querySelectorAll("#coordPhotoLibrary, #homeCoordPhotoLibrary, #snsCoordPhotoLibrary").forEach((target) => {
     target.innerHTML = libraryHtml;
   });
@@ -7709,7 +7773,7 @@ function updateHanakoTeacherPreview() {
   syncHanakoTeacherCoverflow(false);
 }
 
-async function importProductForCoordinate(urlInput, button) {
+async function importProductForCoordinate(urlInput, signal) {
   const url = normalizeRakutenImportUrl(urlInput?.value.trim());
   if (!url) {
     showCoordinateImportStatus("楽天ROOMまたは楽天市場の商品URLを入力してください", true);
@@ -7720,16 +7784,14 @@ async function importProductForCoordinate(urlInput, button) {
   if (!cloudSync.configured) return showCoordinateImportStatus("先にクラウド同期を設定してください", true);
   if (!cloudSync.signedIn) return showCoordinateImportStatus("画面上部の「同期」からログインしてください", true);
 
-  const originalLabel = button.textContent;
-  button.disabled = true;
-  button.textContent = "読込中...";
   showCoordinateImportStatus("商品情報を読み込んでいます...");
   try {
     let usedFallback = false;
     let imported;
     try {
-      imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url), url);
+      imported = normalizeCoordinateImportedProduct(await fetchRakutenProduct(url, signal), url);
     } catch (error) {
+      if (signal.aborted) return;
       if (!isRakutenQuotaError(error) && !isRakutenImportNetworkError(error)) throw error;
       usedFallback = true;
       imported = normalizeCoordinateImportedProduct(buildRoomImportFallbackProduct(url, error), url);
@@ -7737,6 +7799,7 @@ async function importProductForCoordinate(urlInput, button) {
         ? "楽天APIの取得上限に当たったため、URLから仮登録してコーデを作ります..."
         : "商品取得サーバーに接続できないため、URLから仮登録してコーデを作ります...");
     }
+    if (signal.aborted) return;
     if (isDefiniteTravelProduct(imported, url)) throw new Error("このURLは宿泊施設として判定されました。ファッション商品の楽天URLを入力してください");
     let product = state.products.find((item) => item.url === url || item.url === imported.sourceUrl || item.url === imported.resolvedUrl);
     if (product) {
@@ -7769,19 +7832,19 @@ async function importProductForCoordinate(urlInput, button) {
     renderRoomProductOptions();
     renderCoordinateOptions();
     renderAngleOptions();
-    selectCoordinateProduct(product);
+    const recommendation = selectCoordinateProduct(product);
     showCoordinateImportStatus(usedFallback
       ? `仮情報で「${product.name}」を追加しました。コーデを作成しています...`
       : `「${product.name}」を追加しました。コーデを作成しています...`);
+    if (recommendation && !(await recommendation)) return;
+    if (signal.aborted) return;
     await generateCoordinate();
+    if (signal.aborted) return;
     showCoordinateImportStatus(usedFallback
       ? `取得上限のため仮情報で「${product.name}」のコーデ文・画像ボードを作りました。あとで再読込すると商品名や画像を更新できます。`
       : `「${product.name}」からコーデ文・画像ボードを作りました`);
   } catch (error) {
-    showCoordinateImportStatus(error.message || "商品情報を読み込めませんでした", true);
-  } finally {
-    button.disabled = false;
-    button.textContent = originalLabel;
+    if (!signal.aborted) showCoordinateImportStatus(error.message || "商品情報を読み込めませんでした", true);
   }
 }
 
@@ -7913,7 +7976,7 @@ function selectCoordinateProduct(product) {
     document.querySelector("#coordOnepiece").value = "";
   }
   select.value = product.id;
-  applyRecommendedCoordinateDefaults(product, false);
+  return applyRecommendedCoordinateDefaults(product, false);
 }
 
 function showCoordinateImportStatus(message, isError = false) {
@@ -8070,36 +8133,42 @@ function refreshCoordinatePromptsAfterSettingChange() {
   void drawCoordinateBoard(coordinate, coordinateOutput.value);
 }
 
-async function autoSelectCoordinateItems(generateAfter = true, notify = true, searchRakuten = true) {
+async function autoSelectCoordinateItems(generateAfter = true, notify = true) {
+  coordinateSelectionController?.abort();
   const fashionProducts = state.products.filter((product) => product.category !== "ホテル・旅行");
   if (!fashionProducts.length) return showToast("先にファッション商品を登録してください");
   const mainSelect = document.querySelector("#coordMainProduct");
   const main = state.products.find((product) => product.id === mainSelect?.value) || fashionProducts[0];
   if (mainSelect && [...mainSelect.options].some((option) => option.value === main.id)) mainSelect.value = main.id;
 
-  const selectedIds = new Set([main.id]);
+  const context = coordinateSelectionContext(getSelectedCoordinate(), state.coordinateSelectionHistory);
   const slots = coordinateCompanionSlots(main.category);
-  const setChoice = (selector, categories) => {
-    const select = document.querySelector(selector);
-    if (!select) return;
-    const candidate = chooseCoordinateCompanion(categories, main, selectedIds);
-    const value = candidate && [...select.options].some((option) => option.value === candidate.id) ? candidate.id : "";
-    select.value = value;
-    if (value) selectedIds.add(value);
-  };
-
   clearCoordinateCompanionSelects();
-  slots.forEach((slot) => setChoice(slot.selector, slot.categories));
-
-  if (searchRakuten && slots.length) {
-    await fillCoordinateSlotsFromRakuten(main, slots, selectedIds, notify);
+  const selected = [main];
+  for (const slot of slots) {
+    const candidate = chooseCoordinateCompanion(fashionProducts, slot, context, selected);
+    setCoordinateCompanion(slot, candidate, selected);
   }
 
+  if (slots.length && cloudSync.configured && cloudSync.signedIn) {
+    const controller = new AbortController();
+    coordinateSelectionController = controller;
+    await fillCoordinateSlotsFromRakuten(main, slots, context, controller, notify);
+    if (controller.signal.aborted) return false;
+  }
   const selectedCount = getSelectedCoordinate().products.length;
   if (notify) showToast(selectedCount > 1
-    ? "主役に合うカテゴリだけでコーデを選びました"
+    ? "主役・シーン・季節に合う組み合わせを選びました"
     : "合う商品が見つかりませんでした。楽天検索設定を確認してください");
   if (generateAfter) await generateCoordinate();
+  return true;
+}
+
+function setCoordinateCompanion(slot, candidate, selected) {
+  const select = document.querySelector(slot.selector);
+  if (!select) return;
+  select.value = candidate?.id || "";
+  if (select.value) selected.push(candidate);
 }
 
 function clearCoordinateCompanionSelects() {
@@ -8112,7 +8181,7 @@ function clearCoordinateCompanionSelects() {
 function coordinateCompanionSlots(mainCategory) {
   const common = [
     { selector: "#coordBag", categories: ["バッグ"], keyword: "レディース バッグ" },
-    { selector: "#coordShoes", categories: ["シューズ"], keyword: "レディース シューズ パンプス" },
+    { selector: "#coordShoes", categories: ["シューズ"], keyword: "レディース シューズ" },
     { selector: "#coordAccessory", categories: ["アクセサリー", "ヘアアクセサリー", "帽子", "腕時計", "ストール・マフラー", "ベルト", "サングラス", "レッグウェア", "傘", "財布", "ファッション小物"], keyword: "レディース ファッション小物 アクセサリー" },
   ];
   if (["ワンピース", "オールインワン", "セットアップ", "スーツ・フォーマル", "ブライダル", "ルームウェア", "水着・水際", "浴衣", "スポーツウェア", "レインウェア"].includes(mainCategory)) return common;
@@ -8136,44 +8205,39 @@ function coordinateCompanionSlots(mainCategory) {
   ];
 }
 
-async function fillCoordinateSlotsFromRakuten(main, slots, selectedIds, notify) {
-  if (!cloudSync.configured || !cloudSync.signedIn) {
-    if (notify) showCoordinateImportStatus("登録商品で不足しています。楽天市場から探すには同期へログインしてください", true);
-    return;
-  }
+async function fillCoordinateSlotsFromRakuten(main, slots, context, controller, notify) {
   const button = document.querySelector("#autoCoordinate");
-  const originalLabel = button?.textContent || "";
+  const originalLabel = button?.dataset.idleLabel || button?.textContent || "";
   if (button) {
+    button.dataset.idleLabel = originalLabel;
     button.disabled = true;
     button.textContent = "楽天市場からコーデを検索中...";
   }
-  showCoordinateImportStatus("主役に合う商品を楽天市場全体から探しています...");
+  if (notify) showCoordinateImportStatus("主役とシーンに合う商品を楽天市場から探しています...");
+  const { signal } = controller;
+  const selected = [main];
   let added = 0;
   try {
     for (const slot of slots) {
-      const query = buildCoordinateRakutenQuery(main, slot.keyword);
-      const results = await fetchRakutenProductSearch(query);
-      const candidate = chooseRakutenCoordinateCandidate(results, slot.categories, main, selectedIds);
-      if (!candidate) continue;
-      const product = addRakutenSearchProductToPipeline(candidate);
-      if (!product) continue;
-      selectedIds.add(product.id);
-      added += 1;
-      renderCoordinateOptions();
-      const select = document.querySelector(slot.selector);
-      if (select && [...select.options].some((option) => option.value === product.id)) select.value = product.id;
+      const query = buildCoordinateRakutenQuery(slot, context);
+      const results = await fetchRakutenProductSearch(query, signal);
+      if (signal.aborted) return;
+      const candidate = chooseCoordinateCompanion([...state.products, ...results], slot, context, selected);
+      const existing = candidate && state.products.find((product) => coordinateProductKey(product) === coordinateProductKey(candidate));
+      const product = existing || (candidate && addRakutenSearchProductToPipeline(candidate));
+      if (product && !existing) {
+        added += 1;
+        renderCoordinateOptions();
+      }
+      setCoordinateCompanion(slot, product, selected);
     }
-    if (added) {
-      saveState();
-      renderProducts();
-      renderRoomProductOptions();
-      renderAngleOptions();
-      showCoordinateImportStatus(`楽天市場から相性のよい商品を${added}点追加し、コーデに選びました`);
-    } else {
-      showCoordinateImportStatus("楽天市場で条件に合う商品が見つかりませんでした。登録済みの商品だけでコーデを作ります");
-    }
+    if (notify) showCoordinateImportStatus(added
+      ? `楽天市場から相性のよい商品を${added}点追加し、コーデに選びました`
+      : "登録済みの商品からシーンに合うコーデを選びました");
   } catch (error) {
+    if (signal.aborted) return;
     console.warn("[Coordinate Rakuten search fallback]", error);
+    if (!notify) return;
     if (isRakutenQuotaError(error)) {
       showCoordinateImportStatus("楽天APIの取得上限中です。登録済みの商品だけでコーデを作ります。時間をおいて再読込すると追加候補も探せます。");
     } else if (isRakutenImportNetworkError(error)) {
@@ -8182,42 +8246,18 @@ async function fillCoordinateSlotsFromRakuten(main, slots, selectedIds, notify) 
       showCoordinateImportStatus(error.message || "楽天市場のコーデ検索に失敗しました", true);
     }
   } finally {
-    if (button) {
+    if (added) {
+      saveState();
+      renderProducts();
+      renderRoomProductOptions();
+      renderAngleOptions();
+    }
+    if (button && controller === coordinateSelectionController) {
+      coordinateSelectionController = null;
       button.disabled = false;
       button.textContent = originalLabel;
     }
   }
-}
-
-function buildCoordinateRakutenQuery(main, categoryKeyword) {
-  const style = document.querySelector("#coordStyle")?.value || "大人ガーリー";
-  const season = document.querySelector("#coordSeason")?.value || "";
-  const styleKeyword = {
-    "大人ガーリー": "大人可愛い",
-    "甘めきれいめ": "きれいめ",
-    "骨格ウェーブ意識": "きれいめ",
-    "淡色フェミニン": "淡色",
-  }[style] || "きれいめ";
-  const seasonalKeyword = ["夏", "冬"].includes(season) ? season : "";
-  return [categoryKeyword, styleKeyword, seasonalKeyword]
-    .filter(Boolean).join(" ").slice(0, 80);
-}
-
-function chooseRakutenCoordinateCandidate(results, categories, main, selectedIds) {
-  const mainText = `${main.name || ""} ${main.details?.color || ""} ${main.details?.material || ""}`;
-  const styleWords = (document.querySelector("#coordStyle")?.value || "").split(/[・\s]+/).filter((word) => word.length >= 2);
-  return results
-    .filter((item) => categories.includes(item.category))
-    .filter((item) => !state.products.some((product) => selectedIds.has(product.id) && (product.url === item.sourceUrl || product.url === item.url)))
-    .map((item) => {
-      const text = `${item.name || ""} ${item.hook || ""} ${item.details?.color || ""}`;
-      const styleScore = styleWords.reduce((score, word) => score + (text.includes(word) ? 2 : 0), 0);
-      const imageScore = item.image ? 3 : 0;
-      const ratingScore = Math.min(3, Number(item.details?.rating || 0) / 2);
-      const duplicatePenalty = mainText && text === mainText ? -20 : 0;
-      return { item, score: 10 + styleScore + imageScore + ratingScore + duplicatePenalty };
-    })
-    .sort((a, b) => b.score - a.score)[0]?.item || null;
 }
 
 function addRakutenSearchProductToPipeline(item) {
@@ -8284,8 +8324,9 @@ function applyRecommendedCoordinateDefaults(product, notify = true) {
   const pose = applyRandomCoordinatePose(product);
   applyRandomCoordinateLocation();
   setSelect("coordMainProduct", product.id);
-  autoSelectCoordinateItems(false, false, true);
+  const recommendation = autoSelectCoordinateItems(false, false);
   if (notify) showToast(`おすすめを自動選択｜${style}・${occasion}・${concern}・${priority}・${pose}`);
+  return recommendation;
 }
 
 function recommendCoordinateSettings(product, sourceText = "") {
@@ -8422,20 +8463,136 @@ function buildCoordinateMoodSceneGuide(coordinate) {
 ・テーマを盛りすぎず、1枚のブランド広告として自然に見える範囲で表現する`;
 }
 
-function chooseCoordinateCompanion(categories, main, selectedIds) {
-  const mainBrand = getCoordinateBrand(main).toLocaleLowerCase("ja-JP");
-  return state.products
-    .filter((product) => categories.includes(product.category) && !selectedIds.has(product.id))
-    .map((product) => {
-      const sameBrand = mainBrand && getCoordinateBrand(product).toLocaleLowerCase("ja-JP") === mainBrand;
-      const hasDetails = Boolean(product.details?.color || product.details?.material);
-      const hasImage = Boolean(product.image);
-      const mainColor = String(main.details?.color || "").trim();
-      const candidateText = `${product.name || ""} ${product.details?.color || ""} ${product.hook || ""}`;
-      const colorMatch = mainColor && candidateText.includes(mainColor);
-      return { product, score: (sameBrand ? 8 : 0) + (hasDetails ? 3 : 0) + (hasImage ? 2 : 0) + (colorMatch ? 2 : 0) };
-    })
-    .sort((a, b) => b.score - a.score || a.product.name.localeCompare(b.product.name, "ja"))[0]?.product || null;
+function coordinateSelectionContext(coordinate, history) {
+  const { occasion, style, priority, concern, colorMood } = coordinate;
+  const season = coordinate.season === "今の季節"
+    ? { spring: "春", summer: "夏", autumn: "秋", winter: "冬" }[currentSeason()]
+    : coordinate.season;
+  const work = /通勤/.test(occasion);
+  const formal = work || /ホテル|記念日|ディナー/.test(occasion);
+  const rain = /雨/.test(occasion);
+  const resort = /海辺|リゾート/.test(occasion);
+  const walking = /旅行|移動|通学|ピクニック/.test(occasion) || /動きやすさ|歩きやすさ/.test(`${priority} ${concern}`);
+  const roomy = work || walking || /荷物/.test(concern);
+  const casual = walking || /カジュアル|通学|プレッピー/.test(style);
+  const miniPreferred = !work && !rain && !/空港・移動日/.test(occasion);
+  return {
+    season, formal, rain, resort, casual, miniPreferred, colorMood,
+    history: Array.isArray(history) ? history.slice(0, 5) : [],
+    types: {
+      "#coordBottom": miniPreferred
+        ? ["ミニスカート", casual ? "デニム" : "テーパードパンツ", "ミディスカート", "ワイドパンツ", "ストレートパンツ"]
+        : ["テーパードパンツ", "ミディスカート", "ストレートパンツ", "ワイドパンツ"],
+      "#coordBag": resort ? ["かごバッグ", "ショルダーバッグ", "ミニバッグ"]
+        : roomy ? ["ショルダーバッグ", "トートバッグ", "リュック", "ハンドバッグ"]
+          : ["ミニバッグ", "ショルダーバッグ", "ハンドバッグ", "チェーンバッグ"],
+      "#coordShoes": rain ? ["レインシューズ", "ローファー", "ショートブーツ"]
+        : resort && season !== "冬" ? ["サンダル", "バレエシューズ", "スニーカー"]
+          : formal ? ["パンプス", "ローファー", "バレエシューズ"]
+            : walking ? ["スニーカー", "ローファー", "バレエシューズ"]
+              : ["バレエシューズ", "メリージェーン", "ローファー", season === "夏" ? "サンダル" : "ショートブーツ"],
+    },
+  };
+}
+
+function coordinateProductKey(product) {
+  return normalizeComparableUrl(product.sourceUrl || product.url) || product.id || product.name;
+}
+
+function coordinateCompanionType(product) {
+  const name = product.name || "";
+  const types = {
+    スカート: [[/ミニ\s*(?:丈|スカート)|ショート丈|膝上|ひざ上|台形ミニ|プリーツミニ/, "ミニスカート"], [/ロング|マキシ/, "ロングスカート"], [/ミディ|ミモレ|膝丈|ひざ丈/, "ミディスカート"]],
+    パンツ: [[/テーパード/, "テーパードパンツ"], [/ワイド|ガウチョ/, "ワイドパンツ"], [/ストレート|スラックス|タック/, "ストレートパンツ"]],
+    バッグ: [[/かご|カゴ|バスケット/, "かごバッグ"], [/リュック|バックパック/, "リュック"], [/トート/, "トートバッグ"], [/チェーン/, "チェーンバッグ"], [/ミニ|ポシェット|クラッチ/, "ミニバッグ"], [/ショルダー|斜め掛け|斜めがけ/, "ショルダーバッグ"], [/ハンド|ボストン/, "ハンドバッグ"]],
+    シューズ: [[/レイン|防水|撥水/, "レインシューズ"], [/スニーカー/, "スニーカー"], [/メリージェーン/, "メリージェーン"], [/バレエ/, "バレエシューズ"], [/ローファー/, "ローファー"], [/サンダル|ミュール/, "サンダル"], [/ブーツ/, "ショートブーツ"], [/パンプス/, "パンプス"]],
+  };
+  return types[product.category]?.find(([pattern]) => pattern.test(name))?.[1] || product.category;
+}
+
+function coordinateRecentUse(history, selector, field, value) {
+  return history.reduce((total, row, index) => total + (row?.[selector]?.[field] === value ? (index === 0 ? 3 : 1) : 0), 0);
+}
+
+function buildCoordinateRakutenQuery(slot, context) {
+  const types = context.types[slot.selector] || [];
+  const type = [...types].sort((a, b) => {
+    const priority = (value) => (value === "ミニスカート" ? 4 : 0)
+      - types.indexOf(value) - coordinateRecentUse(context.history, slot.selector, "type", value);
+    return priority(b) - priority(a);
+  })[0];
+  const style = context.formal ? "きれいめ" : context.resort ? "リゾート" : context.casual ? "カジュアル" : "大人可愛い";
+  const season = ["夏", "冬"].includes(context.season) ? context.season : "";
+  return [type ? `レディース ${type}` : slot.keyword, style, season].filter(Boolean).join(" ");
+}
+
+function coordinateItemColor(product) {
+  const value = product.details?.color || product.name || "";
+  const colors = [
+    ["白", /ホワイト|アイボリー|生成り|エクリュ|白/], ["黒", /ブラック|黒/],
+    ["茶", /ベージュ|ブラウン|キャメル|モカ|茶色/], ["灰", /グレー|シルバー|灰色/],
+    ["紺", /ネイビー|紺/], ["青", /ブルー|水色|青/], ["桃", /ピンク|ラベンダー|パープル/],
+    ["緑", /グリーン|ミント|カーキ/], ["赤", /レッド|ボルドー|赤/], ["黄", /イエロー|マスタード|黄色/],
+  ];
+  return colors.map(([color, pattern]) => ({ color, index: String(value).search(pattern) }))
+    .filter(({ index }) => index >= 0).sort((a, b) => a.index - b.index)[0]?.color || "";
+}
+
+function chooseCoordinateCompanion(products, slot, context, selected) {
+  const types = context.types[slot.selector] || [];
+  const selectedKeys = new Set(selected.map(coordinateProductKey));
+  const selectedColors = new Set(selected.map(coordinateItemColor).filter(Boolean));
+  const roomyTop = selected.some((product) => ["トップス", "ニット", "アウター", "カーディガン"].includes(product.category)
+    && /オーバーサイズ|ボリューム袖|ビッグシルエット|ゆったり/.test(product.name || ""));
+  const neutralColors = ["白", "黒", "茶", "灰", "紺"];
+  const hasAccent = [...selectedColors].some((color) => !neutralColors.includes(color));
+  let best;
+  let bestScore = -Infinity;
+  for (const product of products) {
+    if (!slot.categories.includes(product.category)) continue;
+    const key = coordinateProductKey(product);
+    if (!key || selectedKeys.has(key)) continue;
+    const type = coordinateCompanionType(product);
+    const typeRank = types.indexOf(type);
+    const text = `${product.name || ""} ${product.details?.material || ""}`;
+    const color = coordinateItemColor(product);
+    const mini = type === "ミニスカート";
+    let fit = typeRank < 0 ? 0 : Math.max(2, 6 - typeRank);
+    if (mini) fit += context.miniPreferred ? 6 : -10;
+    if (roomyTop && type === "テーパードパンツ") fit += 2;
+    if (roomyTop && type === "ワイドパンツ") fit -= 2;
+    if (context.formal && (type === "スニーカー" || product.category === "デニム")) fit -= 7;
+    if (context.rain && (type === "サンダル" || /スエード|かご/.test(text))) fit -= 9;
+    if (context.season === "夏" && /裏起毛|ボア|防寒|ブーツ/.test(text) && type !== "レインシューズ") fit -= 11;
+    if (context.season === "冬" && /サンダル|接触冷感|かごバッグ/.test(text)) fit -= 11;
+    if (fit <= -7) continue;
+    if (color && selectedColors.has(color)) fit += 3;
+    else if (neutralColors.includes(color)) fit += 2;
+    else if (color && hasAccent) fit -= 4;
+    if (context.colorMood === "淡色ワントーン" && color) fit += ["白", "茶", "灰"].includes(color) ? 3 : -2;
+    if (context.colorMood === "白ベースで明るく" && color === "白") fit += 3;
+    if (context.colorMood === "黒・濃色で引き締め" && ["黒", "紺"].includes(color)) fit += 3;
+    const repeat = coordinateRecentUse(context.history, slot.selector, "key", key);
+    const repeatType = coordinateRecentUse(context.history, slot.selector, "type", type);
+    const score = fit + (product.image ? 1 : 0) - Math.min(6, repeat) - Math.min(mini ? 1 : 4, repeatType);
+    if (score > bestScore) {
+      best = product;
+      bestScore = score;
+    }
+  }
+  return best || null;
+}
+
+function rememberCoordinateSelection(coordinate) {
+  const row = {};
+  for (const slot of coordinateCompanionSlots(coordinate.mainProduct?.category)) {
+    const product = coordinate.products.find((item) => item.id !== coordinate.mainProduct?.id && slot.categories.includes(item.category));
+    if (product) row[slot.selector] = { key: coordinateProductKey(product), type: coordinateCompanionType(product) };
+  }
+  const history = Array.isArray(state.coordinateSelectionHistory) ? state.coordinateSelectionHistory : [];
+  if (!Object.keys(row).length || JSON.stringify(row) === JSON.stringify(history[0])) return;
+  state.coordinateSelectionHistory = [row, ...history.slice(0, 4)];
+  saveState();
 }
 
 async function generateCoordinate() {
@@ -8448,6 +8605,7 @@ async function generateCoordinate() {
   }
   let coordinate = getSelectedCoordinate();
   if (!coordinate.products.length) return showToast("コーデに使う商品を選んでください");
+  rememberCoordinateSelection(coordinate);
   if (coordinate.location === "overseas") rememberUsedOverseasCity("coordinate", coordinate.city);
   if (isHanakoTeacherPattern(coordinate.imagePattern)) {
     applySelectedHanakoTeacher();
@@ -8481,7 +8639,7 @@ function shortCoordinateProductName(name) {
   const characters = typeof Intl.Segmenter === "function"
     ? Array.from(new Intl.Segmenter("ja", { granularity: "grapheme" }).segment(text), (part) => part.segment)
     : Array.from(text);
-  return characters.slice(0, 30).join("");
+  return characters.slice(0, COORDINATE_PRODUCT_COPY_LIMIT).join("");
 }
 
 function renderCoordinateProductNameCopies(coordinate) {
@@ -8503,7 +8661,7 @@ function renderCoordinateProductNameCopies(coordinate) {
     detail.append(category, preview);
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = "商品名を30文字コピー";
+    button.textContent = `商品名を${COORDINATE_PRODUCT_COPY_LIMIT}文字コピー`;
     button.setAttribute("aria-label", `${product.category || "商品"}：${name}をコピー`);
     button.addEventListener("click", () => copyText(name));
     row.append(detail, button);

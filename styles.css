@@ -3796,6 +3796,21 @@ body {
   box-shadow: 0 0 0 2px #f8dce6;
 }
 
+.coord-photo-default {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 4px;
+  font-size: 0.75rem;
+  color: #853858;
+}
+
+.coord-photo-default:disabled {
+  opacity: 1;
+  background: #f9e6ed;
+  border-color: #edc6d5;
+}
+
 .coord-photo-card > [data-select-coordinate-photo] {
   display: block;
   width: 100%;
@@ -4083,7 +4098,7 @@ body {
 }
 
 .coord-url-row button {
-  min-width: 126px;
+  min-height: 44px;
   white-space: nowrap;
 }
 
