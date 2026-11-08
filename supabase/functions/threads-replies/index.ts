@@ -1,5 +1,6 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
 import {instagramReplies} from './instagram.ts';
+import {geminiDailyQuota,geminiResumeAt,geminiFallbackState} from '../../../reply-ai-fallback.mjs';
 import {noteOpportunity} from '../../../note-opportunity.mjs';
 import {validateGifSettings,chooseReplyGif,allowedReplyGif,gifVideoUrl,gifReplyReason} from '../../../gif-replies.mjs';
 import {replyToneContext,wrongReplyRegister} from '../../../reply-tone.mjs';
@@ -36,6 +37,7 @@ async function geminiKey(s: any) {
 async function aiConfigured(s?: any) {if(aiProvider(s)==='gemini') return (await connections()).find(x=>x.id===(s?.ai_connection||'default'))?.configured||false;return openaiConfigured();}
 const invalidReply = (text: string,max: number,nickname='') => !text || [...text].length>max || /```|@|(?:〇|○|◯|×|X){2,}|\S+(?:さん|くん|君|ちゃん|様)/.test(nickname?text.replaceAll(nickname,''):text) || /会[うえいお]|逢|デート|電話|通話|連絡先|待ち合わせ|DM|LINE|\b(?:meet|meeting|date|call|phone|whatsapp|telegram)\b|见面|見面|전화|만나/i.test(text);
 class FreeQuotaError extends Error {}
+class GeminiDailyQuotaError extends FreeQuotaError {}
 class ThreadsReadError extends Error {status:number;constructor(status:number,message:string){super(message);this.status=status;}}
 class ThreadsRateLimitError extends ThreadsReadError {}
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,apikey,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
@@ -47,6 +49,7 @@ async function api(url: string, options: RequestInit, label: string) {
   try { response=await fetch(url,{...options,signal:AbortSignal.timeout(45000)}); }
   catch { throw new Error(`${label}: 通信または認証設定を確認してください`); }
   const body=response.status===204?null:await response.json();
+  if(label==='Gemini返信生成'&&response.status===429&&geminiDailyQuota(body?.error))throw new GeminiDailyQuotaError('Geminiの日次利用枠に達しました');
   if(label==='AI返信生成'&&!response.ok) {
     const code=body?.error?.code;
     const billing=code==='credit_balance_exhausted'?'balance_empty':['organization_spend_limit_exceeded','project_spend_limit_exceeded','organization_usage_limit_exceeded'].includes(code)?'spend_limit':code==='insufficient_quota'?'billing_problem':response.status===429?'rate_limited':null;
@@ -182,7 +185,50 @@ async function checkThreadsOwner() {
   if(String(me.id)!==env('THREADS_USER_ID')) throw new Error('Threadsの認証アカウントが所有者設定と一致しません');
   return me;
 }
-async function generate(s: any,c: any,attempt=0): Promise<string> {
+function replyFallbackState(s:any){return geminiFallbackState(aiProvider(s),s.gemini_fallback_until);}
+function effectiveReplyProvider(s:any){return replyFallbackState(s)==='active'?'openai':aiProvider(s);}
+function replyAiWaiting(s:any){
+ return (effectiveReplyProvider(s)==='openai'&&s.openai_ready!==true)||
+  (replyFallbackState(s)!=='expired'&&Boolean(s.ai_retry_at&&Date.parse(s.ai_retry_at)>Date.now()));
+}
+function fallbackSettingsFilter(s:any){
+ return 'hanako_reply_settings?'+filter()+'&ai_provider=eq.gemini&ai_connection=eq.'+encodeURIComponent(s.ai_connection||'default')+
+  '&gemini_fallback_until='+(s.gemini_fallback_until?'eq.'+encodeURIComponent(s.gemini_fallback_until):'is.null');
+}
+async function clearGeminiFallback(s:any){
+ await db(fallbackSettingsFilter(s),'PATCH',{gemini_fallback_until:null,ai_retry_at:null});
+}
+async function generate(s:any,c:any):Promise<string>{
+ if(c.username==='connection-test')return generateWithProvider(s,c);
+ const provider=effectiveReplyProvider(s);
+ if(provider==='openai'&&s.openai_ready!==true)throw new FreeQuotaError('OpenAIの残高または接続を確認してください。返信を待機しています');
+ try{
+  const result=await generateWithProvider({...s,ai_provider:provider},c);
+  if(provider==='gemini'&&replyFallbackState(s)==='expired')await clearGeminiFallback(s);
+  return result;
+ }catch(e){
+  if(provider!=='gemini')throw e;
+  if(!(e instanceof GeminiDailyQuotaError)){
+   if(replyFallbackState(s)==='expired')await clearGeminiFallback(s);
+   throw e;
+  }
+  let current=await settings();
+  if(aiProvider(current)!=='gemini'||(current.ai_connection||'default')!==(s.ai_connection||'default'))throw e;
+  if(replyFallbackState(current)!=='active'){
+   // An unusually late quota reset should not cost a full extra day of fallback.
+   const now=Date.now();
+   const until=replyFallbackState(current)==='expired'?new Date(Math.min(now+900000,Date.parse(geminiResumeAt(now)))).toISOString():geminiResumeAt(now);
+   const rows=await db(fallbackSettingsFilter(current),'PATCH',{gemini_fallback_until:until,ai_retry_at:null});
+   current=rows[0]||await settings();
+  }
+  if(replyFallbackState(current)!=='active'||replyAiWaiting(current)||!await openaiConfigured()){
+   throw new FreeQuotaError('Geminiの日次枠に達しました。OpenAIの残高または接続を確認してください');
+  }
+  return generateWithProvider({...s,ai_provider:'openai'},c);
+ }
+}
+
+async function generateWithProvider(s: any,c: any,attempt=0): Promise<string> {
   const dailyActivity=c.username!=='connection-test'&&isDailyActivityRequest(c.comment_text)?await db('rpc/hanako_daily_activity_get','POST',{owner_id:owner()}):null;
   const replyDay=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
   const emoji=specialCodeReply(c.comment_text)||emojiReply(c.comment_text);if(emoji)return emoji;
@@ -219,7 +265,7 @@ ${INSTAGRAM_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名
     if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
     const text=avoidAnsweredQuestions(reduceAhiOpening(normalizeReplyLayout((candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim()),c.comment_id),threadContext.answered_questions);
     if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongReplyRegister(text,toneContext)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||repeatedReplyPattern(text,varietyContext)||wrongActivityReply(text,activityContext)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,replyDay)||wrongInstagramReply(text,instagramAllowed)) {
-      if(attempt<2) return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258/n/n94503654ef15 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。直近の長い返信と同じ表現を繰り返さず、今回の内容に合う短く自然な別の言い方にする。'},{...c,reply_retry_feedback:wrongActivityReply(text,activityContext)?'聞かれていない予定を付け足した、または今日の共通予定と異なる活動を答えた。不要な予定の報告をやめ、今回のコメントと実際の会話に沿って答える。':repeatedReplyPattern(text,varietyContext)?'最近多用した感情表現・書き出しを繰り返した。別の反応・構成を選び、元の質問に答える。':'形式・言語・挨拶・宣伝制限・重複のいずれかに不一致。現在の質問と確定した事実を保って各規則を再確認する。'},attempt+1);
+      if(attempt<2) return generateWithProvider({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258/n/n94503654ef15 をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。直近の長い返信と同じ表現を繰り返さず、今回の内容に合う短く自然な別の言い方にする。'},{...c,reply_retry_feedback:wrongActivityReply(text,activityContext)?'聞かれていない予定を付け足した、または今日の共通予定と異なる活動を答えた。不要な予定の報告をやめ、今回のコメントと実際の会話に沿って答える。':repeatedReplyPattern(text,varietyContext)?'最近多用した感情表現・書き出しを繰り返した。別の反応・構成を選び、元の質問に答える。':'形式・言語・挨拶・宣伝制限・重複のいずれかに不一致。現在の質問と確定した事実を保って各規則を再確認する。'},attempt+1);
       throw new Error('返信形式・言語・直近の返信の繰り返しを確認してください');
     }
     return text;
@@ -231,7 +277,7 @@ ${INSTAGRAM_PROMPT}\nfan_profile.nicknameがある場合だけ、そのあだ名
   })},'AI返信生成');
   if(response.status!=='completed') throw new Error('AIの生成が未完了です');
   const text=avoidAnsweredQuestions(reduceAhiOpening(normalizeReplyLayout((response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim()),c.comment_id),threadContext.answered_questions);
-  if((invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongReplyRegister(text,toneContext)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||repeatedReplyPattern(text,varietyContext)||wrongActivityReply(text,activityContext)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,replyDay)||wrongInstagramReply(text,instagramAllowed))&&attempt<2)return generate({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶・表現の繰り返しの規則に合わないため破棄。直近の返信とは冒頭・語尾・話題を変えて短く自然に返す。Noteの案内可否を必ず守る。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。直近の長い返信とは別の言い方で、短く自然に返す。'},{...c,reply_retry_feedback:wrongActivityReply(text,activityContext)?'聞かれていない予定を付け足した、または今日の共通予定と異なる活動を答えた。不要な予定の報告をやめ、今回のコメントと実際の会話に沿って答える。':repeatedReplyPattern(text,varietyContext)?'最近多用した感情表現・書き出しを繰り返した。別の反応・構成を選び、元の質問に答える。':'形式・言語・挨拶・宣伝制限・重複のいずれかに不一致。現在の質問と確定した事実を保って各規則を再確認する。'},attempt+1);
+  if((invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongReplyRegister(text,toneContext)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||repeatedReplyPattern(text,varietyContext)||wrongActivityReply(text,activityContext)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,replyDay)||wrongInstagramReply(text,instagramAllowed))&&attempt<2)return generateWithProvider({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶・表現の繰り返しの規則に合わないため破棄。直近の返信とは冒頭・語尾・話題を変えて短く自然に返す。Noteの案内可否を必ず守る。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。直近の長い返信とは別の言い方で、短く自然に返す。'},{...c,reply_retry_feedback:wrongActivityReply(text,activityContext)?'聞かれていない予定を付け足した、または今日の共通予定と異なる活動を答えた。不要な予定の報告をやめ、今回のコメントと実際の会話に沿って答える。':repeatedReplyPattern(text,varietyContext)?'最近多用した感情表現・書き出しを繰り返した。別の反応・構成を選び、元の質問に答える。':'形式・言語・挨拶・宣伝制限・重複のいずれかに不一致。現在の質問と確定した事実を保って各規則を再確認する。'},attempt+1);
   if(invalidReply(text,s.max_chars,fan_profile?.nickname||'')||wrongReplyRegister(text,toneContext)||wrongGreeting(text)||wrongReplyLanguage(c.comment_text,text)||tooSimilarReply(text,recentReplies)||repeatedEnding(text,recentReplies)||repeatedReplyPattern(text,varietyContext)||wrongActivityReply(text,activityContext)||wrongNoteReply(text,noteAllowed)||outdatedCosplayReply(text,replyDay)||wrongInstagramReply(text,instagramAllowed)) throw new Error('返信形式・言語・時間帯・直近の返信の繰り返しを確認してください');
   return text;
 }
@@ -675,7 +721,7 @@ async function run(action: string,body: any) {
     }
     if(!s.enabled) return {status:'off'};
     const threadsState=await threadsPublishingState();if(threadsBlocked(threadsState))return {status:'threads_rate_wait',retry_at:threadsState.retry_at,threads:threadsState};
-    const aiWait=(aiProvider(s)==='openai'&&s.openai_ready===false)||Boolean(s.ai_retry_at&&Date.parse(s.ai_retry_at)>Date.now());
+    const aiWait=replyAiWaiting(s);
     const me=await checkThreadsOwner();
     const checked=await scanRecent(s,me);
     if(!inWindow(s)) {await updateSettings({last_run:new Date().toISOString(),last_error:''}); return {status:'outside_window'};}
@@ -699,7 +745,7 @@ async function run(action: string,body: any) {
     }
     if(quota)return quota;
     if(errors.length&&!processed&&!resumed.length)throw errors[0];
-    if(!c&&aiWait&&!resumed.length)return {status:aiProvider(s)==='openai'&&s.openai_ready===false?'openai_not_ready':'quota_wait',retry_at:s.ai_retry_at};
+    if(!c&&aiWait&&!resumed.length)return {status:effectiveReplyProvider(s)==='openai'&&s.openai_ready!==true?'openai_not_ready':'quota_wait',retry_at:s.ai_retry_at};
     // Historical fan statistics are lower priority and keep their original cursors.
     let historyError='';
     if(!c&&!aiWait&&new Date().getUTCMinutes()%5===0)try{await scan(s,me);}catch(e){historyError=e instanceof Error?e.message:'履歴の収集に失敗しました';}
@@ -718,7 +764,7 @@ Deno.serve(async request=>{
     if(!isCron) await authenticate(request);
     if(isCron&&!['run','check','gif_recover','ig_check','ig_run'].includes(body.action)) return respond({error:'許可されていません'},403);
     if(['ig_check','ig_run','ig_load','ig_save','ig_connect'].includes(body.action)){
-      const ig=instagramReplies({db,owner,updateSettings,isQuotaError:(e:any)=>e instanceof FreeQuotaError,env:(name:string,optional=false)=>optional?Deno.env.get(name):env(name),settings,generate,inWindow,exclusionReason,hasNotePromotion,wrongNoteReply,hasInstagramPromotion,wrongGreeting,wrongReplyLanguage});
+      const ig=instagramReplies({db,owner,updateSettings,replyAiWaiting,isQuotaError:(e:any)=>e instanceof FreeQuotaError,env:(name:string,optional=false)=>optional?Deno.env.get(name):env(name),settings,generate,inWindow,exclusionReason,hasNotePromotion,wrongNoteReply,hasInstagramPromotion,wrongGreeting,wrongReplyLanguage});
       return respond(await (body.action==='ig_check'?ig.check():body.action==='ig_run'?ig.run():body.action==='ig_load'?ig.load():body.action==='ig_connect'?ig.connect(body.connection):ig.save(body.settings)));
     }
     if(body.action==='gif_recover')return respond(await recoverReplyGifs());
@@ -735,7 +781,7 @@ Deno.serve(async request=>{
       if(body.audit_failed===true)return respond(await auditFailedReplies());
       if(body.provider==='openai') {
         if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()}))return respond({status:'busy'});
-        try {const result=await checkConnections('openai');const current=await settings();await updateSettings({openai_ready:result.openai.ok,...(result.openai.ok&&aiProvider(current)==='openai'?{ai_retry_at:null,last_error:''}:{})});return respond(result);}
+        try {const result=await checkConnections('openai');const current=await settings();await updateSettings({openai_ready:result.openai.ok,...(result.openai.ok&&effectiveReplyProvider(current)==='openai'?{ai_retry_at:null,last_error:''}:{})});return respond(result);}
         finally {await updateSettings({lease_until:null});}
       }
       return respond(await checkConnections(body.provider));
@@ -753,7 +799,7 @@ Deno.serve(async request=>{
     if(body.action==='openai_check') {
       if(!await db('rpc/hanako_reply_lock','POST',{owner_id:owner()}))throw new Error('返信処理中です。少し待ってから接続テストしてください');
       const current=await settings();
-      try {const sample=await probeOpenAI();await updateSettings({openai_ready:true,...(aiProvider(current)==='openai'?{ai_retry_at:null,last_error:''}:{})});return respond({ok:true,sample,model:OPENAI_LUNA_MODEL});}
+      try {const sample=await probeOpenAI();await updateSettings({openai_ready:true,...(effectiveReplyProvider(current)==='openai'?{ai_retry_at:null,last_error:''}:{})});return respond({ok:true,sample,model:OPENAI_LUNA_MODEL});}
       catch(e){await updateSettings({openai_ready:false});throw e;}
       finally {await updateSettings({lease_until:null});}
     }
@@ -791,7 +837,7 @@ Deno.serve(async request=>{
       await db(`hanako_fan_profiles?${filter()}&username=eq.${encodeURIComponent(username)}`,'PATCH',{manual_notes:body.notes,use_notes:body.use_notes,...(body.nickname!==undefined?{manual_nickname:body.nickname}:{}),...(body.nickname_enabled!==undefined?{nickname_enabled:body.nickname_enabled}:{})});
       return respond({saved:true});
     }
-    if(body.action==='load') {const current=await settings();return respond({settings:current,openai:{configured:await openaiConfigured(),ready:Boolean(current.openai_ready),model:OPENAI_LUNA_MODEL},profile:HANA_PROFILE,daily_activity:await db('rpc/hanako_daily_activity_get','POST',{owner_id:owner()}),daily_counts:await db('rpc/hanako_reply_daily_counts','POST',{owner_id:owner()}),queue_count:await queueCount(),health:await replyHealth(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
+    if(body.action==='load') {const current=await settings();return respond({settings:current,effective_ai_provider:effectiveReplyProvider(current),ai_fallback_active:replyFallbackState(current)==='active',openai:{configured:await openaiConfigured(),ready:Boolean(current.openai_ready),model:OPENAI_LUNA_MODEL},profile:HANA_PROFILE,daily_activity:await db('rpc/hanako_daily_activity_get','POST',{owner_id:owner()}),daily_counts:await db('rpc/hanako_reply_daily_counts','POST',{owner_id:owner()}),queue_count:await queueCount(),health:await replyHealth(),connections:await connections(),fans:await db('rpc/hanako_reply_fans','POST',{owner_id:owner()}),
       replies:await db(`hanako_reply_comments?${filter()}&status=neq.history&order=commented_at.desc&limit=100`),
       connected:Boolean(Deno.env.get('THREADS_ACCESS_TOKEN')&&Deno.env.get('THREADS_USER_ID')&&await aiConfigured(current))});}
     if(body.action==='save') { const value:any=validateSettings(body.settings); const current=await settings();
@@ -799,6 +845,7 @@ Deno.serve(async request=>{
         if(value.ai_provider==='openai'&&(!await openaiConfigured()||!current.openai_ready))throw new Error('OpenAI APIキーを登録し、Lunaの接続テストを完了してください');
         if(value.ai_provider==='gemini'&&!await aiConfigured({...current,...value}))throw new Error('Geminiのキーを登録してください');
         value.ai_retry_at=null;
+        value.gemini_fallback_until=null;
       }
       if(aiProvider({...current,...value})==='gemini'&&value.ai_connection && value.ai_connection!==(current.ai_connection||'default')) {
         if(!await aiConfigured({...current,...value})) throw new Error('選択したGemini接続のAPIキーを登録してください');

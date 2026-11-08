@@ -31,7 +31,7 @@ export function instagramReplies(deps:any){
   const cfg=await config();if(!cfg.enabled)return {status:'off'};if(!await db('rpc/hanako_ig_reply_lock','POST',{owner_id:owner()}))return {status:'busy'};
   try{
    const s=await settings();if(!inWindow(s))return {status:'outside_window'};
-   if((s.ai_provider==='openai'&&s.openai_ready===false)||(s.ai_retry_at&&Date.parse(s.ai_retry_at)>Date.now()))return {status:'quota_wait'};
+   if(deps.replyAiWaiting?.(s)??((s.ai_provider==='openai'&&s.openai_ready===false)||(s.ai_retry_at&&Date.parse(s.ai_retry_at)>Date.now())))return {status:'quota_wait'};
    const me=await account(),posts=await media(cfg.post_limit);if(!posts.length)return {status:'idle'};
    const post=posts[(cfg.scan_offset||0)%posts.length];await update({scan_offset:((cfg.scan_offset||0)+1)%posts.length});
    const comments=await all(`${post.id}/comments`,'id,text,timestamp,from,parent_id');
