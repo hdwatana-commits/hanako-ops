@@ -203,7 +203,7 @@ async function generate(s: any,c: any,attempt=0): Promise<string> {
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
   const instagramAllowed=c.platform==='instagram'?false:c.username==='connection-test'?true:await db('rpc/hanako_instagram_available','POST',{owner_id:owner(),fan_username:c.username});
   const noteAllowed=c.username==='connection-test'?true:await db('rpc/hanako_note_available','POST',{owner_id:owner(),fan_username:c.username});
-  const noteSales=noteOpportunity(c.comment_text,conversation,noteAllowed);
+  const noteSales=noteOpportunity(c.comment_text,conversation,noteAllowed,{commentId:c.username==='connection-test'?null:c.comment_id,platform:c.platform||'threads'});
   const toneContext=replyToneContext(c.comment_text,conversation.flatMap((h:any)=>h.replies));
   const activityContext=activityReplyContext(c.comment_text,c.post_text,dailyActivity,conversation);
   const instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}
