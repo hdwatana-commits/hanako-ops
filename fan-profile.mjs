@@ -26,21 +26,23 @@ export function profileNickname(profile,username){
  const reading=japaneseUsername(username);
  return reading&&safeNickname(reading+'っち')?reading+'っち':'';
 }
-export function mergeFanProfile(previous={},rows=[]){
+export function mergeFanProfile(previous={},rows=[],{nicknameOnly=false}={}){
  const result={...previous};
  for(const r of [...rows].sort((a,b)=>String(a.commented_at).localeCompare(String(b.commented_at)))){
   if(r.is_owner||!r.comment_id)continue;
   const text=String(r.comment_text||'').normalize('NFKC').replace(/\\n/g,'\n');
   const languageText=text.replace(/https?:\/\/\S+|@[a-zA-Z0-9._]+/g,'');
-  if(/[\p{L}]/u.test(languageText)&&(!result.nickname_language?.at||result.nickname_language.at<=(r.commented_at||'')))result.nickname_language={value:/[\u3041-\u3096\u30A1-\u30FA]/u.test(languageText)?'ja':'other',at:r.commented_at||''};
+  if(!nicknameOnly&&/[\p{L}]/u.test(languageText)&&(!result.nickname_language?.at||result.nickname_language.at<=(r.commented_at||'')))result.nickname_language={value:/[\u3041-\u3096\u30A1-\u30FA]/u.test(languageText)?'ja':'other',at:r.commented_at||''};
   const nickAt=r.commented_at||'';
   const recentNickname=!result.nickname?.at||result.nickname.at<=nickAt;
   const recentStop=!result.nickname_stop?.at||result.nickname_stop.at<=nickAt;
   const wantsChange=/(?:あだ名|呼び名|呼び方|名前).{0,16}(?:やめて|呼ばない|違う|変えて|変更|別の)|呼ばないで/.test(text);
-  const nickname=text.match(/(?:^|[。！!\n])\s*(?:じゃあ[、,]?\s*)?[「『]?([\p{L}\p{M}ー・]{2,20})[」』]?[、,]?(?:って|と)呼んで(?:ね|ください|ほしい|くれると|$)/u)
-    ||text.match(/(?:あだ名|呼び名|呼び方|名前)(?:は|を)\s*[「『]?([\p{L}\p{M}ー・]{2,20})[」』]?(?:がいい|にして|に変えて|に変更)/u);
+  const nickname=text.match(/(?:^|[。！？!?、,\n])\s*(?:(?:じゃあ|これからは|今度から|今後は|よかったら|できれば)[、,]?\s*)?(?:(?:私|僕|俺|自分)(?:のこと)?(?:を|は)\s*)?[「『"]?([\p{L}\p{M}ー・]{2,20})[」』"]?\s*[、,]?\s*(?:って|と)\s*呼んで(?:ください(?:ね)?|ほしい(?:な|です)?|くれると(?:嬉しい|うれしい)な?|くれたら(?:嬉しい|うれしい)な?|もらえますか|もらえる|くれる|ね|よ)?(?=$|[。！？!?、,\s~〜\p{Extended_Pictographic}])/u)
+    ||text.match(/(?:^|[。！？!?、,\n])\s*(?:(?:私|僕|俺|自分)の)?(?:あだ名|呼び名|呼び方|名前)(?:は|を)\s*[「『]?([\p{L}\p{M}ー・]{2,20})[」』]?(?:がいい|にして(?:ほしい|ください|ね)?|に変えて(?:ほしい|ください|ね)?|に変更して)(?=$|[。！？!?、,\s~〜\p{Extended_Pictographic}])/u)
+    ||text.match(/(?:^|[.!?\n])\s*(?:(?:from now on|actually),?\s+)?(?:please\s+)?call me\s+["“]?([\p{L}\p{M}]{2,20})["”]?(?:,?\s+please)?(?=$|[.!?\n\p{Extended_Pictographic}])/iu);
   if(wantsChange&&recentStop)result.nickname_stop={value:true,at:nickAt,source_id:r.comment_id};
-  if(nickname&&!/^(?:違う.*|別の.*|ほかの.*|他の.*|なし|無し|普通)$/.test(nickname[1])&&safeNickname(nickname[1])&&recentNickname&&recentStop){result.nickname={value:nickname[1],at:nickAt,source_id:r.comment_id,quote:text.slice(0,160)};result.nickname_stop={value:false,at:nickAt,source_id:r.comment_id};}
+  if(nickname&&!/^(?:違う.*|別の.*|ほかの.*|他の.*|なし|無し|普通)$/.test(nickname[1])&&!/^(?:友達|友人|弟|妹|兄|姉|彼氏|彼女|あの人|子供|子ども|うちの).*(?:を|は)/u.test(nickname[1])&&safeNickname(nickname[1])&&recentNickname&&recentStop){result.nickname={value:nickname[1],at:nickAt,source_id:r.comment_id,quote:text.slice(0,160)};result.nickname_stop={value:false,at:nickAt,source_id:r.comment_id};}
+  if(nicknameOnly)continue;
   // Only direct first-person declarations; questions and conjecture are not facts.
   const factsText=text.replace(/[^。！？!?\n]*[?？]/g,'');
   if(/(?:じゃない|ではない|だったら|かもしれ|例えば|友達|妻|夫|彼女|彼氏)/.test(factsText))continue;

@@ -1,5 +1,18 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {mergeFanProfile,fanReplyContext,profileNickname,safeNickname} from '../fan-profile.mjs';
 const row=(comment_text,commented_at='2026-10-10T00:00:00Z')=>({comment_id:'c1',comment_text,commented_at,is_owner:false});
+
+test('短い呼びかけ希望はその表記で記録し、履歴オフでも今回の希望だけ反映する',()=>{
+ const original={foods:{value:'寿司'},nickname:{value:'たかっち',at:'2026-10-09T00:00:00Z'}};
+ for(const [text,expected] of [['タカって呼んで！','タカ'],['今後は「タカ兄」って呼んでもらえる？','タカ兄'],['ありがとう、タカって呼んで😊','タカ'],['Please call me Alex!','Alex']]){
+  const p=mergeFanProfile(original,[row(text+'\n好きな食べ物はラーメン')],{nicknameOnly:true});
+  assert.equal(p.nickname.value,expected);
+  assert.equal(p.nickname.source_id,'c1');
+  assert.equal(p.foods.value,'寿司');
+ }
+ for(const text of ['「タカって呼んで」って言われた','タカって呼んでほしくない','友達をタカって呼んで']){
+  assert.equal(mergeFanProfile({},[row(text)]).nickname,undefined);
+ }
+});
 test('本人のおすすめ店だけを根拠付きで記録し返信へ渡す',()=>{const auto_profile=mergeFanProfile({},[row('おすすめのお店は渋谷のつじ田。何系が好き？')]);assert.equal(auto_profile.recommended_shops.value,'渋谷のつじ田');assert.equal(fanReplyContext({auto_profile}).preferences.recommended_shops.value,'渋谷のつじ田');assert.equal(mergeFanProfile({},[row('おすすめのお店はどこ？')]).recommended_shops,undefined);assert.equal(mergeFanProfile({},[row('友達のおすすめのお店はつじ田')]).recommended_shops,undefined);});
 test('変更案を採用し、案なしの変更依頼では停止し、新しい希望で再開する',()=>{let auto_profile=mergeFanProfile({},[row('あだ名はたっくんがいい')]);assert.equal(profileNickname({auto_profile,manual_nickname:'たかっち'},'taka'),'たっくん');auto_profile=mergeFanProfile(auto_profile,[row('あだ名は違うのがいい','2026-10-11T00:00:00Z')]);assert.equal(profileNickname({auto_profile},'taka'),'');auto_profile=mergeFanProfile(auto_profile,[row('呼び名をたかちゃんにして','2026-10-12T00:00:00Z')]);assert.equal(profileNickname({auto_profile},'taka'),'たかちゃん');auto_profile=mergeFanProfile(auto_profile,[row('あだ名はたっくんがいい')]);assert.equal(profileNickname({auto_profile},'taka'),'たかちゃん');});
 test('好みの発言と質問を分け、保存時の改行表現と絵文字を扱う',()=>{const p=mergeFanProfile({},[row('たか、って呼んでくれると嬉しいな〜🥰\\n好きな食べ物はハンバーグ🥰\\nはなこちゃんは？')]);assert.equal(p.nickname.value,'たか');assert.match(p.foods.value,/ハンバーグ/);assert.equal(mergeFanProfile({},[row('キャベツが好きよ❤️あなたもね')]).vegetables.value,'キャベツ');assert.equal(mergeFanProfile({},[row('キャベツが好き？')]).vegetables,undefined);});
