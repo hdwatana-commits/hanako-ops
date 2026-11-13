@@ -53,7 +53,7 @@ test('直前と同じGIFを避け、使っていない候補を優先し、別�
 });
 test('深刻な話・購入案内には添えず、おやすみGIFは日本時間の夜だけ選ぶ',()=>{
  for(const text of ['病院で大変だったよ','寂しい。ありがとう','不快だからやめて','My friend died. Thank you'])assert.equal(gifScene(text,'',night),null);
- assert.equal(gifScene('ありがとう','https://note.com/hanako47258/n/n94503654ef15',night),null);
+ assert.equal(gifScene('ありがとう','https://note.com/hanako47258/n/n570e6a566e5a',night),null);
  assert.equal(gifScene('Good night','',night),'goodnight');assert.equal(gifScene('おやすみ','',new Date('2026-11-06T02:00:00Z')),null);
  assert.equal(gifScene('Gracias!','',night),'thanks');assert.equal(gifScene('😂','',night),'happy');
  assert.equal(gifScene('好きな曲は？','',night),'reaction');
