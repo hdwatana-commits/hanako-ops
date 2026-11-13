@@ -6,7 +6,7 @@ import {validateGifSettings,chooseReplyGif,allowedReplyGif,gifVideoUrl,gifReplyR
 import {replyToneContext,wrongReplyRegister} from '../../../reply-tone.mjs';
 import {replyVarietyContext,repeatedReplyPattern,REPLY_VARIETY_PROMPT} from '../../../reply-variety.mjs';
 import {loadThreadContext,avoidAnsweredQuestions} from '../../../reply-context.mjs';
-import {NOTE_ARTICLE_URL,reduceAhiOpening,normalizeReplyLayout} from '../../../reply-rules.mjs';
+import {reduceAhiOpening,normalizeReplyLayout} from '../../../reply-rules.mjs';
 import { isDailyActivityRequest, activityReplyContext, wrongActivityReply, ACTIVITY_CONVERSATION_PROMPT, cosplayUpdate, outdatedCosplayReply } from '../../../daily-activity.mjs';
 import { mergeFanProfile, fanReplyContext, profileNickname, safeNickname } from '../../../fan-profile.mjs';
 import { inWindow, validateSettings, TONES, relationshipLevel, exclusionReason, replyClock, wrongGreeting, isEmojiOnly, emojiReply, replyLanguageHint, wrongReplyLanguage, tooSimilarReply, hasNotePromotion, wrongNoteReply, repeatedEnding, specialCodeReply, hasInstagramPromotion, wrongInstagramReply } from '../../../reply-rules.mjs';
@@ -557,8 +557,6 @@ async function resumeMediaRetries(deadline:number) {
 }
 async function publish(c: any,automatic=false,resumeContainer=false) {
   const originalText=c.reply_text;
-  const oldNoteUrl=/https?:\/\/note\.com\/hanako47258\/n\/n94503654ef15(?![\w/%?#-])/gi;
-  if(typeof originalText==='string')c={...c,reply_text:originalText.replace(oldNoteUrl,NOTE_ARTICLE_URL)};
   if(automatic){const gate=await settings();if(!gate.enabled||gate.mode!=='auto'||!inWindow(gate))return;}
   const quotaGate=await threadsPublishingState();if(threadsBlocked(quotaGate)){await deferForThreadsLimit(c,new ThreadsRateLimitError(429,'Threadsの上限回復を待機しています'));return;}
   if(await skipOutsideLatest(c))return;
