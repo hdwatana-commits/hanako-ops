@@ -35,7 +35,20 @@ async function geminiKey(s: any) {
   return stored || env(name).trim();
 }
 async function aiConfigured(s?: any) {if(aiProvider(s)==='gemini') return (await connections()).find(x=>x.id===(s?.ai_connection||'default'))?.configured||false;return openaiConfigured();}
-const invalidReply = (text: string,max: number,nickname='') => !text || [...text].length>max || /```|@|(?:〇|○|◯|×|X){2,}|\S+(?:さん|くん|君|ちゃん|様)/.test(nickname?text.replaceAll(nickname,''):text) || /会[うえいお]|逢|デート|電話|通話|連絡先|待ち合わせ|DM|LINE|\b(?:meet|meeting|date|call|phone|whatsapp|telegram)\b|见面|見面|전화|만나/i.test(text);
+function replyFormatIssue(text: string,max: number,nickname='') {
+  if(!text)return '本文なし';
+  if([...text].length>max)return '文字数超過';
+  const withoutNickname=nickname?text.replaceAll(nickname,''):text;
+  const addressText=withoutNickname.replace(/たくさん|沢山|みなさん|皆さん|お客さん/gu,'');
+  if(/```|@|(?:〇|○|◯|×|X){2,}/u.test(withoutNickname)||/\S+(?:さん|くん|君|ちゃん|様)/u.test(addressText))return '形式・呼びかけ';
+  if(/会[うえいお]|逢|デート|電話|通話|連絡先|待ち合わせ|(?<![a-z])(?:DM|LINE)(?![a-z])|\b(?:meet|meeting|date|call|phone|whatsapp|telegram)\b|见面|見面|전화|만나/i.test(text))return '対面・連絡に関する禁止表現';
+  return '';
+}
+const invalidReply = (text: string,max: number,nickname='') => Boolean(replyFormatIssue(text,max,nickname));
+function unwrapReplyText(text: string) {
+  const trimmed=text.trim();
+  return trimmed.match(/^\x60{3}(?:text|plaintext)?[ \t]*\r?\n([\s\S]*?)\r?\n\x60{3}$/i)?.[1].trim()||trimmed;
+}
 class FreeQuotaError extends Error {}
 class GeminiDailyQuotaError extends FreeQuotaError {}
 class ThreadsReadError extends Error {status:number;constructor(status:number,message:string){super(message);this.status=status;}}
@@ -48,7 +61,11 @@ async function api(url: string, options: RequestInit, label: string) {
   let response: Response;
   try { response=await fetch(url,{...options,signal:AbortSignal.timeout(45000)}); }
   catch { throw new Error(`${label}: 通信または認証設定を確認してください`); }
-  const body=response.status===204?null:await response.json();
+  let body=null;
+  if(response.status!==204){
+    try {body=await response.json();}
+    catch {if(response.ok)throw new Error(`${label}: APIから読み取れない応答が返りました`);}
+  }
   if(label==='Gemini返信生成'&&response.status===429&&geminiDailyQuota(body?.error))throw new GeminiDailyQuotaError('Geminiの日次利用枠に達しました');
   if(label==='AI返信生成'&&!response.ok) {
     const code=body?.error?.code;
@@ -265,13 +282,14 @@ ${INSTAGRAM_PROMPT}\nnickname_requested_nowがtrueなら、今のコメントで
   const nicknameRequestedNow=Boolean(fan_profile?.nickname&&requestedNickname?.source_id===c.comment_id);
 
   const rejectionReason=(text:string)=>{
-    if(invalidReply(text,s.max_chars,fan_profile?.nickname||''))return '文字数・形式・禁止表現';
+    const formatIssue=replyFormatIssue(text,s.max_chars,fan_profile?.nickname||'');
+    if(formatIssue)return formatIssue;
     if(wrongReplyRegister(text,toneContext))return '敬語';
     if(wrongGreeting(text))return '挨拶の時間帯';
     if(wrongReplyLanguage(c.comment_text,text))return '言語';
     if(tooSimilarReply(text,recentReplies))return '直近返信との類似';
-    if(repeatedEnding(text,recentReplies))return '同じ語尾';
-    if(repeatedReplyPattern(text,varietyContext))return '書き出し・反応の繰り返し';
+    if((isInstagram||attempt<2)&&repeatedEnding(text,recentReplies))return '同じ語尾';
+    if((isInstagram||attempt<2)&&repeatedReplyPattern(text,varietyContext))return '書き出し・反応の繰り返し';
     if(wrongActivityReply(text,activityContext))return '予定の説明';
     if(wrongNoteReply(text,noteAllowed))return 'note案内';
     if(outdatedCosplayReply(text,replyDay))return '日付が過ぎた予告';
@@ -284,8 +302,11 @@ ${INSTAGRAM_PROMPT}\nnickname_requested_nowがtrueなら、今のコメントで
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
     const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':await geminiKey(s),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');
     const candidate=response.candidates?.[0];
-    if(candidate?.finishReason!=='STOP') throw new Error('Geminiの生成が未完了または制限されました');
-    const text=avoidAnsweredQuestions(reduceAhiOpening(normalizeReplyLayout((candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join('').trim()),c.comment_id),threadContext.answered_questions);
+    if(candidate?.finishReason==='MAX_TOKENS'&&attempt<2){
+      return generateWithProvider(s,{...c,reply_retry_feedback:'出力が途中で終わったため、要点を短い1文で返す。'},2);
+    }
+    if(candidate?.finishReason!=='STOP') throw new Error(candidate?.finishReason==='MAX_TOKENS'?'Geminiの出力上限に達しました':'Geminiの生成が未完了または制限されました');
+    const text=avoidAnsweredQuestions(reduceAhiOpening(normalizeReplyLayout(unwrapReplyText((candidate.content?.parts||[]).filter((p:any)=>!p.thought).map((p:any)=>p.text||'').join(''))),c.comment_id),threadContext.answered_questions);
     if(rejectionReason(text)) {
       if(attempt<2) return generateWithProvider({...s,custom_prompt:s.custom_prompt+'\n前回の候補は規則違反だったため破棄済み。名前や敬称を付けず、会う・会える・デート・電話・DM・連絡先に一切言及しない。写真・イラストの依頼や対面・DM・電話・通話の誘いならnoteだけを案内し、記事を買って読んでくれたら嬉しいと軽く可愛くお願いする。案内には https://note.com/hanako47258/n/n570e6a566e5a をそのまま付ける。購入で対面や直接連絡が叶うとほのめかさない。それ以外の誘いはコメント内で優しくかわす。最大文字数の半分程度で簡潔に書く。時間帯の挨拶は付けず、今回のコメントの言語だけで内容に返す。外国語なら日本語を一切混ぜない。直近の長い返信と同じ表現を繰り返さず、今回の内容に合う短く自然な別の言い方にする。'},{...c,reply_retry_feedback:'該当したチェック：'+rejectionReason(text)+'。'+(wrongActivityReply(text,activityContext)?'聞かれていない予定を付け足した、または今日の共通予定と異なる活動を答えた。不要な予定の報告をやめ、今回のコメントと実際の会話に沿って答える。':repeatedReplyPattern(text,varietyContext)?'最近多用した感情表現・書き出しを繰り返した。別の反応・構成を選び、元の質問に答える。':'形式・言語・挨拶・宣伝制限・重複のいずれかに不一致。現在の質問と確定した事実を保って各規則を再確認する。')},attempt+1);
       throw new Error('返信文の確認で停止：'+rejectionReason(text));
@@ -298,7 +319,7 @@ ${INSTAGRAM_PROMPT}\nnickname_requested_nowがtrueなら、今のコメントで
     input
   })},'AI返信生成');
   if(response.status!=='completed') throw new Error('AIの生成が未完了です');
-  const text=avoidAnsweredQuestions(reduceAhiOpening(normalizeReplyLayout((response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('').trim()),c.comment_id),threadContext.answered_questions);
+  const text=avoidAnsweredQuestions(reduceAhiOpening(normalizeReplyLayout(unwrapReplyText((response.output||[]).filter((x:any)=>x.type==='message').flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join(''))),c.comment_id),threadContext.answered_questions);
   if((rejectionReason(text))&&attempt<2)return generateWithProvider({...s,custom_prompt:s.custom_prompt+'\n前回の候補は形式・言語・挨拶・表現の繰り返しの規則に合わないため破棄。直近の返信とは冒頭・語尾・話題を変えて短く自然に返す。Noteの案内可否を必ず守る。時間帯の挨拶を付けず、今回のコメントの言語だけで返す。外国語なら日本語を一切混ぜない。直近の長い返信とは別の言い方で、短く自然に返す。'},{...c,reply_retry_feedback:'該当したチェック：'+rejectionReason(text)+'。'+(wrongActivityReply(text,activityContext)?'聞かれていない予定を付け足した、または今日の共通予定と異なる活動を答えた。不要な予定の報告をやめ、今回のコメントと実際の会話に沿って答える。':repeatedReplyPattern(text,varietyContext)?'最近多用した感情表現・書き出しを繰り返した。別の反応・構成を選び、元の質問に答える。':'形式・言語・挨拶・宣伝制限・重複のいずれかに不一致。現在の質問と確定した事実を保って各規則を再確認する。')},attempt+1);
   if(rejectionReason(text)) throw new Error('返信文の確認で停止：'+rejectionReason(text));
   return text;

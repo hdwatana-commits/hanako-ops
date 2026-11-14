@@ -170,7 +170,7 @@ test('接続診断は通信例外の認証情報を返さない',async()=>{
   assert.doesNotMatch(JSON.stringify(body),/private-key-must-not-leak/);
 });
 test('投稿の通信結果が不明ならuncertainとなり、再送しない',async()=>{
-  let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],adapt_tone:true,custom_prompt:'',max_chars:180,use_history:true,started_at:'2026-01-01T00:00:00Z',scan_posts:[],scan_after:null};
+  let s={enabled:true,openai_ready:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],adapt_tone:true,custom_prompt:'',max_chars:180,use_history:true,started_at:'2026-01-01T00:00:00Z',scan_posts:[],scan_after:null};
   let c={post_id:'test-post',comment_id:'comment1',username:'guest',comment_text:'かわいい',post_text:'今日の服',status:'pending'};
   let locked=false, writes=0;
   globalThis.fetch=async(url,opts={})=>{
@@ -256,7 +256,7 @@ test('Vaultのキーを生成に使い、画面・診断に返さない',async()
 
 
 test('大量の履歴を巡回中でも最新投稿を先に確認し、続きのページも保持する',async()=>{
-  let s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],started_at:'2026-10-04T00:00:00Z',scan_posts:[{id:'history-post'}],scan_comment_after:'old-cursor'};
+  let s={enabled:true,openai_ready:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],started_at:'2026-10-04T00:00:00Z',scan_posts:[{id:'history-post'}],scan_comment_after:'old-cursor'};
   const conversations=[];
   globalThis.fetch=async(url,opts={})=>{
     url=String(url);const body=typeof opts.body==='string'?JSON.parse(opts.body):{};
@@ -264,6 +264,7 @@ test('大量の履歴を巡回中でも最新投稿を先に確認し、続き�
     if(url.includes('rpc/hanako_reply_lock'))return response(true);
     if(url.includes('rpc/hanako_reply_claim'))return response(null);
     if(url.includes('hanako_reply_settings')){if(opts.method==='PATCH')s={...s,...body};return response([s]);}
+    if(url.includes('hanako_reply_comments')&&opts.method!=='POST')return response([]);
     if(url.includes('hanako_reply_comments')){assert.match(opts.headers.Prefer,/ignore-duplicates/);assert.ok(body.every(c=>c.commented_at>='2026-10-04T00:00:00Z'));return response([]);}
     if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
     if(url.includes('/me/threads?'))return response({data:[{id:'new-post',text:'今日の服'}]});
@@ -281,7 +282,7 @@ test('大量の履歴を巡回中でも最新投稿を先に確認し、続き�
 });
 
 test('生成失敗は回数内だけ5分後の再試行を設定し、投稿しない',async()=>{
-  let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],use_history:false,tones:['cute'],max_chars:180,scan_posts:[]};
+  let s={enabled:true,openai_ready:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],use_history:false,tones:['cute'],max_chars:180,scan_posts:[]};
   let c={post_id:'test-post',comment_id:'retry-test',username:'guest',status:'generating',generation_attempts:1};
   globalThis.fetch=async(url,opts={})=>{
     url=String(url);const body=typeof opts.body==='string'?JSON.parse(opts.body):{};
@@ -297,11 +298,11 @@ test('生成失敗は回数内だけ5分後の再試行を設定し、投稿し�
   };
   assert.equal((await invoke({action:'run'})).status,400);assert.equal(c.status,'failed');assert.ok(Date.parse(c.next_attempt_at)>Date.now());
   c={...c,status:'generating',generation_attempts:3};
-  const last=await invoke({action:'run'});assert.equal(last.status,400);assert.match((await last.json()).error,/返信形式/);assert.equal(c.next_attempt_at,null);assert.match(c.error,/上限/);
+  const last=await invoke({action:'run'});assert.equal(last.status,400);assert.match((await last.json()).error,/返信文の確認で停止：対面・連絡に関する禁止表現/);assert.equal(c.next_attempt_at,null);assert.match(c.error,/上限/);
 });
 
 test('Threadsの準備完了を確認してから一度だけ返信を公開する',async()=>{
-  let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:false};
+  let s={enabled:true,openai_ready:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:false};
   let c={post_id:'test-post',comment_id:'ready-comment',username:'guest',comment_text:'可愛い',status:'pending',generation_attempts:1};let checked=false,published=0;
   globalThis.fetch=async(url,opts={})=>{
     url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
@@ -326,7 +327,7 @@ test('Threadsの準備完了を確認してから一度だけ返信を公開す�
 });
 
 test('生成には現在の投稿、距離感と公開済み会話だけを渡し、失敗候補を思い出にしない',async()=>{
-  const s={enabled:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:true,custom_prompt:'自然に返す\n[HANA_PRIVATE_PROFILE]private-profile-sentinel[/HANA_PRIVATE_PROFILE]'};
+  const s={enabled:true,openai_ready:true,mode:'draft',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:true,custom_prompt:'自然に返す\n[HANA_PRIVATE_PROFILE]private-profile-sentinel[/HANA_PRIVATE_PROFILE]'};
   const c={post_id:'test-post',comment_id:'current',username:'guest',comment_text:'この服すき',post_text:'今日のピンクの服',status:'generating'};
   const history=[{post_id:'test-post',comment_id:'old1',status:'published',comment_text:'ピンク好き',reply_text:'私も好き',post_text:'服',commented_at:'2026-10-01T00:00:00Z'},{post_id:'test-post',comment_id:'old2',status:'failed',comment_text:'赤もいいね',reply_text:'未公開の嘘の思い出'}];let input;
   globalThis.fetch=async(url,opts={})=>{
@@ -351,7 +352,7 @@ test('生成には現在の投稿、距離感と公開済み会話だけを渡�
 
 test('NG対象者とワードは生成前・生成後・コンテナ準備後でも投稿を止める',async()=>{
   for(const phase of ['initial-user','initial-word','after-generation','after-container']){
-    let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:false,ng_users:phase==='initial-user'?['guest']:[],ng_words:phase==='initial-word'?['禁止']:[]};
+    let s={enabled:true,openai_ready:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],tones:['cute'],max_chars:180,use_history:false,ng_users:phase==='initial-user'?['guest']:[],ng_words:phase==='initial-word'?['禁止']:[]};
     let c={post_id:'test-post',comment_id:'blocked',username:'Guest',comment_text:'禁止の話題',status:'generating'};let generated=0,published=0;
     globalThis.fetch=async(url,opts={})=>{
       url=String(url);const b=typeof opts.body==='string'?JSON.parse(opts.body):{};
@@ -392,7 +393,7 @@ test('時刻と矛盾したAIの挨拶を再生成し、時刻情報を渡す',a
 
 test('直近2件だけを巡回し、生成前と送信直前の対象変更を除外する',async()=>{
   for(const changeAt of [0,1,2]) {
-    let s={enabled:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],started_at:'2026-01-01T00:00:00Z',use_history:false,tones:['cute'],custom_prompt:'',max_chars:180,live_scan:{posts:[{id:'old'}],comment_after:'old-cursor'}};
+    let s={enabled:true,openai_ready:true,mode:'auto',start_time:'00:00',end_time:'00:00',weekdays:[0,1,2,3,4,5,6],started_at:'2026-01-01T00:00:00Z',use_history:false,tones:['cute'],custom_prompt:'',max_chars:180,live_scan:{posts:[{id:'old'}],comment_after:'old-cursor'}};
     let c={post_id:changeAt===0?'old':'p2',comment_id:'scope-comment',username:'guest',comment_text:'可愛い',status:'pending'};
     let shifted=false,generations=0,published=0;const scanned=[];
     globalThis.fetch=async(url,opts={})=>{
