@@ -293,7 +293,17 @@ test('生成失敗は回数内だけ5分後の再試行を設定し、投稿し�
     if(url.includes('hanako_reply_comments')){if(opts.method==='PATCH')c={...c,...body};return response([c]);}
     if(url.includes('/me?'))return response({id:'threads-owner',username:'hana'});
     if(url.includes('/me/threads?'))return response({data:[{id:'test-post',text:'今日の服'}]});
-    if(url.includes('api.openai.com'))return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'会えたら嬉しい'}]}]});
+    if(url.includes('api.openai.com')){
+      if(body.instructions.includes('最終候補を作る')){
+        const input=JSON.parse(body.input);
+        assert.match(body.instructions,/宛名や@メンションを書かない/);
+        assert.equal(input.reply_platform,'threads');
+        assert.match(input.reply_retry_feedback,/対面・連絡に関する禁止表現/);
+        assert.equal(input.past_conversation,undefined);
+        assert.equal(input.note_opportunity,undefined);
+      }
+      return response({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'会えたら嬉しい'}]}]});
+    }
     throw new Error('Unexpected request');
   };
   assert.equal((await invoke({action:'run'})).status,400);assert.equal(c.status,'failed');assert.ok(Date.parse(c.next_attempt_at)>Date.now());
