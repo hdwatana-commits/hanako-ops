@@ -309,6 +309,12 @@ test('生成失敗は回数内だけ5分後の再試行を設定し、投稿し�
   assert.equal((await invoke({action:'run'})).status,400);assert.equal(c.status,'failed');assert.ok(Date.parse(c.next_attempt_at)>Date.now());
   c={...c,status:'generating',generation_attempts:3};
   const last=await invoke({action:'run'});assert.equal(last.status,400);assert.match((await last.json()).error,/返信文の確認で停止：対面・連絡に関する禁止表現/);assert.equal(c.next_attempt_at,null);assert.match(c.error,/上限/);
+  s.mode='draft';
+  c={...c,comment_text:'言葉だけでは物足りません、お会いしたいです😍',status:'generating',generation_attempts:3};
+  assert.equal((await invoke({action:'run'})).status,200);
+  assert.equal(c.status,'draft');
+  assert.match(c.reply_text,/気持ちを伝えてくれてありがとう/);
+  assert.doesNotMatch(c.reply_text,/会え|電話|DM|https?:/);
 });
 
 test('Threadsの準備完了を確認してから一度だけ返信を公開する',async()=>{
