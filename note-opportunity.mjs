@@ -1,11 +1,12 @@
-// Add a stable 11% sample of extra positive reactions during the JST evening window.
-function eveningNoteSample(commentId,now){
+// Sample positive reactions, with a higher rate from 19:30 until midnight in Japan.
+function positiveNoteSample(commentId,now){
  if(!commentId)return false;
  const jst=new Date(now.getTime()+9*60*60*1000);
- if(jst.getUTCHours()*60+jst.getUTCMinutes()<19*60+30)return false;
+ const evening=jst.getUTCHours()*60+jst.getUTCMinutes()>=19*60+30;
+ const rate=evening?22:5;
  let hash=2166136261;
  for(const ch of String(commentId))hash=Math.imul(hash^ch.charCodeAt(0),16777619);
- return (hash>>>0)%100<11;
+ return (hash>>>0)%100<rate;
 }
 
 export function noteOpportunity(comment,conversation=[],allowed=false,{now=new Date(),commentId,platform='threads'}={}){
@@ -22,6 +23,6 @@ export function noteOpportunity(comment,conversation=[],allowed=false,{now=new D
  const exchanges=conversation.filter(c=>c.replies?.length).length;
  if(exchanges>=3&&/楽しい|たのしい|面白い|おもしろい|盛り上が|笑っ|笑える|ありがとう|素敵な話|楽しかった/u.test(current))return {reason:'friendly_conversation',suggest:true};
  // Keep the usual choices above; this extra sample is Threads-only.
- if(platform==='threads'&&current.length>=5&&/かわいい|可愛い|かわいすぎ|綺麗|きれい|素敵|すてき|似合|大好き|最高|楽し[いか]|面白[いか]|おもしろ[いか]|\b(cute|pretty|lovely|beautiful|gorgeous)\b/iu.test(current)&&!/[?？]|note|ノート|記事|嫌い|苦手|迷惑|宣伝|やめて|いらない|不要|興味ない|怖い|心配|疲れ|お大事|大丈夫|じゃない|くない|ません|not |don't/iu.test(current)&&eveningNoteSample(commentId,now))return {reason:'friendly_conversation',suggest:true};
+ if(platform==='threads'&&current.length>=5&&/かわいい|可愛い|かわいすぎ|綺麗|きれい|素敵|すてき|似合|大好き|最高|楽し[いか]|面白[いか]|おもしろ[いか]|\b(cute|pretty|lovely|beautiful|gorgeous)\b/iu.test(current)&&!/[?？]|note|ノート|記事|嫌い|苦手|迷惑|宣伝|やめて|いらない|不要|興味ない|怖い|心配|疲れ|お大事|大丈夫|じゃない|くない|ません|not |don't/iu.test(current)&&positiveNoteSample(commentId,now))return {reason:'friendly_conversation',suggest:true};
  return {reason:'ordinary_reply',suggest:false};
 }

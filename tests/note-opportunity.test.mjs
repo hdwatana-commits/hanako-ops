@@ -12,13 +12,17 @@ test('同日上限・拒否・購入済み・不安や相談では営業しな�
  assert.equal(noteOpportunity('記事を読みたい、リンク教えて',[{comment:'買えない',replies:[]}],true).suggest,true);
 });
 
-test('夜の追加案内は日本時間19:30から日付が変わるまで、対象の一部だけに出す',()=>{
+test('追加案内を昼間に広げ、19:30から日付が変わるまでは対象を増やす',()=>{
  const text='今日のコーデ、とっても可愛いね！';
  const evening=new Date('2026-11-08T10:30:00Z');
  const ids=Array.from({length:1000},(_,i)=>String(18000000000000000n+BigInt(i)));
  const selected=ids.filter(commentId=>noteOpportunity(text,[],true,{now:evening,commentId}).suggest);
- assert.ok(selected.length>=85&&selected.length<=135);
- const commentId=selected[0];
+ const daytime=new Date('2026-11-08T10:29:59Z');
+ const daytimeSelected=ids.filter(commentId=>noteOpportunity(text,[],true,{now:daytime,commentId}).suggest);
+ assert.ok(selected.length>=185&&selected.length<=255);
+ assert.ok(daytimeSelected.length>=25&&daytimeSelected.length<=75);
+ assert.ok(daytimeSelected.every(id=>selected.includes(id)));
+ const commentId=selected.find(id=>!daytimeSelected.includes(id));
  for(const [utc,expected] of [['10:29:59',false],['10:30:00',true],['14:59:59',true],['15:00:00',false]]){
    assert.equal(noteOpportunity(text,[],true,{commentId,now:new Date('2026-11-08T'+utc+'Z')}).suggest,expected);
  }
