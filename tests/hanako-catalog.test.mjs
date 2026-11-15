@@ -75,3 +75,26 @@ test("seven relaxed room outfits have stable image directions and enter indoor p
   }
   assert.match(source, /const outfits = available\("snsOutfitPreset", \["homeKnit"[^\n]*"roomSoftCardigan"/);
 });
+
+test("Akane, anime and idol outfits plus neighborhood story presets are selectable", () => {
+  const group = (groups, label) => groups.find((item) => item.label === label)?.items || [];
+  assert.equal(group(catalogs.outfits, "黒川あかね風コスプレ（新着1）").length, 1);
+  assert.equal(group(catalogs.outfits, "清楚なアニメヒロイン風コスプレ（新着10）").length, 10);
+  assert.equal(group(catalogs.outfits, "アイドルのオフの日・私服（新着10）").length, 10);
+  assert.equal(group(catalogs.expressions, "黒川あかね風の表情（新着3）").length, 3);
+  assert.equal(group(catalogs.poses, "黒川あかね風のポーズ（新着3）").length, 3);
+  assert.equal(group(catalogs.locations, "近所の道・日常スナップ（新着10）").length, 10);
+  for (const item of group(catalogs.outfits, "清楚なアニメヒロイン風コスプレ（新着10）")) {
+    assert.match(item.prompt, /成人女性/);
+  }
+  for (const item of group(catalogs.locations, "近所の道・日常スナップ（新着10）")) {
+    assert.match(item.prompt, /道|路|歩行|安全/);
+  }
+  for (const id of ["twinLongVelvet", "twinLongWave", "twinLongBraid", "twinLongHalf", "twinLongBubble", "twinLongSide", "videoOpenTurn", "videoOpenStep", "videoOpenForeground", "videoOpenDetail", "videoOpenReflection", "videoOpenDoor"]) {
+    assert.match(source, new RegExp(`\\["${id}",`), `${id} is selectable`);
+    assert.match(source, new RegExp(`\\b${id}:`), `${id} has an image prompt`);
+  }
+  assert.match(source, /hanakoInstagramOutfits\.push\(\.\.\.hanakoExtraOutfits\.slice\(5\)/);
+  assert.match(source, /hanakoThreadsExpressions\.push\(\.\.\.hanakoExtraExpressions\.slice\(1\)/);
+  assert.match(source, /"videoOpenTurn", "videoOpenStep", "videoOpenForeground"/);
+});
