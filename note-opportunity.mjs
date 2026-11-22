@@ -3,7 +3,7 @@ function positiveNoteSample(commentId,now){
  if(!commentId)return false;
  const jst=new Date(now.getTime()+9*60*60*1000);
  const evening=jst.getUTCHours()*60+jst.getUTCMinutes()>=19*60+30;
- const rate=evening?22:5;
+ const rate=evening?44:10;
  let hash=2166136261;
  for(const ch of String(commentId))hash=Math.imul(hash^ch.charCodeAt(0),16777619);
  return (hash>>>0)%100<rate;
@@ -25,4 +25,17 @@ export function noteOpportunity(comment,conversation=[],allowed=false,{now=new D
  // Keep the usual choices above; this extra sample is Threads-only.
  if(platform==='threads'&&current.length>=5&&/かわいい|可愛い|かわいすぎ|綺麗|きれい|素敵|すてき|似合|大好き|最高|楽し[いか]|面白[いか]|おもしろ[いか]|\b(cute|pretty|lovely|beautiful|gorgeous)\b/iu.test(current)&&!/[?？]|note|ノート|記事|嫌い|苦手|迷惑|宣伝|やめて|いらない|不要|興味ない|怖い|心配|疲れ|お大事|大丈夫|じゃない|くない|ません|not |don't/iu.test(current)&&positiveNoteSample(commentId,now))return {reason:'friendly_conversation',suggest:true};
  return {reason:'ordinary_reply',suggest:false};
+}
+
+
+export function instagramOpportunity(comment,conversation=[],allowed=false,{commentId,platform='threads'}={}){
+ if(!allowed||platform!=='threads'||!commentId)return {suggest:false};
+ const current=String(comment||'').trim();
+ if(current.length<5||/[?？]|note|ノート|記事|instagram|インスタ|宣伝|勧誘|やめて|嫌|不要|いらない|not |don't/iu.test(current))return {suggest:false};
+ const eligibility=noteOpportunity(current,conversation,true,{commentId:null});
+ if(['declined_or_purchased','support_first','direct_invitation','article_interest'].includes(eligibility.reason))return {suggest:false};
+ if(!/写真|コーデ|洋服|衣装|ファッション|コスプレ|雰囲気|photo|outfit|fashion|cosplay/iu.test(current)||!/可愛い|かわいい|素敵|綺麗|きれい|似合|好き|最高|cute|beautiful|lovely|love/iu.test(current))return {suggest:false};
+ let hash=2166136261;
+ for(const ch of 'instagram:'+String(commentId))hash=Math.imul(hash^ch.charCodeAt(0),16777619);
+ return {suggest:(hash>>>0)%100<1};
 }

@@ -1,7 +1,7 @@
 import { HANA_PROFILE, replyCustomPrompt } from '../../../hana-profile.mjs';
 import {instagramReplies} from './instagram.ts';
 import {geminiDailyQuota,geminiResumeAt,geminiFallbackState} from '../../../reply-ai-fallback.mjs';
-import {noteOpportunity} from '../../../note-opportunity.mjs';
+import {noteOpportunity,instagramOpportunity} from '../../../note-opportunity.mjs';
 import {validateGifSettings,chooseReplyGif,allowedReplyGif,gifVideoUrl,gifReplyReason} from '../../../gif-replies.mjs';
 import {replyToneContext,wrongReplyRegister} from '../../../reply-tone.mjs';
 import {replyVarietyContext,repeatedReplyPattern,REPLY_VARIETY_PROMPT} from '../../../reply-variety.mjs';
@@ -270,7 +270,9 @@ async function generateWithProvider(s: any,c: any,attempt=0): Promise<string> {
   const parent=c.parent_id ? await db(`hanako_reply_comments?${filter()}&comment_id=eq.${encodeURIComponent(c.parent_id)}&select=comment_text,reply_text`) : [];
   const instagramAllowed=c.platform==='instagram'?false:c.username==='connection-test'?true:await db('rpc/hanako_instagram_available','POST',{owner_id:owner(),fan_username:c.username});
   const noteAllowed=c.username==='connection-test'?true:await db('rpc/hanako_note_available','POST',{owner_id:owner(),fan_username:c.username});
+  const instagramSales=instagramOpportunity(c.comment_text,conversation,instagramAllowed,{commentId:c.username==='connection-test'?null:c.comment_id,platform:c.platform||'threads'});
   const noteSales=noteOpportunity(c.comment_text,conversation,noteAllowed,{commentId:c.username==='connection-test'?null:c.comment_id,platform:c.platform||'threads'});
+  if(instagramSales.suggest)noteSales.suggest=false;
   const toneContext=replyToneContext(c.comment_text,conversation.flatMap((h:any)=>h.replies));
   const activityContext=activityReplyContext(c.comment_text,c.post_text,dailyActivity,conversation);
   let instructions=`${HANA_PROMPT}\n${RELATIONSHIP_PROMPT}\n${DESTINATION_PROMPT}
@@ -321,7 +323,7 @@ ${INSTAGRAM_PROMPT}\nnickname_requested_nowがtrueなら、今のコメントで
     nickname_requested_now:nicknameRequestedNow,
     answered_questions:threadContext.answered_questions,
     public_profile:HANA_PROFILE
-  } : {activity_context:activityContext,reply_variety_context:varietyContext,reply_retry_feedback:c.reply_retry_feedback||null,note_opportunity:noteSales,reply_tone_context:toneContext,...threadContext,has_comment_text:Boolean(String(c.comment_text||'').trim()),reply_platform:c.platform||'threads',daily_activity:dailyActivity,cosplay_update:cosplayUpdate(replyDay),instagram_allowed:instagramAllowed,note_allowed:noteAllowed,fan_profile,nickname_requested_now:nicknameRequestedNow,reply_language_hint:replyLanguageHint(c.comment_text),reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(文章のないリアクション。GIF・画像などで気持ちを伝えてくれたものとして、受け取ったことを短く温かく喜ぶ。文章・コメント・説明の追加を求めず、質問で終わらせない。「何か一言」「コメントも」「どんな意味」などを求めない。画像そのものは入力されていないため、人物・表情・動き・色・可愛さなど見えていない具体的な内容を創作せず、気持ちやリアクションへの嬉しさを自然に伝える。Noteや他サービスへ誘導しない。)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation,recent_replies:recentReplies,owner_style_examples:styleExamples});
+  } : {activity_context:activityContext,reply_variety_context:varietyContext,reply_retry_feedback:c.reply_retry_feedback||null,note_opportunity:noteSales,instagram_opportunity:instagramSales,reply_tone_context:toneContext,...threadContext,has_comment_text:Boolean(String(c.comment_text||'').trim()),reply_platform:c.platform||'threads',daily_activity:dailyActivity,cosplay_update:cosplayUpdate(replyDay),instagram_allowed:instagramAllowed,note_allowed:noteAllowed,fan_profile,nickname_requested_now:nicknameRequestedNow,reply_language_hint:replyLanguageHint(c.comment_text),reply_time_jst:replyClock(),current_post:c.post_text,current_comment:c.comment_text||'(文章のないリアクション。GIF・画像などで気持ちを伝えてくれたものとして、受け取ったことを短く温かく喜ぶ。文章・コメント・説明の追加を求めず、質問で終わらせない。「何か一言」「コメントも」「どんな意味」などを求めない。画像そのものは入力されていないため、人物・表情・動き・色・可愛さなど見えていない具体的な内容を創作せず、気持ちやリアクションへの嬉しさを自然に伝える。Noteや他サービスへ誘導しない。)',parent,relationship:{name:relationship.name,tone:relationship.tone,comments:stats.comments||0,active_days:stats.active_days||0,exchanges:stats.replies||0,history_enabled:Boolean(s.use_history)},past_conversation:conversation,recent_replies:recentReplies,owner_style_examples:styleExamples});
   if(aiProvider(s)==='gemini') {
     const model=Deno.env.get('GEMINI_REPLY_MODEL')||'gemini-3.5-flash-lite';
     const response=await api(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':await geminiKey(s),'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:1024}})},'Gemini返信生成');

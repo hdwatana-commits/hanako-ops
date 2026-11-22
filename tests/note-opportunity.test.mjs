@@ -1,4 +1,20 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {noteOpportunity} from '../note-opportunity.mjs';
+
+test('写真への好意的な感想からInstagramを一部紹介し、上限・拒否・相談を優先する',async()=>{
+ const {instagramOpportunity}=await import('../note-opportunity.mjs');
+ const comment='今日の洋服と写真、とっても可愛いね！';
+ const ids=Array.from({length:10000},(_,i)=>String(18000000000000000n+BigInt(i)));
+ const selected=ids.filter(commentId=>instagramOpportunity(comment,[],true,{commentId}).suggest);
+ assert.ok(selected.length>=65&&selected.length<=135);
+ const commentId=selected[0],options={commentId};
+ assert.equal(instagramOpportunity(comment,[],true,options).suggest,true);
+ assert.equal(instagramOpportunity(comment,[],false,options).suggest,false);
+ assert.equal(instagramOpportunity(comment,[],true,{...options,platform:'instagram'}).suggest,false);
+ for(const text of ['写真かわいいけど寂しい','写真より会いたい、大好き','コーデ可愛いけど宣伝いらない','どの服が可愛い？','💕💕💕']){
+  assert.equal(instagramOpportunity(text,[],true,options).suggest,false);
+ }
+ assert.equal(instagramOpportunity(comment,[{comment:'勧誘はやめて'}],true,options).suggest,false);
+});
 const chat=Array.from({length:3},()=>({comment:'今日も楽しいね',replies:['ありがとう']}));
 test('直接の誘いと盛り上がった会話を購入案内の候補にする',()=>{
  for(const text of ['会いたい','DMしていい？','連絡先教えて','電話したい'])assert.equal(noteOpportunity(text,[],true).reason,'direct_invitation');
@@ -19,8 +35,8 @@ test('追加案内を昼間に広げ、19:30から日付が変わるまでは対
  const selected=ids.filter(commentId=>noteOpportunity(text,[],true,{now:evening,commentId}).suggest);
  const daytime=new Date('2026-11-08T10:29:59Z');
  const daytimeSelected=ids.filter(commentId=>noteOpportunity(text,[],true,{now:daytime,commentId}).suggest);
- assert.ok(selected.length>=185&&selected.length<=255);
- assert.ok(daytimeSelected.length>=25&&daytimeSelected.length<=75);
+ assert.ok(selected.length>=400&&selected.length<=480);
+ assert.ok(daytimeSelected.length>=70&&daytimeSelected.length<=130);
  assert.ok(daytimeSelected.every(id=>selected.includes(id)));
  const commentId=selected.find(id=>!daytimeSelected.includes(id));
  for(const [utc,expected] of [['10:29:59',false],['10:30:00',true],['14:59:59',true],['15:00:00',false]]){
